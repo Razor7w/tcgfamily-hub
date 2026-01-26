@@ -4,7 +4,7 @@ import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
 import {
-  Dashboard as DashboardIcon,
+  // Dashboard as DashboardIcon,
   Email as EmailIcon,
   People as PeopleIcon,
   Settings as SettingsIcon,
@@ -21,10 +21,11 @@ interface Module {
   id: string;
   name: string;
   icon: React.ReactNode;
+  route?: string;
 }
 
 const modules: Module[] = [
-  { id: "1", name: "Dashboard", icon: <DashboardIcon /> },
+  { id: "1", name: "Usuarios", icon: <PeopleIcon />, route: "/Admin/Users" },
   { id: "2", name: "Correos", icon: <EmailIcon /> },
   { id: "3", name: "Usuarios", icon: <PeopleIcon /> },
   { id: "4", name: "Configuración", icon: <SettingsIcon /> },

@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, email, role = "user", phone = "", rut = "" } = body;
+    const { name, email, role = "user", phone = "", rut = "", popid = "" } = body;
 
     if (!name || !email) {
       return NextResponse.json(
@@ -104,6 +104,7 @@ export async function POST(request: NextRequest) {
       role,
       phone,
       rut,
+      popid,
       accounts: [],
       sessions: [],
     });
@@ -116,6 +117,7 @@ export async function POST(request: NextRequest) {
         role: newUser.role,
         phone: newUser.phone || "",
         rut: newUser.rut || "",
+        popid: newUser.popid || "",
       },
       { status: 201 }
     );

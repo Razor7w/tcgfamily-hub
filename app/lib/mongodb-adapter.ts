@@ -33,6 +33,7 @@ export function MongoDBAdapter(): Adapter {
             role: existingUser.role || "user",
             phone: existingUser.phone || "",
             rut: existingUser.rut || "",
+            popid: existingUser.popid || "",
           };
         }
       }
@@ -46,6 +47,7 @@ export function MongoDBAdapter(): Adapter {
         role: "user", // Por defecto todos son "user"
         phone: "", // Por defecto string vacío
         rut: "", // Por defecto string vacío
+        popid: "", // Por defecto string vacío
         accounts: [],
         sessions: [],
       });
@@ -65,6 +67,7 @@ export function MongoDBAdapter(): Adapter {
         role: newUser.role || "user",
         phone: newUser.phone || "",
         rut: newUser.rut || "",
+        popid: newUser.popid || "",
       };
     },
 
@@ -81,6 +84,7 @@ export function MongoDBAdapter(): Adapter {
         role: user.role || "user",
         phone: user.phone || "",
         rut: user.rut || "",
+        popid: user.popid || "",
       };
     },
 
@@ -97,6 +101,7 @@ export function MongoDBAdapter(): Adapter {
         role: user.role || "user",
         phone: user.phone || "",
         rut: user.rut || "",
+        popid: user.popid || "",
       };
     },
 
@@ -115,6 +120,7 @@ export function MongoDBAdapter(): Adapter {
         role: user.role || "user",
         phone: user.phone || "",
         rut: user.rut || "",
+        popid: user.popid || "",
       };
     },
 
@@ -128,6 +134,7 @@ export function MongoDBAdapter(): Adapter {
         role?: "user" | "admin";
         phone?: string;
         rut?: string;
+        popid?: string;
       } = {
         name: user.name,
         email: user.email,
@@ -142,6 +149,9 @@ export function MongoDBAdapter(): Adapter {
       }
       if ((user as { rut?: string }).rut !== undefined) {
         updateData.rut = (user as { rut?: string }).rut;
+      }
+      if ((user as { popid?: string }).popid !== undefined) {
+        updateData.popid = (user as { popid?: string }).popid;
       }
       const updatedUser = await User.findByIdAndUpdate(
         user.id,
@@ -158,6 +168,7 @@ export function MongoDBAdapter(): Adapter {
         role: updatedUser.role || "user",
         phone: updatedUser.phone || "",
         rut: updatedUser.rut || "",
+        popid: updatedUser.popid || "",
       };
     },
 
@@ -238,6 +249,7 @@ export function MongoDBAdapter(): Adapter {
           role: user.role || "user",
           phone: user.phone || "",
           rut: user.rut || "",
+          popid: user.popid || "",
         },
       };
     },
