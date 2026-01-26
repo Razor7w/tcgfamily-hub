@@ -7,7 +7,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <AuthLayout>
+    <AuthLayout role="admin">
       <Header />
       {children}
     </AuthLayout>

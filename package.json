@@ -9,10 +9,16 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@fontsource/roboto": "^5.2.9",
+    "@mui/icons-material": "^7.3.7",
+    "@mui/material": "^7.3.7",
     "mongodb": "^6.21.0",
     "mongoose": "^8.21.0",
     "next": "16.1.3",
     "next-auth": "^5.0.0-beta.30",
+    "pokesprite-images": "^2.7.0",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
