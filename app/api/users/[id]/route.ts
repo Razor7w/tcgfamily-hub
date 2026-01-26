@@ -55,6 +55,7 @@ export async function GET(
       role?: "user" | "admin";
       phone?: string;
       rut?: string;
+      popid?: string;
     };
 
     return NextResponse.json({
@@ -66,6 +67,7 @@ export async function GET(
       role: userObj.role || "user",
       phone: userObj.phone || "",
       rut: userObj.rut || "",
+      popid: userObj.popid || "",
     });
   } catch (error) {
     console.error("Error al obtener usuario:", error);
@@ -94,7 +96,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { name, email, role, phone, rut } = body;
+    const { name, email, role, phone, rut, popid } = body;
 
     await connectDB();
     
@@ -142,6 +144,7 @@ export async function PUT(
     }
     if (phone !== undefined) user.phone = phone;
     if (rut !== undefined) user.rut = rut;
+    if (popid !== undefined) user.popid = popid;
 
     await user.save();
 
@@ -152,6 +155,7 @@ export async function PUT(
       role: user.role,
       phone: user.phone || "",
       rut: user.rut || "",
+      popid: user.popid || "",
     });
   } catch (error) {
     console.error("Error al actualizar usuario:", error);

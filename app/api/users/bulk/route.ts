@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
       const role = (row.role || row.rol || "user").toLowerCase();
       const phone = row.phone || row.telefono || row.teléfono || "";
       const rut = row.rut || "";
+      const popid = row.popid || "";
 
       // Validaciones básicas
       if (!email || !name) {
@@ -131,6 +132,7 @@ export async function POST(request: NextRequest) {
           role: role as "user" | "admin",
           phone: phone || "",
           rut: rut || "",
+          popid: popid || "",
           accounts: [],
           sessions: [],
         });

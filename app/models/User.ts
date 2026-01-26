@@ -10,6 +10,7 @@ export interface IUser extends Document {
   role: UserRole;
   phone: string;
   rut: string;
+  popid: string;
   accounts: mongoose.Types.ObjectId[];
   sessions: mongoose.Types.ObjectId[];
 }
@@ -31,6 +32,10 @@ const UserSchema = new Schema<IUser>(
       default: "",
     },
     rut: {
+      type: String,
+      default: "",
+    },
+    popid: {
       type: String,
       default: "",
     },

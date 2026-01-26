@@ -39,6 +39,7 @@ interface User {
   role: "user" | "admin";
   phone?: string;
   rut?: string;
+  popid?: string;
 }
 
 export default function UsersPage() {
@@ -52,6 +53,7 @@ export default function UsersPage() {
     role: "user" as "user" | "admin",
     phone: "",
     rut: "",
+    popid: "",
   });
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -95,10 +97,11 @@ export default function UsersPage() {
         role: user.role,
         phone: user.phone || "",
         rut: user.rut || "",
+        popid: user.popid || "",
       });
     } else {
       setEditingUser(null);
-      setFormData({ name: "", email: "", role: "user", phone: "", rut: "" });
+      setFormData({ name: "", email: "", role: "user", phone: "", rut: "", popid: "" });
     }
     setOpenDialog(true);
   };
@@ -107,7 +110,7 @@ export default function UsersPage() {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setEditingUser(null);
-    setFormData({ name: "", email: "", role: "user", phone: "", rut: "" });
+    setFormData({ name: "", email: "", role: "user", phone: "", rut: "", popid: "" });
   };
 
   // Guardar usuario (crear o actualizar)
@@ -328,6 +331,7 @@ export default function UsersPage() {
               <TableCell>Email</TableCell>
               <TableCell>Teléfono</TableCell>
               <TableCell>RUT</TableCell>
+              <TableCell>PopID</TableCell>
               <TableCell>Rol</TableCell>
               <TableCell align="right">Acciones</TableCell>
             </TableRow>
@@ -348,6 +352,7 @@ export default function UsersPage() {
                 <TableCell>{user.email || "Sin email"}</TableCell>
                 <TableCell>{user.phone || "-"}</TableCell>
                 <TableCell>{user.rut || "-"}</TableCell>
+                <TableCell>{user.popid || "-"}</TableCell>
                 <TableCell>
                   <FormControl size="small" sx={{ minWidth: 120 }}>
                     <Select
@@ -430,6 +435,14 @@ export default function UsersPage() {
               value={formData.rut}
               onChange={(e) =>
                 setFormData({ ...formData, rut: e.target.value })
+              }
+            />
+            <TextField
+              label="PopID"
+              fullWidth
+              value={formData.popid}
+              onChange={(e) =>
+                setFormData({ ...formData, popid: e.target.value })
               }
             />
             <FormControl fullWidth>
