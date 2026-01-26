@@ -1,21 +1,8 @@
 "use client";
 
-import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
+import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
-import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
-import { lightTheme, darkTheme } from "@/theme/theme";
-
-function ThemeProviderWrapper({ children }: { children: React.ReactNode }) {
-  const { mode } = useTheme();
-  const theme = mode === "dark" ? darkTheme : lightTheme;
-
-  return (
-    <MuiThemeProvider theme={theme}>
-      <CssBaseline />
-      {children}
-    </MuiThemeProvider>
-  );
-}
+import { lightTheme } from "@/theme/theme";
 
 export default function ThemeRegistry({
   children,
@@ -23,8 +10,9 @@ export default function ThemeRegistry({
   children: React.ReactNode;
 }) {
   return (
-    <ThemeProvider>
-      <ThemeProviderWrapper>{children}</ThemeProviderWrapper>
+    <ThemeProvider theme={lightTheme}>
+      <CssBaseline />
+      {children}
     </ThemeProvider>
   );
 }

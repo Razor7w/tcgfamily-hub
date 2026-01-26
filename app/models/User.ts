@@ -8,6 +8,8 @@ export interface IUser extends Document {
   emailVerified?: Date;
   image?: string;
   role: UserRole;
+  phone: string;
+  rut: string;
   accounts: mongoose.Types.ObjectId[];
   sessions: mongoose.Types.ObjectId[];
 }
@@ -23,6 +25,14 @@ const UserSchema = new Schema<IUser>(
       enum: ["user", "admin"],
       default: "user",
       required: true,
+    },
+    phone: {
+      type: String,
+      default: "",
+    },
+    rut: {
+      type: String,
+      default: "",
     },
     accounts: [{ type: Schema.Types.ObjectId, ref: "Account" }],
     sessions: [{ type: Schema.Types.ObjectId, ref: "Session" }],

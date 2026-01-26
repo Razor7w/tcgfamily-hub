@@ -11,15 +11,11 @@ import Avatar from "@mui/material/Avatar";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Tooltip from "@mui/material/Tooltip";
-import { useTheme } from "@/contexts/ThemeContext";
-import Brightness4Icon from "@mui/icons-material/Brightness4";
-import Brightness7Icon from "@mui/icons-material/Brightness7";
 import LogoutIcon from "@mui/icons-material/Logout";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 
 export default function Header() {
   const { data: session } = useSession();
-  const { mode, toggleTheme } = useTheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
@@ -43,15 +39,6 @@ export default function Header() {
         </Typography>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          {/* Theme Toggle */}
-          <Tooltip
-            title={mode === "light" ? "Activar modo oscuro" : "Activar modo claro"}
-          >
-            <IconButton onClick={toggleTheme} color="inherit">
-              {mode === "light" ? <Brightness4Icon /> : <Brightness7Icon />}
-            </IconButton>
-          </Tooltip>
-
           {/* User Menu */}
           {session?.user && (
             <>
