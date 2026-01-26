@@ -1,10 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
+import TextField from "@mui/material/TextField";
+import Paper from "@mui/material/Paper";
+import CircularProgress from "@mui/material/CircularProgress";
+import Alert from "@mui/material/Alert";
 import {
-  // Dashboard as DashboardIcon,
   Email as EmailIcon,
   People as PeopleIcon,
   Settings as SettingsIcon,
@@ -18,6 +22,7 @@ import { Grid } from "@mui/material";
 import CardModule from "@/components/molecule/CardModule";
 import TanStackQueryExample from "@/examples/TanStackQueryExample";
 import ZustandExample from "@/examples/ZustandExample";
+import { useGetMailById } from "@/hooks/useMails";
 
 interface Module {
   id: string;
@@ -39,6 +44,11 @@ const modules: Module[] = [
 ];
 
 export default function DashboardPage() {
+  const [mailId, setMailId] = useState("");
+  const { data: mail, isLoading, error, isFetching } = useGetMailById(
+    mailId.trim() || null,
+  );
+
   return (
     <Box
       sx={{
@@ -58,6 +68,78 @@ export default function DashboardPage() {
             </Grid>
           ))}
         </Grid>
+
+        {/* Ejemplo useGetMailById: buscar mail por ID */}
+        <Paper sx={{ p: 3, mt: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            Buscar mail por ID (useGetMailById)
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Escribe un ObjectId de MongoDB (ej. de la lista de mails) y se
+            cargará al tener algo válido.
+          </Typography>
+          <TextField
+            label="ID del mail"
+            placeholder="ej. 507f1f77bcf86cd799439011"
+            value={mailId}
+            onChange={(e) => setMailId(e.target.value)}
+            fullWidth
+            sx={{ maxWidth: 400 }}
+            size="small"
+          />
+          <Box sx={{ mt: 2, minHeight: 80 }}>
+            {!mailId.trim() && (
+              <Typography variant="body2" color="text.secondary">
+                Escribe un ID para buscar.
+              </Typography>
+            )}
+            {mailId.trim() && isLoading && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <CircularProgress size={20} />
+                <Typography variant="body2">Cargando mail…</Typography>
+              </Box>
+            )}
+            {mailId.trim() && isFetching && !isLoading && (
+              <Typography variant="caption" color="text.secondary">
+                Actualizando…
+              </Typography>
+            )}
+            {error && (
+              <Alert severity="error" sx={{ mt: 1 }}>
+                {error.message}
+              </Alert>
+            )}
+            {mail && !error && (
+              <Box
+                sx={{
+                  mt: 1,
+                  p: 2,
+                  bgcolor: "action.hover",
+                  borderRadius: 1,
+                }}
+              >
+                <Typography variant="subtitle2">Mail encontrado</Typography>
+                <Typography variant="body2">
+                  De: {mail.fromUserId?.name ?? "—"} (
+                  {mail.fromUserId?.rut ?? "—"})
+                </Typography>
+                <Typography variant="body2">
+                  Para: {mail.toUserId?.name ?? "—"} (
+                  {mail.toUserId?.rut ?? "—"})
+                </Typography>
+                <Typography variant="body2">
+                  Recibido: {mail.isRecived ? "Sí" : "No"}
+                </Typography>
+                {mail.observations && (
+                  <Typography variant="body2">
+                    Observaciones: {mail.observations}
+                  </Typography>
+                )}
+              </Box>
+            )}
+          </Box>
+        </Paper>
+
         <TanStackQueryExample />
         <ZustandExample />
       </Container>
