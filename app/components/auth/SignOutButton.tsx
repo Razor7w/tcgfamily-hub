@@ -1,14 +1,18 @@
 "use client";
 
 import { signOut } from "next-auth/react";
+import Button from "@mui/material/Button";
 
 export default function SignOutButton() {
   return (
-    <button
+    <Button
+      variant="contained"
+      size="large"
+      fullWidth
       onClick={() => signOut({ callbackUrl: "/" })}
-      className="px-4 py-2 bg-red-500 text-white rounded"
+      sx={{ mt: 1, py: 1.5, textTransform: "none", fontSize: "1rem" }}
     >
       Cerrar sesión
-    </button>
+    </Button>
   );
 }
