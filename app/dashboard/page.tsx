@@ -18,7 +18,7 @@ interface Module {
 }
 
 const modules: Module[] = [
-  { id: "1", name: "Admin", icon: <DashboardIcon />, route: "/admin" },
+  { id: "1", name: "Admin", icon: <DashboardIcon />, route: "/Admin" },
   { id: "2", name: "Pronto", icon: <HelpIcon /> },
   { id: "3", name: "Pronto", icon: <HelpIcon /> },
   { id: "4", name: "Pronto", icon: <HelpIcon /> },
