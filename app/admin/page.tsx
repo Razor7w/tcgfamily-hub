@@ -16,6 +16,8 @@ import {
 } from "@mui/icons-material";
 import { Grid } from "@mui/material";
 import CardModule from "@/components/molecule/CardModule";
+import TanStackQueryExample from "@/examples/TanStackQueryExample";
+import ZustandExample from "@/examples/ZustandExample";
 
 interface Module {
   id: string;
@@ -56,6 +58,8 @@ export default function DashboardPage() {
             </Grid>
           ))}
         </Grid>
+        <TanStackQueryExample />
+        <ZustandExample />
       </Container>
     </Box>
   );

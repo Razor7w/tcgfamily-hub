@@ -123,9 +123,9 @@ export function getPokemonSpritePath(
 
   filename = `${filename}.png`;
 
-  // Usar la ruta del API para servir los sprites desde node_modules
-  // Formato: /api/pokesprite/gen8/regular/pikachu.png
-  return `/api/pokesprite/${genFolder}/${formPath}/${filename}`;
+  // Servir sprites desde public/pokesprite (copiados por scripts/copy-pokesprite.mjs)
+  // Formato: /pokesprite/gen8/regular/pikachu.png
+  return `/pokesprite/${genFolder}/${formPath}/${filename}`;
 }
 
 /**

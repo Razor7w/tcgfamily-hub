@@ -1,6 +1,7 @@
 import { SessionProvider } from "next-auth/react";
 import { auth } from "@/auth";
 import ThemeRegistry from "@/components/ThemeRegistry";
+import { QueryProvider } from "@/lib/query-client";
 
 export default async function RootLayout({
   children,
@@ -12,11 +13,13 @@ export default async function RootLayout({
   return (
     <html lang="es">
       <body>
-        <ThemeRegistry>
-          <SessionProvider session={session}>
-            {children}
-          </SessionProvider>
-        </ThemeRegistry>
+        <QueryProvider>
+          <ThemeRegistry>
+            <SessionProvider session={session}>
+              {children}
+            </SessionProvider>
+          </ThemeRegistry>
+        </QueryProvider>
       </body>
     </html>
   );

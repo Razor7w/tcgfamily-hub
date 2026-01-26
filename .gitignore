@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# sprites copiados desde pokesprite-images (opcional; se generan con copy-pokesprite)
+/public/pokesprite
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

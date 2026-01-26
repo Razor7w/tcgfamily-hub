@@ -71,7 +71,7 @@ const path = getPokemonSpritePath("pikachu", {
   form: "shiny",
   variant: "regular"
 });
-// Retorna: "/api/pokesprite/gen8/shiny/pikachu.png"
+// Retorna: "/pokesprite/gen8/shiny/pikachu.png"
 ```
 
 #### `getPokemonForms(nameOrIndex, generation): string[]`
@@ -205,16 +205,18 @@ function PokemonSearch() {
 }
 ```
 
-## API Route
+## Servir sprites (estático)
 
-Los sprites se sirven a través de una API route en `/api/pokesprite/[...path]`.
+Los sprites se sirven desde `public/pokesprite/` como archivos estáticos.
 
-La ruta sigue el formato:
-- `/api/pokesprite/gen8/regular/pikachu.png`
-- `/api/pokesprite/gen8/shiny/charizard-mega-x.png`
-- `/api/pokesprite/gen7x/regular/bulbasaur.png`
+El script `scripts/copy-pokesprite.mjs` copia `pokemon-gen8` y `pokemon-gen7x` desde `node_modules/pokesprite-images` a `public/pokesprite/`. Se ejecuta en `postinstall` y antes de `build`.
 
-Los archivos se leen desde `node_modules/pokesprite-images` y se sirven con cache headers apropiados.
+Rutas:
+- `/pokesprite/gen8/regular/pikachu.png`
+- `/pokesprite/gen8/shiny/charizard-mega-x.png`
+- `/pokesprite/gen7x/regular/bulbasaur.png`
+
+Para regenerar: `npm run copy-pokesprite`.
 
 ## Notas
 

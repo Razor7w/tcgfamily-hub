@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
@@ -30,24 +30,27 @@ import Avatar from "@mui/material/Avatar";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
 import Snackbar from "@mui/material/Snackbar";
-import {
-  useUsers,
-  useCreateUser,
-  useUpdateUser,
-  useDeleteUser,
-  useBulkUploadUsers,
-  type User,
-  type CreateUserData,
-} from "@/hooks/useUsers";
-import { useAppStore } from "@/store/useAppStore";
 
-export default function UsersPageRefactored() {
+interface User {
+  id: string;
+  name?: string;
+  email?: string;
+  image?: string;
+  role: "user" | "admin";
+  phone?: string;
+  rut?: string;
+  popid?: string;
+}
+
+export default function UsersPage() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [formData, setFormData] = useState<CreateUserData>({
+  const [formData, setFormData] = useState({
     name: "",
     email: "",
-    role: "user",
+    role: "user" as "user" | "admin",
     phone: "",
     rut: "",
     popid: "",
@@ -57,19 +60,32 @@ export default function UsersPageRefactored() {
     message: "",
     severity: "success" as "success" | "error",
   });
+  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Hooks de TanStack Query - ¡Mucho más simple!
-  const { data: users = [], isLoading, error } = useUsers();
-  const createUser = useCreateUser();
-  const updateUser = useUpdateUser();
-  const deleteUser = useDeleteUser();
-  const bulkUpload = useBulkUploadUsers();
+  // Cargar usuarios
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/users");
+      if (!response.ok) throw new Error("Error al cargar usuarios");
+      const data = await response.json();
+      setUsers(data);
+    } catch (error) {
+      console.error("Error:", error);
+      setSnackbar({
+        open: true,
+        message: "Error al cargar usuarios",
+        severity: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Zustand store para filtros (ejemplo)
-  const userFilter = useAppStore((state) => state.userFilter);
-  const setUserFilter = useAppStore((state) => state.setUserFilter);
-  const addNotification = useAppStore((state) => state.addNotification);
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   // Abrir diálogo para crear/editar
   const handleOpenDialog = (user?: User) => {
@@ -85,14 +101,7 @@ export default function UsersPageRefactored() {
       });
     } else {
       setEditingUser(null);
-      setFormData({
-        name: "",
-        email: "",
-        role: "user",
-        phone: "",
-        rut: "",
-        popid: "",
-      });
+      setFormData({ name: "", email: "", role: "user", phone: "", rut: "", popid: "" });
     }
     setOpenDialog(true);
   };
@@ -101,46 +110,35 @@ export default function UsersPageRefactored() {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setEditingUser(null);
-    setFormData({
-      name: "",
-      email: "",
-      role: "user",
-      phone: "",
-      rut: "",
-      popid: "",
-    });
+    setFormData({ name: "", email: "", role: "user", phone: "", rut: "", popid: "" });
   };
 
   // Guardar usuario (crear o actualizar)
   const handleSave = async () => {
     try {
-      if (editingUser) {
-        await updateUser.mutateAsync({
-          userId: editingUser.id,
-          data: formData,
-        });
-        setSnackbar({
-          open: true,
-          message: "Usuario actualizado correctamente",
-          severity: "success",
-        });
-        addNotification({
-          message: "Usuario actualizado correctamente",
-          type: "success",
-        });
-      } else {
-        await createUser.mutateAsync(formData);
-        setSnackbar({
-          open: true,
-          message: "Usuario creado correctamente",
-          severity: "success",
-        });
-        addNotification({
-          message: "Usuario creado correctamente",
-          type: "success",
-        });
+      const url = editingUser ? `/api/users/${editingUser.id}` : "/api/users";
+      const method = editingUser ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al guardar usuario");
       }
+
+      setSnackbar({
+        open: true,
+        message: editingUser
+          ? "Usuario actualizado correctamente"
+          : "Usuario creado correctamente",
+        severity: "success",
+      });
       handleCloseDialog();
+      fetchUsers();
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Error al guardar usuario";
@@ -148,10 +146,6 @@ export default function UsersPageRefactored() {
         open: true,
         message: errorMessage,
         severity: "error",
-      });
-      addNotification({
-        message: errorMessage,
-        type: "error",
       });
     }
   };
@@ -163,16 +157,18 @@ export default function UsersPageRefactored() {
     }
 
     try {
-      await deleteUser.mutateAsync(userId);
+      const response = await fetch(`/api/users/${userId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Error al eliminar usuario");
+
       setSnackbar({
         open: true,
         message: "Usuario eliminado correctamente",
         severity: "success",
       });
-      addNotification({
-        message: "Usuario eliminado correctamente",
-        type: "success",
-      });
+      fetchUsers();
     } catch {
       setSnackbar({
         open: true,
@@ -183,9 +179,7 @@ export default function UsersPageRefactored() {
   };
 
   // Manejar carga masiva desde CSV
-  const handleBulkUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleBulkUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -198,31 +192,44 @@ export default function UsersPageRefactored() {
       return;
     }
 
+    setUploading(true);
     try {
-      const result = await bulkUpload.mutateAsync(file);
-      const message = `Procesados: ${result.success} exitosos, ${result.errors} errores`;
+      const formData = new FormData();
+      formData.append("file", file);
 
+      const response = await fetch("/api/users/bulk", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al procesar el archivo");
+      }
+
+      const result = await response.json();
+      const message = `Procesados: ${result.success} exitosos, ${result.errors} errores`;
+      
       setSnackbar({
         open: true,
         message,
         severity: result.errors > 0 ? "error" : "success",
       });
 
-      addNotification({
-        message,
-        type: result.errors > 0 ? "error" : "success",
-      });
+      // Recargar la lista de usuarios
+      if (result.success > 0) {
+        fetchUsers();
+      }
     } catch (error) {
       const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Error al cargar el archivo";
+        error instanceof Error ? error.message : "Error al cargar el archivo";
       setSnackbar({
         open: true,
         message: errorMessage,
         severity: "error",
       });
     } finally {
+      setUploading(false);
       // Limpiar el input
       if (event.target) {
         event.target.value = "";
@@ -236,15 +243,20 @@ export default function UsersPageRefactored() {
     newRole: "user" | "admin",
   ) => {
     try {
-      await updateUser.mutateAsync({
-        userId,
-        data: { role: newRole },
+      const response = await fetch(`/api/users/${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: newRole }),
       });
+
+      if (!response.ok) throw new Error("Error al actualizar rol");
+
       setSnackbar({
         open: true,
         message: "Rol actualizado correctamente",
         severity: "success",
       });
+      fetchUsers();
     } catch {
       setSnackbar({
         open: true,
@@ -254,21 +266,7 @@ export default function UsersPageRefactored() {
     }
   };
 
-  // Filtrar usuarios (ejemplo usando Zustand)
-  const filteredUsers = users.filter((user) => {
-    if (userFilter.role && user.role !== userFilter.role) return false;
-    if (userFilter.search) {
-      const search = userFilter.search.toLowerCase();
-      return (
-        user.name?.toLowerCase().includes(search) ||
-        user.email?.toLowerCase().includes(search) ||
-        user.rut?.toLowerCase().includes(search)
-      );
-    }
-    return true;
-  });
-
-  if (isLoading) {
+  if (loading) {
     return (
       <Box
         sx={{
@@ -283,16 +281,6 @@ export default function UsersPageRefactored() {
     );
   }
 
-  if (error) {
-    return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity="error">
-          Error al cargar usuarios: {error.message}
-        </Alert>
-      </Container>
-    );
-  }
-
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box
@@ -304,33 +292,15 @@ export default function UsersPageRefactored() {
         }}
       >
         <Typography variant="h4" component="h1">
-          Gestión de Usuarios (Refactorizado)
+          Gestión de Usuarios
         </Typography>
         <Box sx={{ display: "flex", gap: 2 }}>
-          {/* Filtro de ejemplo usando Zustand */}
-          <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel>Filtrar por rol</InputLabel>
-            <Select
-              value={userFilter.role || ""}
-              label="Filtrar por rol"
-              onChange={(e) =>
-                setUserFilter({
-                  role: e.target.value as "user" | "admin" | undefined,
-                })
-              }
-            >
-              <MenuItem value="">Todos</MenuItem>
-              <MenuItem value="user">Usuario</MenuItem>
-              <MenuItem value="admin">Admin</MenuItem>
-            </Select>
-          </FormControl>
-
           <input
             type="file"
             accept=".csv"
             style={{ display: "none" }}
             onChange={handleBulkUpload}
-            disabled={bulkUpload.isPending}
+            disabled={uploading}
             ref={fileInputRef}
           />
           <Button
@@ -339,9 +309,9 @@ export default function UsersPageRefactored() {
             onClick={() => {
               fileInputRef.current?.click();
             }}
-            disabled={bulkUpload.isPending}
+            disabled={uploading}
           >
-            {bulkUpload.isPending ? "Cargando..." : "Cargar CSV"}
+            {uploading ? "Cargando..." : "Cargar CSV"}
           </Button>
           <Button
             variant="contained"
@@ -367,7 +337,7 @@ export default function UsersPageRefactored() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredUsers.map((user) => (
+            {users.map((user) => (
               <TableRow key={user.id}>
                 <TableCell>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
@@ -393,7 +363,6 @@ export default function UsersPageRefactored() {
                           e.target.value as "user" | "admin",
                         )
                       }
-                      disabled={updateUser.isPending}
                     >
                       <MenuItem value="user">Usuario</MenuItem>
                       <MenuItem value="admin">Admin</MenuItem>
@@ -412,7 +381,6 @@ export default function UsersPageRefactored() {
                     color="error"
                     onClick={() => handleDelete(user.id)}
                     size="small"
-                    disabled={deleteUser.isPending}
                   >
                     <DeleteIcon />
                   </IconButton>
@@ -497,14 +465,8 @@ export default function UsersPageRefactored() {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Cancelar</Button>
-          <Button
-            onClick={handleSave}
-            variant="contained"
-            disabled={createUser.isPending || updateUser.isPending}
-          >
-            {createUser.isPending || updateUser.isPending
-              ? "Guardando..."
-              : "Guardar"}
+          <Button onClick={handleSave} variant="contained">
+            Guardar
           </Button>
         </DialogActions>
       </Dialog>
