@@ -9,20 +9,30 @@ export function MongoDBAdapter(): Adapter {
   return {
     async createUser(user) {
       await connectDB();
+      // Asegurar que el role siempre se asigne explícitamente
       const newUser = await User.create({
         name: user.name,
         email: user.email,
         emailVerified: user.emailVerified,
         image: user.image,
+        role: "user", // Por defecto todos son "user"
         accounts: [],
         sessions: [],
       });
+      
+      // Verificar y actualizar si el role no se guardó (por si acaso)
+      if (!newUser.role) {
+        newUser.role = "user";
+        await newUser.save();
+      }
+      
       return {
         id: newUser._id.toString(),
         name: newUser.name,
         email: newUser.email,
         emailVerified: newUser.emailVerified,
         image: newUser.image,
+        role: newUser.role || "user",
       };
     },
 
@@ -36,6 +46,7 @@ export function MongoDBAdapter(): Adapter {
         email: user.email,
         emailVerified: user.emailVerified,
         image: user.image,
+        role: user.role || "user",
       };
     },
 
@@ -49,6 +60,7 @@ export function MongoDBAdapter(): Adapter {
         email: user.email,
         emailVerified: user.emailVerified,
         image: user.image,
+        role: user.role || "user",
       };
     },
 
@@ -64,19 +76,30 @@ export function MongoDBAdapter(): Adapter {
         email: user.email,
         emailVerified: user.emailVerified,
         image: user.image,
+        role: user.role || "user",
       };
     },
 
     async updateUser(user) {
       await connectDB();
+      const updateData: {
+        name?: string | null;
+        email?: string | null;
+        emailVerified?: Date | null;
+        image?: string | null;
+        role?: "user" | "admin";
+      } = {
+        name: user.name,
+        email: user.email,
+        emailVerified: user.emailVerified,
+        image: user.image,
+      };
+      if (user.role) {
+        updateData.role = user.role;
+      }
       const updatedUser = await User.findByIdAndUpdate(
         user.id,
-        {
-          name: user.name,
-          email: user.email,
-          emailVerified: user.emailVerified,
-          image: user.image,
-        },
+        updateData,
         { new: true },
       );
       if (!updatedUser) throw new Error("User not found");
@@ -86,6 +109,7 @@ export function MongoDBAdapter(): Adapter {
         email: updatedUser.email,
         emailVerified: updatedUser.emailVerified,
         image: updatedUser.image,
+        role: updatedUser.role || "user",
       };
     },
 
@@ -148,6 +172,7 @@ export function MongoDBAdapter(): Adapter {
           email: user.email,
           emailVerified: user.emailVerified,
           image: user.image,
+          role: user.role || "user",
         },
       };
     },
