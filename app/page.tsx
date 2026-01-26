@@ -17,7 +17,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (status === "authenticated") {
-      router.replace("/dashboard");
+      router.replace("/Dashboard");
     }
   }, [status, router]);
 
@@ -81,7 +81,12 @@ export default function LoginPage() {
             gap: 3,
           }}
         >
-          <Typography component="h1" variant="h4" fontWeight={600} color="primary">
+          <Typography
+            component="h1"
+            variant="h4"
+            fontWeight={600}
+            color="primary"
+          >
             Mail Cards
           </Typography>
           <Typography variant="body1" color="text.secondary" textAlign="center">
@@ -92,7 +97,7 @@ export default function LoginPage() {
             size="large"
             fullWidth
             startIcon={<GoogleIcon />}
-            onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+            onClick={() => signIn("google", { callbackUrl: "/Dashboard" })}
             sx={{ mt: 1, py: 1.5, textTransform: "none", fontSize: "1rem" }}
           >
             Iniciar sesión con Google

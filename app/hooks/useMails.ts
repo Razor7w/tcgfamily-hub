@@ -38,12 +38,26 @@ export interface UpdateMailData {
   observations?: string;
 }
 
-// Hook para obtener todos los mails
+// Hook para obtener todos los mails (admin)
 export function useMails() {
   return useQuery<{ mails: Mail[] }>({
     queryKey: ["mails"],
     queryFn: async () => {
       const response = await fetch("/api/mail");
+      if (!response.ok) {
+        throw new Error("Error al cargar mails");
+      }
+      return response.json();
+    },
+  });
+}
+
+// Hook para obtener mails del usuario actual (emisor o receptor)
+export function useMyMails() {
+  return useQuery<{ mails: Mail[] }>({
+    queryKey: ["mails", "me"],
+    queryFn: async () => {
+      const response = await fetch("/api/mail/me");
       if (!response.ok) {
         throw new Error("Error al cargar mails");
       }

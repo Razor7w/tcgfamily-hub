@@ -5,6 +5,7 @@ import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
 import {
   Dashboard as DashboardIcon,
+  Email as EmailIcon,
   Help as HelpIcon,
 } from "@mui/icons-material";
 import { Grid } from "@mui/material";
@@ -20,7 +21,7 @@ interface Module {
 
 const modules: Module[] = [
   { id: "1", name: "Admin", icon: <DashboardIcon />, route: "/Admin" },
-  { id: "2", name: "Pronto", icon: <HelpIcon /> },
+  { id: "2", name: "Correo", icon: <EmailIcon />, route: "/Dashboard/Mail" },
   { id: "3", name: "Pronto", icon: <HelpIcon /> },
   { id: "4", name: "Pronto", icon: <HelpIcon /> },
   { id: "5", name: "Pronto", icon: <HelpIcon /> },

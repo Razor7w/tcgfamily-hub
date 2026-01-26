@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
@@ -34,8 +35,18 @@ export default function Header() {
   return (
     <AppBar position="static">
       <Toolbar>
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          Mail Cards
+        <Typography
+          variant="h6"
+          component={Link}
+          href="/dashboard"
+          sx={{
+            flexGrow: 1,
+            textDecoration: "none",
+            color: "inherit",
+            "&:hover": { opacity: 0.9 },
+          }}
+        >
+          TCGFamily HUB
         </Typography>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
