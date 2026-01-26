@@ -3025,6 +3025,11 @@ picomatch@^4.0.3:
   resolved "https://registry.yarnpkg.com/picomatch/-/picomatch-4.0.3.tgz#796c76136d1eead715db1e7bad785dedd695a042"
   integrity sha512-5gTmgEY/sqK6gFXLIsQNH19lWb4ebPDLA4SdLP7dsWkIXHWlG66oPuVvXSGFPppYZz8ZDZq0dYYrbHfBCVUb1Q==
 
+pokesprite-images@^2.7.0:
+  version "2.7.0"
+  resolved "https://registry.yarnpkg.com/pokesprite-images/-/pokesprite-images-2.7.0.tgz#c185546cecc7eb9f2d9202cd5869fa956332f520"
+  integrity sha512-LQuzyaEDl4ow75fPzrVuJB0cIRmxVq4XBecDFajA0WrZI1xHCmXn5OSBul44D+24tA1kMT7GSROmct5FRg8dtQ==
+
 possible-typed-array-names@^1.0.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/possible-typed-array-names/-/possible-typed-array-names-1.1.0.tgz#93e3582bc0e5426586d9d07b79ee40fc841de4ae"

@@ -9,6 +9,7 @@ import {
 } from "@mui/icons-material";
 import { Grid } from "@mui/material";
 import CardModule from "@/components/molecule/CardModule";
+import PokemonSpriteExamples from "@/components/PokemonSprite.example";
 
 interface Module {
   id: string;
@@ -49,6 +50,7 @@ export default function DashboardPage() {
             </Grid>
           ))}
         </Grid>
+        <PokemonSpriteExamples />
       </Container>
     </Box>
   );
