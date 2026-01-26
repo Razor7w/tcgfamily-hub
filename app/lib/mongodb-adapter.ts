@@ -9,13 +9,43 @@ export function MongoDBAdapter(): Adapter {
   return {
     async createUser(user) {
       await connectDB();
-      // Asegurar que el role siempre se asigne explícitamente
+      
+      // Si el usuario ya existe por email (por ejemplo, creado desde CSV),
+      // actualizar su información en lugar de crear uno nuevo
+      if (user.email) {
+        const existingUser = await User.findOne({ email: user.email });
+        if (existingUser) {
+          // Actualizar nombre e imagen del usuario existente
+          existingUser.name = user.name || existingUser.name;
+          existingUser.image = user.image || existingUser.image;
+          // Mantener el role existente (no sobrescribir si es admin)
+          if (!existingUser.role) {
+            existingUser.role = "user";
+          }
+          await existingUser.save();
+          
+          return {
+            id: existingUser._id.toString(),
+            name: existingUser.name,
+            email: existingUser.email,
+            emailVerified: existingUser.emailVerified,
+            image: existingUser.image,
+            role: existingUser.role || "user",
+            phone: existingUser.phone || "",
+            rut: existingUser.rut || "",
+          };
+        }
+      }
+      
+      // Si no existe, crear un nuevo usuario
       const newUser = await User.create({
         name: user.name,
         email: user.email,
         emailVerified: user.emailVerified,
         image: user.image,
         role: "user", // Por defecto todos son "user"
+        phone: "", // Por defecto string vacío
+        rut: "", // Por defecto string vacío
         accounts: [],
         sessions: [],
       });
@@ -33,6 +63,8 @@ export function MongoDBAdapter(): Adapter {
         emailVerified: newUser.emailVerified,
         image: newUser.image,
         role: newUser.role || "user",
+        phone: newUser.phone || "",
+        rut: newUser.rut || "",
       };
     },
 
@@ -47,6 +79,8 @@ export function MongoDBAdapter(): Adapter {
         emailVerified: user.emailVerified,
         image: user.image,
         role: user.role || "user",
+        phone: user.phone || "",
+        rut: user.rut || "",
       };
     },
 
@@ -61,6 +95,8 @@ export function MongoDBAdapter(): Adapter {
         emailVerified: user.emailVerified,
         image: user.image,
         role: user.role || "user",
+        phone: user.phone || "",
+        rut: user.rut || "",
       };
     },
 
@@ -77,6 +113,8 @@ export function MongoDBAdapter(): Adapter {
         emailVerified: user.emailVerified,
         image: user.image,
         role: user.role || "user",
+        phone: user.phone || "",
+        rut: user.rut || "",
       };
     },
 
@@ -88,6 +126,8 @@ export function MongoDBAdapter(): Adapter {
         emailVerified?: Date | null;
         image?: string | null;
         role?: "user" | "admin";
+        phone?: string;
+        rut?: string;
       } = {
         name: user.name,
         email: user.email,
@@ -96,6 +136,12 @@ export function MongoDBAdapter(): Adapter {
       };
       if (user.role) {
         updateData.role = user.role;
+      }
+      if ((user as { phone?: string }).phone !== undefined) {
+        updateData.phone = (user as { phone?: string }).phone;
+      }
+      if ((user as { rut?: string }).rut !== undefined) {
+        updateData.rut = (user as { rut?: string }).rut;
       }
       const updatedUser = await User.findByIdAndUpdate(
         user.id,
@@ -110,11 +156,28 @@ export function MongoDBAdapter(): Adapter {
         emailVerified: updatedUser.emailVerified,
         image: updatedUser.image,
         role: updatedUser.role || "user",
+        phone: updatedUser.phone || "",
+        rut: updatedUser.rut || "",
       };
     },
 
     async linkAccount(account) {
       await connectDB();
+      
+      // Verificar si ya existe una cuenta con este provider y providerAccountId
+      const existingAccount = await Account.findOne({
+        provider: account.provider,
+        providerAccountId: account.providerAccountId,
+      });
+
+      if (existingAccount) {
+        // Si la cuenta ya existe, retornarla
+        return {
+          ...account,
+          id: existingAccount._id.toString(),
+        };
+      }
+
       const newAccount = await Account.create({
         userId: account.userId,
         type: account.type,
@@ -173,6 +236,8 @@ export function MongoDBAdapter(): Adapter {
           emailVerified: user.emailVerified,
           image: user.image,
           role: user.role || "user",
+          phone: user.phone || "",
+          rut: user.rut || "",
         },
       };
     },
