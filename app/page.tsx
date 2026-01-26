@@ -9,6 +9,7 @@ import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import GoogleIcon from "@mui/icons-material/Google";
+import Header from "@/components/Header";
 
 export default function LoginPage() {
   const { data: session, status } = useSession();
@@ -26,12 +27,21 @@ export default function LoginPage() {
         sx={{
           minHeight: "100vh",
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          flexDirection: "column",
           bgcolor: "background.default",
         }}
       >
-        <CircularProgress />
+        <Header />
+        <Box
+          sx={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <CircularProgress />
+        </Box>
       </Box>
     );
   }
@@ -45,41 +55,50 @@ export default function LoginPage() {
       sx={{
         minHeight: "100vh",
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
+        flexDirection: "column",
         bgcolor: "background.default",
-        p: 2,
       }}
     >
-      <Paper
-        elevation={3}
+      <Header />
+      <Box
         sx={{
-          p: 4,
-          maxWidth: 400,
-          width: "100%",
+          flex: 1,
           display: "flex",
-          flexDirection: "column",
           alignItems: "center",
-          gap: 3,
+          justifyContent: "center",
+          p: 2,
         }}
       >
-        <Typography component="h1" variant="h4" fontWeight={600} color="primary">
-          Mail Cards
-        </Typography>
-        <Typography variant="body1" color="text.secondary" textAlign="center">
-          Inicia sesión con tu cuenta de Google para continuar
-        </Typography>
-        <Button
-          variant="contained"
-          size="large"
-          fullWidth
-          startIcon={<GoogleIcon />}
-          onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-          sx={{ mt: 1, py: 1.5, textTransform: "none", fontSize: "1rem" }}
+        <Paper
+          elevation={3}
+          sx={{
+            p: 4,
+            maxWidth: 400,
+            width: "100%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 3,
+          }}
         >
-          Iniciar sesión con Google
-        </Button>
-      </Paper>
+          <Typography component="h1" variant="h4" fontWeight={600} color="primary">
+            Mail Cards
+          </Typography>
+          <Typography variant="body1" color="text.secondary" textAlign="center">
+            Inicia sesión con tu cuenta de Google para continuar
+          </Typography>
+          <Button
+            variant="contained"
+            size="large"
+            fullWidth
+            startIcon={<GoogleIcon />}
+            onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+            sx={{ mt: 1, py: 1.5, textTransform: "none", fontSize: "1rem" }}
+          >
+            Iniciar sesión con Google
+          </Button>
+        </Paper>
+      </Box>
     </Box>
   );
 }
