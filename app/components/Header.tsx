@@ -12,12 +12,18 @@ import Avatar from '@mui/material/Avatar'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import Tooltip from '@mui/material/Tooltip'
+import { useTheme, useMediaQuery } from '@mui/material'
 import LogoutIcon from '@mui/icons-material/Logout'
 import AccountCircleIcon from '@mui/icons-material/AccountCircle'
+import MenuIcon from '@mui/icons-material/Menu'
+import { useAppStore } from '@/store/useAppStore'
 
 export default function Header() {
   const { data: session } = useSession()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+  const theme = useTheme()
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
+  const toggleSidebar = useAppStore(s => s.toggleSidebar)
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget)
@@ -35,6 +41,18 @@ export default function Header() {
   return (
     <AppBar position="static">
       <Toolbar>
+        {!isDesktop && (
+          <Tooltip title="Menú">
+            <IconButton
+              color="inherit"
+              aria-label="abrir menú"
+              onClick={toggleSidebar}
+              sx={{ mr: 1 }}
+            >
+              <MenuIcon />
+            </IconButton>
+          </Tooltip>
+        )}
         <Typography
           variant="h6"
           component={Link}
