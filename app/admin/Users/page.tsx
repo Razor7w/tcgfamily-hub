@@ -1,35 +1,35 @@
-"use client";
+'use client'
 
-import { useState, useRef } from "react";
-import Box from "@mui/material/Box";
-import Container from "@mui/material/Container";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableContainer from "@mui/material/TableContainer";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import Paper from "@mui/material/Paper";
-import IconButton from "@mui/material/IconButton";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
-import TextField from "@mui/material/TextField";
-import Select from "@mui/material/Select";
-import MenuItem from "@mui/material/MenuItem";
-import FormControl from "@mui/material/FormControl";
-import InputLabel from "@mui/material/InputLabel";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
-import AddIcon from "@mui/icons-material/Add";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
-import Avatar from "@mui/material/Avatar";
-import CircularProgress from "@mui/material/CircularProgress";
-import Alert from "@mui/material/Alert";
-import Snackbar from "@mui/material/Snackbar";
+import { useState, useRef } from 'react'
+import Box from '@mui/material/Box'
+import Container from '@mui/material/Container'
+import Typography from '@mui/material/Typography'
+import Button from '@mui/material/Button'
+import Table from '@mui/material/Table'
+import TableBody from '@mui/material/TableBody'
+import TableCell from '@mui/material/TableCell'
+import TableContainer from '@mui/material/TableContainer'
+import TableHead from '@mui/material/TableHead'
+import TableRow from '@mui/material/TableRow'
+import Paper from '@mui/material/Paper'
+import IconButton from '@mui/material/IconButton'
+import Dialog from '@mui/material/Dialog'
+import DialogTitle from '@mui/material/DialogTitle'
+import DialogContent from '@mui/material/DialogContent'
+import DialogActions from '@mui/material/DialogActions'
+import TextField from '@mui/material/TextField'
+import Select from '@mui/material/Select'
+import MenuItem from '@mui/material/MenuItem'
+import FormControl from '@mui/material/FormControl'
+import InputLabel from '@mui/material/InputLabel'
+import EditIcon from '@mui/icons-material/Edit'
+import DeleteIcon from '@mui/icons-material/Delete'
+import AddIcon from '@mui/icons-material/Add'
+import UploadFileIcon from '@mui/icons-material/UploadFile'
+import Avatar from '@mui/material/Avatar'
+import CircularProgress from '@mui/material/CircularProgress'
+import Alert from '@mui/material/Alert'
+import Snackbar from '@mui/material/Snackbar'
 import {
   useUsers,
   useCreateUser,
@@ -37,79 +37,79 @@ import {
   useDeleteUser,
   useBulkUploadUsers,
   type User,
-  type CreateUserData,
-} from "@/hooks/useUsers";
-import { useAppStore } from "@/store/useAppStore";
+  type CreateUserData
+} from '@/hooks/useUsers'
+import { useAppStore } from '@/store/useAppStore'
 
 export default function UsersPageRefactored() {
-  const [openDialog, setOpenDialog] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [openDialog, setOpenDialog] = useState(false)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
   const [formData, setFormData] = useState<CreateUserData>({
-    name: "",
-    email: "",
-    role: "user",
-    phone: "",
-    rut: "",
-    popid: "",
-  });
+    name: '',
+    email: '',
+    role: 'user',
+    phone: '',
+    rut: '',
+    popid: ''
+  })
   const [snackbar, setSnackbar] = useState({
     open: false,
-    message: "",
-    severity: "success" as "success" | "error",
-  });
-  const fileInputRef = useRef<HTMLInputElement>(null);
+    message: '',
+    severity: 'success' as 'success' | 'error'
+  })
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Hooks de TanStack Query - ¡Mucho más simple!
-  const { data: users = [], isLoading, error } = useUsers();
-  const createUser = useCreateUser();
-  const updateUser = useUpdateUser();
-  const deleteUser = useDeleteUser();
-  const bulkUpload = useBulkUploadUsers();
+  const { data: users = [], isLoading, error } = useUsers()
+  const createUser = useCreateUser()
+  const updateUser = useUpdateUser()
+  const deleteUser = useDeleteUser()
+  const bulkUpload = useBulkUploadUsers()
 
   // Zustand store para filtros (ejemplo)
-  const userFilter = useAppStore((state) => state.userFilter);
-  const setUserFilter = useAppStore((state) => state.setUserFilter);
-  const addNotification = useAppStore((state) => state.addNotification);
+  const userFilter = useAppStore(state => state.userFilter)
+  const setUserFilter = useAppStore(state => state.setUserFilter)
+  const addNotification = useAppStore(state => state.addNotification)
 
   // Abrir diálogo para crear/editar
   const handleOpenDialog = (user?: User) => {
     if (user) {
-      setEditingUser(user);
+      setEditingUser(user)
       setFormData({
-        name: user.name || "",
-        email: user.email || "",
+        name: user.name || '',
+        email: user.email || '',
         role: user.role,
-        phone: user.phone || "",
-        rut: user.rut || "",
-        popid: user.popid || "",
-      });
+        phone: user.phone || '',
+        rut: user.rut || '',
+        popid: user.popid || ''
+      })
     } else {
-      setEditingUser(null);
+      setEditingUser(null)
       setFormData({
-        name: "",
-        email: "",
-        role: "user",
-        phone: "",
-        rut: "",
-        popid: "",
-      });
+        name: '',
+        email: '',
+        role: 'user',
+        phone: '',
+        rut: '',
+        popid: ''
+      })
     }
-    setOpenDialog(true);
-  };
+    setOpenDialog(true)
+  }
 
   // Cerrar diálogo
   const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setEditingUser(null);
+    setOpenDialog(false)
+    setEditingUser(null)
     setFormData({
-      name: "",
-      email: "",
-      role: "user",
-      phone: "",
-      rut: "",
-      popid: "",
-    });
-  };
+      name: '',
+      email: '',
+      role: 'user',
+      phone: '',
+      rut: '',
+      popid: ''
+    })
+  }
 
   // Guardar usuario (crear o actualizar)
   const handleSave = async () => {
@@ -117,170 +117,168 @@ export default function UsersPageRefactored() {
       if (editingUser) {
         await updateUser.mutateAsync({
           userId: editingUser.id,
-          data: formData,
-        });
+          data: formData
+        })
         setSnackbar({
           open: true,
-          message: "Usuario actualizado correctamente",
-          severity: "success",
-        });
+          message: 'Usuario actualizado correctamente',
+          severity: 'success'
+        })
         addNotification({
-          message: "Usuario actualizado correctamente",
-          type: "success",
-        });
+          message: 'Usuario actualizado correctamente',
+          type: 'success'
+        })
       } else {
-        await createUser.mutateAsync(formData);
+        await createUser.mutateAsync(formData)
         setSnackbar({
           open: true,
-          message: "Usuario creado correctamente",
-          severity: "success",
-        });
+          message: 'Usuario creado correctamente',
+          severity: 'success'
+        })
         addNotification({
-          message: "Usuario creado correctamente",
-          type: "success",
-        });
+          message: 'Usuario creado correctamente',
+          type: 'success'
+        })
       }
-      handleCloseDialog();
+      handleCloseDialog()
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Error al guardar usuario";
+        error instanceof Error ? error.message : 'Error al guardar usuario'
       setSnackbar({
         open: true,
         message: errorMessage,
-        severity: "error",
-      });
+        severity: 'error'
+      })
       addNotification({
         message: errorMessage,
-        type: "error",
-      });
+        type: 'error'
+      })
     }
-  };
+  }
 
   // Eliminar usuario
   const handleDelete = async (userId: string) => {
-    if (!confirm("¿Estás seguro de que deseas eliminar este usuario?")) {
-      return;
+    if (!confirm('¿Estás seguro de que deseas eliminar este usuario?')) {
+      return
     }
 
     try {
-      await deleteUser.mutateAsync(userId);
+      await deleteUser.mutateAsync(userId)
       setSnackbar({
         open: true,
-        message: "Usuario eliminado correctamente",
-        severity: "success",
-      });
+        message: 'Usuario eliminado correctamente',
+        severity: 'success'
+      })
       addNotification({
-        message: "Usuario eliminado correctamente",
-        type: "success",
-      });
+        message: 'Usuario eliminado correctamente',
+        type: 'success'
+      })
     } catch {
       setSnackbar({
         open: true,
-        message: "Error al eliminar usuario",
-        severity: "error",
-      });
+        message: 'Error al eliminar usuario',
+        severity: 'error'
+      })
     }
-  };
+  }
 
   // Manejar carga masiva desde CSV
   const handleBulkUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
+    event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const file = event.target.files?.[0]
+    if (!file) return
 
-    if (!file.name.endsWith(".csv")) {
+    if (!file.name.endsWith('.csv')) {
       setSnackbar({
         open: true,
-        message: "El archivo debe ser un CSV",
-        severity: "error",
-      });
-      return;
+        message: 'El archivo debe ser un CSV',
+        severity: 'error'
+      })
+      return
     }
 
     try {
-      const result = await bulkUpload.mutateAsync(file);
-      const message = `Procesados: ${result.success} exitosos, ${result.errors} errores`;
+      const result = await bulkUpload.mutateAsync(file)
+      const message = `Procesados: ${result.success} exitosos, ${result.errors} errores`
 
       setSnackbar({
         open: true,
         message,
-        severity: result.errors > 0 ? "error" : "success",
-      });
+        severity: result.errors > 0 ? 'error' : 'success'
+      })
 
       addNotification({
         message,
-        type: result.errors > 0 ? "error" : "success",
-      });
+        type: result.errors > 0 ? 'error' : 'success'
+      })
     } catch (error) {
       const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Error al cargar el archivo";
+        error instanceof Error ? error.message : 'Error al cargar el archivo'
       setSnackbar({
         open: true,
         message: errorMessage,
-        severity: "error",
-      });
+        severity: 'error'
+      })
     } finally {
       // Limpiar el input
       if (event.target) {
-        event.target.value = "";
+        event.target.value = ''
       }
     }
-  };
+  }
 
   // Actualizar solo el rol
   const handleRoleChange = async (
     userId: string,
-    newRole: "user" | "admin",
+    newRole: 'user' | 'admin'
   ) => {
     try {
       await updateUser.mutateAsync({
         userId,
-        data: { role: newRole },
-      });
+        data: { role: newRole }
+      })
       setSnackbar({
         open: true,
-        message: "Rol actualizado correctamente",
-        severity: "success",
-      });
+        message: 'Rol actualizado correctamente',
+        severity: 'success'
+      })
     } catch {
       setSnackbar({
         open: true,
-        message: "Error al actualizar rol",
-        severity: "error",
-      });
+        message: 'Error al actualizar rol',
+        severity: 'error'
+      })
     }
-  };
+  }
 
   // Filtrar usuarios (ejemplo usando Zustand)
-  const filteredUsers = users.filter((user) => {
-    if (userFilter.role && user.role !== userFilter.role) return false;
+  const filteredUsers = users.filter(user => {
+    if (userFilter.role && user.role !== userFilter.role) return false
     if (userFilter.search) {
-      const search = userFilter.search.toLowerCase();
+      const search = userFilter.search.toLowerCase()
       return (
         user.name?.toLowerCase().includes(search) ||
         user.email?.toLowerCase().includes(search) ||
         user.rut?.toLowerCase().includes(search)
-      );
+      )
     }
-    return true;
-  });
+    return true
+  })
 
   if (isLoading) {
     return (
       <Box
         sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "50vh",
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '50vh'
         }}
       >
         <CircularProgress />
       </Box>
-    );
+    )
   }
 
   if (error) {
@@ -290,32 +288,32 @@ export default function UsersPageRefactored() {
           Error al cargar usuarios: {error.message}
         </Alert>
       </Container>
-    );
+    )
   }
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box
         sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 3,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 3
         }}
       >
         <Typography variant="h4" component="h1">
           Gestión de Usuarios (Refactorizado)
         </Typography>
-        <Box sx={{ display: "flex", gap: 2 }}>
+        <Box sx={{ display: 'flex', gap: 2 }}>
           {/* Filtro de ejemplo usando Zustand */}
           <FormControl size="small" sx={{ minWidth: 120 }}>
             <InputLabel>Filtrar por rol</InputLabel>
             <Select
-              value={userFilter.role || ""}
+              value={userFilter.role || ''}
               label="Filtrar por rol"
-              onChange={(e) =>
+              onChange={e =>
                 setUserFilter({
-                  role: e.target.value as "user" | "admin" | undefined,
+                  role: e.target.value as 'user' | 'admin' | undefined
                 })
               }
             >
@@ -328,7 +326,7 @@ export default function UsersPageRefactored() {
           <input
             type="file"
             accept=".csv"
-            style={{ display: "none" }}
+            style={{ display: 'none' }}
             onChange={handleBulkUpload}
             disabled={bulkUpload.isPending}
             ref={fileInputRef}
@@ -337,11 +335,11 @@ export default function UsersPageRefactored() {
             variant="outlined"
             startIcon={<UploadFileIcon />}
             onClick={() => {
-              fileInputRef.current?.click();
+              fileInputRef.current?.click()
             }}
             disabled={bulkUpload.isPending}
           >
-            {bulkUpload.isPending ? "Cargando..." : "Cargar CSV"}
+            {bulkUpload.isPending ? 'Cargando...' : 'Cargar CSV'}
           </Button>
           <Button
             variant="contained"
@@ -367,30 +365,30 @@ export default function UsersPageRefactored() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredUsers.map((user) => (
+            {filteredUsers.map(user => (
               <TableRow key={user.id}>
                 <TableCell>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     {user.image ? (
                       <Avatar src={user.image} alt={user.name} />
                     ) : (
-                      <Avatar>{user.name?.[0]?.toUpperCase() || "U"}</Avatar>
+                      <Avatar>{user.name?.[0]?.toUpperCase() || 'U'}</Avatar>
                     )}
-                    <Typography>{user.name || "Sin nombre"}</Typography>
+                    <Typography>{user.name || 'Sin nombre'}</Typography>
                   </Box>
                 </TableCell>
-                <TableCell>{user.email || "Sin email"}</TableCell>
-                <TableCell>{user.phone || "-"}</TableCell>
-                <TableCell>{user.rut || "-"}</TableCell>
-                <TableCell>{user.popid || "-"}</TableCell>
+                <TableCell>{user.email || 'Sin email'}</TableCell>
+                <TableCell>{user.phone || '-'}</TableCell>
+                <TableCell>{user.rut || '-'}</TableCell>
+                <TableCell>{user.popid || '-'}</TableCell>
                 <TableCell>
                   <FormControl size="small" sx={{ minWidth: 120 }}>
                     <Select
                       value={user.role}
-                      onChange={(e) =>
+                      onChange={e =>
                         handleRoleChange(
                           user.id,
-                          e.target.value as "user" | "admin",
+                          e.target.value as 'user' | 'admin'
                         )
                       }
                       disabled={updateUser.isPending}
@@ -431,24 +429,22 @@ export default function UsersPageRefactored() {
         fullWidth
       >
         <DialogTitle>
-          {editingUser ? "Editar Usuario" : "Nuevo Usuario"}
+          {editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}
         </DialogTitle>
         <DialogContent>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
             <TextField
               label="Nombre"
               fullWidth
               value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
+              onChange={e => setFormData({ ...formData, name: e.target.value })}
             />
             <TextField
               label="Email"
               type="email"
               fullWidth
               value={formData.email}
-              onChange={(e) =>
+              onChange={e =>
                 setFormData({ ...formData, email: e.target.value })
               }
               disabled={!!editingUser}
@@ -457,7 +453,7 @@ export default function UsersPageRefactored() {
               label="Teléfono"
               fullWidth
               value={formData.phone}
-              onChange={(e) =>
+              onChange={e =>
                 setFormData({ ...formData, phone: e.target.value })
               }
             />
@@ -465,15 +461,13 @@ export default function UsersPageRefactored() {
               label="RUT"
               fullWidth
               value={formData.rut}
-              onChange={(e) =>
-                setFormData({ ...formData, rut: e.target.value })
-              }
+              onChange={e => setFormData({ ...formData, rut: e.target.value })}
             />
             <TextField
               label="PopID"
               fullWidth
               value={formData.popid}
-              onChange={(e) =>
+              onChange={e =>
                 setFormData({ ...formData, popid: e.target.value })
               }
             />
@@ -482,10 +476,10 @@ export default function UsersPageRefactored() {
               <Select
                 value={formData.role}
                 label="Rol"
-                onChange={(e) =>
+                onChange={e =>
                   setFormData({
                     ...formData,
-                    role: e.target.value as "user" | "admin",
+                    role: e.target.value as 'user' | 'admin'
                   })
                 }
               >
@@ -503,8 +497,8 @@ export default function UsersPageRefactored() {
             disabled={createUser.isPending || updateUser.isPending}
           >
             {createUser.isPending || updateUser.isPending
-              ? "Guardando..."
-              : "Guardar"}
+              ? 'Guardando...'
+              : 'Guardar'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -518,11 +512,11 @@ export default function UsersPageRefactored() {
         <Alert
           onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
-          sx={{ width: "100%" }}
+          sx={{ width: '100%' }}
         >
           {snackbar.message}
         </Alert>
       </Snackbar>
     </Container>
-  );
+  )
 }
