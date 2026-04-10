@@ -1,3 +1,4 @@
+import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "@/auth";
 import ThemeRegistry from "@/components/ThemeRegistry";
@@ -13,13 +14,15 @@ export default async function RootLayout({
   return (
     <html lang="es">
       <body>
-        <QueryProvider>
-          <ThemeRegistry>
-            <SessionProvider session={session}>
-              {children}
-            </SessionProvider>
-          </ThemeRegistry>
-        </QueryProvider>
+        <AppRouterCacheProvider>
+          <QueryProvider>
+            <ThemeRegistry>
+              <SessionProvider session={session}>
+                {children}
+              </SessionProvider>
+            </ThemeRegistry>
+          </QueryProvider>
+        </AppRouterCacheProvider>
       </body>
     </html>
   );
