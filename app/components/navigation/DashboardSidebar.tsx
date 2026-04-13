@@ -18,7 +18,7 @@ export default function DashboardSidebar({ isAdmin }: { isAdmin: boolean }) {
         <List>
           {isAdmin && <AdminSidebarClient />}
           <ListItem disablePadding>
-            <ListItemButton href="/Dashboard">
+            <ListItemButton href="/dashboard">
               <ListItemIcon>
                 <Home />
               </ListItemIcon>
@@ -26,7 +26,7 @@ export default function DashboardSidebar({ isAdmin }: { isAdmin: boolean }) {
             </ListItemButton>
           </ListItem>
           <ListItem disablePadding>
-            <ListItemButton href="/Dashboard/Mail">
+            <ListItemButton href="/dashboard/mail">
               <ListItemIcon>
                 <Email />
               </ListItemIcon>

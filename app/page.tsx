@@ -17,7 +17,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      router.replace('/Dashboard')
+      router.replace('/dashboard')
     }
   }, [status, router])
 
@@ -97,7 +97,7 @@ export default function LoginPage() {
             size="large"
             fullWidth
             startIcon={<GoogleIcon />}
-            onClick={() => signIn('google', { callbackUrl: '/Dashboard' })}
+            onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
             sx={{ mt: 1, py: 1.5, textTransform: 'none', fontSize: '1rem' }}
           >
             Iniciar sesión con Google

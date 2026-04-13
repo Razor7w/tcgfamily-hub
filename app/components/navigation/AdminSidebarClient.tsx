@@ -33,7 +33,7 @@ export default function AdminSidebarClient() {
       </ListItemButton>
       <Collapse in={open} timeout="auto" unmountOnExit>
         <List component="div" disablePadding>
-          <ListItemButton sx={{ pl: 4 }} href="/Admin">
+          <ListItemButton sx={{ pl: 4 }} href="/admin">
             <ListItemIcon>
               <Dashboard />
             </ListItemIcon>
@@ -41,7 +41,7 @@ export default function AdminSidebarClient() {
           </ListItemButton>
         </List>
         <List component="div" disablePadding>
-          <ListItemButton sx={{ pl: 4 }} href="/Admin/Users">
+          <ListItemButton sx={{ pl: 4 }} href="/admin/users">
             <ListItemIcon>
               <People />
             </ListItemIcon>
@@ -49,7 +49,7 @@ export default function AdminSidebarClient() {
           </ListItemButton>
         </List>
         <List component="div" disablePadding>
-          <ListItemButton sx={{ pl: 4 }} href="/Admin/Mails">
+          <ListItemButton sx={{ pl: 4 }} href="/admin/mails">
             <ListItemIcon>
               <Email />
             </ListItemIcon>

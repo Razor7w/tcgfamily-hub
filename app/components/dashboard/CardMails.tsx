@@ -6,7 +6,7 @@ import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 import { CardHeader, Chip, Grid, Stack } from '@mui/material'
 import { CalendarMonth } from '@mui/icons-material'
-import { getElapsedBadge, getElapsedDays } from '@/Admin/Mails/page'
+import { getElapsedBadge, getElapsedDays } from '@/admin/mails/page'
 import ButtonBarCode from '../molecule/ButtonBarCode'
 
 export default function CardMail() {
