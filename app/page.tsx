@@ -1,72 +1,72 @@
-"use client";
+'use client'
 
-import { useSession, signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import Box from "@mui/material/Box";
-import Paper from "@mui/material/Paper";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import CircularProgress from "@mui/material/CircularProgress";
-import GoogleIcon from "@mui/icons-material/Google";
-import Header from "@/components/Header";
+import { useSession, signIn } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
+import Box from '@mui/material/Box'
+import Paper from '@mui/material/Paper'
+import Typography from '@mui/material/Typography'
+import Button from '@mui/material/Button'
+import CircularProgress from '@mui/material/CircularProgress'
+import GoogleIcon from '@mui/icons-material/Google'
+import Header from '@/components/Header'
 
 export default function LoginPage() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+  const { data: session, status } = useSession()
+  const router = useRouter()
 
   useEffect(() => {
-    if (status === "authenticated") {
-      router.replace("/dashboard");
+    if (status === 'authenticated') {
+      router.replace('/Dashboard')
     }
-  }, [status, router]);
+  }, [status, router])
 
-  if (status === "loading") {
+  if (status === 'loading') {
     return (
       <Box
         sx={{
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          bgcolor: "background.default",
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          bgcolor: 'background.default'
         }}
       >
         <Header />
         <Box
           sx={{
             flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
           }}
         >
           <CircularProgress />
         </Box>
       </Box>
-    );
+    )
   }
 
-  if (status === "authenticated") {
-    return null;
+  if (status === 'authenticated') {
+    return null
   }
 
   return (
     <Box
       sx={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        bgcolor: "background.default",
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        bgcolor: 'background.default'
       }}
     >
       <Header />
       <Box
         sx={{
           flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          p: 2,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: 2
         }}
       >
         <Paper
@@ -74,15 +74,20 @@ export default function LoginPage() {
           sx={{
             p: 4,
             maxWidth: 400,
-            width: "100%",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 3,
+            width: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 3
           }}
         >
-          <Typography component="h1" variant="h4" fontWeight={600} color="primary">
-            Mail Cards
+          <Typography
+            component="h1"
+            variant="h4"
+            fontWeight={600}
+            color="primary"
+          >
+            TCGFamily HUB
           </Typography>
           <Typography variant="body1" color="text.secondary" textAlign="center">
             Inicia sesión con tu cuenta de Google para continuar
@@ -92,13 +97,13 @@ export default function LoginPage() {
             size="large"
             fullWidth
             startIcon={<GoogleIcon />}
-            onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-            sx={{ mt: 1, py: 1.5, textTransform: "none", fontSize: "1rem" }}
+            onClick={() => signIn('google', { callbackUrl: '/Dashboard' })}
+            sx={{ mt: 1, py: 1.5, textTransform: 'none', fontSize: '1rem' }}
           >
             Iniciar sesión con Google
           </Button>
         </Paper>
       </Box>
     </Box>
-  );
+  )
 }

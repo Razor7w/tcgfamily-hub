@@ -4,7 +4,6 @@ import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
 import {
-  // Dashboard as DashboardIcon,
   Email as EmailIcon,
   People as PeopleIcon,
   Settings as SettingsIcon,
@@ -13,8 +12,9 @@ import {
   Notifications as NotificationsIcon,
   Security as SecurityIcon,
   Help as HelpIcon,
+  ArrowBack,
 } from "@mui/icons-material";
-import { Grid } from "@mui/material";
+import { Button, Grid, Link, Stack } from "@mui/material";
 import CardModule from "@/components/molecule/CardModule";
 
 interface Module {
@@ -26,7 +26,7 @@ interface Module {
 
 const modules: Module[] = [
   { id: "1", name: "Usuarios", icon: <PeopleIcon />, route: "/Admin/Users" },
-  { id: "2", name: "Correos", icon: <EmailIcon /> },
+  { id: "2", name: "Correos", icon: <EmailIcon />, route: "/Admin/Mails" },
   { id: "3", name: "Usuarios", icon: <PeopleIcon /> },
   { id: "4", name: "Configuración", icon: <SettingsIcon /> },
   { id: "5", name: "Analíticas", icon: <AnalyticsIcon /> },
@@ -46,9 +46,28 @@ export default function DashboardPage() {
       }}
     >
       <Container maxWidth="lg">
-        <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 4 }}>
-          Admin
-        </Typography>
+        <Stack
+          sx={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 2,
+            mb: 3,
+            direction: "column",
+          }}
+        >
+          <Button
+            component={Link}
+            href="/Dashboard"
+            variant="outlined"
+            size="small"
+            startIcon={<ArrowBack />}
+          >
+            Volver
+          </Button>
+          <Typography variant="h4" component="h1">
+            Admin
+          </Typography>
+        </Stack>
         <Grid container spacing={3}>
           {modules.map((module) => (
             <Grid size={{ xs: 12, sm: 6, md: 4 }} key={module.id}>

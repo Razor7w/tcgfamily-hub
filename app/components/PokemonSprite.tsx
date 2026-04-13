@@ -66,11 +66,6 @@ export default function PokemonSprite({
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
-  // Debug: verificar la ruta generada
-  if (process.env.NODE_ENV === "development" && spritePath) {
-    console.log("PokemonSprite path:", spritePath);
-  }
-
   // Si no se encuentra el sprite, mostrar un placeholder
   if (!spritePath) {
     return (

@@ -1,18 +1,18 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Schema, Document } from 'mongoose'
 
-export type UserRole = "user" | "admin";
+export type UserRole = 'user' | 'admin'
 
 export interface IUser extends Document {
-  name?: string;
-  email?: string;
-  emailVerified?: Date;
-  image?: string;
-  role: UserRole;
-  phone: string;
-  rut: string;
-  popid: string;
-  accounts: mongoose.Types.ObjectId[];
-  sessions: mongoose.Types.ObjectId[];
+  name?: string
+  email?: string
+  emailVerified?: Date
+  image?: string
+  role: UserRole
+  phone: string
+  rut: string
+  popid: string
+  accounts: mongoose.Types.ObjectId[]
+  sessions: mongoose.Types.ObjectId[]
 }
 
 const UserSchema = new Schema<IUser>(
@@ -23,30 +23,29 @@ const UserSchema = new Schema<IUser>(
     image: String,
     role: {
       type: String,
-      enum: ["user", "admin"],
-      default: "user",
-      required: true,
+      enum: ['user', 'admin'],
+      default: 'user',
+      required: true
     },
     phone: {
       type: String,
-      default: "",
+      default: ''
     },
     rut: {
       type: String,
-      default: "",
+      default: ''
     },
     popid: {
       type: String,
-      default: "",
+      default: ''
     },
-    accounts: [{ type: Schema.Types.ObjectId, ref: "Account" }],
-    sessions: [{ type: Schema.Types.ObjectId, ref: "Session" }],
+    accounts: [{ type: Schema.Types.ObjectId, ref: 'Account' }],
+    sessions: [{ type: Schema.Types.ObjectId, ref: 'Session' }]
   },
   {
     // Asegurar que los defaults se apliquen incluso si el modelo ya existía
-    strict: true,
+    strict: true
   }
-);
+)
 
-export default mongoose.models.User ||
-  mongoose.model<IUser>("User", UserSchema);
+export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema)
