@@ -100,8 +100,8 @@ export async function POST(request: NextRequest) {
 
     const existing = await User.findOne({ email })
       .collation({ locale: 'en', strength: 2 })
-      .select('_id')
-    if (existing) {
+      .select('+passwordHash name rut popid')
+    if (existing?.passwordHash) {
       return NextResponse.json(
         { error: 'Ya existe una cuenta con este correo.' },
         { status: 409 }
@@ -111,7 +111,8 @@ export async function POST(request: NextRequest) {
     const rutStored = rutForStorage(rutStr)
     const rutVariants = rutMatchVariants(rutStored)
     const existingRut = await User.findOne({
-      rut: { $in: rutVariants }
+      rut: { $in: rutVariants },
+      ...(existing?._id ? { _id: { $ne: existing._id } } : {})
     }).select('_id')
     if (existingRut) {
       return NextResponse.json(
@@ -121,6 +122,20 @@ export async function POST(request: NextRequest) {
     }
 
     const passwordHash = await hashPassword(passwordStr)
+
+    if (existing) {
+      existing.name = nameStr.trim()
+      existing.email = email
+      existing.passwordHash = passwordHash
+      existing.credentialFailedAttempts = 0
+      existing.credentialLockedUntil = undefined
+      existing.role = existing.role || 'user'
+      existing.phone = existing.phone || ''
+      existing.rut = rutStored
+      existing.popid = popidForStorage(popidStr)
+      await existing.save()
+      return NextResponse.json({ ok: true }, { status: 200 })
+    }
 
     await User.create({
       name: nameStr.trim(),
