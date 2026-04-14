@@ -94,6 +94,12 @@ export default function Header() {
                 anchorEl={anchorEl}
                 open={Boolean(anchorEl)}
                 onClose={handleClose}
+                disableScrollLock
+                slotProps={{
+                  paper: {
+                    sx: { maxHeight: 'min(70vh, 480px)' }
+                  }
+                }}
                 anchorOrigin={{
                   vertical: 'bottom',
                   horizontal: 'right'
