@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
 import AppBar from '@mui/material/AppBar'
@@ -17,7 +17,7 @@ import ListItemButton from '@mui/material/ListItemButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 import Tooltip from '@mui/material/Tooltip'
-import { useTheme, useMediaQuery } from '@mui/material'
+import { useTheme } from '@mui/material'
 import LogoutIcon from '@mui/icons-material/Logout'
 import AccountCircleIcon from '@mui/icons-material/AccountCircle'
 import CloseIcon from '@mui/icons-material/Close'
@@ -32,10 +32,26 @@ export default function Header() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [accountDrawerOpen, setAccountDrawerOpen] = useState(false)
   const theme = useTheme()
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'), {
-    defaultMatches: false,
-    noSsr: true
-  })
+  // Importante: evita mismatch de hidratación. En SSR + primer render del cliente
+  // asumimos "mobile-first" y solo calculamos desktop tras montar.
+  const [isDesktop, setIsDesktop] = useState(false)
+  const desktopQuery = useMemo(() => {
+    // theme.breakpoints.up('md') => '@media (min-width:900px)'
+    const q = theme.breakpoints.up('md')
+    return q.startsWith('@media ') ? q.slice('@media '.length) : q
+  }, [theme])
+  useEffect(() => {
+    const mq = window.matchMedia(desktopQuery)
+    const onChange = () => setIsDesktop(mq.matches)
+    onChange()
+    if (typeof mq.addEventListener === 'function') {
+      mq.addEventListener('change', onChange)
+      return () => mq.removeEventListener('change', onChange)
+    }
+    // Safari viejo
+    mq.addListener(onChange)
+    return () => mq.removeListener(onChange)
+  }, [desktopQuery])
   const toggleSidebar = useAppStore(s => s.toggleSidebar)
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
