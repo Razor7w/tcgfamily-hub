@@ -15,7 +15,7 @@ export async function GET() {
 
     await connectDB()
     const users = await User.find({})
-      .select('-accounts -sessions')
+      .select('-accounts -sessions -passwordHash')
       .sort({ createdAt: -1 })
       .lean()
 

@@ -7,6 +7,10 @@ export interface IUser extends Document {
   email?: string
   emailVerified?: Date
   image?: string
+  /** Solo usuarios con contraseña local; nunca exponer en APIs. */
+  passwordHash?: string
+  credentialFailedAttempts?: number
+  credentialLockedUntil?: Date
   role: UserRole
   phone: string
   rut: string
@@ -27,6 +31,19 @@ const UserSchema = new Schema<IUser>(
     email: String,
     emailVerified: Date,
     image: String,
+    passwordHash: {
+      type: String,
+      select: false,
+      default: undefined
+    },
+    credentialFailedAttempts: {
+      type: Number,
+      default: 0
+    },
+    credentialLockedUntil: {
+      type: Date,
+      default: undefined
+    },
     role: {
       type: String,
       enum: ['user', 'admin'],
