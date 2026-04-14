@@ -39,6 +39,25 @@ export function normalizeEmail(value: string): string {
   return value.trim().toLowerCase()
 }
 
+/** Correo usable para cruce CSV ↔ BD; vacío si no hay correo real. */
+export function normalizeEmailForPoints(value: string): string {
+  const e = normalizeEmail(unwrapExcelText(value))
+  if (!e) return ''
+  const placeholders = new Set([
+    '-',
+    '—',
+    'n/a',
+    'na',
+    's/c',
+    'sin correo',
+    'ninguno',
+    'no aplica',
+    'sin email'
+  ])
+  if (placeholders.has(e)) return ''
+  return e
+}
+
 /** RUT chileno canónico `12345678-9` (sin puntos). */
 export function canonicalRut(raw: string): string {
   const inner = unwrapExcelText(raw).replace(/\./g, '').replace(/-/g, '').toUpperCase()
@@ -132,7 +151,7 @@ export function rowToPointsData(
   map: PointsCsvHeaderMap
 ): PointsCsvRow | null {
   const rut = canonicalRut(cells[map.idxRut] ?? '')
-  const email = normalizeEmail(cells[map.idxCorreo] ?? '')
+  const email = normalizeEmailForPoints(cells[map.idxCorreo] ?? '')
   const firstName = unwrapExcelText(cells[map.idxNombre] ?? '')
   const lastName = unwrapExcelText(cells[map.idxApellido] ?? '')
   if (!rut && !email) return null

@@ -10,8 +10,20 @@ import {
   normalizeEmail,
   parseCsvSemicolonLine,
   rowToPointsData,
+  rutMatchVariants,
   type PointsCsvRow
 } from '@/lib/store-points-csv'
+
+function lookupRutId(
+  rutToId: Map<string, mongoose.Types.ObjectId>,
+  canon: string
+): mongoose.Types.ObjectId | undefined {
+  for (const v of rutMatchVariants(canon)) {
+    const id = rutToId.get(v)
+    if (id) return id
+  }
+  return undefined
+}
 
 export const runtime = 'nodejs'
 
@@ -80,8 +92,12 @@ export async function POST(request: NextRequest) {
         emailToId.set(em, id)
       }
       const r = canonicalRut(String((u as { rut?: string }).rut ?? ''))
-      if (r && !rutToId.has(r)) {
-        rutToId.set(r, id)
+      if (r) {
+        for (const v of rutMatchVariants(r)) {
+          if (!rutToId.has(v)) {
+            rutToId.set(v, id)
+          }
+        }
       }
     }
 
@@ -106,11 +122,11 @@ export async function POST(request: NextRequest) {
       }
 
       let id: mongoose.Types.ObjectId | undefined
-      if (row.email) {
-        id = emailToId.get(row.email)
+      if (row.rut) {
+        id = lookupRutId(rutToId, row.rut)
       }
-      if (!id && row.rut) {
-        id = rutToId.get(row.rut)
+      if (!id && row.email) {
+        id = emailToId.get(row.email)
       }
 
       if (!id) {
