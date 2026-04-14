@@ -7,10 +7,15 @@ import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import CardHeader from '@mui/material/CardHeader'
 import Container from '@mui/material/Container'
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
+import IconButton from '@mui/material/IconButton'
 import Typography from '@mui/material/Typography'
 import { CircularProgress, Stack } from '@mui/material'
 import { useSession } from 'next-auth/react'
-import { MarkunreadMailbox, Storefront } from '@mui/icons-material'
+import { InfoOutlined, MarkunreadMailbox, Storefront } from '@mui/icons-material'
 import CardMails from '@/components/dashboard/CardMails'
 
 type StoreCredit = {
@@ -24,6 +29,7 @@ export default function DashboardPage() {
   const [credit, setCredit] = useState<StoreCredit | null>(null)
   const [creditLoading, setCreditLoading] = useState(true)
   const [creditError, setCreditError] = useState<string | null>(null)
+  const [storePointsInfoOpen, setStorePointsInfoOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -96,6 +102,16 @@ export default function DashboardPage() {
               avatar={<Storefront color="primary" />}
               title="Crédito de tienda"
               subheader="Puntos acumulados en la tienda"
+              action={
+                <IconButton
+                  aria-label="Información sobre los puntos de tienda"
+                  onClick={() => setStorePointsInfoOpen(true)}
+                  size="small"
+                  color="primary"
+                >
+                  <InfoOutlined />
+                </IconButton>
+              }
             />
             <CardContent>
               {creditLoading ? (
@@ -134,6 +150,40 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </Stack>
+
+        <Dialog
+          open={storePointsInfoOpen}
+          onClose={() => setStorePointsInfoOpen(false)}
+          maxWidth="sm"
+          fullWidth
+          aria-labelledby="store-points-info-title"
+        >
+          <DialogTitle id="store-points-info-title">
+            TCG Family puntos
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" component="p" sx={{ mb: 2 }}>
+              Los TCG Family puntos, tienen equivalencia de $1 cada uno, se
+              obtienen al realizar compras por la web (1% del monto de la
+              compra), al &quot;sacrificar&quot; cartas en la tienda (solo en
+              días de intercambio que son informados previamente) y otros
+              métodos informados por los canales de la comunidad.
+            </Typography>
+            <Typography variant="body2" component="p" sx={{ mb: 2 }}>
+              Se debe tener un mínimo de 5000 puntos para poder canjearlos y
+              debe hacerse de forma presencial o coordinándolo por mensaje de
+              Instagram.
+            </Typography>
+            <Typography variant="body2" component="p">
+              Tienen vigencia de 1 año desde su generación.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button onClick={() => setStorePointsInfoOpen(false)} variant="contained">
+              Cerrar
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Container>
     </Box>
   )
