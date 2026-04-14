@@ -1,18 +1,17 @@
 'use client'
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import Card from '@mui/material/Card'
+import CardContent from '@mui/material/CardContent'
+import CardHeader from '@mui/material/CardHeader'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
-import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
-  CircularProgress,
-  Grid
-} from '@mui/material'
+import { CircularProgress, Stack } from '@mui/material'
 import { useSession } from 'next-auth/react'
-import { ExpandMore, MarkunreadMailbox } from '@mui/icons-material'
-import CardMail from '@/components/dashboard/CardMails'
+import { MarkunreadMailbox, Storefront } from '@mui/icons-material'
+import CardMails from '@/components/dashboard/CardMails'
 
 type StoreCredit = {
   storePoints: number
@@ -74,29 +73,31 @@ export default function DashboardPage() {
         <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 4 }}>
           Hola {session && session.user.name}
         </Typography>
-        <Grid container>
-          <Accordion defaultExpanded sx={{ width: '100%' }}>
-            <AccordionSummary
-              expandIcon={<ExpandMore />}
-              aria-controls="panel1-content"
-              id="panel1-header"
-            >
-              <MarkunreadMailbox sx={{ mr: 2 }} />
-              <Typography component="span">Últimos Correos</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <CardMail />
-            </AccordionDetails>
-          </Accordion>
-          <Accordion>
-            <AccordionSummary
-              expandIcon={<ExpandMore />}
-              aria-controls="panel2-content"
-              id="panel2-header"
-            >
-              <Typography component="span">Crédito de tienda</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
+
+        <Stack spacing={3}>
+          <Card>
+            <CardHeader
+              avatar={<MarkunreadMailbox color="primary" />}
+              title="Últimos correos"
+              subheader="Pendientes de retiro en tienda"
+              action={
+                <Button component={Link} href="/dashboard/mail" size="small">
+                  Ver todos
+                </Button>
+              }
+            />
+            <CardContent>
+              <CardMails />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader
+              avatar={<Storefront color="primary" />}
+              title="Crédito de tienda"
+              subheader="Puntos acumulados en la tienda"
+            />
+            <CardContent>
               {creditLoading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
                   <CircularProgress size={28} />
@@ -130,9 +131,9 @@ export default function DashboardPage() {
                   )}
                 </Box>
               ) : null}
-            </AccordionDetails>
-          </Accordion>
-        </Grid>
+            </CardContent>
+          </Card>
+        </Stack>
       </Container>
     </Box>
   )
