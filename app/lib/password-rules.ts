@@ -51,12 +51,40 @@ export function validateRegisterName(name: string): string | null {
 
 export function getPasswordRuleMessages(): string[] {
   return [
-    `Entre ${PASSWORD_MIN} y ${PASSWORD_MAX} caracteres`,
+    `Entre ${PASSWORD_MIN} y ${PASSWORD_MAX} caracteres (sin espacios)`,
     'Al menos una letra mayúscula y una minúscula',
     'Al menos un número',
     'Al menos un carácter especial (!@#$%^&*…)',
     'No puede ser una contraseña muy común'
   ]
+}
+
+export type PasswordRuleStatus = { key: string; label: string; ok: boolean }
+
+/** Estado por regla para checklist en UI (misma lógica que validatePasswordStrength). */
+export function getPasswordRuleChecks(password: string): PasswordRuleStatus[] {
+  const lenOk =
+    password.length >= PASSWORD_MIN &&
+    password.length <= PASSWORD_MAX &&
+    !/[\s\n\r\t]/.test(password)
+  const caseOk = /[a-z]/.test(password) && /[A-Z]/.test(password)
+  const digitOk = /[0-9]/.test(password)
+  const specialOk = SPECIAL_RE.test(password)
+  const notWeakOk =
+    password.length > 0 && !WEAK_PASSWORDS.has(password.toLowerCase())
+
+  const labels = getPasswordRuleMessages()
+  return [
+    { key: 'length', label: labels[0]!, ok: lenOk },
+    { key: 'case', label: labels[1]!, ok: caseOk },
+    { key: 'digit', label: labels[2]!, ok: digitOk },
+    { key: 'special', label: labels[3]!, ok: specialOk },
+    { key: 'notWeak', label: labels[4]!, ok: notWeakOk }
+  ]
+}
+
+export function isPasswordStrengthSatisfied(password: string): boolean {
+  return getPasswordRuleChecks(password).every(r => r.ok)
 }
 
 export function validatePasswordStrength(password: string): string | null {

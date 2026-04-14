@@ -111,7 +111,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           name: user.name ?? undefined,
           email: user.email ?? undefined,
           image: user.image ?? undefined,
-          role: user.role || 'user'
+          role: user.role || 'user',
+          rut: user.rut ?? '',
+          popid: user.popid ?? '',
+          hasPassword: true
         }
       }
     })
@@ -124,10 +127,58 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     maxAge: 30 * 24 * 60 * 60
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      if (trigger === 'update' && session) {
+        const s = session as Record<string, unknown>
+        if (typeof s.name === 'string') token.name = s.name
+        if (typeof s.email === 'string') token.email = s.email
+        if (typeof s.picture === 'string') token.picture = s.picture
+        if (typeof s.rut === 'string') token.rut = s.rut
+        if (typeof s.popid === 'string') token.popid = s.popid
+        if (typeof s.hasPassword === 'boolean') token.hasPassword = s.hasPassword
+        return token
+      }
+
       if (user) {
         token.sub = user.id
-        token.role = user.role ?? 'user'
+        const uRole = (user as { role?: string }).role
+        token.role = uRole === 'admin' ? 'admin' : 'user'
+        await connectDB()
+        const db = await User.findById(user.id).select(
+          '+passwordHash name email image rut popid role'
+        )
+        if (db) {
+          token.name = db.name ?? undefined
+          token.email = db.email ?? undefined
+          token.picture = db.image ?? undefined
+          token.rut = db.rut?.trim() ?? ''
+          token.popid = db.popid ?? ''
+          token.hasPassword = Boolean(db.passwordHash)
+          token.role = db.role === 'admin' ? 'admin' : 'user'
+        } else {
+          token.name = user.name
+          token.email = user.email
+          token.picture = user.image
+          token.rut = ''
+          token.popid = ''
+          token.hasPassword = false
+        }
+      } else if (
+        token.sub &&
+        (token.rut === undefined ||
+          token.hasPassword === undefined ||
+          token.popid === undefined)
+      ) {
+        await connectDB()
+        const db = await User.findById(token.sub).select(
+          '+passwordHash rut popid role'
+        )
+        if (db) {
+          token.rut = db.rut?.trim() ?? ''
+          token.popid = db.popid ?? ''
+          token.hasPassword = Boolean(db.passwordHash)
+          token.role = db.role === 'admin' ? 'admin' : 'user'
+        }
       }
       return token
     },
@@ -135,6 +186,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (session.user && token.sub) {
         session.user.id = token.sub
         session.user.role = token.role ?? 'user'
+        session.user.rut = typeof token.rut === 'string' ? token.rut : ''
+        session.user.popid = typeof token.popid === 'string' ? token.popid : ''
+        session.user.hasPassword = Boolean(token.hasPassword)
       }
       return session
     }

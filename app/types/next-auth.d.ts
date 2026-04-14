@@ -6,16 +6,25 @@ declare module "next-auth" {
     user: {
       id: string;
       role: "user" | "admin";
+      rut: string;
+      popid: string;
+      hasPassword: boolean;
     } & DefaultSession["user"];
   }
 
   interface User {
     role: "user" | "admin";
+    rut?: string;
+    popid?: string;
+    hasPassword?: boolean;
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT extends DefaultJWT {
     role?: "user" | "admin";
+    rut?: string;
+    popid?: string;
+    hasPassword?: boolean;
   }
 }

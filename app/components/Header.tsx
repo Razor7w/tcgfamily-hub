@@ -16,6 +16,7 @@ import { useTheme, useMediaQuery } from '@mui/material'
 import LogoutIcon from '@mui/icons-material/Logout'
 import AccountCircleIcon from '@mui/icons-material/AccountCircle'
 import MenuIcon from '@mui/icons-material/Menu'
+import PersonIcon from '@mui/icons-material/Person'
 import { useAppStore } from '@/store/useAppStore'
 
 export default function Header() {
@@ -111,6 +112,10 @@ export default function Header() {
                   <Typography variant="body2" color="text.secondary">
                     {session.user.email}
                   </Typography>
+                </MenuItem>
+                <MenuItem component={Link} href="/dashboard/perfil" onClick={handleClose}>
+                  <PersonIcon sx={{ mr: 1 }} />
+                  Perfil
                 </MenuItem>
                 <MenuItem onClick={handleLogout}>
                   <LogoutIcon sx={{ mr: 1 }} />

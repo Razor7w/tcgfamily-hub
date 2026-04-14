@@ -8,6 +8,13 @@ import {
   validatePasswordStrength,
   validateRegisterName
 } from '@/lib/password-rules'
+import { rutMatchVariants } from '@/lib/store-points-csv'
+import {
+  popidForStorage,
+  rutForStorage,
+  validatePopidOptional,
+  validateRutChile
+} from '@/lib/rut-chile'
 import { createSlidingWindowLimiter } from '@/lib/auth-rate-limit'
 
 const registerIpLimiter = createSlidingWindowLimiter({
@@ -45,7 +52,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
     }
 
-    const { name, email: emailField, password, confirmPassword } =
+    const { name, email: emailField, password, confirmPassword, rut, popid } =
       body as Record<string, unknown>
 
     const nameStr = typeof name === 'string' ? name : ''
@@ -53,6 +60,8 @@ export async function POST(request: NextRequest) {
     const passwordStr = typeof password === 'string' ? password : ''
     const confirmStr =
       typeof confirmPassword === 'string' ? confirmPassword : ''
+    const rutStr = typeof rut === 'string' ? rut : ''
+    const popidStr = typeof popid === 'string' ? popid : ''
 
     if (passwordStr !== confirmStr) {
       return NextResponse.json(
@@ -72,6 +81,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: emailErr }, { status: 400 })
     }
 
+    const rutErr = validateRutChile(rutStr)
+    if (rutErr) {
+      return NextResponse.json({ error: rutErr }, { status: 400 })
+    }
+
+    const popidErr = validatePopidOptional(popidStr)
+    if (popidErr) {
+      return NextResponse.json({ error: popidErr }, { status: 400 })
+    }
+
     const passErr = validatePasswordStrength(passwordStr)
     if (passErr) {
       return NextResponse.json({ error: passErr }, { status: 400 })
@@ -89,6 +108,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const rutStored = rutForStorage(rutStr)
+    const rutVariants = rutMatchVariants(rutStored)
+    const existingRut = await User.findOne({
+      rut: { $in: rutVariants }
+    }).select('_id')
+    if (existingRut) {
+      return NextResponse.json(
+        { error: 'Ya existe una cuenta con este RUT.' },
+        { status: 409 }
+      )
+    }
+
     const passwordHash = await hashPassword(passwordStr)
 
     await User.create({
@@ -98,8 +129,8 @@ export async function POST(request: NextRequest) {
       credentialFailedAttempts: 0,
       role: 'user',
       phone: '',
-      rut: '',
-      popid: '',
+      rut: rutStored,
+      popid: popidForStorage(popidStr),
       accounts: [],
       sessions: []
     })

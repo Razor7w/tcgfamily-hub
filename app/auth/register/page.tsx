@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -14,25 +14,67 @@ import InputAdornment from '@mui/material/InputAdornment'
 import IconButton from '@mui/material/IconButton'
 import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
+import CheckCircle from '@mui/icons-material/CheckCircle'
+import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked'
 import CircularProgress from '@mui/material/CircularProgress'
 import Header from '@/components/Header'
 import {
-  getPasswordRuleMessages,
+  getPasswordRuleChecks,
+  isPasswordStrengthSatisfied,
   normalizeEmail,
   validateEmailFormat,
   validatePasswordStrength,
   validateRegisterName
 } from '@/lib/password-rules'
+import {
+  validatePopidOptional,
+  validateRutChile
+} from '@/lib/rut-chile'
 
 export default function RegisterPage() {
   const router = useRouter()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [rut, setRut] = useState('')
+  const [popid, setPopid] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const passwordRuleChecks = useMemo(
+    () => getPasswordRuleChecks(password),
+    [password]
+  )
+
+  const passwordsMatch =
+    password.length > 0 &&
+    confirm.length > 0 &&
+    password === confirm
+
+  const formChecklist = useMemo(
+    () => [
+      ...passwordRuleChecks,
+      {
+        key: 'passwordsMatch',
+        label: 'Ambas contraseñas deben coincidir',
+        ok: passwordsMatch
+      }
+    ],
+    [passwordRuleChecks, passwordsMatch]
+  )
+
+  const canSubmit = useMemo(() => {
+    if (loading) return false
+    if (validateRegisterName(name) !== null) return false
+    if (validateEmailFormat(normalizeEmail(email)) !== null) return false
+    if (validateRutChile(rut) !== null) return false
+    if (validatePopidOptional(popid) !== null) return false
+    if (!isPasswordStrengthSatisfied(password)) return false
+    if (!passwordsMatch) return false
+    return true
+  }, [loading, name, email, rut, popid, password, passwordsMatch])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -62,6 +104,18 @@ export default function RegisterPage() {
       return
     }
 
+    const rutErr = validateRutChile(rut)
+    if (rutErr) {
+      setError(rutErr)
+      return
+    }
+
+    const popidErr = validatePopidOptional(popid)
+    if (popidErr) {
+      setError(popidErr)
+      return
+    }
+
     setLoading(true)
     try {
       const res = await fetch('/api/auth/register', {
@@ -70,6 +124,8 @@ export default function RegisterPage() {
         body: JSON.stringify({
           name: name.trim(),
           email: em,
+          rut,
+          popid,
           password,
           confirmPassword: confirm
         })
@@ -139,9 +195,6 @@ export default function RegisterPage() {
           >
             Crear cuenta
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Contraseña segura: {getPasswordRuleMessages().join(' ')}
-          </Typography>
           {error ? (
             <Alert severity="error" onClose={() => setError(null)}>
               {error}
@@ -177,6 +230,39 @@ export default function RegisterPage() {
               inputProps={{ maxLength: 254 }}
             />
             <TextField
+              label="RUT"
+              name="rut"
+              autoComplete="off"
+              value={rut}
+              onChange={e => setRut(e.target.value)}
+              disabled={loading}
+              required
+              fullWidth
+              placeholder="12.345.678-9"
+              error={Boolean(rut.trim()) && validateRutChile(rut) !== null}
+              helperText={
+                validateRutChile(rut) ??
+                (!rut.trim()
+                  ? 'Obligatorio. Formato chileno con dígito verificador.'
+                  : undefined)
+              }
+              inputProps={{ maxLength: 20 }}
+            />
+            <TextField
+              label="Pop ID"
+              name="popid"
+              autoComplete="off"
+              value={popid}
+              onChange={e => setPopid(e.target.value)}
+              disabled={loading}
+              fullWidth
+              helperText="Opcional."
+              error={
+                Boolean(popid.trim()) && validatePopidOptional(popid) !== null
+              }
+              inputProps={{ maxLength: 64 }}
+            />
+            <TextField
               label="Contraseña"
               type={showPw ? 'text' : 'password'}
               name="password"
@@ -203,6 +289,51 @@ export default function RegisterPage() {
                 )
               }}
             />
+            <Box
+              sx={{
+                pl: 0.5,
+                py: 1,
+                px: 1.5,
+                borderRadius: 1,
+                bgcolor: 'action.hover'
+              }}
+            >
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Contraseña y confirmación
+              </Typography>
+              <Box
+                component="ul"
+                sx={{
+                  m: 0,
+                  pl: 0,
+                  listStyle: 'none',
+                  '& li': { display: 'flex', alignItems: 'flex-start', gap: 1, py: 0.35 }
+                }}
+              >
+                {formChecklist.map(rule => (
+                  <Box key={rule.key} component="li">
+                    {rule.ok ? (
+                      <CheckCircle
+                        sx={{ fontSize: 20, mt: '2px', color: 'success.main' }}
+                        aria-hidden
+                      />
+                    ) : (
+                      <RadioButtonUnchecked
+                        sx={{ fontSize: 20, mt: '2px', color: 'action.disabled' }}
+                        aria-hidden
+                      />
+                    )}
+                    <Typography
+                      component="span"
+                      variant="body2"
+                      color={rule.ok ? 'success.dark' : 'text.secondary'}
+                    >
+                      {rule.label}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
             <TextField
               label="Confirmar contraseña"
               type={showPw ? 'text' : 'password'}
@@ -219,7 +350,7 @@ export default function RegisterPage() {
               type="submit"
               variant="contained"
               size="large"
-              disabled={loading}
+              disabled={!canSubmit}
               sx={{ py: 1.5, textTransform: 'none' }}
             >
               {loading ? <CircularProgress size={24} color="inherit" /> : 'Registrarse'}
