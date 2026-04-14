@@ -11,7 +11,7 @@ export default function SignInButton() {
       size="large"
       fullWidth
       startIcon={<GoogleIcon />}
-      onClick={() => signIn("google", { callbackUrl: "/Dashboard" })}
+      onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
       sx={{ mt: 1, py: 1.5, textTransform: "none", fontSize: "1rem" }}
     >
       Iniciar sesión con Google

@@ -53,6 +53,9 @@ export async function GET(
       phone?: string
       rut?: string
       popid?: string
+      storePoints?: number
+      storePointsExpiringNext?: number
+      storePointsExpiryDate?: Date
     }
 
     return NextResponse.json({
@@ -64,7 +67,12 @@ export async function GET(
       role: userObj.role || 'user',
       phone: userObj.phone || '',
       rut: userObj.rut || '',
-      popid: userObj.popid || ''
+      popid: userObj.popid || '',
+      storePoints: userObj.storePoints ?? 0,
+      storePointsExpiringNext: userObj.storePointsExpiringNext ?? 0,
+      storePointsExpiryDate: userObj.storePointsExpiryDate
+        ? new Date(userObj.storePointsExpiryDate).toISOString()
+        : null
     })
   } catch (error) {
     console.error('Error al obtener usuario:', error)
@@ -146,7 +154,12 @@ export async function PUT(
       role: user.role,
       phone: user.phone || '',
       rut: user.rut || '',
-      popid: user.popid || ''
+      popid: user.popid || '',
+      storePoints: user.storePoints ?? 0,
+      storePointsExpiringNext: user.storePointsExpiringNext ?? 0,
+      storePointsExpiryDate: user.storePointsExpiryDate
+        ? new Date(user.storePointsExpiryDate).toISOString()
+        : null
     })
   } catch (error) {
     console.error('Error al actualizar usuario:', error)

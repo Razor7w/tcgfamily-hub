@@ -1,33 +1,205 @@
 import NextAuth from 'next-auth'
 import Google from 'next-auth/providers/google'
+import Credentials from 'next-auth/providers/credentials'
 import { MongoDBAdapter } from '@/lib/mongodb-adapter'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
+import { verifyPassword } from '@/lib/password-server'
+import {
+  normalizeEmail,
+  validateEmailFormat,
+  PASSWORD_TIMING_DUMMY_HASH
+} from '@/lib/password-rules'
+import { createSlidingWindowLimiter } from '@/lib/auth-rate-limit'
+
+const credentialIpLimiter = createSlidingWindowLimiter({
+  max: 40,
+  windowMs: 15 * 60 * 1000
+})
+
+const MAX_CRED_FAILS = 5
+const LOCK_MS = 15 * 60 * 1000
+
+function getClientIp(request: Request): string {
+  const xf = request.headers.get('x-forwarded-for')
+  if (xf) {
+    const first = xf.split(',')[0]?.trim()
+    if (first) return first
+  }
+  return request.headers.get('x-real-ip') || 'unknown'
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
   adapter: MongoDBAdapter(),
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      allowDangerousEmailAccountLinking: true // Permitir vincular cuentas con el mismo email
+      allowDangerousEmailAccountLinking: true
+    }),
+    Credentials({
+      credentials: {
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' }
+      },
+      async authorize(credentials, request) {
+        const emailRaw =
+          typeof credentials?.email === 'string' ? credentials.email : ''
+        const password =
+          typeof credentials?.password === 'string' ? credentials.password : ''
+        const email = normalizeEmail(emailRaw)
+
+        const ip = getClientIp(request)
+        if (credentialIpLimiter(`cred-ip:${ip}`)) {
+          await verifyPassword(password || 'x', PASSWORD_TIMING_DUMMY_HASH)
+          return null
+        }
+
+        if (!emailRaw.trim() || !password) {
+          await verifyPassword(password || 'x', PASSWORD_TIMING_DUMMY_HASH)
+          return null
+        }
+        if (validateEmailFormat(email)) {
+          await verifyPassword(password, PASSWORD_TIMING_DUMMY_HASH)
+          return null
+        }
+        if (password.length > 128) {
+          await verifyPassword(
+            password.slice(0, 128),
+            PASSWORD_TIMING_DUMMY_HASH
+          )
+          return null
+        }
+
+        await connectDB()
+        const user = await User.findOne({ email })
+          .collation({ locale: 'en', strength: 2 })
+          .select('+passwordHash credentialFailedAttempts credentialLockedUntil')
+
+        const now = new Date()
+
+        if (!user?.passwordHash) {
+          await verifyPassword(password, PASSWORD_TIMING_DUMMY_HASH)
+          return null
+        }
+
+        const lockedUntil = user.credentialLockedUntil
+        if (lockedUntil && lockedUntil > now) {
+          await verifyPassword(password, user.passwordHash)
+          return null
+        }
+
+        const ok = await verifyPassword(password, user.passwordHash)
+
+        if (!ok) {
+          const fails = (user.credentialFailedAttempts ?? 0) + 1
+          user.credentialFailedAttempts = fails
+          if (fails >= MAX_CRED_FAILS) {
+            user.credentialLockedUntil = new Date(Date.now() + LOCK_MS)
+          }
+          await user.save()
+          return null
+        }
+
+        user.credentialFailedAttempts = 0
+        user.credentialLockedUntil = undefined
+        await user.save()
+
+        return {
+          id: user._id.toString(),
+          name: user.name ?? undefined,
+          email: user.email ?? undefined,
+          image: user.image ?? undefined,
+          role: user.role || 'user',
+          rut: user.rut ?? '',
+          popid: user.popid ?? '',
+          hasPassword: true
+        }
+      }
     })
   ],
   pages: {
-    signIn: '/auth/signin'
-    // Puedes personalizar otras páginas aquí
+    signIn: '/'
+  },
+  session: {
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60
+  },
+  callbacks: {
+    async jwt({ token, user, trigger, session }) {
+      if (trigger === 'update' && session) {
+        const s = session as Record<string, unknown>
+        if (typeof s.name === 'string') token.name = s.name
+        if (typeof s.email === 'string') token.email = s.email
+        if (typeof s.picture === 'string') token.picture = s.picture
+        if (typeof s.rut === 'string') token.rut = s.rut
+        if (typeof s.popid === 'string') token.popid = s.popid
+        if (typeof s.hasPassword === 'boolean') token.hasPassword = s.hasPassword
+        return token
+      }
+
+      if (user) {
+        token.sub = user.id
+        const uRole = (user as { role?: string }).role
+        token.role = uRole === 'admin' ? 'admin' : 'user'
+        await connectDB()
+        const db = await User.findById(user.id).select(
+          '+passwordHash name email image rut popid role'
+        )
+        if (db) {
+          token.name = db.name ?? undefined
+          token.email = db.email ?? undefined
+          token.picture = db.image ?? undefined
+          token.rut = db.rut?.trim() ?? ''
+          token.popid = db.popid ?? ''
+          token.hasPassword = Boolean(db.passwordHash)
+          token.role = db.role === 'admin' ? 'admin' : 'user'
+        } else {
+          token.name = user.name
+          token.email = user.email
+          token.picture = user.image
+          token.rut = ''
+          token.popid = ''
+          token.hasPassword = false
+        }
+      } else if (
+        token.sub &&
+        (token.rut === undefined ||
+          token.hasPassword === undefined ||
+          token.popid === undefined)
+      ) {
+        await connectDB()
+        const db = await User.findById(token.sub).select(
+          '+passwordHash rut popid role'
+        )
+        if (db) {
+          token.rut = db.rut?.trim() ?? ''
+          token.popid = db.popid ?? ''
+          token.hasPassword = Boolean(db.passwordHash)
+          token.role = db.role === 'admin' ? 'admin' : 'user'
+        }
+      }
+      return token
+    },
+    async session({ session, token }) {
+      if (session.user && token.sub) {
+        session.user.id = token.sub
+        session.user.role = token.role ?? 'user'
+        session.user.rut = typeof token.rut === 'string' ? token.rut : ''
+        session.user.popid = typeof token.popid === 'string' ? token.popid : ''
+        session.user.hasPassword = Boolean(token.hasPassword)
+      }
+      return session
+    }
   },
   events: {
     async linkAccount({ user, profile }) {
-      // Cuando se vincula una cuenta OAuth, actualizar el usuario con datos de Google
       if (profile && user.id) {
         await connectDB()
 
         const existingUser = await User.findById(user.id)
         if (existingUser) {
-          // Actualizar nombre e imagen del usuario con datos de Google
-          // El profile de Google tiene 'name' e 'image' (no 'picture')
-          // Convertir primero a unknown para evitar errores de TypeScript
           const profileData = profile as unknown as Record<string, unknown>
 
           if (
@@ -38,7 +210,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             existingUser.name = profileData.name
           }
 
-          // Google usa 'image' para la URL de la imagen del perfil
           if (
             profileData.image &&
             typeof profileData.image === 'string' &&
@@ -51,17 +222,5 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
       }
     }
-  },
-  callbacks: {
-    async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id
-        session.user.role = user.role || 'user'
-      }
-      return session
-    }
-  },
-  session: {
-    strategy: 'database'
   }
 })

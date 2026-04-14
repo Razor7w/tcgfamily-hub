@@ -52,12 +52,26 @@ export function useMails() {
   });
 }
 
-// Hook para obtener mails del usuario actual (emisor o receptor)
-export function useMyMails() {
+export type UseMyMailsOptions = {
+  /** Solo correos dirigidos a ti que aún no se han retirado (isRecived: false). */
+  pendingOnly?: boolean;
+  limit?: number;
+};
+
+// Hook para obtener mails del usuario actual (receptor / toUserId)
+export function useMyMails(options?: UseMyMailsOptions) {
+  const pendingOnly = options?.pendingOnly ?? false;
+  const limit = options?.limit;
+
   return useQuery<{ mails: Mail[] }>({
-    queryKey: ["mails", "me"],
+    queryKey: ["mails", "me", { pendingOnly, limit }],
     queryFn: async () => {
-      const response = await fetch("/api/mail/me");
+      const params = new URLSearchParams();
+      if (limit !== undefined) params.set("limit", String(limit));
+      if (pendingOnly) params.set("pending", "1");
+      const qs = params.toString();
+      const url = qs ? `/api/mail/me?${qs}` : "/api/mail/me";
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error("Error al cargar mails");
       }

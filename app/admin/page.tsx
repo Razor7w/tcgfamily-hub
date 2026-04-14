@@ -6,6 +6,7 @@ import Typography from "@mui/material/Typography";
 import {
   Email as EmailIcon,
   People as PeopleIcon,
+  CloudUpload as CloudUploadIcon,
   Settings as SettingsIcon,
   Analytics as AnalyticsIcon,
   Folder as FolderIcon,
@@ -25,9 +26,14 @@ interface Module {
 }
 
 const modules: Module[] = [
-  { id: "1", name: "Usuarios", icon: <PeopleIcon />, route: "/Admin/Users" },
-  { id: "2", name: "Correos", icon: <EmailIcon />, route: "/Admin/Mails" },
-  { id: "3", name: "Usuarios", icon: <PeopleIcon /> },
+  { id: "1", name: "Usuarios", icon: <PeopleIcon />, route: "/admin/users" },
+  { id: "2", name: "Correos", icon: <EmailIcon />, route: "/admin/mails" },
+  {
+    id: "3",
+    name: "Puntos (CSV)",
+    icon: <CloudUploadIcon />,
+    route: "/admin/puntos",
+  },
   { id: "4", name: "Configuración", icon: <SettingsIcon /> },
   { id: "5", name: "Analíticas", icon: <AnalyticsIcon /> },
   { id: "6", name: "Archivos", icon: <FolderIcon /> },
@@ -57,7 +63,7 @@ export default function DashboardPage() {
         >
           <Button
             component={Link}
-            href="/Dashboard"
+            href="/dashboard"
             variant="outlined"
             size="small"
             startIcon={<ArrowBack />}

@@ -142,7 +142,7 @@ export default function DashboardMailPage() {
       >
         <Button
           component={Link}
-          href="/Dashboard"
+          href="/dashboard"
           variant="outlined"
           size="small"
           startIcon={<ArrowBackIcon />}

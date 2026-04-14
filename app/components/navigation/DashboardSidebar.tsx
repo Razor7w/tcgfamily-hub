@@ -1,4 +1,4 @@
-import { Email, Home } from '@mui/icons-material'
+import { Email, Home, Person } from '@mui/icons-material'
 import {
   Divider,
   List,
@@ -18,7 +18,7 @@ export default function DashboardSidebar({ isAdmin }: { isAdmin: boolean }) {
         <List>
           {isAdmin && <AdminSidebarClient />}
           <ListItem disablePadding>
-            <ListItemButton href="/Dashboard">
+            <ListItemButton href="/dashboard">
               <ListItemIcon>
                 <Home />
               </ListItemIcon>
@@ -26,11 +26,19 @@ export default function DashboardSidebar({ isAdmin }: { isAdmin: boolean }) {
             </ListItemButton>
           </ListItem>
           <ListItem disablePadding>
-            <ListItemButton href="/Dashboard/Mail">
+            <ListItemButton href="/dashboard/mail">
               <ListItemIcon>
                 <Email />
               </ListItemIcon>
               <ListItemText primary="Correo" />
+            </ListItemButton>
+          </ListItem>
+          <ListItem disablePadding>
+            <ListItemButton href="/dashboard/perfil">
+              <ListItemIcon>
+                <Person />
+              </ListItemIcon>
+              <ListItemText primary="Perfil" />
             </ListItemButton>
           </ListItem>
         </List>

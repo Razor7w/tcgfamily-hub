@@ -16,6 +16,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const limitParam = searchParams.get('limit')
     const limit = limitParam ? Math.min(Math.max(1, parseInt(limitParam, 10)), 100) : undefined
+    const pendingOnly =
+      searchParams.get('pending') === '1' ||
+      searchParams.get('pending') === 'true'
 
     await connectDB()
     const userId = session.user.id as string
@@ -30,7 +33,8 @@ export async function GET(request: Request) {
     }
 
     const query = Mail.find({
-      $or: [{ toUserId: uid }]
+      toUserId: uid,
+      ...(pendingOnly ? { isRecived: false } : {})
     })
       .sort({ createdAt: -1 })
       .populate('fromUserId', 'name rut')
