@@ -42,7 +42,7 @@ type AppStore = AppState & AppActions;
 
 // Store inicial
 const initialState: AppState = {
-  sidebarOpen: true,
+  sidebarOpen: false,
   theme: "light",
   userFilter: {},
   notifications: [],
@@ -91,13 +91,15 @@ export const useAppStore = create<AppStore>()(
       clearNotifications: () => set({ notifications: [] }),
     }),
     {
-      name: "app-storage", // Nombre en localStorage
+      name: "app-storage",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        // Solo persistir ciertos campos
+        // Solo tema; sidebarOpen no debe persistir (rehidratación + móvil rompía el drawer).
         theme: state.theme,
-        sidebarOpen: state.sidebarOpen,
       }),
+      onRehydrateStorage: () => () => {
+        useAppStore.getState().setSidebarOpen(false);
+      },
     },
   ),
 );

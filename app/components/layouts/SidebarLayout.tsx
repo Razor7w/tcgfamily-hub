@@ -1,6 +1,6 @@
 'use client'
 
-import { Box, Drawer, Grid, useMediaQuery, useTheme } from '@mui/material'
+import { Box, Grid, SwipeableDrawer, useMediaQuery, useTheme } from '@mui/material'
 import { usePathname } from 'next/navigation'
 import React, { useEffect } from 'react'
 import { useAppStore } from '@/store/useAppStore'
@@ -21,7 +21,11 @@ export default function SidebarLayout({
   contentSize = 9
 }: SidebarLayoutProps) {
   const theme = useTheme()
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
+  // Mobile-first: evita mismatch SSR/cliente y menús rotos hasta redimensionar (Next + MUI).
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'), {
+    defaultMatches: false,
+    noSsr: true
+  })
   const pathname = usePathname()
   const sidebarOpen = useAppStore(s => s.sidebarOpen)
   const setSidebarOpen = useAppStore(s => s.setSidebarOpen)
@@ -41,15 +45,17 @@ export default function SidebarLayout({
 
   return (
     <Box sx={{ width: '100%' }}>
-      <Drawer
+      <SwipeableDrawer
         variant="temporary"
         anchor="left"
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        onOpen={() => setSidebarOpen(true)}
         disableScrollLock
         ModalProps={{
-          keepMounted: false
+          keepMounted: true
         }}
+        swipeAreaWidth={24}
         sx={{
           display: { xs: 'block', md: 'none' },
           '& .MuiDrawer-paper': {
@@ -59,7 +65,7 @@ export default function SidebarLayout({
         }}
       >
         <Box sx={{ overflow: 'auto', py: 2, px: 1 }}>{sidebar}</Box>
-      </Drawer>
+      </SwipeableDrawer>
       <Box component="main" sx={{ width: '100%' }}>
         {children}
       </Box>

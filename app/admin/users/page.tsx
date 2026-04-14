@@ -57,7 +57,10 @@ import { useAppStore } from '@/store/useAppStore'
 
 export default function UsersPageRefactored() {
   const theme = useTheme()
-  const isNarrow = useMediaQuery(theme.breakpoints.down('md'))
+  const isNarrow = useMediaQuery(theme.breakpoints.down('md'), {
+    defaultMatches: true,
+    noSsr: true
+  })
 
   const [openDialog, setOpenDialog] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
