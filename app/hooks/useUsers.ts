@@ -9,6 +9,9 @@ export interface User {
   phone?: string;
   rut?: string;
   popid?: string;
+  storePoints: number;
+  storePointsExpiringNext: number;
+  storePointsExpiryDate: string | null;
 }
 
 export interface CreateUserData {

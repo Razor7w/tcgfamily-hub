@@ -24,12 +24,14 @@ import FormControl from '@mui/material/FormControl'
 import InputLabel from '@mui/material/InputLabel'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
+import VisibilityIcon from '@mui/icons-material/Visibility'
 import AddIcon from '@mui/icons-material/Add'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import Avatar from '@mui/material/Avatar'
 import CircularProgress from '@mui/material/CircularProgress'
 import Alert from '@mui/material/Alert'
 import Snackbar from '@mui/material/Snackbar'
+import Stack from '@mui/material/Stack'
 import {
   useUsers,
   useCreateUser,
@@ -57,6 +59,7 @@ export default function UsersPageRefactored() {
     message: '',
     severity: 'success' as 'success' | 'error'
   })
+  const [pointsModalUser, setPointsModalUser] = useState<User | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Hooks de TanStack Query - ¡Mucho más simple!
@@ -400,6 +403,14 @@ export default function UsersPageRefactored() {
                 </TableCell>
                 <TableCell align="right">
                   <IconButton
+                    color="info"
+                    onClick={() => setPointsModalUser(user)}
+                    size="small"
+                    aria-label="Ver puntos / crédito de tienda"
+                  >
+                    <VisibilityIcon />
+                  </IconButton>
+                  <IconButton
                     color="primary"
                     onClick={() => handleOpenDialog(user)}
                     size="small"
@@ -500,6 +511,63 @@ export default function UsersPageRefactored() {
               ? 'Guardando...'
               : 'Guardar'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={!!pointsModalUser}
+        onClose={() => setPointsModalUser(null)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Puntos / crédito de tienda
+          {pointsModalUser
+            ? ` — ${pointsModalUser.name || pointsModalUser.email || pointsModalUser.id}`
+            : ''}
+        </DialogTitle>
+        <DialogContent>
+          {pointsModalUser && (
+            <Stack spacing={2} sx={{ pt: 1 }}>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Saldo (puntos)
+                </Typography>
+                <Typography variant="h6">
+                  {(pointsModalUser.storePoints ?? 0).toLocaleString('es-CL')}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Próximos puntos a vencer
+                </Typography>
+                <Typography variant="body1">
+                  {(pointsModalUser.storePointsExpiringNext ?? 0).toLocaleString(
+                    'es-CL'
+                  )}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Fecha de vencimiento
+                </Typography>
+                <Typography variant="body1">
+                  {pointsModalUser.storePointsExpiryDate
+                    ? new Date(
+                        pointsModalUser.storePointsExpiryDate
+                      ).toLocaleDateString('es-CL', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
+                      })
+                    : '—'}
+                </Typography>
+              </Box>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPointsModalUser(null)}>Cerrar</Button>
         </DialogActions>
       </Dialog>
 

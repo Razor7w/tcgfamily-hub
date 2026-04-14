@@ -30,6 +30,10 @@ export async function GET() {
         role?: 'user' | 'admin'
         phone?: string
         rut?: string
+        popid?: string
+        storePoints?: number
+        storePointsExpiringNext?: number
+        storePointsExpiryDate?: Date
       }
 
       return {
@@ -40,7 +44,13 @@ export async function GET() {
         image: userObj.image,
         role: userObj.role || 'user',
         phone: userObj.phone || '',
-        rut: userObj.rut || ''
+        rut: userObj.rut || '',
+        popid: userObj.popid || '',
+        storePoints: userObj.storePoints ?? 0,
+        storePointsExpiringNext: userObj.storePointsExpiringNext ?? 0,
+        storePointsExpiryDate: userObj.storePointsExpiryDate
+          ? new Date(userObj.storePointsExpiryDate).toISOString()
+          : null
       }
     })
 
@@ -115,7 +125,12 @@ export async function POST(request: NextRequest) {
         role: newUser.role,
         phone: newUser.phone || '',
         rut: newUser.rut || '',
-        popid: newUser.popid || ''
+        popid: newUser.popid || '',
+        storePoints: newUser.storePoints ?? 0,
+        storePointsExpiringNext: newUser.storePointsExpiringNext ?? 0,
+        storePointsExpiryDate: newUser.storePointsExpiryDate
+          ? new Date(newUser.storePointsExpiryDate).toISOString()
+          : null
       },
       { status: 201 }
     )
