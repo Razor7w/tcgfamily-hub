@@ -1,6 +1,7 @@
 'use client'
 import {
   AdminPanelSettings,
+  CloudUpload,
   Dashboard,
   Email,
   ExpandLess,
@@ -54,6 +55,14 @@ export default function AdminSidebarClient() {
               <Email />
             </ListItemIcon>
             <ListItemText primary="Correos" />
+          </ListItemButton>
+        </List>
+        <List component="div" disablePadding>
+          <ListItemButton sx={{ pl: 4 }} href="/admin/puntos">
+            <ListItemIcon>
+              <CloudUpload />
+            </ListItemIcon>
+            <ListItemText primary="Puntos (CSV)" />
           </ListItemButton>
         </List>
       </Collapse>

@@ -11,6 +11,12 @@ export interface IUser extends Document {
   phone: string
   rut: string
   popid: string
+  /** Puntos / crédito de tienda (columna Saldo del reporte). */
+  storePoints: number
+  /** Próximos puntos a vencer. */
+  storePointsExpiringNext: number
+  /** Fecha de vencimiento del bloque más próximo (si aplica). */
+  storePointsExpiryDate?: Date
   accounts: mongoose.Types.ObjectId[]
   sessions: mongoose.Types.ObjectId[]
 }
@@ -38,6 +44,17 @@ const UserSchema = new Schema<IUser>(
     popid: {
       type: String,
       default: ''
+    },
+    storePoints: {
+      type: Number,
+      default: 0
+    },
+    storePointsExpiringNext: {
+      type: Number,
+      default: 0
+    },
+    storePointsExpiryDate: {
+      type: Date
     },
     accounts: [{ type: Schema.Types.ObjectId, ref: 'Account' }],
     sessions: [{ type: Schema.Types.ObjectId, ref: 'Session' }]
