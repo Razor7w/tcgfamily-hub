@@ -3,6 +3,13 @@ import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
 import mongoose from 'mongoose'
+import { normalizeEmail, validateEmailFormat } from '@/lib/password-rules'
+import {
+  popidForStorage,
+  rutForStorage,
+  validatePopidOptional,
+  validateRutChile
+} from '@/lib/rut-chile'
 
 // GET - Obtener un usuario por ID
 export async function GET(
@@ -125,15 +132,23 @@ export async function PUT(
     // Actualizar campos si se proporcionan
     if (name !== undefined) user.name = name
     if (email !== undefined) {
+      const emailNorm = normalizeEmail(String(email))
+      const emailErr = validateEmailFormat(emailNorm)
+      if (emailErr) {
+        return NextResponse.json({ error: emailErr }, { status: 400 })
+      }
       // Verificar si el email ya está en uso por otro usuario
-      const existingUser = await User.findOne({ email, _id: { $ne: userId } })
+      const existingUser = await User.findOne({
+        email: emailNorm,
+        _id: { $ne: userId }
+      }).collation({ locale: 'en', strength: 2 })
       if (existingUser) {
         return NextResponse.json(
           { error: 'El email ya está en uso' },
           { status: 400 }
         )
       }
-      user.email = email
+      user.email = emailNorm
     }
     if (role !== undefined) {
       if (role !== 'user' && role !== 'admin') {
@@ -142,8 +157,22 @@ export async function PUT(
       user.role = role
     }
     if (phone !== undefined) user.phone = phone
-    if (rut !== undefined) user.rut = rut
-    if (popid !== undefined) user.popid = popid
+    if (rut !== undefined) {
+      const rutStr = typeof rut === 'string' ? rut : ''
+      if (rutStr.trim()) {
+        const rutErr = validateRutChile(rutStr)
+        if (rutErr) return NextResponse.json({ error: rutErr }, { status: 400 })
+        user.rut = rutForStorage(rutStr)
+      } else {
+        user.rut = ''
+      }
+    }
+    if (popid !== undefined) {
+      const popidStr = typeof popid === 'string' ? popid : ''
+      const popErr = validatePopidOptional(popidStr)
+      if (popErr) return NextResponse.json({ error: popErr }, { status: 400 })
+      user.popid = popidForStorage(popidStr)
+    }
 
     await user.save()
 

@@ -1,8 +1,8 @@
 'use client'
 
-import { Box, Grid, SwipeableDrawer, useMediaQuery, useTheme } from '@mui/material'
+import { Box, Grid, SwipeableDrawer, useTheme } from '@mui/material'
 import { usePathname } from 'next/navigation'
-import React, { useEffect } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useAppStore } from '@/store/useAppStore'
 
 const DRAWER_WIDTH = 280
@@ -21,11 +21,26 @@ export default function SidebarLayout({
   contentSize = 9
 }: SidebarLayoutProps) {
   const theme = useTheme()
-  // Mobile-first: evita mismatch SSR/cliente y menús rotos hasta redimensionar (Next + MUI).
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'), {
-    defaultMatches: false,
-    noSsr: true
-  })
+  // Importante: evita mismatch de hidratación. En SSR + primer render del cliente
+  // asumimos "mobile-first" y solo calculamos desktop tras montar.
+  const [isDesktop, setIsDesktop] = useState(false)
+  const desktopQuery = useMemo(() => {
+    // theme.breakpoints.up('md') => '@media (min-width:900px)'
+    const q = theme.breakpoints.up('md')
+    return q.startsWith('@media ') ? q.slice('@media '.length) : q
+  }, [theme])
+  useEffect(() => {
+    const mq = window.matchMedia(desktopQuery)
+    const onChange = () => setIsDesktop(mq.matches)
+    onChange()
+    if (typeof mq.addEventListener === 'function') {
+      mq.addEventListener('change', onChange)
+      return () => mq.removeEventListener('change', onChange)
+    }
+    // Safari viejo
+    mq.addListener(onChange)
+    return () => mq.removeListener(onChange)
+  }, [desktopQuery])
   const pathname = usePathname()
   const sidebarOpen = useAppStore(s => s.sidebarOpen)
   const setSidebarOpen = useAppStore(s => s.setSidebarOpen)

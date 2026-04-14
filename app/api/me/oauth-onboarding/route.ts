@@ -36,16 +36,11 @@ export async function POST(request: NextRequest) {
     const popidStr = typeof popid === 'string' ? popid : ''
 
     await connectDB()
-    const user = await User.findById(session.user.id)
+    const user = await User.findById(session.user.id).select(
+      '+passwordHash rut popid'
+    )
     if (!user) {
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
-    }
-
-    if (user.rut?.trim()) {
-      return NextResponse.json(
-        { error: 'El perfil ya fue completado.' },
-        { status: 400 }
-      )
     }
 
     const rutErr = validateRutChile(rutStr)

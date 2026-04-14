@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -18,13 +18,27 @@ import {
 type Props = {
   open: boolean
   onComplete: (data: { rut: string; popid: string }) => Promise<void>
+  initialRut?: string
+  initialPopid?: string
 }
 
-export default function OAuthOnboardingModal({ open, onComplete }: Props) {
+export default function OAuthOnboardingModal({
+  open,
+  onComplete,
+  initialRut,
+  initialPopid
+}: Props) {
   const [rut, setRut] = useState('')
   const [popid, setPopid] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    setRut(initialRut?.trim() ?? '')
+    setPopid(initialPopid?.trim() ?? '')
+    setError(null)
+  }, [open, initialRut, initialPopid])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

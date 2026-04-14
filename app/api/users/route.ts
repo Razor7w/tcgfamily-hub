@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
+import { normalizeEmail, validateEmailFormat } from '@/lib/password-rules'
+import {
+  popidForStorage,
+  rutForStorage,
+  validatePopidOptional,
+  validateRutChile
+} from '@/lib/rut-chile'
 
 // GET - Listar todos los usuarios
 export async function GET() {
@@ -95,10 +102,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Rol inválido' }, { status: 400 })
     }
 
+    const emailNorm = normalizeEmail(String(email))
+    const emailErr = validateEmailFormat(emailNorm)
+    if (emailErr) {
+      return NextResponse.json({ error: emailErr }, { status: 400 })
+    }
+
+    const rutStr = typeof rut === 'string' ? rut : ''
+    const popidStr = typeof popid === 'string' ? popid : ''
+    if (rutStr.trim()) {
+      const rutErr = validateRutChile(rutStr)
+      if (rutErr) return NextResponse.json({ error: rutErr }, { status: 400 })
+    }
+    const popidErr = validatePopidOptional(popidStr)
+    if (popidErr) {
+      return NextResponse.json({ error: popidErr }, { status: 400 })
+    }
+
     await connectDB()
 
     // Verificar si el email ya existe
-    const existingUser = await User.findOne({ email })
+    const existingUser = await User.findOne({ email: emailNorm }).collation({
+      locale: 'en',
+      strength: 2
+    })
     if (existingUser) {
       return NextResponse.json(
         { error: 'El email ya está en uso' },
@@ -108,11 +135,11 @@ export async function POST(request: NextRequest) {
 
     const newUser = await User.create({
       name,
-      email,
+      email: emailNorm,
       role,
       phone,
-      rut,
-      popid,
+      rut: rutStr.trim() ? rutForStorage(rutStr) : '',
+      popid: popidForStorage(popidStr),
       accounts: [],
       sessions: []
     })
