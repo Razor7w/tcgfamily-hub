@@ -32,6 +32,18 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Alert from '@mui/material/Alert'
 import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
+
+/** Evita que varios Select/Menu bloqueen el scroll del body a la vez en móvil (iOS/Safari). */
+const SELECT_MENU_PROPS = {
+  disableScrollLock: true,
+  slotProps: {
+    paper: {
+      sx: { maxHeight: 280 }
+    }
+  }
+} as const
 import {
   useUsers,
   useCreateUser,
@@ -44,6 +56,9 @@ import {
 import { useAppStore } from '@/store/useAppStore'
 
 export default function UsersPageRefactored() {
+  const theme = useTheme()
+  const isNarrow = useMediaQuery(theme.breakpoints.down('md'))
+
   const [openDialog, setOpenDialog] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [formData, setFormData] = useState<CreateUserData>({
@@ -295,99 +310,173 @@ export default function UsersPageRefactored() {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 3
-        }}
+    <Box sx={{ width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>
+      <Container
+        maxWidth="lg"
+        disableGutters={isNarrow}
+        sx={{ py: { xs: 2, md: 4 }, px: { xs: 1.5, sm: 2, md: 3 } }}
       >
-        <Typography variant="h4" component="h1">
-          Gestión de Usuarios (Refactorizado)
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          {/* Filtro de ejemplo usando Zustand */}
-          <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel>Filtrar por rol</InputLabel>
-            <Select
-              value={userFilter.role || ''}
-              label="Filtrar por rol"
-              onChange={e =>
-                setUserFilter({
-                  role: e.target.value as 'user' | 'admin' | undefined
-                })
-              }
-            >
-              <MenuItem value="">Todos</MenuItem>
-              <MenuItem value="user">Usuario</MenuItem>
-              <MenuItem value="admin">Admin</MenuItem>
-            </Select>
-          </FormControl>
-
-          <input
-            type="file"
-            accept=".csv"
-            style={{ display: 'none' }}
-            onChange={handleBulkUpload}
-            disabled={bulkUpload.isPending}
-            ref={fileInputRef}
-          />
-          <Button
-            variant="outlined"
-            startIcon={<UploadFileIcon />}
-            onClick={() => {
-              fileInputRef.current?.click()
+        <Stack spacing={2} sx={{ mb: 2 }}>
+          <Typography
+            variant="h4"
+            component="h1"
+            sx={{
+              fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2rem' },
+              lineHeight: 1.25,
+              pr: { xs: 0, md: 2 }
             }}
-            disabled={bulkUpload.isPending}
           >
-            {bulkUpload.isPending ? 'Cargando...' : 'Cargar CSV'}
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenDialog()}
+            Gestión de usuarios
+          </Typography>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1.5}
+            useFlexGap
+            sx={{
+              alignItems: { xs: 'stretch', sm: 'center' },
+              flexWrap: { sm: 'wrap' }
+            }}
           >
-            Nuevo Usuario
-          </Button>
-        </Box>
-      </Box>
+            <FormControl
+              size="small"
+              sx={{
+                minWidth: { xs: '100%', sm: 160 },
+                maxWidth: { xs: '100%', sm: 220 },
+                flex: { sm: '1 1 160px' }
+              }}
+            >
+              <InputLabel id="filter-role-label">Filtrar por rol</InputLabel>
+              <Select
+                labelId="filter-role-label"
+                value={userFilter.role || ''}
+                label="Filtrar por rol"
+                onChange={e =>
+                  setUserFilter({
+                    role: e.target.value as 'user' | 'admin' | undefined
+                  })
+                }
+                MenuProps={SELECT_MENU_PROPS}
+              >
+                <MenuItem value="">Todos</MenuItem>
+                <MenuItem value="user">Usuario</MenuItem>
+                <MenuItem value="admin">Admin</MenuItem>
+              </Select>
+            </FormControl>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Usuario</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell>Teléfono</TableCell>
-              <TableCell>RUT</TableCell>
-              <TableCell>PopID</TableCell>
-              <TableCell>Rol</TableCell>
-              <TableCell align="right">Acciones</TableCell>
-            </TableRow>
-          </TableHead>
+            <input
+              type="file"
+              accept=".csv"
+              style={{ display: 'none' }}
+              onChange={handleBulkUpload}
+              disabled={bulkUpload.isPending}
+              ref={fileInputRef}
+            />
+            <Button
+              variant="outlined"
+              startIcon={<UploadFileIcon />}
+              onClick={() => {
+                fileInputRef.current?.click()
+              }}
+              disabled={bulkUpload.isPending}
+              sx={{
+                textTransform: 'none',
+                whiteSpace: 'nowrap',
+                width: { xs: '100%', sm: 'auto' }
+              }}
+            >
+              {bulkUpload.isPending ? 'Cargando…' : 'Cargar CSV'}
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => handleOpenDialog()}
+              sx={{
+                textTransform: 'none',
+                whiteSpace: 'nowrap',
+                width: { xs: '100%', sm: 'auto' }
+              }}
+            >
+              Nuevo usuario
+            </Button>
+          </Stack>
+        </Stack>
+
+        <TableContainer
+          component={Paper}
+          sx={{
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            maxWidth: '100%'
+          }}
+        >
+          <Table size="small" stickyHeader>
+            <TableHead>
+              <TableRow>
+                <TableCell>Usuario</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                  Teléfono
+                </TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                  RUT
+                </TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                  PopID
+                </TableCell>
+                <TableCell>Rol</TableCell>
+                <TableCell align="right">Acciones</TableCell>
+              </TableRow>
+            </TableHead>
           <TableBody>
             {filteredUsers.map(user => (
               <TableRow key={user.id}>
-                <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <TableCell sx={{ minWidth: { xs: 120, sm: 180 } }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: { xs: 1, sm: 2 },
+                      minWidth: 0
+                    }}
+                  >
                     {user.image ? (
-                      <Avatar src={user.image} alt={user.name} />
+                      <Avatar
+                        src={user.image}
+                        alt={user.name}
+                        sx={{ width: 36, height: 36, flexShrink: 0 }}
+                      />
                     ) : (
-                      <Avatar>{user.name?.[0]?.toUpperCase() || 'U'}</Avatar>
+                      <Avatar sx={{ width: 36, height: 36, flexShrink: 0 }}>
+                        {user.name?.[0]?.toUpperCase() || 'U'}
+                      </Avatar>
                     )}
-                    <Typography>{user.name || 'Sin nombre'}</Typography>
+                    <Typography variant="body2" noWrap title={user.name || ''}>
+                      {user.name || 'Sin nombre'}
+                    </Typography>
                   </Box>
                 </TableCell>
-                <TableCell>{user.email || 'Sin email'}</TableCell>
-                <TableCell>{user.phone || '-'}</TableCell>
-                <TableCell>{user.rut || '-'}</TableCell>
-                <TableCell>{user.popid || '-'}</TableCell>
+                <TableCell sx={{ maxWidth: { xs: 140, sm: 220 } }}>
+                  <Typography variant="body2" noWrap title={user.email || ''}>
+                    {user.email || 'Sin email'}
+                  </Typography>
+                </TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                  {user.phone || '-'}
+                </TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                  {user.rut || '-'}
+                </TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                  {user.popid || '-'}
+                </TableCell>
                 <TableCell>
-                  <FormControl size="small" sx={{ minWidth: 120 }}>
+                  <FormControl
+                    size="small"
+                    sx={{ minWidth: { xs: 100, sm: 120 }, maxWidth: '100%' }}
+                  >
                     <Select
                       value={user.role}
+                      aria-label={`Rol de ${user.name || user.email}`}
                       onChange={e =>
                         handleRoleChange(
                           user.id,
@@ -395,18 +484,20 @@ export default function UsersPageRefactored() {
                         )
                       }
                       disabled={updateUser.isPending}
+                      MenuProps={SELECT_MENU_PROPS}
                     >
                       <MenuItem value="user">Usuario</MenuItem>
                       <MenuItem value="admin">Admin</MenuItem>
                     </Select>
                   </FormControl>
                 </TableCell>
-                <TableCell align="right">
+                <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                   <IconButton
                     color="info"
                     onClick={() => setPointsModalUser(user)}
                     size="small"
                     aria-label="Ver puntos / crédito de tienda"
+                    sx={{ touchAction: 'manipulation' }}
                   >
                     <VisibilityIcon />
                   </IconButton>
@@ -414,6 +505,8 @@ export default function UsersPageRefactored() {
                     color="primary"
                     onClick={() => handleOpenDialog(user)}
                     size="small"
+                    aria-label="Editar usuario"
+                    sx={{ touchAction: 'manipulation' }}
                   >
                     <EditIcon />
                   </IconButton>
@@ -422,6 +515,8 @@ export default function UsersPageRefactored() {
                     onClick={() => handleDelete(user.id)}
                     size="small"
                     disabled={deleteUser.isPending}
+                    aria-label="Eliminar usuario"
+                    sx={{ touchAction: 'manipulation' }}
                   >
                     <DeleteIcon />
                   </IconButton>
@@ -438,6 +533,7 @@ export default function UsersPageRefactored() {
         onClose={handleCloseDialog}
         maxWidth="sm"
         fullWidth
+        scroll="paper"
       >
         <DialogTitle>
           {editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}
@@ -493,6 +589,7 @@ export default function UsersPageRefactored() {
                     role: e.target.value as 'user' | 'admin'
                   })
                 }
+                MenuProps={SELECT_MENU_PROPS}
               >
                 <MenuItem value="user">Usuario</MenuItem>
                 <MenuItem value="admin">Admin</MenuItem>
@@ -585,6 +682,7 @@ export default function UsersPageRefactored() {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Container>
+      </Container>
+    </Box>
   )
 }

@@ -46,7 +46,10 @@ export default function SidebarLayout({
         anchor="left"
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        ModalProps={{ keepMounted: true }}
+        disableScrollLock
+        ModalProps={{
+          keepMounted: false
+        }}
         sx={{
           display: { xs: 'block', md: 'none' },
           '& .MuiDrawer-paper': {
