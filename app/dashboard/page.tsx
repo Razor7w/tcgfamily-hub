@@ -16,6 +16,7 @@ import { CircularProgress, Stack } from '@mui/material'
 import { useSession } from 'next-auth/react'
 import { InfoOutlined, MarkunreadMailbox, Storefront } from '@mui/icons-material'
 import CardMails from '@/components/dashboard/CardMails'
+import MailFlowExplainer from '@/components/mails/MailFlowExplainer'
 import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
 import Link from 'next/link'
 import { useStoreCredit } from '@/hooks/useStoreCredit'
@@ -76,6 +77,7 @@ export default function DashboardPage() {
               }
             />
             <CardContent>
+              <MailFlowExplainer variant="compact" />
               <CardMails />
             </CardContent>
           </Card>

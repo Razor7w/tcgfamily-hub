@@ -41,6 +41,12 @@ export interface RegisterMailData {
   toRut: string;
   /** Comentario u observación (opcional). */
   observations?: string;
+  /**
+   * `onlyReceptor`: mismo flujo que un usuario (emisor = sesión, solo `toRut`).
+   * Necesario si el emisor es admin para no exigir `fromUserId`/`toUserId`.
+   * `all`: reservado para creación completa (no se usa en el hook de registro).
+   */
+  mode?: "onlyReceptor" | "all";
 }
 
 /** Datos para actualizar un mail (todos opcionales). */

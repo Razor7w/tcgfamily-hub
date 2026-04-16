@@ -81,7 +81,10 @@ function Example1BasicQuery() {
                   De: {mail.fromUserId.name} ({mail.fromUserId.rut})
                 </Typography>
                 <Typography variant="body2">
-                  Para: {mail.toUserId.name} ({mail.toUserId.rut})
+                  Para:{' '}
+                  {mail.toUserId
+                    ? `${mail.toUserId.name ?? '—'} (${mail.toUserId.rut ?? '—'})`
+                    : '—'}
                 </Typography>
               </Box>
             ))}

@@ -96,7 +96,7 @@ export default function DashboardMailPage() {
             (typeof from === 'object' ? from.name : undefined) ?? 'Sin nombre',
           rut: (typeof from === 'object' ? from.rut : undefined) ?? ''
         })
-      if (tId && !map.has(tId))
+      if (to && tId && !map.has(tId))
         map.set(tId, {
           id: tId,
           name: (typeof to === 'object' ? to.name : undefined) ?? 'Sin nombre',

@@ -140,12 +140,14 @@ export default function UsersPageRefactored() {
 
   // Guardar usuario (crear o actualizar)
   const handleSave = async () => {
-    const rutErr = getRutFieldError(formData.rut, false)
+    const rutRaw = formData.rut ?? ''
+    const popidRaw = formData.popid ?? ''
+    const rutErr = getRutFieldError(rutRaw, false)
     if (rutErr) {
       setSnackbar({ open: true, message: rutErr, severity: 'error' })
       return
     }
-    const popErr = validatePopidOptional(formData.popid)
+    const popErr = validatePopidOptional(popidRaw)
     if (popErr) {
       setSnackbar({ open: true, message: popErr, severity: 'error' })
       return
@@ -586,29 +588,29 @@ export default function UsersPageRefactored() {
             <TextField
               label="RUT"
               fullWidth
-              value={formData.rut}
+              value={formData.rut ?? ''}
               onChange={e => setFormData({ ...formData, rut: e.target.value })}
               onBlur={() =>
                 setFormData(prev => ({
                   ...prev,
-                  rut: formatRutOnBlur(prev.rut)
+                  rut: formatRutOnBlur(prev.rut ?? '')
                 }))
               }
               placeholder="12.345.678-9"
               error={
-                Boolean(formData.rut.trim()) &&
-                getRutFieldError(formData.rut, false) !== null
+                Boolean((formData.rut ?? '').trim()) &&
+                getRutFieldError(formData.rut ?? '', false) !== null
               }
               helperText={
-                getRutFieldError(formData.rut, false) ??
-                (!formData.rut.trim() ? 'Opcional.' : undefined)
+                getRutFieldError(formData.rut ?? '', false) ??
+                (!(formData.rut ?? '').trim() ? 'Opcional.' : undefined)
               }
               inputProps={{ maxLength: 20 }}
             />
             <TextField
               label="PopID"
               fullWidth
-              value={formData.popid}
+              value={formData.popid ?? ''}
               onChange={e =>
                 setFormData({
                   ...formData,
@@ -617,8 +619,8 @@ export default function UsersPageRefactored() {
               }
               helperText="Opcional. Solo números."
               error={
-                Boolean(formData.popid.trim()) &&
-                validatePopidOptional(formData.popid) !== null
+                Boolean((formData.popid ?? '').trim()) &&
+                validatePopidOptional(formData.popid ?? '') !== null
               }
               inputProps={{ maxLength: 64, inputMode: 'numeric', pattern: '[0-9]*' }}
             />

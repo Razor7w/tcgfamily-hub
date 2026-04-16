@@ -92,8 +92,20 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     const body = await request.json();
-    const { fromUserId, toUserId, toRut, isRecived, isRecivedInStore, observations } =
-      body;
+    const {
+      fromUserId,
+      toUserId,
+      toRut,
+      isRecived,
+      isRecivedInStore,
+      observations,
+      mode: rawMode,
+    } = body;
+
+    /** Admin: `all` = emisor/destinatario por ID (panel). `onlyReceptor` = como usuario (solo toRut). */
+    const createMode =
+      rawMode === "onlyReceptor" ? "onlyReceptor" : "all";
+    const adminFullCreate = session.user.role === "admin" && createMode === "all";
 
     const OBS_MAX = 2000;
     const normalizeObs = (v: unknown) => {
@@ -111,8 +123,8 @@ export async function POST(request: NextRequest) {
     let resolvedToUserId: string | null = null;
     let resolvedToRut: string | null = null;
 
-    if (isAdmin) {
-      // Validar que se envíen los IDs requeridos
+    if (adminFullCreate) {
+      // Admin en panel: emisor y destinatario por ID
       if (!fromUserId || !toUserId) {
         return NextResponse.json(
           { error: "fromUserId y toUserId son requeridos" },
@@ -122,7 +134,7 @@ export async function POST(request: NextRequest) {
       resolvedFromUserId = String(fromUserId);
       resolvedToUserId = String(toUserId);
     } else {
-      // Usuario regular registra solo por RUT del receptor
+      // Usuario, o admin con mode "onlyReceptor": solo RUT del receptor (emisor = sesión)
       const sessionUserId = session.user.id as string | undefined;
       if (!sessionUserId) {
         return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -178,7 +190,7 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-    if (isAdmin) {
+    if (adminFullCreate) {
       resolvedToRut = String(toUser?.rut ?? "").trim();
       if (!resolvedToRut) {
         return NextResponse.json(
@@ -205,9 +217,9 @@ export async function POST(request: NextRequest) {
           fromUserId: resolvedFromUserId,
           ...(resolvedToUserId ? { toUserId: resolvedToUserId } : {}),
           toRut: resolvedToRut,
-          isRecived: isAdmin ? (isRecived ?? false) : false,
-          isRecivedInStore: isAdmin ? (isRecivedInStore ?? false) : false,
-          observations: isAdmin
+          isRecived: adminFullCreate ? (isRecived ?? false) : false,
+          isRecivedInStore: adminFullCreate ? (isRecivedInStore ?? false) : false,
+          observations: adminFullCreate
             ? normalizeObs(observations ?? "")
             : normalizeObs(observations),
         });

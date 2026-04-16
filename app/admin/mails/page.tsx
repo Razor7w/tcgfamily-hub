@@ -77,7 +77,8 @@ export function getElapsedBadge(days: number): {
   return { label, color: 'error' }
 }
 
-function mailUserId(ref: { _id: string } | string): string {
+function mailUserId(ref: { _id: string } | string | null | undefined): string {
+  if (ref == null) return ''
   return typeof ref === 'object' ? ref._id : String(ref)
 }
 
@@ -165,14 +166,8 @@ export default function MailsPage() {
   const handleOpenDialog = (mail?: Mail) => {
     if (mail) {
       setEditingMail(mail)
-      const fromId =
-        typeof mail.fromUserId === 'object'
-          ? mail.fromUserId._id
-          : String(mail.fromUserId)
-      const toId =
-        typeof mail.toUserId === 'object'
-          ? mail.toUserId._id
-          : String(mail.toUserId)
+      const fromId = mailUserId(mail.fromUserId)
+      const toId = mailUserId(mail.toUserId)
       setFormData({
         fromUserId: fromId,
         toUserId: toId,

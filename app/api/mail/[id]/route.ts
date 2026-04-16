@@ -22,6 +22,18 @@ async function getMailOr404(mailId: mongoose.Types.ObjectId) {
   return mail;
 }
 
+/** ObjectId string desde ref poblada `{ _id }` o id suelto. */
+function refUserIdString(
+  ref: unknown,
+): string | null {
+  if (ref == null) return null;
+  if (typeof ref === "object" && "_id" in ref) {
+    const id = (ref as { _id: unknown })._id;
+    return id != null ? String(id) : null;
+  }
+  return String(ref);
+}
+
 // GET - Obtener un mail por ID
 export async function GET(
   _request: NextRequest,
@@ -49,6 +61,24 @@ export async function GET(
         { error: "Mail no encontrado" },
         { status: 404 },
       );
+    }
+
+    const isAdmin = session.user.role === "admin";
+    if (!isAdmin) {
+      const sessionUserId = session.user.id as string | undefined;
+      if (!sessionUserId) {
+        return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+      }
+      const fromId = refUserIdString(mail.fromUserId);
+      const toId = refUserIdString(mail.toUserId);
+      const isSender = fromId === sessionUserId;
+      const isRecipient = toId != null && toId === sessionUserId;
+      if (!isSender && !isRecipient) {
+        return NextResponse.json(
+          { error: "Mail no encontrado" },
+          { status: 404 },
+        );
+      }
     }
 
     return NextResponse.json({ mail }, { status: 200 });

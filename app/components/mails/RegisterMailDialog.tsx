@@ -57,7 +57,8 @@ export default function RegisterMailDialog({ open, onClose }: RegisterMailDialog
     if (getRutFieldError(rut, true)) return
     await registerMail.mutateAsync({
       toRut: normalizeRutForApi(rut),
-      observations: observations.trim() || undefined
+      observations: observations.trim() || undefined,
+      mode: 'onlyReceptor'
     })
     handleClose()
   }
@@ -69,7 +70,9 @@ export default function RegisterMailDialog({ open, onClose }: RegisterMailDialog
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1 }}>
           <Typography variant="body2" color="text.secondary">
             Ingresa el RUT del receptor. El correo quedará como{' '}
-            <strong>pendiente de ingreso en tienda</strong> hasta que sea recibido.
+            <strong>pendiente de ingreso en tienda</strong> hasta que la tienda lo confirme.
+            Se generará un <strong>código único</strong>: úsalo para identificar el envío en tienda y,
+            una vez ingresado el paquete, para <strong>solicitar o retirar</strong> con el mismo código.
           </Typography>
 
           <TextField
