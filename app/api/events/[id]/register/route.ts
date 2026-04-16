@@ -146,6 +146,20 @@ export async function DELETE(
       );
     }
 
+    const myEntry = existing.participants.find(
+      (p: { userId?: mongoose.Types.ObjectId; confirmed?: boolean }) =>
+        p.userId && String(p.userId) === String(userId),
+    );
+    if (myEntry?.confirmed) {
+      return NextResponse.json(
+        {
+          error:
+            "No puedes desinscribirte: tu asistencia ya fue confirmada por la tienda.",
+        },
+        { status: 400 },
+      );
+    }
+
     existing.participants = existing.participants.filter(
       (p: { userId?: mongoose.Types.ObjectId }) =>
         !(p.userId && String(p.userId) === String(userId)),

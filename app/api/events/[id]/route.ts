@@ -16,7 +16,7 @@ type LeanEvent = {
   formatNotes?: string;
   prizesNotes?: string;
   location?: string;
-  participants?: { displayName: string; userId?: unknown }[];
+  participants?: { displayName: string; userId?: unknown; confirmed?: boolean }[];
 };
 
 export async function GET(
@@ -51,6 +51,7 @@ export async function GET(
         String(p.userId) === uid,
     );
     const myRegistration = mine?.displayName ?? null;
+    const myAttendanceConfirmed = Boolean(mine?.confirmed);
     const event = {
       _id: String(doc._id),
       startsAt: startsAt.toISOString(),
@@ -67,8 +68,11 @@ export async function GET(
       participantCount: parts.length,
       canPreRegister: canPreRegisterNow(startsAt, now),
       myRegistration,
+      myAttendanceConfirmed,
       canUnregister:
-        Boolean(myRegistration) && canUnregisterNow(startsAt, now),
+        Boolean(myRegistration) &&
+        canUnregisterNow(startsAt, now) &&
+        !myAttendanceConfirmed,
     };
 
     return NextResponse.json({ event }, { status: 200 });

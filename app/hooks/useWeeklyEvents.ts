@@ -24,6 +24,8 @@ export interface PublicWeeklyEvent {
   participantCount: number;
   canPreRegister: boolean;
   myRegistration: string | null;
+  /** Confirmado por admin en el panel (asistencia). */
+  myAttendanceConfirmed: boolean;
   canUnregister: boolean;
 }
 
@@ -200,6 +202,7 @@ export function useConfirmParticipantParticipation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-weekly-events"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-events"] });
     },
   });
 }

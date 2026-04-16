@@ -17,21 +17,29 @@ function toPublicEvent(
     formatNotes: string;
     prizesNotes: string;
     location: string;
-    participants: { displayName: string; userId?: unknown }[];
+    participants: {
+      displayName: string;
+      userId?: unknown;
+      confirmed?: boolean;
+    }[];
   },
   now: Date,
   currentUserId?: string,
 ) {
   const startsAt = doc.startsAt;
   let myRegistration: string | null = null;
+  let myAttendanceConfirmed = false;
   if (currentUserId) {
     const mine = doc.participants.find(
       (p) => p.userId && String(p.userId) === currentUserId,
     );
     myRegistration = mine?.displayName ?? null;
+    myAttendanceConfirmed = Boolean(mine?.confirmed);
   }
   const canUnregister =
-    Boolean(myRegistration) && canUnregisterNow(startsAt, now);
+    Boolean(myRegistration) &&
+    canUnregisterNow(startsAt, now) &&
+    !myAttendanceConfirmed;
   return {
     _id: String(doc._id),
     startsAt: startsAt.toISOString(),
@@ -48,6 +56,7 @@ function toPublicEvent(
     participantCount: doc.participants.length,
     canPreRegister: canPreRegisterNow(startsAt, now),
     myRegistration,
+    myAttendanceConfirmed,
     canUnregister,
   };
 }

@@ -459,7 +459,11 @@ export default function WeeklyEventsSection({
                               Te preinscribiste como:{" "}
                               <strong>{selectedEvent.myRegistration}</strong>
                             </Typography>
-                            {selectedEvent.canUnregister ? (
+                            {selectedEvent.myAttendanceConfirmed ? (
+                              <Alert severity="success">
+                                Asistencia confirmada
+                              </Alert>
+                            ) : selectedEvent.canUnregister ? (
                               <Button
                                 type="button"
                                 variant="outlined"
