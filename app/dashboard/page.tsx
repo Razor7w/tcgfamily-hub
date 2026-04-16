@@ -20,6 +20,7 @@ import MailFlowExplainer from '@/components/mails/MailFlowExplainer'
 import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
 import Link from 'next/link'
 import { useStoreCredit } from '@/hooks/useStoreCredit'
+import WeeklyEventsSection from '@/components/events/WeeklyEventsSection'
 
 export default function DashboardPage() {
   const { data: session } = useSession()
@@ -56,6 +57,8 @@ export default function DashboardPage() {
         </Typography>
 
         <Stack spacing={3}>
+          <WeeklyEventsSection />
+
           <Card>
             <CardHeader
               title="Últimos correos"

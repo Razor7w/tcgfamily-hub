@@ -5,6 +5,7 @@ import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
 import {
   Email as EmailIcon,
+  Event as EventIcon,
   People as PeopleIcon,
   CloudUpload as CloudUploadIcon,
   Settings as SettingsIcon,
@@ -27,6 +28,7 @@ interface Module {
 
 const modules: Module[] = [
   { id: "1", name: "Usuarios", icon: <PeopleIcon />, route: "/admin/users" },
+  { id: "10", name: "Eventos", icon: <EventIcon />, route: "/admin/eventos" },
   { id: "2", name: "Correos", icon: <EmailIcon />, route: "/admin/mails" },
   {
     id: "3",

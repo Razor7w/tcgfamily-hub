@@ -1,6 +1,7 @@
 'use client'
 import {
   AdminPanelSettings,
+  CalendarMonth,
   CloudUpload,
   Dashboard,
   Email,
@@ -47,6 +48,14 @@ export default function AdminSidebarClient() {
               <People />
             </ListItemIcon>
             <ListItemText primary="Usuarios" />
+          </ListItemButton>
+        </List>
+        <List component="div" disablePadding>
+          <ListItemButton sx={{ pl: 4 }} href="/admin/eventos">
+            <ListItemIcon>
+              <CalendarMonth />
+            </ListItemIcon>
+            <ListItemText primary="Eventos" />
           </ListItemButton>
         </List>
         <List component="div" disablePadding>

@@ -1,0 +1,79 @@
+import { NextResponse } from "next/server";
+import { auth } from "@/auth";
+import connectDB from "@/lib/mongodb";
+import WeeklyEvent from "@/models/WeeklyEvent";
+import { canPreRegisterNow } from "@/lib/weekly-events";
+
+type LeanEvent = {
+  _id: unknown;
+  startsAt: Date;
+  title: string;
+  kind: string;
+  game: string;
+  pokemonSubtype?: string;
+  priceClp: number;
+  maxParticipants: number;
+  formatNotes?: string;
+  prizesNotes?: string;
+  location?: string;
+  participants?: { displayName: string; userId?: unknown }[];
+};
+
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    const session = await auth();
+    if (!session) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const { id } = await context.params;
+    if (!id?.trim()) {
+      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+    }
+
+    await connectDB();
+    const now = new Date();
+
+    const doc = await WeeklyEvent.findById(id).lean<LeanEvent | null>();
+    if (!doc) {
+      return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+    }
+
+    const startsAt = doc.startsAt;
+    const uid = session.user.id;
+    const parts = doc.participants ?? [];
+    const mine = parts.find(
+      (p) =>
+        p.userId &&
+        String(p.userId) === uid,
+    );
+    const event = {
+      _id: String(doc._id),
+      startsAt: startsAt.toISOString(),
+      title: doc.title,
+      kind: doc.kind,
+      game: doc.game,
+      pokemonSubtype: doc.pokemonSubtype ?? null,
+      priceClp: doc.priceClp,
+      maxParticipants: doc.maxParticipants,
+      formatNotes: doc.formatNotes ?? "",
+      prizesNotes: doc.prizesNotes ?? "",
+      location: doc.location ?? "",
+      participantNames: parts.map((p) => p.displayName),
+      participantCount: parts.length,
+      canPreRegister: canPreRegisterNow(startsAt, now),
+      myRegistration: mine?.displayName ?? null,
+    };
+
+    return NextResponse.json({ event }, { status: 200 });
+  } catch (error) {
+    console.error("GET /api/events/[id]:", error);
+    return NextResponse.json(
+      { error: "Error al obtener evento" },
+      { status: 500 },
+    );
+  }
+}

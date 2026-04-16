@@ -1,4 +1,4 @@
-import { Email, Home, Person } from '@mui/icons-material'
+import { Email, Event, Home, Person } from '@mui/icons-material'
 import {
   Divider,
   List,
@@ -23,6 +23,14 @@ export default function DashboardSidebar({ isAdmin }: { isAdmin: boolean }) {
                 <Home />
               </ListItemIcon>
               <ListItemText primary="Inicio" />
+            </ListItemButton>
+          </ListItem>
+          <ListItem disablePadding>
+            <ListItemButton href="/dashboard/eventos">
+              <ListItemIcon>
+                <Event />
+              </ListItemIcon>
+              <ListItemText primary="Eventos" />
             </ListItemButton>
           </ListItem>
           <ListItem disablePadding>
