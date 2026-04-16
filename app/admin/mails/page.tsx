@@ -31,6 +31,7 @@ import StorefrontIcon from '@mui/icons-material/Storefront'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 import Tooltip from '@mui/material/Tooltip'
 import Chip from '@mui/material/Chip'
+import Stack from '@mui/material/Stack'
 import {
   useMails,
   useCreateMail,
@@ -47,6 +48,7 @@ import {
   type CreateUserData
 } from '@/hooks/useUsers'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
+import { formatMailLogDateTime } from '@/lib/mail-status'
 
 function userLabel(u: User) {
   const name = u.name || 'Sin nombre'
@@ -644,6 +646,14 @@ export default function MailsPage() {
                         sx={{ fontWeight: 500 }}
                       />
                     </Box>
+                    <Stack spacing={0.25} sx={{ mb: 1 }}>
+                      <Typography variant="caption" color="text.secondary" component="p" sx={{ m: 0 }}>
+                        <strong>Creado:</strong> {formatMailLogDateTime(mail.createdAt)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" component="p" sx={{ m: 0 }}>
+                        <strong>Actualizado:</strong> {formatMailLogDateTime(mail.updatedAt)}
+                      </Typography>
+                    </Stack>
                     <Typography variant="body2" sx={{ mb: 0.5 }}>
                       <strong>De:</strong>{' '}
                       {from
