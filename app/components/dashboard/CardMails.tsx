@@ -18,11 +18,12 @@ import {
   CircularProgress,
   Stack
 } from '@mui/material'
-import { CalendarMonth, Comment, NorthEast, SouthWest } from '@mui/icons-material'
+import { CalendarMonth, Comment } from '@mui/icons-material'
 import ButtonBarCode from '../molecule/ButtonBarCode'
 import { useMyMails } from '@/hooks/useMails'
 import { useSession } from 'next-auth/react'
 import { getMailStatusChip } from '@/lib/mail-status'
+import { format } from 'rut.js'
 
 const PENDING_MAILS_LIMIT = 4
 
@@ -107,87 +108,84 @@ export default function CardMails() {
             })
             const counterparty = isEmisor
               ? to
-                ? `${to.name ?? '-'} (${to.rut ?? '-'})`
+                ? `${to.name ?? '-'} (${format(to.rut ?? '') ?? '-'})`
                 : mail.toRut
-                  ? `RUT: ${mail.toRut}`
+                  ? `RUT: ${format(mail.toRut ?? '') ?? '-'}`
                   : '-'
               : from
-                ? `${from.name ?? '-'} (${from.rut ?? '-'})`
+                ? `${from.name ?? '-'} (${format(from.rut ?? '') ?? '-'})`
                 : '-'
 
-            return (
-              <Paper
-                key={mail._id}
-                variant="outlined"
-                sx={{
-                  p: 1.25,
-                  minWidth: 0,
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  justifyContent: 'space-between',
-                  gap: 1
-                }}
-              >
-                <Box sx={{ minWidth: 0, flex: 1 }}>
-                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                    <Chip
-                      size="small"
-                      variant="outlined"
-                      color={isEmisor ? 'primary' : 'default'}
-                      icon={isEmisor ? <NorthEast /> : <SouthWest />}
-                      label={isEmisor ? 'Emisor' : 'Receptor'}
-                      sx={{ fontWeight: 600 }}
-                    />
+              return (
+                <Paper
+                  key={mail._id}
+                  variant="outlined"
+                  sx={{
+                    p: 1.5,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: 1.2,
+                    height: '100%'
+                  }}
+                >
+                  {/* HEADER */}
+                  <Stack direction="row" justifyContent="space-between" alignItems="center">
                     <Chip
                       size="small"
                       color={status.color}
                       label={status.label}
-                      sx={{ fontWeight: 600 }}
+                      sx={{ fontWeight: 700 }}
                     />
-                    <Stack direction="row" spacing={0.75} alignItems="center">
+              
+                    <Typography variant="caption" color="text.secondary">
+                      Código: {mail.code ?? mail._id}
+                    </Typography>
+                  </Stack>
+              
+                  {/* MAIN CONTENT */}
+                  <Box>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        fontWeight: 600,
+                        lineHeight: 1.2,
+                        wordBreak: 'break-word'
+                      }}
+                    >
+                      {counterparty}
+                    </Typography>
+              
+                    <Typography variant="caption" color="text.secondary">
+                      {isEmisor ? 'Enviado por ti' : 'Recibido por ti'}
+                    </Typography>
+                  </Box>
+              
+                  {/* FOOTER */}
+                  <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Stack direction="row" spacing={0.5} alignItems="center">
                       <CalendarMonth fontSize="small" color="action" />
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="caption" color="text.secondary">
                         {dateLabel}
                       </Typography>
                     </Stack>
+              
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      {mail.observations?.trim() && (
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => setCommentOpen(mail._id)}
+                        >
+                          <Comment fontSize="small" />
+                        </IconButton>
+                      )}
+              
+                      <ButtonBarCode id={mail.code ?? mail._id} />
+                    </Stack>
                   </Stack>
-
-                  <Typography
-                    variant="body2"
-                    sx={{ mt: 0.5, wordBreak: 'break-word' }}
-                  >
-                    {counterparty}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                    Código: {mail.code ?? mail._id}
-                  </Typography>
-                </Box>
-
-                <Box
-                  sx={{
-                    flexShrink: 0,
-                    alignSelf: 'center',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 0.25
-                  }}
-                >
-                  {mail.observations?.trim() ? (
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      aria-label="Ver comentarios"
-                      onClick={() => setCommentOpen(mail._id)}
-                    >
-                      <Comment fontSize="small" />
-                    </IconButton>
-                  ) : null}
-                  <ButtonBarCode id={mail.code ?? mail._id} />
-                </Box>
-              </Paper>
-            )
+                </Paper>
+              )
           })}
           </Box>
         </CardContent>

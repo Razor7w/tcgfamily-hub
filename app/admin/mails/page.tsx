@@ -121,6 +121,57 @@ export default function MailsPage() {
 
   const allMails = useMemo(() => mailsRes?.mails ?? [], [mailsRes?.mails])
 
+  /** Usuarios registrados que aparecen como emisor en al menos un correo cargado. */
+  const filterFromOptions = useMemo(() => {
+    const ids = new Set<string>()
+    for (const m of allMails) {
+      const id = mailUserId(m.fromUserId)
+      if (id) ids.add(id)
+    }
+    return users
+      .filter(u => ids.has(u.id))
+      .sort((a, b) =>
+        (a.name || a.email || '').localeCompare(b.name || b.email || '', 'es', {
+          sensitivity: 'base'
+        })
+      )
+  }, [allMails, users])
+
+  /** Usuarios registrados que aparecen como receptor (toUserId) en al menos un correo. */
+  const filterToOptions = useMemo(() => {
+    const ids = new Set<string>()
+    for (const m of allMails) {
+      const id = mailUserId(m.toUserId)
+      if (id) ids.add(id)
+    }
+    return users
+      .filter(u => ids.has(u.id))
+      .sort((a, b) =>
+        (a.name || a.email || '').localeCompare(b.name || b.email || '', 'es', {
+          sensitivity: 'base'
+        })
+      )
+  }, [allMails, users])
+
+  /** Quitar filtro si ese usuario ya no figura en ningún correo (p. ej. tras borrar). */
+  useEffect(() => {
+    const ids = new Set<string>()
+    for (const m of allMails) {
+      const id = mailUserId(m.fromUserId)
+      if (id) ids.add(id)
+    }
+    setFilterFromUser(prev => (prev && !ids.has(prev.id) ? null : prev))
+  }, [allMails])
+
+  useEffect(() => {
+    const ids = new Set<string>()
+    for (const m of allMails) {
+      const id = mailUserId(m.toUserId)
+      if (id) ids.add(id)
+    }
+    setFilterToUser(prev => (prev && !ids.has(prev.id) ? null : prev))
+  }, [allMails])
+
   const mails = useMemo(() => {
     let list = allMails
     const q = searchId.trim().toLowerCase()
@@ -460,17 +511,18 @@ export default function MailsPage() {
           />
           <Autocomplete
             size="small"
-            options={users}
+            options={filterFromOptions}
             value={filterFromUser}
             onChange={(_, v) => setFilterFromUser(v)}
             getOptionLabel={userLabel}
             isOptionEqualToValue={(a, b) => a.id === b.id}
             sx={{ minWidth: 260 }}
+            noOptionsText="Ningún remitente en los correos cargados"
             renderInput={params => (
               <TextField
                 {...params}
                 label="Filtrar por remitente (De)"
-                placeholder="Buscar usuario..."
+                placeholder="Solo usuarios con correos como emisor"
               />
             )}
             filterOptions={(opts, { inputValue }) => {
@@ -490,17 +542,18 @@ export default function MailsPage() {
           />
           <Autocomplete
             size="small"
-            options={users}
+            options={filterToOptions}
             value={filterToUser}
             onChange={(_, v) => setFilterToUser(v)}
             getOptionLabel={userLabel}
             isOptionEqualToValue={(a, b) => a.id === b.id}
             sx={{ minWidth: 260 }}
+            noOptionsText="Ningún destinatario en los correos cargados"
             renderInput={params => (
               <TextField
                 {...params}
                 label="Filtrar por destinatario (Para)"
-                placeholder="Buscar usuario..."
+                placeholder="Solo usuarios con correos como receptor"
               />
             )}
             filterOptions={(opts, { inputValue }) => {
@@ -561,12 +614,11 @@ export default function MailsPage() {
               gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }
             }}
           >
-            {paginatedMails.map((mail, index) => {
+            {paginatedMails.map(mail => {
               const from =
                 typeof mail.fromUserId === 'object' ? mail.fromUserId : null
               const to =
                 typeof mail.toUserId === 'object' ? mail.toUserId : null
-              const rowNum = (page - 1) * PAGE_SIZE + index + 1
               const days = getElapsedDays(mail.createdAt)
               const elapsed = getElapsedBadge(days)
               return (
@@ -582,7 +634,7 @@ export default function MailsPage() {
                       }}
                     >
                       <Typography variant="caption" color="text.secondary">
-                        Nº {rowNum}
+                        Código
                         {mail.code ? ` · ${mail.code}` : ''}
                       </Typography>
                       <Chip
