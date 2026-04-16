@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -18,48 +18,20 @@ import { InfoOutlined, MarkunreadMailbox, Storefront } from '@mui/icons-material
 import CardMails from '@/components/dashboard/CardMails'
 import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
 import Link from 'next/link'
-
-type StoreCredit = {
-  storePoints: number
-  storePointsExpiringNext: number
-  storePointsExpiryDate: string | null
-}
+import { useStoreCredit } from '@/hooks/useStoreCredit'
 
 export default function DashboardPage() {
   const { data: session } = useSession()
-  const [credit, setCredit] = useState<StoreCredit | null>(null)
-  const [creditLoading, setCreditLoading] = useState(true)
-  const [creditError, setCreditError] = useState<string | null>(null)
+  const {
+    data: credit,
+    isPending: creditLoading,
+    isError: creditQueryError
+  } = useStoreCredit()
+  const creditError = creditQueryError
+    ? 'No se pudieron cargar los puntos'
+    : null
   const [storePointsInfoOpen, setStorePointsInfoOpen] = useState(false)
   const [registerMailOpen, setRegisterMailOpen] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetch('/api/me/store-credit')
-        if (!res.ok) {
-          if (!cancelled) {
-            setCreditError('No se pudieron cargar los puntos')
-            setCredit(null)
-          }
-          return
-        }
-        const data = (await res.json()) as StoreCredit
-        if (!cancelled) {
-          setCredit(data)
-          setCreditError(null)
-        }
-      } catch {
-        if (!cancelled) setCreditError('No se pudieron cargar los puntos')
-      } finally {
-        if (!cancelled) setCreditLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   const expiryLabel =
     credit?.storePointsExpiryDate &&
