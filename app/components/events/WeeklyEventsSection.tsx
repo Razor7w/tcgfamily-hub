@@ -12,6 +12,10 @@ import IconButton from "@mui/material/IconButton";
 import Chip from "@mui/material/Chip";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
@@ -147,11 +151,17 @@ export default function WeeklyEventsSection({
   const selectedEvent =
     eventsForDay.find((e) => e._id === selectedEventId) ?? eventsForDay[0] ?? null;
 
+  const [participantsModalOpen, setParticipantsModalOpen] = useState(false);
+
   const [nameInput, setNameInput] = useState("");
   useEffect(() => {
     const n = session?.user?.name?.trim();
     setNameInput(n ?? "");
   }, [session?.user?.name, selectedEvent?._id]);
+
+  useEffect(() => {
+    setParticipantsModalOpen(false);
+  }, [selectedEvent?._id]);
 
   const dayKeys = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
@@ -520,38 +530,77 @@ export default function WeeklyEventsSection({
                           </Stack>
                         )}
 
-                        <Typography variant="subtitle2" sx={{ mt: 3, mb: 1 }}>
-                          Lista de preinscritos
-                        </Typography>
-                        <List dense disablePadding>
-                          {selectedEvent.participantNames.length === 0 ? (
-                            <Typography variant="body2" color="text.secondary">
-                              Aún no hay preinscritos.
-                            </Typography>
-                          ) : (
-                            selectedEvent.participantNames.map((n, i) => (
-                              <ListItem key={`${i}-${n}`} disableGutters>
-                                <ListItemText
-                                  primary={`${i + 1}. ${n}`}
-                                  primaryTypographyProps={{ variant: "body2" }}
-                                />
-                              </ListItem>
-                            ))
-                          )}
-                        </List>
-                        <Box
-                          sx={{
-                            mt: 2,
-                            p: 1.5,
-                            borderRadius: 1,
-                            bgcolor: "action.hover",
-                          }}
+                        <Button
+                          type="button"
+                          variant="outlined"
+                          fullWidth
+                          sx={{ mt: 2 }}
+                          startIcon={<Groups />}
+                          onClick={() => setParticipantsModalOpen(true)}
                         >
-                          <Typography variant="caption" color="text.secondary">
-                            La lista muestra solo el nombre público. Cierre de
-                            preinscripción: {formatCloseNote(selectedEvent.startsAt)}.
-                          </Typography>
-                        </Box>
+                          Ver participantes
+                          {selectedEvent.participantCount > 0
+                            ? ` (${selectedEvent.participantCount})`
+                            : ""}
+                        </Button>
+
+                        <Dialog
+                          open={participantsModalOpen}
+                          onClose={() => setParticipantsModalOpen(false)}
+                          fullWidth
+                          maxWidth="sm"
+                          aria-labelledby="participants-dialog-title"
+                        >
+                          <DialogTitle id="participants-dialog-title">
+                            Ver participantes
+                          </DialogTitle>
+                          <DialogContent dividers>
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ mb: 2 }}
+                            >
+                              {selectedEvent.title}
+                            </Typography>
+                            <List dense disablePadding>
+                              {selectedEvent.participantNames.length === 0 ? (
+                                <Typography variant="body2" color="text.secondary">
+                                  Aún no hay preinscritos.
+                                </Typography>
+                              ) : (
+                                selectedEvent.participantNames.map((n, i) => (
+                                  <ListItem key={`${i}-${n}`} disableGutters>
+                                    <ListItemText
+                                      primary={`${i + 1}. ${n}`}
+                                      primaryTypographyProps={{ variant: "body2" }}
+                                    />
+                                  </ListItem>
+                                ))
+                              )}
+                            </List>
+                            <Box
+                              sx={{
+                                mt: 2,
+                                p: 1.5,
+                                borderRadius: 1,
+                                bgcolor: "action.hover",
+                              }}
+                            >
+                              <Typography variant="caption" color="text.secondary">
+                                Solo se muestra el nombre público. Cierre de
+                                preinscripción: {formatCloseNote(selectedEvent.startsAt)}.
+                              </Typography>
+                            </Box>
+                          </DialogContent>
+                          <DialogActions sx={{ px: 3, pb: 2 }}>
+                            <Button
+                              variant="contained"
+                              onClick={() => setParticipantsModalOpen(false)}
+                            >
+                              Cerrar
+                            </Button>
+                          </DialogActions>
+                        </Dialog>
                       </CardContent>
                     </Card>
                   </Box>

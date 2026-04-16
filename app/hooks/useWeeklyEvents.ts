@@ -33,7 +33,6 @@ export function useWeekEvents(weekAnchor: Date | null) {
 
   return useQuery<{ events: PublicWeeklyEvent[] }>({
     queryKey: ["weekly-events", from?.toISOString(), to?.toISOString()],
-    refetchInterval: 45_000,
     queryFn: async () => {
       if (!from || !to) {
         return { events: [] };
