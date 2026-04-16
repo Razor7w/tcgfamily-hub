@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -21,12 +21,15 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
+import Grid from "@mui/material/Grid";
 import IconButton from "@mui/material/IconButton";
-import { ArrowBack, Delete, Edit } from "@mui/icons-material";
+import Paper from "@mui/material/Paper";
+import { ArrowBack, CheckCircle, Delete, Edit, Groups } from "@mui/icons-material";
 import Link from "next/link";
 import {
   AdminWeeklyEvent,
   useAdminEvents,
+  useConfirmParticipantParticipation,
   useCreateAdminEvent,
   useDeleteAdminEvent,
   useUpdateAdminEvent,
@@ -92,8 +95,11 @@ export default function AdminEventosPage() {
   const createEv = useCreateAdminEvent();
   const updateEv = useUpdateAdminEvent();
   const deleteEv = useDeleteAdminEvent();
+  const confirmParticipation = useConfirmParticipantParticipation();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [participantsModalEvent, setParticipantsModalEvent] =
+    useState<AdminWeeklyEvent | null>(null);
   const [editing, setEditing] = useState<AdminWeeklyEvent | null>(null);
   const [form, setForm] = useState<FormState>(() => emptyForm());
   const [formError, setFormError] = useState<string | null>(null);
@@ -106,6 +112,18 @@ export default function AdminEventosPage() {
         new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
     );
   }, [data?.events]);
+
+  useEffect(() => {
+    if (!participantsModalEvent) return;
+    const updated = eventsSorted.find(
+      (e) => e._id === participantsModalEvent._id,
+    );
+    if (!updated) {
+      setParticipantsModalEvent(null);
+      return;
+    }
+    setParticipantsModalEvent(updated);
+  }, [eventsSorted, participantsModalEvent?._id]);
 
   const openCreate = () => {
     setEditing(null);
@@ -298,6 +316,15 @@ export default function AdminEventosPage() {
                         · Cupo: {ev.maxParticipants} · Preinscritos:{" "}
                         {ev.participants?.length ?? 0}
                       </Typography>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<Groups />}
+                        sx={{ mt: 1.5, alignSelf: "flex-start" }}
+                        onClick={() => setParticipantsModalEvent(ev)}
+                      >
+                        Ver preinscritos
+                      </Button>
                     </Box>
                     <Stack direction="row" spacing={1}>
                       <IconButton
@@ -524,6 +551,134 @@ export default function AdminEventosPage() {
             disabled={deleteEv.isPending}
           >
             Eliminar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={!!participantsModalEvent}
+        onClose={() => setParticipantsModalEvent(null)}
+        fullWidth
+        maxWidth="md"
+        aria-labelledby="preinscritos-dialog-title"
+      >
+        <DialogTitle id="preinscritos-dialog-title">Preinscritos</DialogTitle>
+        <DialogContent dividers>
+          {participantsModalEvent ? (
+            <>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {participantsModalEvent.title}
+              </Typography>
+              {confirmParticipation.isError ? (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {confirmParticipation.error instanceof Error
+                    ? confirmParticipation.error.message
+                    : "Error"}
+                </Alert>
+              ) : null}
+              {participantsModalEvent.participants.length === 0 ? (
+                <Typography color="text.secondary">No hay preinscritos.</Typography>
+              ) : (
+                <Grid container spacing={2}>
+                  {participantsModalEvent.participants.map((p, idx) => (
+                    <Grid key={`${p.userId ?? "sin-usuario"}-${idx}`} size={{ xs: 6, md: 3 }}>
+                      <Paper
+                        variant="outlined"
+                        sx={{
+                          p: 1.5,
+                          height: "100%",
+                          display: "flex",
+                          flexDirection: "column",
+                        }}
+                      >
+                        <Stack
+                          direction="row"
+                          alignItems="flex-start"
+                          justifyContent="space-between"
+                          gap={0.5}
+                          sx={{ minHeight: 72 }}
+                        >
+                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                            <Typography
+                              variant="subtitle2"
+                              fontWeight={700}
+                              title={p.displayName}
+                              sx={{
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
+                              }}
+                            >
+                              {p.displayName}
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              component="p"
+                              sx={{ mt: 0.5 }}
+                            >
+                              POP: {p.popId}
+                            </Typography>
+                            {!p.userId ? (
+                              <Typography
+                                variant="caption"
+                                color="warning.main"
+                                component="p"
+                                sx={{ mt: 0.5, lineHeight: 1.3 }}
+                              >
+                                Sin cuenta vinculada
+                              </Typography>
+                            ) : null}
+                          </Box>
+                          <IconButton
+                            size="small"
+                            disabled={!p.userId || confirmParticipation.isPending}
+                            onClick={async () => {
+                              if (!participantsModalEvent || !p.userId) return;
+                              try {
+                                await confirmParticipation.mutateAsync({
+                                  eventId: participantsModalEvent._id,
+                                  userId: p.userId,
+                                  confirmed: !p.confirmed,
+                                });
+                              } catch {
+                                /* error en estado */
+                              }
+                            }}
+                            aria-label={
+                              p.confirmed
+                                ? "Quitar confirmación"
+                                : "Confirmar participación"
+                            }
+                            sx={(theme) => ({
+                              flexShrink: 0,
+                              color: p.confirmed
+                                ? theme.palette.success.main
+                                : theme.palette.grey[500],
+                              "&.Mui-disabled": {
+                                color: theme.palette.action.disabled,
+                              },
+                            })}
+                          >
+                            <CheckCircle sx={{ fontSize: 28 }} />
+                          </IconButton>
+                        </Stack>
+                      </Paper>
+                    </Grid>
+                  ))}
+                </Grid>
+              )}
+            </>
+          ) : null}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            variant="contained"
+            onClick={() => setParticipantsModalEvent(null)}
+          >
+            Cerrar
           </Button>
         </DialogActions>
       </Dialog>

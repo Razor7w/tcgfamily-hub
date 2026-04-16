@@ -107,6 +107,14 @@ export function useUnregisterWeeklyEvent() {
   });
 }
 
+export type AdminEventParticipant = {
+  displayName: string;
+  userId: string | null;
+  popId: string;
+  confirmed: boolean;
+  createdAt?: string;
+};
+
 export interface AdminWeeklyEvent {
   _id: string;
   startsAt: string;
@@ -119,7 +127,7 @@ export interface AdminWeeklyEvent {
   formatNotes: string;
   prizesNotes: string;
   location: string;
-  participants: { displayName: string; createdAt?: string }[];
+  participants: AdminEventParticipant[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -157,6 +165,41 @@ export function useCreateAdminEvent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-weekly-events"] });
       queryClient.invalidateQueries({ queryKey: ["weekly-events"] });
+    },
+  });
+}
+
+export function useConfirmParticipantParticipation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      eventId: string;
+      userId: string;
+      confirmed: boolean;
+    }) => {
+      const res = await fetch(
+        `/api/admin/events/${input.eventId}/participants`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: input.userId,
+            confirmed: input.confirmed,
+          }),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === "string"
+            ? data.error
+            : "Error al confirmar participación",
+        );
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-weekly-events"] });
     },
   });
 }

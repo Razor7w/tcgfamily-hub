@@ -10,6 +10,8 @@ export interface IWeeklyParticipant {
   displayName: string;
   userId?: Types.ObjectId;
   createdAt: Date;
+  /** Confirmado por staff en el panel admin. */
+  confirmed?: boolean;
 }
 
 export interface IWeeklyEvent extends Document {
@@ -33,8 +35,9 @@ const ParticipantSchema = new Schema<IWeeklyParticipant>(
     displayName: { type: String, required: true, trim: true },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: false },
     createdAt: { type: Date, default: () => new Date() },
+    confirmed: { type: Boolean, default: false },
   },
-  { _id: false },
+  { _id: true },
 );
 
 const WeeklyEventSchema = new Schema<IWeeklyEvent>(

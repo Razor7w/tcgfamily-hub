@@ -31,6 +31,31 @@ function readPokemonSubtype(v: unknown): PokemonTournamentSubtype | null | undef
   return null;
 }
 
+function serializeAdminParticipant(p: {
+  displayName: string;
+  userId?: unknown;
+  createdAt?: Date;
+  confirmed?: boolean;
+}) {
+  let userIdStr: string | null = null;
+  let popId = "";
+  const u = p.userId;
+  if (u && typeof u === "object") {
+    const o = u as { _id?: unknown; popid?: string };
+    if (o._id !== undefined) userIdStr = String(o._id);
+    if (typeof o.popid === "string") popId = o.popid.trim();
+  } else if (u) {
+    userIdStr = String(u);
+  }
+  return {
+    displayName: p.displayName,
+    userId: userIdStr,
+    popId: popId || "—",
+    confirmed: Boolean(p.confirmed),
+    createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : undefined,
+  };
+}
+
 export async function GET() {
   try {
     const session = await auth();
@@ -39,9 +64,32 @@ export async function GET() {
     }
 
     await connectDB();
-    const events = await WeeklyEvent.find({})
+    const raw = await WeeklyEvent.find({})
       .sort({ startsAt: 1 })
+      .populate({ path: "participants.userId", select: "popid" })
       .lean();
+
+    type LeanPart = {
+      displayName: string;
+      userId?: unknown;
+      createdAt?: Date;
+      confirmed?: boolean;
+    };
+
+    const events = raw.map((ev) => {
+      const doc = ev as Record<string, unknown> & {
+        _id: unknown;
+        participants?: LeanPart[];
+      };
+      const { _id, participants, ...rest } = doc;
+      return {
+        ...rest,
+        _id: String(_id),
+        participants: (participants ?? []).map((p) =>
+          serializeAdminParticipant(p),
+        ),
+      };
+    });
 
     return NextResponse.json({ events }, { status: 200 });
   } catch (error) {
