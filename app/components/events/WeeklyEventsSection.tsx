@@ -31,6 +31,7 @@ import Link from "next/link";
 import {
   PublicWeeklyEvent,
   useRegisterWeeklyEvent,
+  useUnregisterWeeklyEvent,
   useWeekEvents,
 } from "@/hooks/useWeeklyEvents";
 import {
@@ -116,6 +117,7 @@ export default function WeeklyEventsSection({
 
   const { data, isPending, isError, error, refetch } = useWeekEvents(weekAnchor);
   const register = useRegisterWeeklyEvent();
+  const unregister = useUnregisterWeeklyEvent();
 
   const events = data?.events ?? [];
 
@@ -178,7 +180,7 @@ export default function WeeklyEventsSection({
 
   const registerDisabledReason = (ev: PublicWeeklyEvent | null) => {
     if (!ev) return "No hay evento seleccionado";
-    if (ev.myRegistration) return "Ya estás preinscrito";
+    if (ev.myRegistration) return null;
     if (!ev.canPreRegister) return "La preinscripción ya cerró";
     if (ev.participantCount >= ev.maxParticipants) return "Cupo completo";
     return null;
@@ -442,10 +444,43 @@ export default function WeeklyEventsSection({
                           </Alert>
                         ) : null}
                         {selectedEvent.myRegistration ? (
-                          <Typography variant="body2" sx={{ mb: 2 }}>
-                            Te preinscribiste como:{" "}
-                            <strong>{selectedEvent.myRegistration}</strong>
-                          </Typography>
+                          <Stack spacing={2} sx={{ mb: 2 }}>
+                            <Typography variant="body2">
+                              Te preinscribiste como:{" "}
+                              <strong>{selectedEvent.myRegistration}</strong>
+                            </Typography>
+                            {selectedEvent.canUnregister ? (
+                              <Button
+                                type="button"
+                                variant="outlined"
+                                color="error"
+                                disabled={unregister.isPending}
+                                onClick={async () => {
+                                  if (!selectedEvent) return;
+                                  try {
+                                    await unregister.mutateAsync(selectedEvent._id);
+                                  } catch {
+                                    /* error en estado */
+                                  }
+                                }}
+                              >
+                                {unregister.isPending
+                                  ? "Quitando…"
+                                  : "Desinscribirse"}
+                              </Button>
+                            ) : (
+                              <Alert severity="info">
+                                No puedes desinscribirte: el evento ya comenzó.
+                              </Alert>
+                            )}
+                            {unregister.isError ? (
+                              <Alert severity="error">
+                                {unregister.error instanceof Error
+                                  ? unregister.error.message
+                                  : "Error"}
+                              </Alert>
+                            ) : null}
+                          </Stack>
                         ) : (
                           <Stack spacing={2} component="form" noValidate>
                             <TextField

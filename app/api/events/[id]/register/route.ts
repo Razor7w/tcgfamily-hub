@@ -5,6 +5,7 @@ import connectDB from "@/lib/mongodb";
 import WeeklyEvent from "@/models/WeeklyEvent";
 import {
   canPreRegisterNow,
+  canUnregisterNow,
   normalizeDisplayName,
 } from "@/lib/weekly-events";
 
@@ -97,6 +98,74 @@ export async function POST(
     console.error("POST /api/events/[id]/register:", error);
     return NextResponse.json(
       { error: "Error al preinscribirse" },
+      { status: 500 },
+    );
+  }
+}
+
+/** Quita la preinscripción del usuario actual. */
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const { id } = await context.params;
+    if (!id?.trim()) {
+      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+    }
+
+    await connectDB();
+    const now = new Date();
+    const userId = new mongoose.Types.ObjectId(session.user.id);
+
+    const existing = await WeeklyEvent.findById(id);
+    if (!existing) {
+      return NextResponse.json({ error: "Evento no encontrado" }, { status: 404 });
+    }
+
+    if (!canUnregisterNow(existing.startsAt, now)) {
+      return NextResponse.json(
+        { error: "Ya no puedes desinscribirte (el evento ya comenzó)" },
+        { status: 400 },
+      );
+    }
+
+    const had = existing.participants.some(
+      (p: { userId?: mongoose.Types.ObjectId }) =>
+        p.userId && String(p.userId) === String(userId),
+    );
+    if (!had) {
+      return NextResponse.json(
+        { error: "No estás preinscrito en este evento" },
+        { status: 400 },
+      );
+    }
+
+    existing.participants = existing.participants.filter(
+      (p: { userId?: mongoose.Types.ObjectId }) =>
+        !(p.userId && String(p.userId) === String(userId)),
+    );
+    await existing.save();
+
+    return NextResponse.json(
+      {
+        ok: true,
+        participantNames: existing.participants.map(
+          (p: { displayName: string }) => p.displayName,
+        ),
+        participantCount: existing.participants.length,
+      },
+      { status: 200 },
+    );
+  } catch (error) {
+    console.error("DELETE /api/events/[id]/register:", error);
+    return NextResponse.json(
+      { error: "Error al desinscribirse" },
       { status: 500 },
     );
   }

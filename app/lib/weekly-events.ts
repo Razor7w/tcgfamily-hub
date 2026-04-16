@@ -11,6 +11,11 @@ export function canPreRegisterNow(startsAt: Date, now = new Date()): boolean {
   );
 }
 
+/** Puede desinscribirse mientras el evento no haya comenzado. */
+export function canUnregisterNow(startsAt: Date, now = new Date()): boolean {
+  return now.getTime() < startsAt.getTime();
+}
+
 export const DISPLAY_NAME_MAX = 80;
 
 export function normalizeDisplayName(raw: unknown): string {

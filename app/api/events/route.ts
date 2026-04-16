@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import connectDB from "@/lib/mongodb";
 import WeeklyEvent from "@/models/WeeklyEvent";
-import { canPreRegisterNow } from "@/lib/weekly-events";
+import { canPreRegisterNow, canUnregisterNow } from "@/lib/weekly-events";
 
 function toPublicEvent(
   doc: {
@@ -30,6 +30,8 @@ function toPublicEvent(
     );
     myRegistration = mine?.displayName ?? null;
   }
+  const canUnregister =
+    Boolean(myRegistration) && canUnregisterNow(startsAt, now);
   return {
     _id: String(doc._id),
     startsAt: startsAt.toISOString(),
@@ -46,6 +48,7 @@ function toPublicEvent(
     participantCount: doc.participants.length,
     canPreRegister: canPreRegisterNow(startsAt, now),
     myRegistration,
+    canUnregister,
   };
 }
 

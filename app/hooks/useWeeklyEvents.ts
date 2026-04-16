@@ -24,6 +24,7 @@ export interface PublicWeeklyEvent {
   participantCount: number;
   canPreRegister: boolean;
   myRegistration: string | null;
+  canUnregister: boolean;
 }
 
 export function useWeekEvents(weekAnchor: Date | null) {
@@ -65,6 +66,34 @@ export function useRegisterWeeklyEvent() {
       if (!res.ok) {
         throw new Error(
           typeof data.error === "string" ? data.error : "Error al preinscribirse",
+        );
+      }
+      return data as {
+        ok: boolean;
+        participantNames: string[];
+        participantCount: number;
+      };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["weekly-events"] });
+    },
+  });
+}
+
+export function useUnregisterWeeklyEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (eventId: string) => {
+      const res = await fetch(`/api/events/${eventId}/register`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === "string"
+            ? data.error
+            : "Error al desinscribirse",
         );
       }
       return data as {
