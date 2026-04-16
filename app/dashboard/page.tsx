@@ -72,27 +72,49 @@ export default function DashboardPage() {
           <WeeklyEventsSection />
 
           <Card variant="outlined" sx={{ borderRadius: 2 }}>
-            <CardHeader
-              title="Últimos correos"
-              slotProps={{ title: { variant: 'h5' } }}
-              subheader="Registro reciente y acceso al código en tienda"
-              avatar={<MarkunreadMailbox color="primary" />}
-              action={
-                <Stack direction="row" spacing={1} alignItems="center">
+            <Box sx={{ px: 2, pt: 2 }}>
+              <Stack spacing={2}>
+                <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                  <MarkunreadMailbox color="primary" sx={{ mt: 0.25, flexShrink: 0 }} />
+                  <Box sx={{ minWidth: 0, flex: 1, pr: { xs: 0, sm: 1 } }}>
+                    <Typography variant="h5" component="h2">
+                      Últimos correos
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                      Registro reciente y acceso al código en tienda
+                    </Typography>
+                  </Box>
+                </Stack>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={1}
+                  useFlexGap
+                  sx={{
+                    width: '100%',
+                    alignItems: { xs: 'stretch', sm: 'center' }
+                  }}
+                >
                   <Button
                     variant="contained"
                     size="small"
                     onClick={() => setRegisterMailOpen(true)}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
                   >
                     Registrar correo
                   </Button>
-                  <Button component={Link} href="/dashboard/mail" size="small" variant="outlined">
+                  <Button
+                    component={Link}
+                    href="/dashboard/mail"
+                    size="small"
+                    variant="outlined"
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
+                  >
                     Ver todos
                   </Button>
                 </Stack>
-              }
-            />
-            <CardContent>
+              </Stack>
+            </Box>
+            <CardContent sx={{ pt: 2 }}>
               <MailFlowExplainer variant="compact" />
               <CardMails />
             </CardContent>
