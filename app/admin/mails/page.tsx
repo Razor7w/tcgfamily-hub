@@ -29,6 +29,8 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead'
 import MarkEmailUnreadIcon from '@mui/icons-material/MarkEmailUnread'
+import StorefrontIcon from '@mui/icons-material/Storefront'
+import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 import Tooltip from '@mui/material/Tooltip'
 import Chip from '@mui/material/Chip'
 import {
@@ -46,6 +48,7 @@ import {
   type User,
   type CreateUserData
 } from '@/hooks/useUsers'
+import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
 
 function userLabel(u: User) {
   const name = u.name || 'Sin nombre'
@@ -85,6 +88,7 @@ export default function MailsPage() {
     fromUserId: '',
     toUserId: '',
     isRecived: false,
+    isRecivedInStore: false,
     observations: ''
   })
   const [snackbar, setSnackbar] = useState({
@@ -119,7 +123,11 @@ export default function MailsPage() {
     let list = allMails
     const q = searchId.trim().toLowerCase()
     if (q) {
-      list = list.filter(m => m._id.toLowerCase().includes(q))
+      list = list.filter(
+        m =>
+          (m.code ?? '').toLowerCase().includes(q) ||
+          m._id.toLowerCase().includes(q)
+      )
     }
     if (filterRecived === 'recived') {
       list = list.filter(m => m.isRecived)
@@ -169,6 +177,7 @@ export default function MailsPage() {
         fromUserId: fromId,
         toUserId: toId,
         isRecived: mail.isRecived,
+        isRecivedInStore: mail.isRecivedInStore ?? false,
         observations: mail.observations ?? ''
       })
     } else {
@@ -177,6 +186,7 @@ export default function MailsPage() {
         fromUserId: '',
         toUserId: '',
         isRecived: false,
+        isRecivedInStore: false,
         observations: ''
       })
     }
@@ -190,6 +200,7 @@ export default function MailsPage() {
       fromUserId: '',
       toUserId: '',
       isRecived: false,
+      isRecivedInStore: false,
       observations: ''
     })
     setAddUserFor(null)
@@ -210,6 +221,13 @@ export default function MailsPage() {
         severity: 'error'
       })
       return
+    }
+    if (rut.trim()) {
+      const rutErr = getRutFieldError(rut, false)
+      if (rutErr) {
+        setSnackbar({ open: true, message: rutErr, severity: 'error' })
+        return
+      }
     }
     try {
       const payload: CreateUserData = {
@@ -271,6 +289,7 @@ export default function MailsPage() {
           fromUserId: formData.fromUserId,
           toUserId: formData.toUserId,
           isRecived: formData.isRecived,
+          isRecivedInStore: formData.isRecivedInStore,
           observations: formData.observations
         }
         await updateMail.mutateAsync({
@@ -287,6 +306,7 @@ export default function MailsPage() {
           fromUserId: formData.fromUserId,
           toUserId: formData.toUserId,
           isRecived: formData.isRecived,
+          isRecivedInStore: formData.isRecivedInStore,
           observations: formData.observations
         })
         setSnackbar({
@@ -331,6 +351,25 @@ export default function MailsPage() {
         message: mail.isRecived
           ? 'Marcado como no recibido'
           : 'Marcado como recibido',
+        severity: 'success'
+      })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Error al actualizar'
+      setSnackbar({ open: true, message: msg, severity: 'error' })
+    }
+  }
+
+  const handleToggleRecivedInStore = async (mail: Mail) => {
+    try {
+      await updateMail.mutateAsync({
+        mailId: mail._id,
+        data: { isRecivedInStore: !mail.isRecivedInStore }
+      })
+      setSnackbar({
+        open: true,
+        message: mail.isRecivedInStore
+          ? 'Marcado como no recibido en tienda'
+          : 'Marcado como recibido en tienda',
         severity: 'success'
       })
     } catch (e) {
@@ -403,7 +442,7 @@ export default function MailsPage() {
           <TextField
             size="small"
             label="Buscar por ID"
-            placeholder="ID del mail..."
+            placeholder="Ej: 16-04-2026-001"
             value={searchId}
             onChange={e => setSearchId(e.target.value)}
             sx={{ minWidth: 220 }}
@@ -507,7 +546,8 @@ export default function MailsPage() {
               </TableCell>
               <TableCell>De</TableCell>
               <TableCell>Para</TableCell>
-              <TableCell>Recibido</TableCell>
+              <TableCell>Recibido en tienda</TableCell>
+              <TableCell>Retirado</TableCell>
               <TableCell>Tiempo transcurrido</TableCell>
               <TableCell>Observaciones</TableCell>
               <TableCell align="right">Acciones</TableCell>
@@ -516,7 +556,7 @@ export default function MailsPage() {
           <TableBody>
             {mails.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">
+                <TableCell colSpan={8} align="center">
                   No hay mails
                 </TableCell>
               </TableRow>
@@ -536,6 +576,48 @@ export default function MailsPage() {
                     </TableCell>
                     <TableCell>
                       {to ? `${to.name ?? '-'} (${to.rut ?? '-'})` : '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.5
+                        }}
+                      >
+                        <Typography
+                          component="span"
+                          variant="body2"
+                          sx={{ minWidth: 28 }}
+                        >
+                          {mail.isRecivedInStore ? 'Sí' : 'No'}
+                        </Typography>
+                        <Tooltip
+                          title={
+                            mail.isRecivedInStore
+                              ? 'Marcar como no recibido en tienda'
+                              : 'Marcar como recibido en tienda'
+                          }
+                        >
+                          <span>
+                            <IconButton
+                              size="small"
+                              color={mail.isRecivedInStore ? 'default' : 'primary'}
+                              onClick={() => handleToggleRecivedInStore(mail)}
+                              disabled={
+                                updateMail.isPending &&
+                                updateMail.variables?.mailId === mail._id
+                              }
+                            >
+                              {mail.isRecivedInStore ? (
+                                <StorefrontOutlinedIcon fontSize="small" />
+                              ) : (
+                                <StorefrontIcon fontSize="small" />
+                              )}
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                      </Box>
                     </TableCell>
                     <TableCell>
                       <Box
@@ -745,6 +827,21 @@ export default function MailsPage() {
                   onChange={e =>
                     setNewUserForm(prev => ({ ...prev, rut: e.target.value }))
                   }
+                  onBlur={() =>
+                    setNewUserForm(prev => ({
+                      ...prev,
+                      rut: formatRutOnBlur(prev.rut)
+                    }))
+                  }
+                  placeholder="12.345.678-9"
+                  error={
+                    Boolean(newUserForm.rut.trim()) &&
+                    getRutFieldError(newUserForm.rut, false) !== null
+                  }
+                  helperText={
+                    getRutFieldError(newUserForm.rut, false) ?? undefined
+                  }
+                  inputProps={{ maxLength: 20 }}
                 />
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   <Button
@@ -869,6 +966,21 @@ export default function MailsPage() {
                   onChange={e =>
                     setNewUserForm(prev => ({ ...prev, rut: e.target.value }))
                   }
+                  onBlur={() =>
+                    setNewUserForm(prev => ({
+                      ...prev,
+                      rut: formatRutOnBlur(prev.rut)
+                    }))
+                  }
+                  placeholder="12.345.678-9"
+                  error={
+                    Boolean(newUserForm.rut.trim()) &&
+                    getRutFieldError(newUserForm.rut, false) !== null
+                  }
+                  helperText={
+                    getRutFieldError(newUserForm.rut, false) ?? undefined
+                  }
+                  inputProps={{ maxLength: 20 }}
                 />
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   <Button
@@ -903,7 +1015,21 @@ export default function MailsPage() {
                   }
                 />
               }
-              label="Recibido"
+              label="Retirado"
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={formData.isRecivedInStore}
+                  onChange={e =>
+                    setFormData(prev => ({
+                      ...prev,
+                      isRecivedInStore: e.target.checked
+                    }))
+                  }
+                />
+              }
+              label="Recibido en tienda"
             />
             <TextField
               label="Observaciones"

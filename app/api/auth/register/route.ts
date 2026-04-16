@@ -12,9 +12,9 @@ import { rutMatchVariants } from '@/lib/store-points-csv'
 import {
   popidForStorage,
   rutForStorage,
-  validatePopidOptional,
-  validateRutChile
+  validatePopidOptional
 } from '@/lib/rut-chile'
+import { getRutFieldError } from '@/lib/rut-input'
 import { createSlidingWindowLimiter } from '@/lib/auth-rate-limit'
 
 const registerIpLimiter = createSlidingWindowLimiter({
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: emailErr }, { status: 400 })
     }
 
-    const rutErr = validateRutChile(rutStr)
+    const rutErr = getRutFieldError(rutStr, true)
     if (rutErr) {
       return NextResponse.json({ error: rutErr }, { status: 400 })
     }

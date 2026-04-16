@@ -6,9 +6,9 @@ import { rutMatchVariants } from '@/lib/store-points-csv'
 import {
   popidForStorage,
   rutForStorage,
-  validatePopidOptional,
-  validateRutChile
+  validatePopidOptional
 } from '@/lib/rut-chile'
+import { getRutFieldError } from '@/lib/rut-input'
 
 /**
  * Completar RUT/Pop ID tras primer acceso con Google (usuarios sin RUT en BD).
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
     }
 
-    const rutErr = validateRutChile(rutStr)
+    const rutErr = getRutFieldError(rutStr, true)
     if (rutErr) {
       return NextResponse.json({ error: rutErr }, { status: 400 })
     }

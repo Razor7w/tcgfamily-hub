@@ -23,6 +23,12 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { useMyMails } from '@/hooks/useMails'
 import { Stack } from '@mui/material'
 import ButtonBarCode from '@/components/molecule/ButtonBarCode'
+import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
+import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
+import DeleteIcon from '@mui/icons-material/Delete'
+import Snackbar from '@mui/material/Snackbar'
+import { useDeleteMail } from '@/hooks/useMails'
 
 function getElapsedDays(createdAt: string): number {
   const created = new Date(createdAt).getTime()
@@ -57,10 +63,17 @@ function filterUserLabel(u: FilterUser) {
 export default function DashboardMailPage() {
   const { data: session } = useSession()
   const currentUserId = session?.user?.id ?? ''
+  const [registerMailOpen, setRegisterMailOpen] = useState(false)
+  const deleteMail = useDeleteMail()
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean
+    message: string
+    severity: 'success' | 'error'
+  }>({ open: false, message: '', severity: 'success' })
 
   const [searchId, setSearchId] = useState('')
-  const [filterRecived, setFilterRecived] = useState<
-    'all' | 'recived' | 'notRecived'
+  const [filterStatus, setFilterStatus] = useState<
+    'all' | 'notInStore' | 'inStore' | 'retired'
   >('all')
   const [filterFromUser, setFilterFromUser] = useState<FilterUser | null>(null)
   const [filterToUser, setFilterToUser] = useState<FilterUser | null>(null)
@@ -74,7 +87,7 @@ export default function DashboardMailPage() {
       const from = m.fromUserId
       const to = m.toUserId
       const fId = mailUserId(from)
-      const tId = mailUserId(to)
+      const tId = to ? mailUserId(to) : null
       if (!map.has(fId))
         map.set(fId, {
           id: fId,
@@ -82,7 +95,7 @@ export default function DashboardMailPage() {
             (typeof from === 'object' ? from.name : undefined) ?? 'Sin nombre',
           rut: (typeof from === 'object' ? from.rut : undefined) ?? ''
         })
-      if (!map.has(tId))
+      if (tId && !map.has(tId))
         map.set(tId, {
           id: tId,
           name: (typeof to === 'object' ? to.name : undefined) ?? 'Sin nombre',
@@ -95,16 +108,40 @@ export default function DashboardMailPage() {
   const mails = useMemo(() => {
     let list = allMails
     const q = searchId.trim().toLowerCase()
-    if (q) list = list.filter(m => m._id.toLowerCase().includes(q))
-    if (filterRecived === 'recived') list = list.filter(m => m.isRecived)
-    else if (filterRecived === 'notRecived')
-      list = list.filter(m => !m.isRecived)
+    if (q)
+      list = list.filter(
+        m =>
+          (m.code ?? '').toLowerCase().includes(q) ||
+          m._id.toLowerCase().includes(q)
+      )
+    if (filterStatus === 'retired') list = list.filter(m => m.isRecived)
+    else if (filterStatus === 'inStore')
+      list = list.filter(m => Boolean(m.isRecivedInStore) && !m.isRecived)
+    else if (filterStatus === 'notInStore')
+      list = list.filter(m => !m.isRecivedInStore && !m.isRecived)
     if (filterFromUser)
       list = list.filter(m => mailUserId(m.fromUserId) === filterFromUser.id)
     if (filterToUser)
-      list = list.filter(m => mailUserId(m.toUserId) === filterToUser.id)
+      list = list.filter(m =>
+        m.toUserId ? mailUserId(m.toUserId) === filterToUser.id : false
+      )
     return list
-  }, [allMails, searchId, filterRecived, filterFromUser, filterToUser])
+  }, [allMails, searchId, filterStatus, filterFromUser, filterToUser])
+
+  const handleDelete = async (mailId: string) => {
+    if (!confirm('¿Eliminar este correo?')) return
+    try {
+      await deleteMail.mutateAsync(mailId)
+      setSnackbar({
+        open: true,
+        message: 'Correo eliminado',
+        severity: 'success'
+      })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Error al eliminar'
+      setSnackbar({ open: true, message: msg, severity: 'error' })
+    }
+  }
 
   if (isLoading) {
     return (
@@ -140,15 +177,24 @@ export default function DashboardMailPage() {
           direction: 'column'
         }}
       >
-        <Button
-          component={Link}
-          href="/dashboard"
-          variant="outlined"
-          size="small"
-          startIcon={<ArrowBackIcon />}
-        >
-          Volver
-        </Button>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Button
+            component={Link}
+            href="/dashboard"
+            variant="outlined"
+            size="small"
+            startIcon={<ArrowBackIcon />}
+          >
+            Volver
+          </Button>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={() => setRegisterMailOpen(true)}
+          >
+            Registrar correo
+          </Button>
+        </Stack>
         <Typography variant="h4" component="h1">
           Mis correos
         </Typography>
@@ -173,7 +219,7 @@ export default function DashboardMailPage() {
           <TextField
             size="small"
             label="Buscar por ID"
-            placeholder="ID del mail..."
+            placeholder="Ej: 16-04-2026-001"
             value={searchId}
             onChange={e => setSearchId(e.target.value)}
             sx={{ minWidth: 220 }}
@@ -239,28 +285,35 @@ export default function DashboardMailPage() {
           <Box sx={{ display: 'flex', gap: 0.5 }}>
             <Button
               size="small"
-              variant={filterRecived === 'all' ? 'contained' : 'outlined'}
-              onClick={() => setFilterRecived('all')}
+              variant={filterStatus === 'all' ? 'contained' : 'outlined'}
+              onClick={() => setFilterStatus('all')}
             >
               Todos
             </Button>
             <Button
               size="small"
-              variant={filterRecived === 'recived' ? 'contained' : 'outlined'}
-              color="success"
-              onClick={() => setFilterRecived('recived')}
+              variant={filterStatus === 'notInStore' ? 'contained' : 'outlined'}
+              onClick={() => setFilterStatus('notInStore')}
             >
-              Recibidos
+              No recibido en tienda
             </Button>
             <Button
               size="small"
               variant={
-                filterRecived === 'notRecived' ? 'contained' : 'outlined'
+                filterStatus === 'inStore' ? 'contained' : 'outlined'
               }
               color="warning"
-              onClick={() => setFilterRecived('notRecived')}
+              onClick={() => setFilterStatus('inStore')}
             >
-              No recibidos
+              En tienda
+            </Button>
+            <Button
+              size="small"
+              variant={filterStatus === 'retired' ? 'contained' : 'outlined'}
+              color="success"
+              onClick={() => setFilterStatus('retired')}
+            >
+              Retirado
             </Button>
           </Box>
         </Box>
@@ -276,15 +329,17 @@ export default function DashboardMailPage() {
               <TableCell sx={{ width: 110 }}>Tipo</TableCell>
               <TableCell>De</TableCell>
               <TableCell>Para</TableCell>
-              <TableCell>Recibido</TableCell>
+              <TableCell>Recibido en tienda</TableCell>
+              <TableCell>Retirado</TableCell>
               <TableCell>Tiempo transcurrido</TableCell>
               <TableCell align="center">Código</TableCell>
+              <TableCell align="right">Acciones</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {mails.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">
+                <TableCell colSpan={9} align="center">
                   No hay correos
                 </TableCell>
               </TableRow>
@@ -296,6 +351,7 @@ export default function DashboardMailPage() {
                   typeof mail.toUserId === 'object' ? mail.toUserId : null
                 const isEmisor =
                   currentUserId && mailUserId(mail.fromUserId) === currentUserId
+                const canDelete = isEmisor && !mail.isRecivedInStore
                 return (
                   <TableRow key={mail._id}>
                     <TableCell align="center" sx={{ fontWeight: 500 }}>
@@ -314,8 +370,13 @@ export default function DashboardMailPage() {
                       {from ? `${from.name ?? '-'} (${from.rut ?? '-'})` : '-'}
                     </TableCell>
                     <TableCell>
-                      {to ? `${to.name ?? '-'} (${to.rut ?? '-'})` : '-'}
+                      {to
+                        ? `${to.name ?? '-'} (${to.rut ?? '-'})`
+                        : mail.toRut
+                          ? `RUT: ${mail.toRut}`
+                          : '-'}
                     </TableCell>
+                    <TableCell>{mail.isRecivedInStore ? 'Sí' : 'No'}</TableCell>
                     <TableCell>{mail.isRecived ? 'Sí' : 'No'}</TableCell>
                     <TableCell>
                       {(() => {
@@ -332,7 +393,25 @@ export default function DashboardMailPage() {
                       })()}
                     </TableCell>
                     <TableCell align="center">
-                      <ButtonBarCode id={mail._id} />
+                      <ButtonBarCode id={mail.code ?? mail._id} />
+                    </TableCell>
+                    <TableCell align="right">
+                      {canDelete ? (
+                        <Tooltip title="Eliminar (solo antes de recibir en tienda)">
+                          <span>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleDelete(mail._id)}
+                              disabled={deleteMail.isPending}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                      ) : (
+                        '-'
+                      )}
                     </TableCell>
                   </TableRow>
                 )
@@ -341,6 +420,25 @@ export default function DashboardMailPage() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <RegisterMailDialog
+        open={registerMailOpen}
+        onClose={() => setRegisterMailOpen(false)}
+      />
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+      >
+        <Alert
+          onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   )
 }

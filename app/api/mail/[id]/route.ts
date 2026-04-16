@@ -91,13 +91,14 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { fromUserId, toUserId, isRecived, observations } = body;
+    const { fromUserId, toUserId, isRecived, isRecivedInStore, observations } =
+      body;
 
     const nextFrom = fromUserId ?? existing.fromUserId?.toString();
     const nextTo = toUserId ?? existing.toUserId?.toString();
     if (nextFrom && nextTo && nextFrom === nextTo) {
       return NextResponse.json(
-        { error: "fromUserId y toUserId no pueden ser el mismo" },
+        { error: "No puedes enviar un correo a ti mismo" },
         { status: 400 },
       );
     }
@@ -124,6 +125,8 @@ export async function PUT(
     }
 
     if (typeof isRecived === "boolean") existing.isRecived = isRecived;
+    if (typeof isRecivedInStore === "boolean")
+      existing.isRecivedInStore = isRecivedInStore;
     if (observations !== undefined) existing.observations = observations ?? "";
 
     await existing.save();
@@ -145,7 +148,7 @@ export async function DELETE(
 ) {
   try {
     const session = await auth();
-    if (!session || session.user.role !== "admin") {
+    if (!session) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
@@ -159,13 +162,32 @@ export async function DELETE(
       );
     }
 
-    const deleted = await Mails.findByIdAndDelete(mailId);
-    if (!deleted) {
+    const existing = await Mails.findById(mailId);
+    if (!existing) {
       return NextResponse.json(
         { error: "Mail no encontrado" },
         { status: 404 },
       );
     }
+
+    const isAdmin = session.user.role === "admin";
+    if (!isAdmin) {
+      const sessionUserId = session.user.id as string | undefined;
+      if (!sessionUserId) {
+        return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+      }
+      if (existing.isRecivedInStore) {
+        return NextResponse.json(
+          { error: "No se puede borrar: ya fue recibido en tienda" },
+          { status: 400 },
+        );
+      }
+      if (existing.fromUserId?.toString() !== sessionUserId) {
+        return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+      }
+    }
+
+    await existing.deleteOne();
 
     return NextResponse.json(
       { message: "Mail eliminado correctamente" },

@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import Mail from '@/models/Mails'
 import mongoose from 'mongoose'
+import { clean as cleanRut, format as formatRut, validate as validateRut } from 'rut.js'
 
 // GET - mails donde el usuario actual es emisor (from) o receptor (to)
 // Query: ?limit=3 para traer solo los 3 más recientes
@@ -19,6 +20,9 @@ export async function GET(request: Request) {
     const pendingOnly =
       searchParams.get('pending') === '1' ||
       searchParams.get('pending') === 'true'
+    const inStoreOnly =
+      searchParams.get('inStore') === '1' ||
+      searchParams.get('inStore') === 'true'
 
     await connectDB()
     const userId = session.user.id as string
@@ -32,9 +36,23 @@ export async function GET(request: Request) {
       )
     }
 
+    const sessionRut = typeof session.user.rut === 'string' ? session.user.rut.trim() : ''
+    const rutVariants: string[] = []
+    if (sessionRut && validateRut(sessionRut)) {
+      const cleaned = cleanRut(sessionRut)
+      rutVariants.push(formatRut(cleaned))
+      rutVariants.push(formatRut(cleaned, { dots: false }))
+      rutVariants.push(cleaned)
+    }
+
     const query = Mail.find({
-      toUserId: uid,
-      ...(pendingOnly ? { isRecived: false } : {})
+      $or: [
+        { toUserId: uid },
+        { fromUserId: uid },
+        ...(rutVariants.length ? [{ toRut: { $in: rutVariants } }] : [])
+      ],
+      ...(pendingOnly ? { isRecived: false } : {}),
+      ...(inStoreOnly ? { isRecivedInStore: true } : {})
     })
       .sort({ createdAt: -1 })
       .populate('fromUserId', 'name rut')

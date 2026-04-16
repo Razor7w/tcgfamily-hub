@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -17,6 +16,8 @@ import { CircularProgress, Stack } from '@mui/material'
 import { useSession } from 'next-auth/react'
 import { InfoOutlined, MarkunreadMailbox, Storefront } from '@mui/icons-material'
 import CardMails from '@/components/dashboard/CardMails'
+import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
+import Link from 'next/link'
 
 type StoreCredit = {
   storePoints: number
@@ -30,6 +31,7 @@ export default function DashboardPage() {
   const [creditLoading, setCreditLoading] = useState(true)
   const [creditError, setCreditError] = useState<string | null>(null)
   const [storePointsInfoOpen, setStorePointsInfoOpen] = useState(false)
+  const [registerMailOpen, setRegisterMailOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -83,13 +85,22 @@ export default function DashboardPage() {
         <Stack spacing={3}>
           <Card>
             <CardHeader
-              avatar={<MarkunreadMailbox color="primary" />}
               title="Últimos correos"
-              subheader="Pendientes de retiro en tienda"
+              slotProps={{ title: { variant: 'h5' } }}
+              avatar={<MarkunreadMailbox color="primary" />}
               action={
-                <Button component={Link} href="/dashboard/mail" size="small">
-                  Ver todos
-                </Button>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={() => setRegisterMailOpen(true)}
+                  >
+                    Registrar correo
+                  </Button>
+                  <Button component={Link} href="/dashboard/mail" size="small" variant="outlined">
+                    Ver todos
+                  </Button>
+                </Stack>
               }
             />
             <CardContent>
@@ -184,6 +195,11 @@ export default function DashboardPage() {
             </Button>
           </DialogActions>
         </Dialog>
+
+        <RegisterMailDialog
+          open={registerMailOpen}
+          onClose={() => setRegisterMailOpen(false)}
+        />
       </Container>
     </Box>
   )

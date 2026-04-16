@@ -10,10 +10,12 @@ import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
+import { validatePopidOptional } from '@/lib/rut-chile'
 import {
-  validatePopidOptional,
-  validateRutChile
-} from '@/lib/rut-chile'
+  formatRutOnBlur,
+  getRutFieldError,
+  onlyDigits
+} from '@/lib/rut-input'
 
 type Props = {
   open: boolean
@@ -44,7 +46,7 @@ export default function OAuthOnboardingModal({
     e.preventDefault()
     setError(null)
 
-    const rutErr = validateRutChile(rut)
+    const rutErr = getRutFieldError(rut, true)
     if (rutErr) {
       setError(rutErr)
       return
@@ -60,7 +62,7 @@ export default function OAuthOnboardingModal({
       const res = await fetch('/api/me/oauth-onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rut, popid })
+        body: JSON.stringify({ rut: formatRutOnBlur(rut), popid })
       })
       const data = (await res.json().catch(() => ({}))) as {
         error?: string
@@ -107,13 +109,14 @@ export default function OAuthOnboardingModal({
             autoComplete="off"
             value={rut}
             onChange={e => setRut(e.target.value)}
+            onBlur={() => setRut(formatRutOnBlur(rut))}
             disabled={loading}
             required
             fullWidth
             placeholder="12.345.678-9"
-            error={Boolean(rut.trim()) && validateRutChile(rut) !== null}
+            error={Boolean(rut.trim()) && getRutFieldError(rut, true) !== null}
             helperText={
-              validateRutChile(rut) ??
+              getRutFieldError(rut, true) ??
               (!rut.trim()
                 ? 'Obligatorio. Formato chileno con dígito verificador.'
                 : undefined)
@@ -125,14 +128,14 @@ export default function OAuthOnboardingModal({
             name="popid"
             autoComplete="off"
             value={popid}
-            onChange={e => setPopid(e.target.value)}
+            onChange={e => setPopid(onlyDigits(e.target.value, 64))}
             disabled={loading}
             fullWidth
-            helperText="Opcional."
+            helperText="Opcional. Solo números."
             error={
               Boolean(popid.trim()) && validatePopidOptional(popid) !== null
             }
-            inputProps={{ maxLength: 64 }}
+            inputProps={{ maxLength: 64, inputMode: 'numeric', pattern: '[0-9]*' }}
           />
         </Box>
         </DialogContent>
@@ -142,7 +145,7 @@ export default function OAuthOnboardingModal({
             variant="contained"
             disabled={
               loading ||
-              validateRutChile(rut) !== null ||
+              getRutFieldError(rut, true) !== null ||
               validatePopidOptional(popid) !== null
             }
             fullWidth

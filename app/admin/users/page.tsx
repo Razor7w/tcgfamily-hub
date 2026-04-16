@@ -54,6 +54,12 @@ import {
   type CreateUserData
 } from '@/hooks/useUsers'
 import { useAppStore } from '@/store/useAppStore'
+import {
+  formatRutOnBlur,
+  getRutFieldError,
+  onlyDigits
+} from '@/lib/rut-input'
+import { validatePopidOptional } from '@/lib/rut-chile'
 
 export default function UsersPageRefactored() {
   const theme = useTheme()
@@ -134,6 +140,16 @@ export default function UsersPageRefactored() {
 
   // Guardar usuario (crear o actualizar)
   const handleSave = async () => {
+    const rutErr = getRutFieldError(formData.rut, false)
+    if (rutErr) {
+      setSnackbar({ open: true, message: rutErr, severity: 'error' })
+      return
+    }
+    const popErr = validatePopidOptional(formData.popid)
+    if (popErr) {
+      setSnackbar({ open: true, message: popErr, severity: 'error' })
+      return
+    }
     try {
       if (editingUser) {
         await updateUser.mutateAsync({
@@ -572,14 +588,39 @@ export default function UsersPageRefactored() {
               fullWidth
               value={formData.rut}
               onChange={e => setFormData({ ...formData, rut: e.target.value })}
+              onBlur={() =>
+                setFormData(prev => ({
+                  ...prev,
+                  rut: formatRutOnBlur(prev.rut)
+                }))
+              }
+              placeholder="12.345.678-9"
+              error={
+                Boolean(formData.rut.trim()) &&
+                getRutFieldError(formData.rut, false) !== null
+              }
+              helperText={
+                getRutFieldError(formData.rut, false) ??
+                (!formData.rut.trim() ? 'Opcional.' : undefined)
+              }
+              inputProps={{ maxLength: 20 }}
             />
             <TextField
               label="PopID"
               fullWidth
               value={formData.popid}
               onChange={e =>
-                setFormData({ ...formData, popid: e.target.value })
+                setFormData({
+                  ...formData,
+                  popid: onlyDigits(e.target.value, 64)
+                })
               }
+              helperText="Opcional. Solo números."
+              error={
+                Boolean(formData.popid.trim()) &&
+                validatePopidOptional(formData.popid) !== null
+              }
+              inputProps={{ maxLength: 64, inputMode: 'numeric', pattern: '[0-9]*' }}
             />
             <FormControl fullWidth>
               <InputLabel>Rol</InputLabel>

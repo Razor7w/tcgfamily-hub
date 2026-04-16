@@ -1,23 +1,48 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import Card from '@mui/material/Card'
-import CardActions from '@mui/material/CardActions'
 import CardContent from '@mui/material/CardContent'
+import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
-import { Box, Button, CardHeader, Chip, CircularProgress, Grid, Stack } from '@mui/material'
-import { CalendarMonth } from '@mui/icons-material'
-import { getElapsedBadge, getElapsedDays } from '@/admin/mails/page'
+import Button from '@mui/material/Button'
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
+import IconButton from '@mui/material/IconButton'
+import {
+  Box,
+  Chip,
+  CircularProgress,
+  Stack
+} from '@mui/material'
+import { CalendarMonth, Comment, NorthEast, SouthWest } from '@mui/icons-material'
 import ButtonBarCode from '../molecule/ButtonBarCode'
 import { useMyMails } from '@/hooks/useMails'
+import { useSession } from 'next-auth/react'
 
 const PENDING_MAILS_LIMIT = 12
 
+function mailUserId(ref: { _id: string } | string): string {
+  return typeof ref === 'object' ? ref._id : String(ref)
+}
+
+function getStatus(mail: {
+  isRecived?: boolean
+  isRecivedInStore?: boolean
+}): { label: string; color: 'default' | 'warning' | 'success' } {
+  if (mail.isRecived) return { label: 'Retirado', color: 'success' }
+  if (mail.isRecivedInStore) return { label: 'En tienda', color: 'warning' }
+  return { label: 'No recibido en tienda', color: 'default' }
+}
+
 export default function CardMails() {
-  const { data, isLoading, error } = useMyMails({
-    pendingOnly: true,
-    limit: PENDING_MAILS_LIMIT
-  })
+  const { data: session } = useSession()
+  const currentUserId = session?.user?.id ?? ''
+  const [commentOpen, setCommentOpen] = useState<string | null>(null)
+  const { data, isLoading, error } = useMyMails({ limit: PENDING_MAILS_LIMIT })
 
   const mails = data?.mails ?? []
 
@@ -49,10 +74,10 @@ export default function CardMails() {
         }}
       >
         <Typography variant="body1" color="text.secondary" gutterBottom>
-          No tienes correos pendientes de retiro.
+          No tienes correos registrados.
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Cuando registren un envío a tu nombre, aparecerá aquí hasta que lo retires en tienda.
+          Los correos que registres (como emisor) y los que estén a tu nombre aparecerán aquí.
         </Typography>
         <Button component={Link} href="/dashboard/mail" size="small" variant="outlined">
           Ver historial de correos
@@ -61,45 +86,139 @@ export default function CardMails() {
     )
   }
 
-  return (
-    <Grid container spacing={2}>
-      {mails.map(mail => {
-        const from =
-          typeof mail.fromUserId === 'object' && mail.fromUserId
-            ? mail.fromUserId
-            : null
-        const title = from?.name?.trim() || 'Remitente sin nombre'
-        const days = getElapsedDays(mail.createdAt)
-        const { label, color } = getElapsedBadge(days)
-        const dateLabel = new Date(mail.createdAt).toLocaleDateString('es-CL', {
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric'
-        })
+  const commentText =
+    commentOpen != null
+      ? mails.find(m => m._id === commentOpen)?.observations?.trim() ?? ''
+      : ''
 
-        return (
-          <Grid key={mail._id} size={{ xs: 12, sm: 6, md: 4 }}>
-            <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-              <CardHeader title={title} titleTypographyProps={{ variant: 'subtitle1' }} />
-              <CardContent sx={{ flexGrow: 1, pt: 0 }}>
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                  <CalendarMonth fontSize="small" color="action" />
-                  <Typography variant="body2" color="text.secondary">
-                    {dateLabel}
+  return (
+    <>
+      <Card variant="outlined">
+        <CardContent sx={{ pt: 2 }}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+              columnGap: 2,
+              rowGap: 1.5
+            }}
+          >
+          {mails.map(mail => {
+            const from = typeof mail.fromUserId === 'object' ? mail.fromUserId : null
+            const to = typeof mail.toUserId === 'object' ? mail.toUserId : null
+            const isEmisor = currentUserId && mailUserId(mail.fromUserId) === currentUserId
+            const status = getStatus(mail)
+            const dateLabel = new Date(mail.createdAt).toLocaleDateString('es-CL', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric'
+            })
+            const counterparty = isEmisor
+              ? to
+                ? `${to.name ?? '-'} (${to.rut ?? '-'})`
+                : mail.toRut
+                  ? `RUT: ${mail.toRut}`
+                  : '-'
+              : from
+                ? `${from.name ?? '-'} (${from.rut ?? '-'})`
+                : '-'
+
+            return (
+              <Paper
+                key={mail._id}
+                variant="outlined"
+                sx={{
+                  p: 1.25,
+                  minWidth: 0,
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: 1
+                }}
+              >
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      color={isEmisor ? 'primary' : 'default'}
+                      icon={isEmisor ? <NorthEast /> : <SouthWest />}
+                      label={isEmisor ? 'Emisor' : 'Receptor'}
+                      sx={{ fontWeight: 600 }}
+                    />
+                    <Chip
+                      size="small"
+                      color={status.color}
+                      label={status.label}
+                      sx={{ fontWeight: 600 }}
+                    />
+                    <Stack direction="row" spacing={0.75} alignItems="center">
+                      <CalendarMonth fontSize="small" color="action" />
+                      <Typography variant="body2" color="text.secondary">
+                        {dateLabel}
+                      </Typography>
+                    </Stack>
+                  </Stack>
+
+                  <Typography
+                    variant="body2"
+                    sx={{ mt: 0.5, wordBreak: 'break-word' }}
+                  >
+                    {counterparty}
                   </Typography>
-                  <Chip label={label} color={color} size="small" sx={{ fontWeight: 500 }} />
-                </Stack>
-              </CardContent>
-              <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Código de retiro
-                </Typography>
-                <ButtonBarCode id={mail._id} />
-              </CardActions>
-            </Card>
-          </Grid>
-        )
-      })}
-    </Grid>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    Código: {mail.code ?? mail._id}
+                  </Typography>
+                </Box>
+
+                <Box
+                  sx={{
+                    flexShrink: 0,
+                    alignSelf: 'center',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 0.25
+                  }}
+                >
+                  {mail.observations?.trim() ? (
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      aria-label="Ver comentarios"
+                      onClick={() => setCommentOpen(mail._id)}
+                    >
+                      <Comment fontSize="small" />
+                    </IconButton>
+                  ) : null}
+                  <ButtonBarCode id={mail.code ?? mail._id} />
+                </Box>
+              </Paper>
+            )
+          })}
+          </Box>
+        </CardContent>
+      </Card>
+
+      <Dialog
+        open={commentOpen != null}
+        onClose={() => setCommentOpen(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Comentarios</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', pt: 0.5 }}>
+            {commentText || 'Sin comentarios.'}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button variant="contained" onClick={() => setCommentOpen(null)}>
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   )
 }
