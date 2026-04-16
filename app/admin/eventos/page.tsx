@@ -255,7 +255,7 @@ export default function AdminEventosPage() {
           >
             <Button
               component={Link}
-              href="/admin"
+              href="/admin/users"
               variant="outlined"
               size="small"
               startIcon={<ArrowBack />}

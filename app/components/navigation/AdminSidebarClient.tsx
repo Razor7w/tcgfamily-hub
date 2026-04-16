@@ -3,7 +3,6 @@ import {
   AdminPanelSettings,
   CalendarMonth,
   CloudUpload,
-  Dashboard,
   Email,
   ExpandLess,
   ExpandMore,
@@ -34,14 +33,6 @@ export default function AdminSidebarClient() {
         {open ? <ExpandLess /> : <ExpandMore />}
       </ListItemButton>
       <Collapse in={open} timeout="auto" unmountOnExit>
-        <List component="div" disablePadding>
-          <ListItemButton sx={{ pl: 4 }} href="/admin">
-            <ListItemIcon>
-              <Dashboard />
-            </ListItemIcon>
-            <ListItemText primary="Panel" />
-          </ListItemButton>
-        </List>
         <List component="div" disablePadding>
           <ListItemButton sx={{ pl: 4 }} href="/admin/users">
             <ListItemIcon>

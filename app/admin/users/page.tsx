@@ -2,6 +2,7 @@
 
 import { useState, useRef, useMemo, useEffect } from 'react'
 import Box from '@mui/material/Box'
+import Paper from '@mui/material/Paper'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
@@ -29,8 +30,12 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Alert from '@mui/material/Alert'
 import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
+import Chip from '@mui/material/Chip'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
+import { alpha, useTheme } from '@mui/material/styles'
+import PeopleOutlined from '@mui/icons-material/PeopleOutlined'
 
 /** Evita que varios Select/Menu bloqueen el scroll del body a la vez en móvil (iOS/Safari). */
 const SELECT_MENU_PROPS = {
@@ -110,7 +115,24 @@ export default function UsersPageRefactored() {
   // Zustand store para filtros (ejemplo)
   const userFilter = useAppStore(state => state.userFilter)
   const setUserFilter = useAppStore(state => state.setUserFilter)
+  const clearUserFilterStore = useAppStore(state => state.clearUserFilter)
   const addNotification = useAppStore(state => state.addNotification)
+
+  const roleToggleValue =
+    userFilter.role === 'user' || userFilter.role === 'admin'
+      ? userFilter.role
+      : 'all'
+
+  const hasActiveFilters =
+    Boolean(userFilter.role) ||
+    Boolean(searchName.trim()) ||
+    Boolean(searchRut.trim())
+
+  const handleClearFilters = () => {
+    clearUserFilterStore()
+    setSearchName('')
+    setSearchRut('')
+  }
 
   // Abrir diálogo para crear/editar
   const handleOpenDialog = (user?: User) => {
@@ -317,7 +339,8 @@ export default function UsersPageRefactored() {
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          minHeight: '50vh'
+          minHeight: '100vh',
+          bgcolor: 'background.default'
         }}
       >
         <CircularProgress />
@@ -327,136 +350,192 @@ export default function UsersPageRefactored() {
 
   if (error) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity="error">
-          Error al cargar usuarios: {error.message}
-        </Alert>
-      </Container>
+      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: 4 }}>
+        <Container maxWidth="lg">
+          <Alert severity="error">
+            Error al cargar usuarios: {error.message}
+          </Alert>
+        </Container>
+      </Box>
     )
   }
 
   return (
-    <Box sx={{ width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>
+    <Box
+      sx={{
+        width: '100%',
+        maxWidth: '100%',
+        overflowX: 'hidden',
+        minHeight: '100vh',
+        bgcolor: 'background.default'
+      }}
+    >
       <Container
         maxWidth="lg"
         disableGutters={isNarrow}
-        sx={{ py: { xs: 2, md: 4 }, px: { xs: 1.5, sm: 2, md: 3 } }}
+        sx={{ py: { xs: 2, sm: 4 }, px: { xs: 1.5, sm: 2, md: 3 } }}
       >
-        <Stack spacing={2} sx={{ mb: 2 }}>
-          <Typography
-            variant="h4"
-            component="h1"
-            sx={{
-              fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2rem' },
-              lineHeight: 1.25,
-              pr: { xs: 0, md: 2 }
-            }}
-          >
-            Gestión de usuarios
-          </Typography>
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={1.5}
-            useFlexGap
-            sx={{
-              alignItems: { xs: 'stretch', sm: 'center' },
-              flexWrap: { sm: 'wrap' }
-            }}
-          >
-            <FormControl
-              size="small"
-              sx={{
-                minWidth: { xs: '100%', sm: 160 },
-                maxWidth: { xs: '100%', sm: 220 },
-                flex: { sm: '1 1 160px' }
-              }}
-            >
-              <InputLabel id="filter-role-label">Filtrar por rol</InputLabel>
-              <Select
-                labelId="filter-role-label"
-                value={userFilter.role || ''}
-                label="Filtrar por rol"
-                onChange={e =>
-                  setUserFilter({
-                    role: e.target.value as 'user' | 'admin' | undefined
-                  })
-                }
-                MenuProps={SELECT_MENU_PROPS}
+        <Stack spacing={2} sx={{ mb: 3 }}>
+          <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+            <PeopleOutlined color="primary" sx={{ fontSize: 40 }} />
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                variant="h4"
+                component="h1"
+                sx={{ fontWeight: 700, lineHeight: 1.2 }}
               >
-                <MenuItem value="">Todos</MenuItem>
-                <MenuItem value="user">Usuario</MenuItem>
-                <MenuItem value="admin">Admin</MenuItem>
-              </Select>
-            </FormControl>
-
-            <TextField
-              size="small"
-              label="Buscar por nombre"
-              placeholder="Nombre del usuario"
-              value={searchName}
-              onChange={e => setSearchName(e.target.value)}
-              sx={{
-                minWidth: { xs: '100%', sm: 200 },
-                flex: { sm: '1 1 200px' }
-              }}
-              inputProps={{ 'aria-label': 'Buscar por nombre' }}
-            />
-            <TextField
-              size="small"
-              label="Buscar por RUT"
-              placeholder="Ej: 12345678 o 12.345.678-9"
-              value={searchRut}
-              onChange={e => setSearchRut(e.target.value)}
-              onBlur={() => setSearchRut(prev => formatRutOnBlur(prev))}
-              sx={{
-                minWidth: { xs: '100%', sm: 200 },
-                flex: { sm: '1 1 200px' }
-              }}
-              inputProps={{ maxLength: 20, 'aria-label': 'Buscar por RUT' }}
-            />
-
-            <input
-              type="file"
-              accept=".csv"
-              style={{ display: 'none' }}
-              onChange={handleBulkUpload}
-              disabled={bulkUpload.isPending}
-              ref={fileInputRef}
-            />
-            <Button
-              variant="outlined"
-              startIcon={<UploadFileIcon />}
-              onClick={() => {
-                fileInputRef.current?.click()
-              }}
-              disabled={bulkUpload.isPending}
-              sx={{
-                textTransform: 'none',
-                whiteSpace: 'nowrap',
-                width: { xs: '100%', sm: 'auto' }
-              }}
-            >
-              {bulkUpload.isPending ? 'Cargando…' : 'Cargar CSV'}
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpenDialog()}
-              sx={{
-                textTransform: 'none',
-                whiteSpace: 'nowrap',
-                width: { xs: '100%', sm: 'auto' }
-              }}
-            >
-              Nuevo usuario
-            </Button>
+                Gestión de usuarios
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Alta, edición, importación CSV y consulta de puntos de tienda por usuario.
+              </Typography>
+            </Box>
           </Stack>
+
+          <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: 2 }}>
+            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
+              Filtros y acciones
+            </Typography>
+            <Stack spacing={2}>
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+                  Rol
+                </Typography>
+                <ToggleButtonGroup
+                  exclusive
+                  value={roleToggleValue}
+                  onChange={(_, v: 'all' | 'user' | 'admin' | null) => {
+                    if (v == null) return
+                    if (v === 'all') setUserFilter({ role: undefined })
+                    else setUserFilter({ role: v })
+                  }}
+                  size="small"
+                  sx={{
+                    flexWrap: 'wrap',
+                    gap: 0.5,
+                    '& .MuiToggleButton-root': {
+                      px: 1.25,
+                      py: 0.5,
+                      textTransform: 'none',
+                      fontWeight: 500
+                    }
+                  }}
+                >
+                  <ToggleButton value="all">Todos</ToggleButton>
+                  <ToggleButton value="user">Usuario</ToggleButton>
+                  <ToggleButton value="admin" color="secondary">
+                    Admin
+                  </ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
+
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={1.5}
+                useFlexGap
+                sx={{
+                  alignItems: { xs: 'stretch', sm: 'center' },
+                  flexWrap: { sm: 'wrap' }
+                }}
+              >
+                <TextField
+                  size="small"
+                  label="Buscar por nombre"
+                  placeholder="Nombre del usuario"
+                  value={searchName}
+                  onChange={e => setSearchName(e.target.value)}
+                  sx={{
+                    minWidth: { xs: '100%', sm: 200 },
+                    flex: { sm: '1 1 200px' }
+                  }}
+                  inputProps={{ 'aria-label': 'Buscar por nombre' }}
+                />
+                <TextField
+                  size="small"
+                  label="Buscar por RUT"
+                  placeholder="Ej: 12345678 o 12.345.678-9"
+                  value={searchRut}
+                  onChange={e => setSearchRut(e.target.value)}
+                  onBlur={() => setSearchRut(prev => formatRutOnBlur(prev))}
+                  sx={{
+                    minWidth: { xs: '100%', sm: 200 },
+                    flex: { sm: '1 1 200px' }
+                  }}
+                  inputProps={{ maxLength: 20, 'aria-label': 'Buscar por RUT' }}
+                />
+
+                <input
+                  type="file"
+                  accept=".csv"
+                  style={{ display: 'none' }}
+                  onChange={handleBulkUpload}
+                  disabled={bulkUpload.isPending}
+                  ref={fileInputRef}
+                />
+                <Button
+                  variant="outlined"
+                  startIcon={<UploadFileIcon />}
+                  onClick={() => {
+                    fileInputRef.current?.click()
+                  }}
+                  disabled={bulkUpload.isPending}
+                  sx={{
+                    textTransform: 'none',
+                    whiteSpace: 'nowrap',
+                    width: { xs: '100%', sm: 'auto' }
+                  }}
+                >
+                  {bulkUpload.isPending ? 'Cargando…' : 'Cargar CSV'}
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => handleOpenDialog()}
+                  sx={{
+                    textTransform: 'none',
+                    whiteSpace: 'nowrap',
+                    width: { xs: '100%', sm: 'auto' }
+                  }}
+                >
+                  Nuevo usuario
+                </Button>
+              </Stack>
+            </Stack>
+          </Paper>
+        </Stack>
+
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          flexWrap="wrap"
+          gap={1}
+          sx={{ mb: 1.5 }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            {filteredUsers.length === 0
+              ? 'Sin resultados con los filtros actuales'
+              : `${filteredUsers.length} ${filteredUsers.length === 1 ? 'usuario' : 'usuarios'}`}
+          </Typography>
+          {hasActiveFilters && (
+            <Button size="small" onClick={handleClearFilters}>
+              Limpiar filtros
+            </Button>
+          )}
         </Stack>
 
         {filteredUsers.length === 0 ? (
-          <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
-            No hay usuarios que coincidan con el filtro
-          </Typography>
+          <Paper variant="outlined" sx={{ py: 6, px: 2, textAlign: 'center', borderRadius: 2 }}>
+            <Typography color="text.secondary" variant="body1" gutterBottom>
+              No hay usuarios que coincidan
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Ajusta el rol, el nombre o el RUT, o restablece los filtros.
+            </Typography>
+            <Button size="small" variant="outlined" onClick={handleClearFilters}>
+              Restablecer filtros
+            </Button>
+          </Paper>
         ) : (
           <>
             <Box
@@ -471,7 +550,7 @@ export default function UsersPageRefactored() {
                   <Card
                     key={user.id}
                     variant="outlined"
-                    sx={{ display: 'flex', flexDirection: 'column' }}
+                    sx={{ display: 'flex', flexDirection: 'column', borderRadius: 2 }}
                   >
                     <CardContent sx={{ flex: 1, pb: 1 }}>
                       <Box
@@ -494,9 +573,24 @@ export default function UsersPageRefactored() {
                           </Avatar>
                         )}
                         <Box sx={{ minWidth: 0, flex: 1 }}>
-                          <Typography variant="subtitle1" fontWeight={600} noWrap title={user.name || ''}>
-                            {user.name || 'Sin nombre'}
-                          </Typography>
+                          <Stack
+                            direction="row"
+                            alignItems="center"
+                            justifyContent="space-between"
+                            gap={1}
+                            sx={{ mb: 0.5 }}
+                          >
+                            <Typography variant="subtitle1" fontWeight={600} noWrap title={user.name || ''}>
+                              {user.name || 'Sin nombre'}
+                            </Typography>
+                            <Chip
+                              label={user.role === 'admin' ? 'Admin' : 'Usuario'}
+                              size="small"
+                              color={user.role === 'admin' ? 'secondary' : 'default'}
+                              variant="outlined"
+                              sx={{ fontWeight: 600, flexShrink: 0 }}
+                            />
+                          </Stack>
                           <Typography
                             variant="body2"
                             color="text.secondary"
@@ -593,11 +687,12 @@ export default function UsersPageRefactored() {
         maxWidth="sm"
         fullWidth
         scroll="paper"
+        aria-labelledby="admin-user-dialog-title"
       >
-        <DialogTitle>
-          {editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}
+        <DialogTitle id="admin-user-dialog-title">
+          {editingUser ? 'Editar usuario' : 'Nuevo usuario'}
         </DialogTitle>
-        <DialogContent>
+        <DialogContent dividers>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
             <TextField
               label="Nombre"
@@ -681,7 +776,7 @@ export default function UsersPageRefactored() {
             </FormControl>
           </Box>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, py: 2 }}>
           <Button onClick={handleCloseDialog}>Cancelar</Button>
           <Button
             onClick={handleSave}
@@ -689,7 +784,7 @@ export default function UsersPageRefactored() {
             disabled={createUser.isPending || updateUser.isPending}
           >
             {createUser.isPending || updateUser.isPending
-              ? 'Guardando...'
+              ? 'Guardando…'
               : 'Guardar'}
           </Button>
         </DialogActions>
@@ -700,22 +795,45 @@ export default function UsersPageRefactored() {
         onClose={() => setPointsModalUser(null)}
         maxWidth="sm"
         fullWidth
+        scroll="paper"
+        aria-labelledby="admin-points-dialog-title"
       >
-        <DialogTitle>
-          Puntos / crédito de tienda
+        <DialogTitle id="admin-points-dialog-title">
+          Crédito de tienda
           {pointsModalUser
             ? ` — ${pointsModalUser.name || pointsModalUser.email || pointsModalUser.id}`
             : ''}
         </DialogTitle>
-        <DialogContent>
+        <DialogContent dividers>
           {pointsModalUser && (
             <Stack spacing={2} sx={{ pt: 1 }}>
-              <Box>
-                <Typography variant="caption" color="text.secondary">
-                  Saldo (puntos)
+              <Box
+                sx={{
+                  p: 2.5,
+                  borderRadius: 2,
+                  bgcolor: theme =>
+                    alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.14 : 0.08),
+                  border: '1px solid',
+                  borderColor: 'divider'
+                }}
+              >
+                <Typography
+                  variant="overline"
+                  color="text.secondary"
+                  sx={{ letterSpacing: 0.5, display: 'block', mb: 0.5 }}
+                >
+                  Saldo actual (puntos)
                 </Typography>
-                <Typography variant="h6">
+                <Typography variant="h4" sx={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>
                   {(pointsModalUser.storePoints ?? 0).toLocaleString('es-CL')}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  Equivalente aprox.:{' '}
+                  {new Intl.NumberFormat('es-CL', {
+                    style: 'currency',
+                    currency: 'CLP',
+                    maximumFractionDigits: 0
+                  }).format(pointsModalUser.storePoints ?? 0)}
                 </Typography>
               </Box>
               <Box>
@@ -747,8 +865,10 @@ export default function UsersPageRefactored() {
             </Stack>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPointsModalUser(null)}>Cerrar</Button>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button variant="contained" onClick={() => setPointsModalUser(null)}>
+            Cerrar
+          </Button>
         </DialogActions>
       </Dialog>
 
