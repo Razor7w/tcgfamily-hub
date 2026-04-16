@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import Box from '@mui/material/Box'
+import Paper from '@mui/material/Paper'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
@@ -32,6 +33,8 @@ import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 import Tooltip from '@mui/material/Tooltip'
 import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import {
   useMails,
   useCreateMail,
@@ -48,7 +51,7 @@ import {
   type CreateUserData
 } from '@/hooks/useUsers'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
-import { formatMailLogDateTime } from '@/lib/mail-status'
+import { formatMailLogDateTime, getMailStatusChip } from '@/lib/mail-status'
 
 function userLabel(u: User) {
   const name = u.name || 'Sin nombre'
@@ -107,8 +110,9 @@ export default function MailsPage() {
     rut: string
   }>({ name: '', email: '', phone: '', rut: '' })
   const [searchId, setSearchId] = useState('')
-  const [filterRecived, setFilterRecived] = useState<
-    'all' | 'recived' | 'notRecived'
+  /** Etapa del envío (alineada con estados del portal). */
+  const [filterStage, setFilterStage] = useState<
+    'all' | 'pending' | 'inStore' | 'retired'
   >('all')
   const [filterFromUser, setFilterFromUser] = useState<User | null>(null)
   const [filterToUser, setFilterToUser] = useState<User | null>(null)
@@ -184,10 +188,12 @@ export default function MailsPage() {
           m._id.toLowerCase().includes(q)
       )
     }
-    if (filterRecived === 'recived') {
+    if (filterStage === 'retired') {
       list = list.filter(m => m.isRecived)
-    } else if (filterRecived === 'notRecived') {
-      list = list.filter(m => !m.isRecived)
+    } else if (filterStage === 'inStore') {
+      list = list.filter(m => !m.isRecived && Boolean(m.isRecivedInStore))
+    } else if (filterStage === 'pending') {
+      list = list.filter(m => !m.isRecived && !m.isRecivedInStore)
     }
     if (filterFromUser) {
       list = list.filter(m => mailUserId(m.fromUserId) === filterFromUser.id)
@@ -196,11 +202,11 @@ export default function MailsPage() {
       list = list.filter(m => mailUserId(m.toUserId) === filterToUser.id)
     }
     return list
-  }, [allMails, searchId, filterRecived, filterFromUser, filterToUser])
+  }, [allMails, searchId, filterStage, filterFromUser, filterToUser])
 
   useEffect(() => {
     setPage(1)
-  }, [searchId, filterRecived, filterFromUser, filterToUser])
+  }, [searchId, filterStage, filterFromUser, filterToUser])
 
   const pageCount = Math.max(1, Math.ceil(mails.length / PAGE_SIZE))
 
@@ -362,7 +368,7 @@ export default function MailsPage() {
         })
         setSnackbar({
           open: true,
-          message: 'Mail actualizado correctamente',
+          message: 'Correo actualizado correctamente',
           severity: 'success'
         })
       } else {
@@ -375,7 +381,7 @@ export default function MailsPage() {
         })
         setSnackbar({
           open: true,
-          message: 'Mail creado correctamente',
+          message: 'Correo creado correctamente',
           severity: 'success'
         })
       }
@@ -387,18 +393,18 @@ export default function MailsPage() {
   }
 
   const handleDelete = async (mail: Mail) => {
-    if (!confirm('¿Eliminar este mail?')) return
+    if (!confirm('¿Eliminar este correo?')) return
     try {
       await deleteMail.mutateAsync(mail._id)
       setSnackbar({
         open: true,
-        message: 'Mail eliminado correctamente',
+        message: 'Correo eliminado correctamente',
         severity: 'success'
       })
     } catch {
       setSnackbar({
         open: true,
-        message: 'Error al eliminar mail',
+        message: 'Error al eliminar el correo',
         severity: 'error'
       })
     }
@@ -460,41 +466,44 @@ export default function MailsPage() {
   if (error) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity="error">Error al cargar mails: {error.message}</Alert>
+        <Alert severity="error">Error al cargar correos: {error.message}</Alert>
       </Container>
     )
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 3
-        }}
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: { xs: 2, sm: 4 } }}>
+    <Container maxWidth="lg">
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        justifyContent="space-between"
+        alignItems={{ xs: 'flex-start', sm: 'center' }}
+        spacing={2}
+        sx={{ mb: 3 }}
       >
-        <Typography variant="h4" component="h1">
-          Gestión de Mails
-        </Typography>
+        <Box>
+          <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
+            Gestión de correos
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Registro de envíos, ingreso en tienda y retiro. Usa los filtros para priorizar pendientes.
+          </Typography>
+        </Box>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => handleOpenDialog()}
+          sx={{ flexShrink: 0 }}
         >
-          Nuevo Mail
+          Nuevo correo
         </Button>
-      </Box>
+      </Stack>
 
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
-          mb: 2
-        }}
-      >
+      <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 }, mb: 2, borderRadius: 2 }}>
+        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
+          Filtros
+        </Typography>
+        <Stack spacing={2}>
         <Box
           sx={{
             display: 'flex',
@@ -505,7 +514,7 @@ export default function MailsPage() {
         >
           <TextField
             size="small"
-            label="Buscar por ID"
+            label="Buscar por código"
             placeholder="Ej: 16-04-2026-001"
             value={searchId}
             onChange={e => setSearchId(e.target.value)}
@@ -573,40 +582,52 @@ export default function MailsPage() {
               )
             }}
           />
-          <Box sx={{ display: 'flex', gap: 0.5 }}>
-            <Button
-              size="small"
-              variant={filterRecived === 'all' ? 'contained' : 'outlined'}
-              onClick={() => setFilterRecived('all')}
-            >
-              Todos
-            </Button>
-            <Button
-              size="small"
-              variant={filterRecived === 'recived' ? 'contained' : 'outlined'}
-              color="success"
-              onClick={() => setFilterRecived('recived')}
-            >
-              Recibidos
-            </Button>
-            <Button
-              size="small"
-              variant={
-                filterRecived === 'notRecived' ? 'contained' : 'outlined'
-              }
-              color="warning"
-              onClick={() => setFilterRecived('notRecived')}
-            >
-              No recibidos
-            </Button>
-          </Box>
         </Box>
-      </Box>
+        <Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+            Etapa del envío
+          </Typography>
+          <ToggleButtonGroup
+            exclusive
+            value={filterStage}
+            onChange={(_, v) => v != null && setFilterStage(v)}
+            size="small"
+            sx={{
+              flexWrap: 'wrap',
+              gap: 0.5,
+              '& .MuiToggleButton-root': {
+                px: 1.25,
+                py: 0.5,
+                textTransform: 'none',
+                fontWeight: 500
+              }
+            }}
+          >
+            <ToggleButton value="all">Todos</ToggleButton>
+            <ToggleButton value="pending">Sin ingresar</ToggleButton>
+            <ToggleButton value="inStore" color="warning">
+              En tienda
+            </ToggleButton>
+            <ToggleButton value="retired" color="success">
+              Retirado
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+        </Stack>
+      </Paper>
 
       {mails.length === 0 ? (
-        <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
-          No hay mails
-        </Typography>
+        <Paper variant="outlined" sx={{ py: 6, px: 2, textAlign: 'center', borderRadius: 2 }}>
+          <Typography color="text.secondary" variant="body1" gutterBottom>
+            No hay correos con estos criterios
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Prueba limpiar la búsqueda o cambiar la etapa del envío.
+          </Typography>
+          <Button size="small" onClick={() => { setSearchId(''); setFilterStage('all'); setFilterFromUser(null); setFilterToUser(null) }}>
+            Restablecer filtros
+          </Button>
+        </Paper>
       ) : (
         <>
           <Box
@@ -623,8 +644,9 @@ export default function MailsPage() {
                 typeof mail.toUserId === 'object' ? mail.toUserId : null
               const days = getElapsedDays(mail.createdAt)
               const elapsed = getElapsedBadge(days)
+              const status = getMailStatusChip(mail)
               return (
-                <Card key={mail._id} variant="outlined" sx={{ display: 'flex', flexDirection: 'column' }}>
+                <Card key={mail._id} variant="outlined" sx={{ display: 'flex', flexDirection: 'column', borderRadius: 2 }}>
                   <CardContent sx={{ flex: 1, pb: 1 }}>
                     <Box
                       sx={{
@@ -635,16 +657,24 @@ export default function MailsPage() {
                         mb: 1.5
                       }}
                     >
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
                         Código
                         {mail.code ? ` · ${mail.code}` : ''}
                       </Typography>
-                      <Chip
-                        label={elapsed.label}
-                        color={elapsed.color}
-                        size="small"
-                        sx={{ fontWeight: 500 }}
-                      />
+                      <Stack direction="row" spacing={0.75} flexWrap="wrap" justifyContent="flex-end" sx={{ maxWidth: '65%' }}>
+                        <Chip
+                          label={status.label}
+                          color={status.color}
+                          size="small"
+                          sx={{ fontWeight: 700 }}
+                        />
+                        <Chip
+                          label={elapsed.label}
+                          color={elapsed.color}
+                          size="small"
+                          sx={{ fontWeight: 500 }}
+                        />
+                      </Stack>
                     </Box>
                     <Stack spacing={0.25} sx={{ mb: 1 }}>
                       <Typography variant="caption" color="text.secondary" component="p" sx={{ m: 0 }}>
@@ -833,9 +863,10 @@ export default function MailsPage() {
         onClose={handleCloseDialog}
         maxWidth="sm"
         fullWidth
+        scroll="paper"
       >
-        <DialogTitle>{editingMail ? 'Editar Mail' : 'Nuevo Mail'}</DialogTitle>
-        <DialogContent>
+        <DialogTitle>{editingMail ? 'Editar correo' : 'Nuevo correo'}</DialogTitle>
+        <DialogContent dividers>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
               <Autocomplete
@@ -1157,7 +1188,7 @@ export default function MailsPage() {
             />
           </Box>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, py: 2 }}>
           <Button onClick={handleCloseDialog}>Cancelar</Button>
           <Button
             onClick={handleSave}
@@ -1191,5 +1222,6 @@ export default function MailsPage() {
         </Alert>
       </Snackbar>
     </Container>
+    </Box>
   )
 }

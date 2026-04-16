@@ -2,8 +2,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import Card from '@mui/material/Card'
-import CardContent from '@mui/material/CardContent'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
@@ -86,16 +84,14 @@ export default function CardMails() {
 
   return (
     <>
-      <Card variant="outlined">
-        <CardContent sx={{ pt: 2 }}>
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
-              columnGap: 2,
-              rowGap: 1.5
-            }}
-          >
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+          columnGap: 2,
+          rowGap: 1.5
+        }}
+      >
           {mails.map(mail => {
             const from = typeof mail.fromUserId === 'object' ? mail.fromUserId : null
             const to = typeof mail.toUserId === 'object' ? mail.toUserId : null
@@ -119,14 +115,18 @@ export default function CardMails() {
               return (
                 <Paper
                   key={mail._id}
-                  variant="outlined"
+                  elevation={0}
                   sx={{
                     p: 1.5,
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
                     gap: 1.2,
-                    height: '100%'
+                    height: '100%',
+                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    bgcolor: 'background.paper'
                   }}
                 >
                   {/* HEADER */}
@@ -187,9 +187,7 @@ export default function CardMails() {
                 </Paper>
               )
           })}
-          </Box>
-        </CardContent>
-      </Card>
+      </Box>
 
       <Dialog
         open={commentOpen != null}

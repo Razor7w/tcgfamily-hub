@@ -20,10 +20,14 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Alert from '@mui/material/Alert'
 import Chip from '@mui/material/Chip'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import MarkunreadMailboxOutlined from '@mui/icons-material/MarkunreadMailboxOutlined'
 import { useMyMails } from '@/hooks/useMails'
-import { Stack } from '@mui/material'
+import { Divider, Stack } from '@mui/material'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import ButtonBarCode from '@/components/molecule/ButtonBarCode'
 import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
+import MailFlowExplainer from '@/components/mails/MailFlowExplainer'
 import { getMailStatusChip } from '@/lib/mail-status'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
@@ -151,7 +155,8 @@ export default function DashboardMailPage() {
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          minHeight: '50vh'
+          minHeight: '100vh',
+          bgcolor: 'background.default'
         }}
       >
         <CircularProgress />
@@ -161,174 +166,225 @@ export default function DashboardMailPage() {
 
   if (error) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity="error">Error al cargar correos: {error.message}</Alert>
-      </Container>
+      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: 4 }}>
+        <Container maxWidth="lg">
+          <Alert severity="error">Error al cargar correos: {error.message}</Alert>
+        </Container>
+      </Box>
     )
   }
 
-  return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Stack
-        sx={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 2,
-          mb: 3,
-          direction: 'column'
-        }}
-      >
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          <Button
-            component={Link}
-            href="/dashboard"
-            variant="outlined"
-            size="small"
-            startIcon={<ArrowBackIcon />}
-          >
-            Volver
-          </Button>
-          <Button
-            variant="contained"
-            size="small"
-            onClick={() => setRegisterMailOpen(true)}
-          >
-            Registrar correo
-          </Button>
-        </Stack>
-        <Typography variant="h4" component="h1">
-          Mis correos
-        </Typography>
-      </Stack>
+  const statusFilterLabel =
+    filterStatus === 'all'
+      ? 'Todos los estados'
+      : filterStatus === 'notInStore'
+        ? 'Sin ingresar a tienda'
+        : filterStatus === 'inStore'
+          ? 'En tienda'
+          : 'Retirado'
 
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
-          mb: 2
-        }}
-      >
-        <Box
+  return (
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: { xs: 2, sm: 4 } }}>
+      <Container maxWidth="lg">
+        <Stack spacing={2.5} sx={{ mb: 3 }}>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
+            <Button
+              component={Link}
+              href="/dashboard"
+              variant="outlined"
+              size="small"
+              startIcon={<ArrowBackIcon />}
+            >
+              Volver al inicio
+            </Button>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => setRegisterMailOpen(true)}
+            >
+              Registrar correo
+            </Button>
+          </Stack>
+
+          <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+            <MarkunreadMailboxOutlined color="primary" sx={{ fontSize: 36 }} />
+            <Box>
+              <Typography variant="h4" component="h1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                Mis correos
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Envíos registrados a tu nombre o que enviaste como emisor. Filtra por estado o por
+                persona.
+              </Typography>
+            </Box>
+          </Stack>
+
+          <MailFlowExplainer variant="compact" />
+        </Stack>
+
+        <Paper
+          variant="outlined"
           sx={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 2,
-            alignItems: 'center'
+            p: { xs: 2, sm: 2.5 },
+            mb: 2,
+            borderRadius: 2
           }}
         >
-          <TextField
-            size="small"
-            label="Buscar por ID"
-            placeholder="Ej: 16-04-2026-001"
-            value={searchId}
-            onChange={e => setSearchId(e.target.value)}
-            sx={{ minWidth: 220 }}
-          />
-          <Autocomplete<FilterUser>
-            size="small"
-            options={usersFromMails}
-            value={filterFromUser}
-            onChange={(_, v) => setFilterFromUser(v)}
-            getOptionLabel={filterUserLabel}
-            isOptionEqualToValue={(a, b) => a.id === b.id}
-            sx={{ minWidth: 260 }}
-            renderInput={params => (
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
+            Filtros
+          </Typography>
+          <Stack spacing={2}>
+            <Stack
+              direction={{ xs: 'column', md: 'row' }}
+              spacing={2}
+              flexWrap="wrap"
+              useFlexGap
+              alignItems={{ xs: 'stretch', md: 'center' }}
+            >
               <TextField
-                {...params}
-                label="Filtrar por remitente (De)"
-                placeholder="Buscar..."
+                size="small"
+                label="Buscar por código"
+                placeholder="Ej: 16-04-2026-001"
+                value={searchId}
+                onChange={e => setSearchId(e.target.value)}
+                sx={{ minWidth: { xs: '100%', sm: 220 }, flex: { md: '0 0 auto' } }}
               />
-            )}
-            filterOptions={(opts, { inputValue }) => {
-              const v = inputValue.trim().toLowerCase()
-              if (!v) return opts
-              return opts.filter(
-                u =>
-                  u.name?.toLowerCase().includes(v) ||
-                  (u.rut &&
-                    u.rut
-                      .toLowerCase()
-                      .replace(/\D/g, '')
-                      .includes(v.replace(/\D/g, '')))
-              )
-            }}
-          />
-          <Autocomplete<FilterUser>
-            size="small"
-            options={usersFromMails}
-            value={filterToUser}
-            onChange={(_, v) => setFilterToUser(v)}
-            getOptionLabel={filterUserLabel}
-            isOptionEqualToValue={(a, b) => a.id === b.id}
-            sx={{ minWidth: 260 }}
-            renderInput={params => (
-              <TextField
-                {...params}
-                label="Filtrar por destinatario (Para)"
-                placeholder="Buscar..."
+              <Autocomplete<FilterUser>
+                size="small"
+                options={usersFromMails}
+                value={filterFromUser}
+                onChange={(_, v) => setFilterFromUser(v)}
+                getOptionLabel={filterUserLabel}
+                isOptionEqualToValue={(a, b) => a.id === b.id}
+                sx={{ minWidth: { xs: '100%', sm: 260 }, flex: { md: '1 1 200px' } }}
+                renderInput={params => (
+                  <TextField
+                    {...params}
+                    label="Remitente (de)"
+                    placeholder="Nombre o RUT"
+                  />
+                )}
+                filterOptions={(opts, { inputValue }) => {
+                  const v = inputValue.trim().toLowerCase()
+                  if (!v) return opts
+                  return opts.filter(
+                    u =>
+                      u.name?.toLowerCase().includes(v) ||
+                      (u.rut &&
+                        u.rut
+                          .toLowerCase()
+                          .replace(/\D/g, '')
+                          .includes(v.replace(/\D/g, '')))
+                  )
+                }}
               />
-            )}
-            filterOptions={(opts, { inputValue }) => {
-              const v = inputValue.trim().toLowerCase()
-              if (!v) return opts
-              return opts.filter(
-                u =>
-                  u.name?.toLowerCase().includes(v) ||
-                  (u.rut &&
-                    u.rut
-                      .toLowerCase()
-                      .replace(/\D/g, '')
-                      .includes(v.replace(/\D/g, '')))
-              )
-            }}
-          />
-          <Box sx={{ display: 'flex', gap: 0.5 }}>
-            <Button
-              size="small"
-              variant={filterStatus === 'all' ? 'contained' : 'outlined'}
-              onClick={() => setFilterStatus('all')}
-            >
-              Todos
-            </Button>
-            <Button
-              size="small"
-              variant={filterStatus === 'notInStore' ? 'contained' : 'outlined'}
-              onClick={() => setFilterStatus('notInStore')}
-            >
-              No recibido en tienda
-            </Button>
-            <Button
-              size="small"
-              variant={
-                filterStatus === 'inStore' ? 'contained' : 'outlined'
-              }
-              color="warning"
-              onClick={() => setFilterStatus('inStore')}
-            >
-              En tienda
-            </Button>
-            <Button
-              size="small"
-              variant={filterStatus === 'retired' ? 'contained' : 'outlined'}
-              color="success"
-              onClick={() => setFilterStatus('retired')}
-            >
-              Retirado
-            </Button>
-          </Box>
-        </Box>
-      </Box>
+              <Autocomplete<FilterUser>
+                size="small"
+                options={usersFromMails}
+                value={filterToUser}
+                onChange={(_, v) => setFilterToUser(v)}
+                getOptionLabel={filterUserLabel}
+                isOptionEqualToValue={(a, b) => a.id === b.id}
+                sx={{ minWidth: { xs: '100%', sm: 260 }, flex: { md: '1 1 200px' } }}
+                renderInput={params => (
+                  <TextField
+                    {...params}
+                    label="Destinatario (para)"
+                    placeholder="Nombre o RUT"
+                  />
+                )}
+                filterOptions={(opts, { inputValue }) => {
+                  const v = inputValue.trim().toLowerCase()
+                  if (!v) return opts
+                  return opts.filter(
+                    u =>
+                      u.name?.toLowerCase().includes(v) ||
+                      (u.rut &&
+                        u.rut
+                          .toLowerCase()
+                          .replace(/\D/g, '')
+                          .includes(v.replace(/\D/g, '')))
+                  )
+                }}
+              />
+            </Stack>
 
-      <TableContainer component={Paper}>
-        <Table>
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+                Estado del envío
+              </Typography>
+              <ToggleButtonGroup
+                exclusive
+                value={filterStatus}
+                onChange={(_, v: typeof filterStatus | null) => {
+                  if (v != null) setFilterStatus(v)
+                }}
+                size="small"
+                sx={{
+                  flexWrap: 'wrap',
+                  gap: 0.5,
+                  '& .MuiToggleButton-root': {
+                    px: 1.25,
+                    py: 0.5,
+                    textTransform: 'none',
+                    fontWeight: 500
+                  }
+                }}
+              >
+                <ToggleButton value="all">Todos</ToggleButton>
+                <ToggleButton value="notInStore">Sin ingresar</ToggleButton>
+                <ToggleButton value="inStore" color="warning">
+                  En tienda
+                </ToggleButton>
+                <ToggleButton value="retired" color="success">
+                  Retirado
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+          </Stack>
+        </Paper>
+
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          flexWrap="wrap"
+          gap={1}
+          sx={{ mb: 1.5 }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            {mails.length === 0
+              ? 'Sin resultados con los filtros actuales'
+              : `${mails.length} ${mails.length === 1 ? 'correo' : 'correos'} · ${statusFilterLabel}`}
+          </Typography>
+          {(searchId || filterFromUser || filterToUser || filterStatus !== 'all') && (
+            <Button
+              size="small"
+              onClick={() => {
+                setSearchId('')
+                setFilterFromUser(null)
+                setFilterToUser(null)
+                setFilterStatus('all')
+              }}
+            >
+              Limpiar filtros
+            </Button>
+          )}
+        </Stack>
+
+        <TableContainer
+          component={Paper}
+          variant="outlined"
+          sx={{ borderRadius: 2, overflow: 'auto' }}
+        >
+          <Table size="small" sx={{ minWidth: 720 }}>
           <TableHead>
             <TableRow>
               <TableCell sx={{ width: 110 }}>Tipo</TableCell>
               <TableCell>De</TableCell>
               <TableCell>Para</TableCell>
               <TableCell>Estado</TableCell>
-              <TableCell>Tiempo transcurrido</TableCell>
+              <TableCell>Tiempo</TableCell>
               <TableCell align="center">Código</TableCell>
               <TableCell align="right">Acciones</TableCell>
             </TableRow>
@@ -336,8 +392,17 @@ export default function DashboardMailPage() {
           <TableBody>
             {mails.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">
-                  No hay correos
+                <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    No hay correos que coincidan.
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
+                    Prueba otra búsqueda o restablece los filtros.
+                  </Typography>
+                  <Divider sx={{ my: 2 }} />
+                  <Button size="small" variant="outlined" onClick={() => setRegisterMailOpen(true)}>
+                    Registrar un correo
+                  </Button>
                 </TableCell>
               </TableRow>
             ) : (
@@ -444,6 +509,7 @@ export default function DashboardMailPage() {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Container>
+      </Container>
+    </Box>
   )
 }

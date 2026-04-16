@@ -64,9 +64,16 @@ export default function RegisterMailDialog({ open, onClose }: RegisterMailDialog
   }
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Registrar correo</DialogTitle>
-      <DialogContent>
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      maxWidth="sm"
+      fullWidth
+      scroll="paper"
+      aria-labelledby="register-mail-title"
+    >
+      <DialogTitle id="register-mail-title">Registrar correo</DialogTitle>
+      <DialogContent dividers>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1 }}>
           <Typography variant="body2" color="text.secondary">
             Ingresa el RUT del receptor. El correo quedará como{' '}
@@ -115,7 +122,7 @@ export default function RegisterMailDialog({ open, onClose }: RegisterMailDialog
           )}
         </Box>
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
+      <DialogActions sx={{ px: 3, py: 2 }}>
         <Button onClick={handleClose} disabled={registerMail.isPending}>
           Cancelar
         </Button>
