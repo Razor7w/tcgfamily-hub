@@ -1,17 +1,15 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
-import Paper from '@mui/material/Paper'
+import Card from '@mui/material/Card'
+import CardContent from '@mui/material/CardContent'
+import CardActions from '@mui/material/CardActions'
+import Divider from '@mui/material/Divider'
+import Pagination from '@mui/material/Pagination'
 import IconButton from '@mui/material/IconButton'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
@@ -82,6 +80,8 @@ function mailUserId(ref: { _id: string } | string | null | undefined): string {
   return typeof ref === 'object' ? ref._id : String(ref)
 }
 
+const PAGE_SIZE = 10
+
 export default function MailsPage() {
   const [openDialog, setOpenDialog] = useState(false)
   const [editingMail, setEditingMail] = useState<Mail | null>(null)
@@ -110,6 +110,7 @@ export default function MailsPage() {
   >('all')
   const [filterFromUser, setFilterFromUser] = useState<User | null>(null)
   const [filterToUser, setFilterToUser] = useState<User | null>(null)
+  const [page, setPage] = useState(1)
 
   const { data: mailsRes, isLoading, error } = useMails()
   const { data: users = [], isLoading: usersLoading } = useUsers()
@@ -143,6 +144,21 @@ export default function MailsPage() {
     }
     return list
   }, [allMails, searchId, filterRecived, filterFromUser, filterToUser])
+
+  useEffect(() => {
+    setPage(1)
+  }, [searchId, filterRecived, filterFromUser, filterToUser])
+
+  const pageCount = Math.max(1, Math.ceil(mails.length / PAGE_SIZE))
+
+  useEffect(() => {
+    setPage(p => (p > pageCount ? pageCount : p))
+  }, [pageCount, mails.length])
+
+  const paginatedMails = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE
+    return mails.slice(start, start + PAGE_SIZE)
+  }, [mails, page])
 
   const fromOptions = useMemo(() => {
     if (!formData.toUserId) return users
@@ -532,47 +548,69 @@ export default function MailsPage() {
         </Box>
       </Box>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell align="center" sx={{ width: 64 }}>
-                Nº
-              </TableCell>
-              <TableCell>De</TableCell>
-              <TableCell>Para</TableCell>
-              <TableCell>Recibido en tienda</TableCell>
-              <TableCell>Retirado</TableCell>
-              <TableCell>Tiempo transcurrido</TableCell>
-              <TableCell>Observaciones</TableCell>
-              <TableCell align="right">Acciones</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {mails.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} align="center">
-                  No hay mails
-                </TableCell>
-              </TableRow>
-            ) : (
-              mails.map((mail, index) => {
-                const from =
-                  typeof mail.fromUserId === 'object' ? mail.fromUserId : null
-                const to =
-                  typeof mail.toUserId === 'object' ? mail.toUserId : null
-                return (
-                  <TableRow key={mail._id}>
-                    <TableCell align="center" sx={{ fontWeight: 500 }}>
-                      {index + 1}
-                    </TableCell>
-                    <TableCell>
-                      {from ? `${from.name ?? '-'} (${from.rut ?? '-'})` : '-'}
-                    </TableCell>
-                    <TableCell>
+      {mails.length === 0 ? (
+        <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+          No hay mails
+        </Typography>
+      ) : (
+        <>
+          <Box
+            sx={{
+              display: 'grid',
+              gap: 2,
+              gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }
+            }}
+          >
+            {paginatedMails.map((mail, index) => {
+              const from =
+                typeof mail.fromUserId === 'object' ? mail.fromUserId : null
+              const to =
+                typeof mail.toUserId === 'object' ? mail.toUserId : null
+              const rowNum = (page - 1) * PAGE_SIZE + index + 1
+              const days = getElapsedDays(mail.createdAt)
+              const elapsed = getElapsedBadge(days)
+              return (
+                <Card key={mail._id} variant="outlined" sx={{ display: 'flex', flexDirection: 'column' }}>
+                  <CardContent sx={{ flex: 1, pb: 1 }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        gap: 1,
+                        mb: 1.5
+                      }}
+                    >
+                      <Typography variant="caption" color="text.secondary">
+                        Nº {rowNum}
+                        {mail.code ? ` · ${mail.code}` : ''}
+                      </Typography>
+                      <Chip
+                        label={elapsed.label}
+                        color={elapsed.color}
+                        size="small"
+                        sx={{ fontWeight: 500 }}
+                      />
+                    </Box>
+                    <Typography variant="body2" sx={{ mb: 0.5 }}>
+                      <strong>De:</strong>{' '}
+                      {from
+                        ? `${from.name ?? '-'} (${from.rut ?? '-'})`
+                        : '-'}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 1.5 }}>
+                      <strong>Para:</strong>{' '}
                       {to ? `${to.name ?? '-'} (${to.rut ?? '-'})` : '-'}
-                    </TableCell>
-                    <TableCell>
+                    </Typography>
+                    <Divider sx={{ my: 1 }} />
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 2,
+                        alignItems: 'center'
+                      }}
+                    >
                       <Box
                         sx={{
                           display: 'flex',
@@ -580,11 +618,10 @@ export default function MailsPage() {
                           gap: 0.5
                         }}
                       >
-                        <Typography
-                          component="span"
-                          variant="body2"
-                          sx={{ minWidth: 28 }}
-                        >
+                        <Typography variant="caption" color="text.secondary">
+                          En tienda
+                        </Typography>
+                        <Typography component="span" variant="body2">
                           {mail.isRecivedInStore ? 'Sí' : 'No'}
                         </Typography>
                         <Tooltip
@@ -597,7 +634,9 @@ export default function MailsPage() {
                           <span>
                             <IconButton
                               size="small"
-                              color={mail.isRecivedInStore ? 'default' : 'primary'}
+                              color={
+                                mail.isRecivedInStore ? 'default' : 'primary'
+                              }
                               onClick={() => handleToggleRecivedInStore(mail)}
                               disabled={
                                 updateMail.isPending &&
@@ -613,8 +652,6 @@ export default function MailsPage() {
                           </span>
                         </Tooltip>
                       </Box>
-                    </TableCell>
-                    <TableCell>
                       <Box
                         sx={{
                           display: 'flex',
@@ -622,11 +659,10 @@ export default function MailsPage() {
                           gap: 0.5
                         }}
                       >
-                        <Typography
-                          component="span"
-                          variant="body2"
-                          sx={{ minWidth: 28 }}
-                        >
+                        <Typography variant="caption" color="text.secondary">
+                          Retirado
+                        </Typography>
+                        <Typography component="span" variant="body2">
                           {mail.isRecived ? 'Sí' : 'No'}
                         </Typography>
                         <Tooltip
@@ -655,62 +691,80 @@ export default function MailsPage() {
                           </span>
                         </Tooltip>
                       </Box>
-                    </TableCell>
-                    <TableCell>
-                      {(() => {
-                        const days = getElapsedDays(mail.createdAt)
-                        const { label, color } = getElapsedBadge(days)
-                        return (
-                          <Chip
-                            label={label}
-                            color={color}
-                            size="small"
-                            sx={{ fontWeight: 500 }}
-                          />
-                        )
-                      })()}
-                    </TableCell>
-                    <TableCell>
-                      {mail.observations ? (
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            maxWidth: 200,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}
-                        >
-                          {mail.observations}
-                        </Typography>
-                      ) : (
-                        '-'
-                      )}
-                    </TableCell>
-                    <TableCell align="right">
-                      <IconButton
-                        color="primary"
-                        size="small"
-                        onClick={() => handleOpenDialog(mail)}
+                    </Box>
+                    {mail.observations ? (
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                          mt: 1.5,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 3,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden'
+                        }}
                       >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        color="error"
-                        size="small"
-                        onClick={() => handleDelete(mail)}
-                        disabled={deleteMail.isPending}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                )
-              })
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                        {mail.observations}
+                      </Typography>
+                    ) : null}
+                  </CardContent>
+                  <CardActions
+                    sx={{
+                      justifyContent: 'flex-end',
+                      pt: 0,
+                      px: 2,
+                      pb: 2
+                    }}
+                  >
+                    <IconButton
+                      color="primary"
+                      size="small"
+                      onClick={() => handleOpenDialog(mail)}
+                      aria-label="Editar"
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      color="error"
+                      size="small"
+                      onClick={() => handleDelete(mail)}
+                      disabled={deleteMail.isPending}
+                      aria-label="Eliminar"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </CardActions>
+                </Card>
+              )
+            })}
+          </Box>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 1,
+              mt: 3
+            }}
+          >
+            <Pagination
+              count={pageCount}
+              page={page}
+              onChange={(_, value) => setPage(value)}
+              color="primary"
+              showFirstButton
+              showLastButton
+              size="small"
+            />
+            <Typography variant="caption" color="text.secondary">
+              {mails.length === 0
+                ? ''
+                : `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, mails.length)} de ${mails.length}`}
+            </Typography>
+          </Box>
+        </>
+      )}
 
       <Dialog
         open={openDialog}
