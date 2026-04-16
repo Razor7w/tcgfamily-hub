@@ -24,6 +24,7 @@ import { useMyMails } from '@/hooks/useMails'
 import { Stack } from '@mui/material'
 import ButtonBarCode from '@/components/molecule/ButtonBarCode'
 import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
+import { getMailStatusChip } from '@/lib/mail-status'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -323,14 +324,10 @@ export default function DashboardMailPage() {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell align="center" sx={{ width: 64 }}>
-                Nº
-              </TableCell>
               <TableCell sx={{ width: 110 }}>Tipo</TableCell>
               <TableCell>De</TableCell>
               <TableCell>Para</TableCell>
-              <TableCell>Recibido en tienda</TableCell>
-              <TableCell>Retirado</TableCell>
+              <TableCell>Estado</TableCell>
               <TableCell>Tiempo transcurrido</TableCell>
               <TableCell align="center">Código</TableCell>
               <TableCell align="right">Acciones</TableCell>
@@ -339,12 +336,12 @@ export default function DashboardMailPage() {
           <TableBody>
             {mails.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} align="center">
+                <TableCell colSpan={7} align="center">
                   No hay correos
                 </TableCell>
               </TableRow>
             ) : (
-              mails.map((mail, index) => {
+              mails.map(mail => {
                 const from =
                   typeof mail.fromUserId === 'object' ? mail.fromUserId : null
                 const to =
@@ -354,9 +351,6 @@ export default function DashboardMailPage() {
                 const canDelete = isEmisor && !mail.isRecivedInStore
                 return (
                   <TableRow key={mail._id}>
-                    <TableCell align="center" sx={{ fontWeight: 500 }}>
-                      {index + 1}
-                    </TableCell>
                     <TableCell>
                       <Chip
                         label={isEmisor ? 'Emisor' : 'Receptor'}
@@ -376,8 +370,19 @@ export default function DashboardMailPage() {
                           ? `RUT: ${mail.toRut}`
                           : '-'}
                     </TableCell>
-                    <TableCell>{mail.isRecivedInStore ? 'Sí' : 'No'}</TableCell>
-                    <TableCell>{mail.isRecived ? 'Sí' : 'No'}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        const { label, color } = getMailStatusChip(mail)
+                        return (
+                          <Chip
+                            label={label}
+                            color={color}
+                            size="small"
+                            sx={{ fontWeight: 600 }}
+                          />
+                        )
+                      })()}
+                    </TableCell>
                     <TableCell>
                       {(() => {
                         const days = getElapsedDays(mail.createdAt)

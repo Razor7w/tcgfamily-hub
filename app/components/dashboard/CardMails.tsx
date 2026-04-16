@@ -22,20 +22,12 @@ import { CalendarMonth, Comment, NorthEast, SouthWest } from '@mui/icons-materia
 import ButtonBarCode from '../molecule/ButtonBarCode'
 import { useMyMails } from '@/hooks/useMails'
 import { useSession } from 'next-auth/react'
+import { getMailStatusChip } from '@/lib/mail-status'
 
-const PENDING_MAILS_LIMIT = 12
+const PENDING_MAILS_LIMIT = 4
 
 function mailUserId(ref: { _id: string } | string): string {
   return typeof ref === 'object' ? ref._id : String(ref)
-}
-
-function getStatus(mail: {
-  isRecived?: boolean
-  isRecivedInStore?: boolean
-}): { label: string; color: 'default' | 'warning' | 'success' } {
-  if (mail.isRecived) return { label: 'Retirado', color: 'success' }
-  if (mail.isRecivedInStore) return { label: 'En tienda', color: 'warning' }
-  return { label: 'No recibido en tienda', color: 'default' }
 }
 
 export default function CardMails() {
@@ -107,7 +99,7 @@ export default function CardMails() {
             const from = typeof mail.fromUserId === 'object' ? mail.fromUserId : null
             const to = typeof mail.toUserId === 'object' ? mail.toUserId : null
             const isEmisor = currentUserId && mailUserId(mail.fromUserId) === currentUserId
-            const status = getStatus(mail)
+            const status = getMailStatusChip(mail)
             const dateLabel = new Date(mail.createdAt).toLocaleDateString('es-CL', {
               day: '2-digit',
               month: '2-digit',
