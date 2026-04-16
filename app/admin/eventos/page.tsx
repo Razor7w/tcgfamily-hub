@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -21,10 +21,22 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
+import Divider from "@mui/material/Divider";
 import Grid from "@mui/material/Grid";
 import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
-import { ArrowBack, CheckCircle, Delete, Edit, Groups } from "@mui/icons-material";
+import Tooltip from "@mui/material/Tooltip";
+import Chip from "@mui/material/Chip";
+import { alpha } from "@mui/material/styles";
+import {
+  ArrowBack,
+  CheckCircle,
+  Delete,
+  Edit,
+  EventAvailable,
+  Groups,
+  InfoOutlined,
+} from "@mui/icons-material";
 import Link from "next/link";
 import {
   AdminWeeklyEvent,
@@ -69,6 +81,18 @@ const emptyForm = (): FormState => ({
   location: "Av. Valparaíso 1195, Local 3",
 });
 
+function kindLabelAdmin(k: AdminWeeklyEvent["kind"]) {
+  if (k === "tournament") return "Torneo";
+  if (k === "trade_day") return "Intercambio";
+  return "Otro";
+}
+
+function gameLabelAdmin(g: AdminWeeklyEvent["game"]) {
+  if (g === "pokemon") return "Pokémon";
+  if (g === "magic") return "Magic";
+  return "Otro TCG";
+}
+
 function formFromEvent(ev: AdminWeeklyEvent): FormState {
   return {
     title: ev.title,
@@ -98,8 +122,9 @@ export default function AdminEventosPage() {
   const confirmParticipation = useConfirmParticipantParticipation();
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [participantsModalEvent, setParticipantsModalEvent] =
-    useState<AdminWeeklyEvent | null>(null);
+  const [participantsModalEventId, setParticipantsModalEventId] = useState<
+    string | null
+  >(null);
   const [editing, setEditing] = useState<AdminWeeklyEvent | null>(null);
   const [form, setForm] = useState<FormState>(() => emptyForm());
   const [formError, setFormError] = useState<string | null>(null);
@@ -113,17 +138,14 @@ export default function AdminEventosPage() {
     );
   }, [data?.events]);
 
-  useEffect(() => {
-    if (!participantsModalEvent) return;
-    const updated = eventsSorted.find(
-      (e) => e._id === participantsModalEvent._id,
-    );
-    if (!updated) {
-      setParticipantsModalEvent(null);
-      return;
-    }
-    setParticipantsModalEvent(updated);
-  }, [eventsSorted, participantsModalEvent?._id]);
+  /** Modal sincronizado con la lista: sin efectos que copien el evento al estado. */
+  const participantsModalEvent = useMemo(
+    () =>
+      participantsModalEventId
+        ? (eventsSorted.find((e) => e._id === participantsModalEventId) ?? null)
+        : null,
+    [eventsSorted, participantsModalEventId],
+  );
 
   const openCreate = () => {
     setEditing(null);
@@ -205,6 +227,9 @@ export default function AdminEventosPage() {
     if (!deleteTarget) return;
     try {
       await deleteEv.mutateAsync(deleteTarget._id);
+      if (participantsModalEventId === deleteTarget._id) {
+        setParticipantsModalEventId(null);
+      }
       setDeleteTarget(null);
     } catch {
       /* alert */
@@ -220,31 +245,38 @@ export default function AdminEventosPage() {
         : null);
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", py: 4 }}>
-      <Container maxWidth="md">
-        <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
-          <Button
-            component={Link}
-            href="/admin"
-            variant="outlined"
-            size="small"
-            startIcon={<ArrowBack />}
+    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", py: { xs: 2, sm: 4 } }}>
+      <Container maxWidth="lg">
+        <Stack spacing={2.5} sx={{ mb: 3 }}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            alignItems={{ xs: "stretch", sm: "center" }}
+            spacing={2}
           >
-            Volver
-          </Button>
-          <Typography variant="h4" component="h1" sx={{ flex: 1 }}>
-            Eventos de la semana
-          </Typography>
-          <Button variant="contained" onClick={openCreate}>
-            Nuevo evento
-          </Button>
+            <Button
+              component={Link}
+              href="/admin"
+              variant="outlined"
+              size="small"
+              startIcon={<ArrowBack />}
+              sx={{ alignSelf: { xs: "flex-start", sm: "center" } }}
+            >
+              Volver
+            </Button>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="h4" component="h1" sx={{ fontWeight: 800, letterSpacing: -0.5 }}>
+                Eventos
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, maxWidth: 560 }}>
+                Crea y edita la cartelera: torneos (precio o gratis), intercambios y otros. Los
+                jugadores se preinscriben desde su panel.
+              </Typography>
+            </Box>
+            <Button variant="contained" size="large" onClick={openCreate} sx={{ fontWeight: 700 }}>
+              Nuevo evento
+            </Button>
+          </Stack>
         </Stack>
-
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Define torneos (con precio en CLP o gratuitos), jornadas de intercambio u otros
-          eventos. En torneos Pokémon elige Casual, Cup o Challenge. El cupo es numérico
-          (por ejemplo 4, 8, 16 o 32).
-        </Typography>
 
         {isPending ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
@@ -264,83 +296,121 @@ export default function AdminEventosPage() {
         ) : (
           <Stack spacing={2}>
             {eventsSorted.length === 0 ? (
-              <Typography color="text.secondary">
-                No hay eventos. Crea uno para la semana.
-              </Typography>
+              <Paper
+                variant="outlined"
+                sx={{
+                  py: 6,
+                  px: 3,
+                  textAlign: "center",
+                  borderRadius: 3,
+                  borderStyle: "dashed",
+                  bgcolor: (t) => alpha(t.palette.text.primary, 0.02),
+                }}
+              >
+                <EventAvailable sx={{ fontSize: 48, color: "text.disabled", mb: 1.5 }} />
+                <Typography fontWeight={700} gutterBottom>
+                  Aún no hay eventos
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2, maxWidth: 400, mx: "auto" }}>
+                  Publica el primero para que aparezca en el dashboard de los usuarios.
+                </Typography>
+                <Button variant="contained" onClick={openCreate}>
+                  Crear evento
+                </Button>
+              </Paper>
             ) : (
               eventsSorted.map((ev) => (
-                <Card key={ev._id} variant="outlined">
+                <Card
+                  key={ev._id}
+                  elevation={0}
+                  sx={{
+                    borderRadius: 3,
+                    border: 1,
+                    borderColor: "divider",
+                    borderLeftWidth: 4,
+                    borderLeftColor: "primary.main",
+                    overflow: "hidden",
+                  }}
+                >
                   <CardContent
                     sx={{
                       display: "flex",
                       flexDirection: { xs: "column", sm: "row" },
                       gap: 2,
                       alignItems: { sm: "flex-start" },
+                      p: { xs: 2, sm: 2.5 },
                     }}
                   >
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="subtitle1" fontWeight={700}>
-                        {ev.title}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 700 }}>
                         {new Date(ev.startsAt).toLocaleString("es-CL", {
-                          dateStyle: "full",
-                          timeStyle: "short",
+                          weekday: "long",
+                          day: "numeric",
+                          month: "long",
+                          hour: "2-digit",
+                          minute: "2-digit",
                         })}
                       </Typography>
-                      <Typography variant="body2" sx={{ mt: 1 }}>
-                        {ev.kind === "tournament"
-                          ? "Torneo"
-                          : ev.kind === "trade_day"
-                            ? "Intercambio"
-                            : "Otro"}{" "}
-                        ·{" "}
-                        {ev.game === "pokemon"
-                          ? "Pokémon"
-                          : ev.game === "magic"
-                            ? "Magic"
-                            : "Otro TCG"}
-                        {ev.kind === "tournament" &&
-                        ev.game === "pokemon" &&
-                        ev.pokemonSubtype
-                          ? ` · ${ev.pokemonSubtype}`
-                          : ""}
+                      <Typography variant="h6" component="h2" sx={{ fontWeight: 800, mt: 0.5, mb: 1 }}>
+                        {ev.title}
                       </Typography>
-                      <Typography variant="body2">
-                        Precio:{" "}
-                        {ev.kind === "tournament"
-                          ? ev.priceClp > 0
-                            ? `${ev.priceClp.toLocaleString("es-CL")} CLP`
-                            : "Gratis"
-                          : "—"}{" "}
-                        · Cupo: {ev.maxParticipants} · Preinscritos:{" "}
-                        {ev.participants?.length ?? 0}
-                      </Typography>
+                      <Stack direction="row" flexWrap="wrap" gap={0.75} useFlexGap sx={{ mb: 1.5 }}>
+                        <Chip size="small" label={kindLabelAdmin(ev.kind)} variant="outlined" />
+                        <Chip size="small" label={gameLabelAdmin(ev.game)} variant="outlined" />
+                        {ev.kind === "tournament" && ev.game === "pokemon" && ev.pokemonSubtype ? (
+                          <Chip size="small" label={ev.pokemonSubtype} color="primary" variant="outlined" />
+                        ) : null}
+                      </Stack>
+                      <Stack direction="row" flexWrap="wrap" gap={2} sx={{ typography: "body2", color: "text.secondary" }}>
+                        <span>
+                          <strong style={{ color: "inherit" }}>Precio:</strong>{" "}
+                          {ev.kind === "tournament"
+                            ? ev.priceClp > 0
+                              ? `${ev.priceClp.toLocaleString("es-CL")} CLP`
+                              : "Gratis"
+                            : "—"}
+                        </span>
+                        <span>
+                          <strong>Cupo:</strong> {ev.maxParticipants}
+                        </span>
+                        <span>
+                          <strong>Inscritos:</strong> {ev.participants?.length ?? 0}
+                        </span>
+                      </Stack>
                       <Button
-                        size="small"
+                        size="medium"
                         variant="outlined"
                         startIcon={<Groups />}
-                        sx={{ mt: 1.5, alignSelf: "flex-start" }}
-                        onClick={() => setParticipantsModalEvent(ev)}
+                        sx={{ mt: 2, fontWeight: 600 }}
+                        onClick={() => setParticipantsModalEventId(ev._id)}
                       >
-                        Ver preinscritos
+                        Preinscritos
+                        {(ev.participants?.length ?? 0) > 0
+                          ? ` (${ev.participants?.length})`
+                          : ""}
                       </Button>
                     </Box>
-                    <Stack direction="row" spacing={1}>
-                      <IconButton
-                        aria-label="Editar"
-                        color="primary"
-                        onClick={() => openEdit(ev)}
-                      >
-                        <Edit />
-                      </IconButton>
-                      <IconButton
-                        aria-label="Eliminar"
-                        color="error"
-                        onClick={() => setDeleteTarget(ev)}
-                      >
-                        <Delete />
-                      </IconButton>
+                    <Stack direction="row" spacing={0.5} sx={{ alignSelf: { xs: "flex-end", sm: "flex-start" } }}>
+                      <Tooltip title="Editar evento">
+                        <IconButton
+                          aria-label="Editar"
+                          color="primary"
+                          onClick={() => openEdit(ev)}
+                          size="medium"
+                        >
+                          <Edit />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Eliminar evento">
+                        <IconButton
+                          aria-label="Eliminar"
+                          color="error"
+                          onClick={() => setDeleteTarget(ev)}
+                          size="medium"
+                        >
+                          <Delete />
+                        </IconButton>
+                      </Tooltip>
                     </Stack>
                   </CardContent>
                 </Card>
@@ -355,14 +425,27 @@ export default function AdminEventosPage() {
         onClose={() => setDialogOpen(false)}
         fullWidth
         maxWidth="sm"
+        scroll="paper"
         aria-labelledby="event-dialog-title"
       >
         <DialogTitle id="event-dialog-title">
-          {editing ? "Editar evento" : "Nuevo evento"}
+          <Stack spacing={0.5}>
+            <Typography component="span" variant="h6" fontWeight={800}>
+              {editing ? "Editar evento" : "Nuevo evento"}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" fontWeight={400}>
+              Fecha, tipo de actividad, precio si aplica y datos para el cartel público.
+            </Typography>
+          </Stack>
         </DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
+        <DialogContent dividers>
+          <Stack spacing={2.5} sx={{ pt: 0.5 }}>
             {dialogError ? <Alert severity="error">{dialogError}</Alert> : null}
+            <Box>
+              <Typography variant="overline" color="primary" fontWeight={800} sx={{ display: "block", mb: 1 }}>
+                General
+              </Typography>
+              <Stack spacing={2}>
             <TextField
               label="Título"
               value={form.title}
@@ -446,6 +529,16 @@ export default function AdminEventosPage() {
                 </Select>
               </FormControl>
             ) : null}
+              </Stack>
+            </Box>
+
+            <Divider />
+
+            <Box>
+              <Typography variant="overline" color="primary" fontWeight={800} sx={{ display: "block", mb: 1 }}>
+                Precio y cupo
+              </Typography>
+              <Stack spacing={2}>
             {form.kind === "tournament" ? (
               <Stack spacing={1}>
                 <FormControlLabel
@@ -483,6 +576,16 @@ export default function AdminEventosPage() {
               }
               fullWidth
             />
+              </Stack>
+            </Box>
+
+            <Divider />
+
+            <Box>
+              <Typography variant="overline" color="primary" fontWeight={800} sx={{ display: "block", mb: 1 }}>
+                Textos para el público
+              </Typography>
+              <Stack spacing={2}>
             <TextField
               label="Formato / rondas"
               value={form.formatNotes}
@@ -511,14 +614,18 @@ export default function AdminEventosPage() {
               }
               fullWidth
             />
+              </Stack>
+            </Box>
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
+        <DialogActions sx={{ px: 3, py: 2, bgcolor: (t) => alpha(t.palette.text.primary, 0.03) }}>
           <Button onClick={() => setDialogOpen(false)}>Cancelar</Button>
           <Button
             variant="contained"
+            size="large"
             onClick={() => void handleSave()}
             disabled={createEv.isPending || updateEv.isPending}
+            sx={{ fontWeight: 700, minWidth: 120 }}
           >
             Guardar
           </Button>
@@ -556,19 +663,32 @@ export default function AdminEventosPage() {
       </Dialog>
 
       <Dialog
-        open={!!participantsModalEvent}
-        onClose={() => setParticipantsModalEvent(null)}
+        open={Boolean(participantsModalEventId && participantsModalEvent)}
+        onClose={() => setParticipantsModalEventId(null)}
         fullWidth
         maxWidth="md"
+        scroll="paper"
         aria-labelledby="preinscritos-dialog-title"
       >
-        <DialogTitle id="preinscritos-dialog-title">Preinscritos</DialogTitle>
+        <DialogTitle id="preinscritos-dialog-title">
+          <Stack spacing={0.5}>
+            <Typography component="span" variant="h6" fontWeight={800}>
+              Preinscritos
+            </Typography>
+            {participantsModalEvent ? (
+              <Typography variant="body2" color="text.secondary" fontWeight={400}>
+                {participantsModalEvent.title}
+              </Typography>
+            ) : null}
+          </Stack>
+        </DialogTitle>
         <DialogContent dividers>
           {participantsModalEvent ? (
             <>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                {participantsModalEvent.title}
-              </Typography>
+              <Alert severity="info" icon={<InfoOutlined />} sx={{ mb: 2 }}>
+                Toca el ícono de check para confirmar o cancelar la asistencia en tienda. POP ID
+                viene del perfil del usuario.
+              </Alert>
               {confirmParticipation.isError ? (
                 <Alert severity="error" sx={{ mb: 2 }}>
                   {confirmParticipation.error instanceof Error
@@ -589,6 +709,12 @@ export default function AdminEventosPage() {
                           height: "100%",
                           display: "flex",
                           flexDirection: "column",
+                          borderRadius: 2,
+                          transition: "box-shadow 0.2s, border-color 0.2s",
+                          "&:hover": {
+                            borderColor: "primary.light",
+                            boxShadow: 1,
+                          },
                         }}
                       >
                         <Stack
@@ -673,11 +799,8 @@ export default function AdminEventosPage() {
             </>
           ) : null}
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button
-            variant="contained"
-            onClick={() => setParticipantsModalEvent(null)}
-          >
+        <DialogActions sx={{ px: 3, py: 2, bgcolor: (t) => alpha(t.palette.text.primary, 0.03) }}>
+          <Button variant="contained" onClick={() => setParticipantsModalEventId(null)} sx={{ fontWeight: 700 }}>
             Cerrar
           </Button>
         </DialogActions>

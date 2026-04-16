@@ -11,7 +11,7 @@ import TextField from "@mui/material/TextField";
 import IconButton from "@mui/material/IconButton";
 import Chip from "@mui/material/Chip";
 import Alert from "@mui/material/Alert";
-import CircularProgress from "@mui/material/CircularProgress";
+import Skeleton from "@mui/material/Skeleton";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
@@ -19,16 +19,20 @@ import DialogTitle from "@mui/material/DialogTitle";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import {
+  CalendarMonth,
   ChevronLeft,
   ChevronRight,
   EmojiEvents,
+  EventAvailable,
   Groups,
   LocalActivity,
+  OpenInNew,
   Place,
   SportsMartialArts,
+  Verified,
 } from "@mui/icons-material";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -71,7 +75,7 @@ function pokemonSubtypeLabel(
 
 function formatPrice(ev: PublicWeeklyEvent) {
   if (ev.kind !== "tournament") return "—";
-  if (ev.priceClp <= 0) return "GRATUITO";
+  if (ev.priceClp <= 0) return "Gratis";
   return `${ev.priceClp.toLocaleString("es-CL")} CLP`;
 }
 
@@ -88,7 +92,7 @@ function formatWhen(iso: string) {
     minute: "2-digit",
     hour12: false,
   });
-  return `${dayCap} ${datePart} · ${timePart} hrs.`;
+  return `${dayCap} ${datePart} · ${timePart}`;
 }
 
 function formatCloseNote(iso: string) {
@@ -102,9 +106,20 @@ function formatCloseNote(iso: string) {
 }
 
 type WeeklyEventsSectionProps = {
-  /** En el dashboard se muestra un enlace a la vista completa. */
   showSeeAllLink?: boolean;
 };
+
+function SectionLoading() {
+  return (
+    <Stack spacing={2} sx={{ py: 1 }}>
+      <Skeleton variant="rounded" height={56} sx={{ borderRadius: 2 }} />
+      <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+        <Skeleton variant="rounded" height={220} sx={{ flex: 1, borderRadius: 2 }} />
+        <Skeleton variant="rounded" height={220} sx={{ flex: 1, borderRadius: 2 }} />
+      </Stack>
+    </Stack>
+  );
+}
 
 export default function WeeklyEventsSection({
   showSeeAllLink = true,
@@ -124,6 +139,7 @@ export default function WeeklyEventsSection({
   const unregister = useUnregisterWeeklyEvent();
 
   const events = data?.events ?? [];
+  const todayKey = useMemo(() => localDayKey(new Date()), []);
 
   const selectedDate = useMemo(() => {
     const d = new Date(weekStart);
@@ -203,51 +219,111 @@ export default function WeeklyEventsSection({
     !register.isPending &&
     !!selectedEvent;
 
+  const fillPct = selectedEvent
+    ? Math.min(
+        100,
+        Math.round((selectedEvent.participantCount / selectedEvent.maxParticipants) * 100),
+      )
+    : 0;
+
   return (
-    <Card elevation={1} sx={{ borderRadius: 2, overflow: "hidden" }}>
-      <CardContent
+    <Card
+      elevation={0}
+      sx={{
+        borderRadius: 3,
+        border: 1,
+        borderColor: "divider",
+        overflow: "hidden",
+        bgcolor: "background.paper",
+      }}
+    >
+      <Box
         sx={{
-          p: { xs: 2, sm: 3 },
-          "&:last-child": { pb: { xs: 2, sm: 3 } },
+          px: { xs: 2, sm: 2.5 },
+          pt: { xs: 2, sm: 2.5 },
+          pb: 1.5,
+          background: (t) =>
+            `linear-gradient(180deg, ${alpha(t.palette.primary.main, 0.06)} 0%, transparent 100%)`,
         }}
       >
         <Stack
           direction="row"
-          alignItems="center"
+          alignItems="flex-start"
           justifyContent="space-between"
-          spacing={1}
-          sx={{ mb: 2 }}
+          gap={1}
         >
-          <Typography variant="h6" component="h2" sx={{ fontWeight: 700 }}>
-            Eventos de la semana
-          </Typography>
+          <Stack direction="row" alignItems="center" gap={1.25} sx={{ minWidth: 0 }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 40,
+                height: 40,
+                borderRadius: 2,
+                bgcolor: (t) => alpha(t.palette.primary.main, 0.12),
+                color: "primary.main",
+                flexShrink: 0,
+              }}
+            >
+              <CalendarMonth aria-hidden />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="h6" component="h2" sx={{ fontWeight: 700, lineHeight: 1.25 }}>
+                Eventos de la semana
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
+                Elige el día y el evento para ver detalles e inscribirte
+              </Typography>
+            </Box>
+          </Stack>
           {showSeeAllLink ? (
-            <Button component={Link} href="/dashboard/eventos" size="small">
-              Ver semana completa
+            <Button
+              component={Link}
+              href="/dashboard/eventos"
+              size="small"
+              color="primary"
+              endIcon={<OpenInNew sx={{ fontSize: 16 }} />}
+              sx={{ flexShrink: 0, fontWeight: 600 }}
+            >
+              Vista completa
             </Button>
           ) : null}
         </Stack>
+      </Box>
 
-        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+      <CardContent
+        sx={{
+          p: { xs: 2, sm: 2.5 },
+          pt: { xs: 1.5, sm: 2 },
+          "&:last-child": { pb: { xs: 2, sm: 2.5 } },
+        }}
+      >
+        <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 2 }}>
           <IconButton
             size="small"
             aria-label="Semana anterior"
             onClick={handlePrevWeek}
+            sx={{ color: "text.secondary" }}
           >
             <ChevronLeft />
           </IconButton>
-          <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ flex: 1, textAlign: "center", fontWeight: 500 }}
+          >
             {weekStart.toLocaleDateString("es-CL", {
               day: "numeric",
-              month: "long",
+              month: "short",
             })}{" "}
-            –{" "}
+            —{" "}
             {(() => {
               const end = new Date(weekStart);
               end.setDate(weekStart.getDate() + 6);
               return end.toLocaleDateString("es-CL", {
                 day: "numeric",
-                month: "long",
+                month: "short",
                 year: "numeric",
               });
             })()}
@@ -256,20 +332,29 @@ export default function WeeklyEventsSection({
             size="small"
             aria-label="Semana siguiente"
             onClick={handleNextWeek}
+            sx={{ color: "text.secondary" }}
           >
             <ChevronRight />
           </IconButton>
         </Stack>
 
         <Box
+          component="nav"
+          aria-label="Días de la semana"
           sx={{
             display: "flex",
             gap: 1,
             overflowX: "auto",
-            pb: 1,
+            pb: 1.5,
             mx: { xs: -0.5, sm: 0 },
             px: 0.5,
+            scrollSnapType: "x proximity",
             WebkitOverflowScrolling: "touch",
+            "&::-webkit-scrollbar": { height: 6 },
+            "&::-webkit-scrollbar-thumb": {
+              borderRadius: 3,
+              bgcolor: "action.disabledBackground",
+            },
           }}
         >
           {dayKeys.map((key, idx) => {
@@ -277,34 +362,45 @@ export default function WeeklyEventsSection({
             d.setDate(weekStart.getDate() + idx);
             const count = countsByDay.get(key) ?? 0;
             const selected = idx === selectedOffset;
+            const isToday = key === todayKey;
             return (
               <Button
                 key={key}
                 onClick={() => setSelectedOffset(idx)}
                 variant={selected ? "contained" : "outlined"}
+                color={selected ? "primary" : "inherit"}
                 size="small"
+                aria-pressed={selected}
+                aria-current={selected ? "date" : undefined}
                 sx={{
                   minWidth: 56,
                   flexShrink: 0,
-                  py: 1,
+                  scrollSnapAlign: "start",
+                  py: 1.25,
                   flexDirection: "column",
                   lineHeight: 1.2,
+                  borderRadius: 2,
+                  borderWidth: isToday && !selected ? 2 : 1,
+                  borderColor: isToday && !selected ? "primary.light" : undefined,
+                  boxShadow: selected ? 2 : 0,
                 }}
               >
-                <Typography variant="caption" display="block">
+                <Typography variant="caption" display="block" sx={{ opacity: 0.9 }}>
                   {WEEKDAY_SHORT[idx]}
                 </Typography>
-                <Typography variant="body2" fontWeight={600}>
+                <Typography variant="body2" fontWeight={700}>
                   {d.getDate()}
                 </Typography>
                 {count > 0 ? (
                   <Chip
                     label={count}
                     size="small"
+                    color={selected ? "default" : "primary"}
+                    variant={selected ? "filled" : "outlined"}
                     sx={{
                       mt: 0.5,
-                      height: 18,
-                      "& .MuiChip-label": { px: 0.75, fontSize: 10 },
+                      height: 20,
+                      "& .MuiChip-label": { px: 0.75, fontSize: 10, fontWeight: 600 },
                     }}
                   />
                 ) : null}
@@ -314,12 +410,11 @@ export default function WeeklyEventsSection({
         </Box>
 
         {isPending ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-            <CircularProgress size={28} />
-          </Box>
+          <SectionLoading />
         ) : isError ? (
           <Alert
             severity="error"
+            variant="outlined"
             action={
               <Button color="inherit" size="small" onClick={() => refetch()}>
                 Reintentar
@@ -329,22 +424,48 @@ export default function WeeklyEventsSection({
             {error instanceof Error ? error.message : "No se pudieron cargar los eventos"}
           </Alert>
         ) : !eventsForDay.length ? (
-          <Typography color="text.secondary" sx={{ py: 3 }}>
-            No hay eventos programados para este día.
-          </Typography>
+          <Stack
+            alignItems="center"
+            spacing={1.5}
+            sx={{
+              py: 5,
+              px: 2,
+              borderRadius: 2,
+              bgcolor: (t) => alpha(t.palette.text.primary, 0.04),
+            }}
+          >
+            <EventAvailable sx={{ fontSize: 48, color: "text.disabled", opacity: 0.8 }} />
+            <Typography color="text.secondary" align="center" fontWeight={500}>
+              No hay eventos este día
+            </Typography>
+            <Typography variant="body2" color="text.secondary" align="center" sx={{ maxWidth: 280 }}>
+              Prueba otro día de la barra superior o cambia de semana.
+            </Typography>
+          </Stack>
         ) : (
           <>
             {eventsForDay.length > 1 ? (
-              <Stack direction="row" gap={1} flexWrap="wrap" sx={{ mb: 2 }}>
-                {eventsForDay.map((ev) => (
-                  <Chip
-                    key={ev._id}
-                    label={ev.title}
-                    onClick={() => setSelectedEventId(ev._id)}
-                    color={ev._id === selectedEvent?._id ? "primary" : "default"}
-                    variant={ev._id === selectedEvent?._id ? "filled" : "outlined"}
-                  />
-                ))}
+              <Stack
+                direction="row"
+                role="tablist"
+                aria-label="Eventos del día"
+                gap={1}
+                flexWrap="wrap"
+                sx={{ mb: 2 }}
+              >
+                {eventsForDay.map((ev) => {
+                  const active = ev._id === selectedEvent?._id;
+                  return (
+                    <Chip
+                      key={ev._id}
+                      label={ev.title}
+                      onClick={() => setSelectedEventId(ev._id)}
+                      color={active ? "primary" : "default"}
+                      variant={active ? "filled" : "outlined"}
+                      sx={{ fontWeight: active ? 600 : 500 }}
+                    />
+                  );
+                })}
               </Stack>
             ) : null}
 
@@ -353,88 +474,112 @@ export default function WeeklyEventsSection({
                 <Stack
                   direction="row"
                   justifyContent="space-between"
-                  alignItems="center"
+                  alignItems="flex-start"
+                  gap={2}
                   sx={{ mb: 2 }}
                 >
-                  <Typography variant="subtitle1" fontWeight={600}>
-                    {formatWhen(selectedEvent.startsAt)}
-                  </Typography>
-                  <Stack direction="row" alignItems="center" spacing={0.5}>
-                    <Groups fontSize="small" color="action" />
-                    <Typography variant="body2">
-                      {selectedEvent.participantCount}/{selectedEvent.maxParticipants}
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.5 }}>
+                      Horario
                     </Typography>
-                  </Stack>
+                    <Typography variant="subtitle1" fontWeight={700} sx={{ lineHeight: 1.35 }}>
+                      {formatWhen(selectedEvent.startsAt)}
+                    </Typography>
+                  </Box>
+                  <Chip
+                    icon={<Groups sx={{ fontSize: "18px !important" }} />}
+                    label={`${selectedEvent.participantCount}/${selectedEvent.maxParticipants}`}
+                    size="small"
+                    variant="outlined"
+                    sx={{ fontWeight: 700, flexShrink: 0 }}
+                  />
                 </Stack>
+
+                <LinearCapacity value={fillPct} />
 
                 <Stack
                   direction={{ xs: "column", md: "row" }}
                   spacing={2}
                   alignItems="stretch"
+                  sx={{ mt: 2 }}
                 >
                   <Box sx={{ flex: isMdUp ? 7 : undefined, minWidth: 0 }}>
-                    <Card variant="outlined" sx={{ height: "100%" }}>
-                      <CardContent>
-                        <Stack spacing={1.5}>
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <EmojiEvents sx={{ color: "warning.main" }} />
-                            <Typography variant="h6" component="h3">
+                    <Card
+                      variant="outlined"
+                      sx={{
+                        height: "100%",
+                        borderRadius: 2,
+                        bgcolor: (t) => alpha(t.palette.text.primary, 0.02),
+                      }}
+                    >
+                      <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                        <Typography variant="overline" color="primary" sx={{ fontWeight: 700 }}>
+                          Detalle del evento
+                        </Typography>
+                        <Stack spacing={1.75} sx={{ mt: 1 }}>
+                          <Stack direction="row" spacing={1.25} alignItems="flex-start">
+                            <EmojiEvents sx={{ color: "warning.main", mt: 0.25, flexShrink: 0 }} />
+                            <Typography variant="h6" component="h3" sx={{ fontWeight: 700, lineHeight: 1.3 }}>
                               {selectedEvent.title}
                             </Typography>
                           </Stack>
                           <Typography variant="body2" color="text.secondary">
                             {formatWhen(selectedEvent.startsAt)}
                           </Typography>
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <SportsMartialArts fontSize="small" color="action" />
-                            <Typography variant="body2">
-                              {gameLabel(selectedEvent.game)} · {kindLabel(selectedEvent.kind)}
-                              {selectedEvent.kind === "tournament" &&
-                              selectedEvent.game === "pokemon" &&
-                              selectedEvent.pokemonSubtype
-                                ? ` · ${pokemonSubtypeLabel(selectedEvent.pokemonSubtype)}`
-                                : ""}
-                            </Typography>
+                          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                            <Chip size="small" label={gameLabel(selectedEvent.game)} variant="outlined" />
+                            <Chip size="small" label={kindLabel(selectedEvent.kind)} variant="outlined" />
+                            {selectedEvent.kind === "tournament" &&
+                            selectedEvent.game === "pokemon" &&
+                            selectedEvent.pokemonSubtype ? (
+                              <Chip
+                                size="small"
+                                label={pokemonSubtypeLabel(selectedEvent.pokemonSubtype)}
+                                color="primary"
+                                variant="outlined"
+                              />
+                            ) : null}
                           </Stack>
                           {selectedEvent.formatNotes ? (
-                            <Typography variant="body2">
+                            <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
                               {selectedEvent.formatNotes}
                             </Typography>
                           ) : null}
                           <Stack direction="row" spacing={1} alignItems="center">
                             <LocalActivity fontSize="small" color="action" />
-                            <Typography variant="body2" fontWeight={600}>
+                            <Typography variant="body2" fontWeight={700} color="text.primary">
                               {formatPrice(selectedEvent)}
                             </Typography>
                           </Stack>
                           {selectedEvent.prizesNotes ? (
                             <Stack direction="row" spacing={1} alignItems="flex-start">
-                              <EmojiEvents fontSize="small" color="action" sx={{ mt: 0.25 }} />
-                              <Typography variant="body2">
+                              <EmojiEvents fontSize="small" color="action" sx={{ mt: 0.35, flexShrink: 0 }} />
+                              <Typography variant="body2" sx={{ lineHeight: 1.55 }}>
                                 {selectedEvent.prizesNotes}
                               </Typography>
                             </Stack>
                           ) : null}
                           {selectedEvent.location ? (
                             <Stack direction="row" spacing={1} alignItems="flex-start">
-                              <Place fontSize="small" color="action" sx={{ mt: 0.25 }} />
-                              <Typography variant="body2">
+                              <Place fontSize="small" color="action" sx={{ mt: 0.35, flexShrink: 0 }} />
+                              <Typography variant="body2" sx={{ lineHeight: 1.55 }}>
                                 {selectedEvent.location}
                               </Typography>
                             </Stack>
                           ) : null}
                           <Box
                             sx={{
-                              mt: 1,
+                              mt: 0.5,
                               p: 1.5,
-                              borderRadius: 1,
-                              bgcolor: "action.hover",
+                              borderRadius: 2,
+                              bgcolor: (t) => alpha(t.palette.info.main, 0.08),
+                              border: 1,
+                              borderColor: (t) => alpha(t.palette.info.main, 0.2),
                             }}
                           >
-                            <Typography variant="caption" color="text.secondary">
-                              Preinscripción válida hasta las{" "}
-                              {formatCloseNote(selectedEvent.startsAt)} del mismo día (un
-                              segundo antes de iniciar el evento).
+                            <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+                              Preinscripción hasta las <strong>{formatCloseNote(selectedEvent.startsAt)}</strong>{" "}
+                              (cierra 1 s antes del inicio).
                             </Typography>
                           </Box>
                         </Stack>
@@ -443,31 +588,55 @@ export default function WeeklyEventsSection({
                   </Box>
 
                   <Box sx={{ flex: isMdUp ? 5 : undefined, minWidth: 0 }}>
-                    <Card variant="outlined" sx={{ height: "100%" }}>
-                      <CardContent>
-                        <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-                          Preinscríbete
+                    <Card
+                      variant="outlined"
+                      sx={{
+                        height: "100%",
+                        borderRadius: 2,
+                        borderColor: (t) => alpha(t.palette.primary.main, 0.35),
+                        bgcolor: (t) => alpha(t.palette.primary.main, 0.02),
+                      }}
+                    >
+                      <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                        <Typography variant="overline" color="primary" sx={{ fontWeight: 700 }}>
+                          Tu inscripción
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 2 }}>
+                          Un nombre público en la lista. Puedes ver quién más va sin datos privados.
                         </Typography>
                         {regReason ? (
-                          <Alert severity="info" sx={{ mb: 2 }}>
+                          <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
                             {regReason}
                           </Alert>
                         ) : null}
                         {selectedEvent.myRegistration ? (
-                          <Stack spacing={2} sx={{ mb: 2 }}>
-                            <Typography variant="body2">
-                              Te preinscribiste como:{" "}
-                              <strong>{selectedEvent.myRegistration}</strong>
-                            </Typography>
+                          <Stack spacing={2} sx={{ mb: 1 }}>
+                            <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
+                              <Typography variant="body2" component="span">
+                                Lista como{" "}
+                                <Box component="strong" sx={{ color: "text.primary" }}>
+                                  {selectedEvent.myRegistration}
+                                </Box>
+                              </Typography>
+                            </Stack>
                             {selectedEvent.myAttendanceConfirmed ? (
-                              <Alert severity="success">
-                                Asistencia confirmada
+                              <Alert
+                                severity="success"
+                                variant="filled"
+                                icon={<Verified />}
+                                sx={{ alignItems: "center" }}
+                              >
+                                <Typography variant="body2" fontWeight={600}>
+                                  Asistencia confirmada por la tienda
+                                </Typography>
                               </Alert>
                             ) : selectedEvent.canUnregister ? (
                               <Button
                                 type="button"
                                 variant="outlined"
                                 color="error"
+                                fullWidth
+                                size="large"
                                 disabled={unregister.isPending}
                                 onClick={async () => {
                                   if (!selectedEvent) return;
@@ -478,17 +647,15 @@ export default function WeeklyEventsSection({
                                   }
                                 }}
                               >
-                                {unregister.isPending
-                                  ? "Quitando…"
-                                  : "Desinscribirse"}
+                                {unregister.isPending ? "Quitando…" : "Desinscribirse"}
                               </Button>
                             ) : (
-                              <Alert severity="info">
+                              <Alert severity="info" variant="outlined">
                                 No puedes desinscribirte: el evento ya comenzó.
                               </Alert>
                             )}
                             {unregister.isError ? (
-                              <Alert severity="error">
+                              <Alert severity="error" variant="outlined">
                                 {unregister.error instanceof Error
                                   ? unregister.error.message
                                   : "Error"}
@@ -498,17 +665,24 @@ export default function WeeklyEventsSection({
                         ) : (
                           <Stack spacing={2} component="form" noValidate>
                             <TextField
-                              label="Nombre para la lista"
-                              placeholder="Ingresa tu nombre"
+                              label="Nombre en la lista"
+                              placeholder="Ej. Ana o tu apodo"
                               value={nameInput}
                               onChange={(e) => setNameInput(e.target.value)}
                               fullWidth
-                              size="small"
+                              size="medium"
                               disabled={!selectedEvent.canPreRegister}
+                              helperText={
+                                !selectedEvent.canPreRegister
+                                  ? "Preinscripción cerrada para este horario"
+                                  : undefined
+                              }
                             />
                             <Button
                               type="button"
                               variant="contained"
+                              size="large"
+                              fullWidth
                               disabled={!canSubmit}
                               onClick={async () => {
                                 if (!selectedEvent) return;
@@ -522,10 +696,10 @@ export default function WeeklyEventsSection({
                                 }
                               }}
                             >
-                              {register.isPending ? "Enviando…" : "Preinscribirse"}
+                              {register.isPending ? "Enviando…" : "Preinscribirme"}
                             </Button>
                             {register.isError ? (
-                              <Alert severity="error">
+                              <Alert severity="error" variant="outlined">
                                 {register.error instanceof Error
                                   ? register.error.message
                                   : "Error"}
@@ -537,12 +711,14 @@ export default function WeeklyEventsSection({
                         <Button
                           type="button"
                           variant="outlined"
+                          color="inherit"
                           fullWidth
+                          size="medium"
                           sx={{ mt: 2 }}
                           startIcon={<Groups />}
                           onClick={() => setParticipantsModalOpen(true)}
                         >
-                          Ver participantes
+                          Ver lista de participantes
                           {selectedEvent.participantCount > 0
                             ? ` (${selectedEvent.participantCount})`
                             : ""}
@@ -553,30 +729,42 @@ export default function WeeklyEventsSection({
                           onClose={() => setParticipantsModalOpen(false)}
                           fullWidth
                           maxWidth="sm"
+                          scroll="paper"
                           aria-labelledby="participants-dialog-title"
                         >
                           <DialogTitle id="participants-dialog-title">
-                            Ver participantes
+                            Participantes
                           </DialogTitle>
-                          <DialogContent dividers>
-                            <Typography
-                              variant="body2"
-                              color="text.secondary"
-                              sx={{ mb: 2 }}
-                            >
-                              {selectedEvent.title}
-                            </Typography>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ px: 3, pb: 0, mt: -1 }}
+                          >
+                            {selectedEvent.title}
+                          </Typography>
+                          <DialogContent dividers sx={{ pt: 2 }}>
                             <List dense disablePadding>
                               {selectedEvent.participantNames.length === 0 ? (
-                                <Typography variant="body2" color="text.secondary">
-                                  Aún no hay preinscritos.
+                                <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+                                  Todavía no hay nadie inscrito.
                                 </Typography>
                               ) : (
                                 selectedEvent.participantNames.map((n, i) => (
-                                  <ListItem key={`${i}-${n}`} disableGutters>
+                                  <ListItem
+                                    key={`${i}-${n}`}
+                                    disableGutters
+                                    sx={{
+                                      borderRadius: 1,
+                                      mb: 0.5,
+                                      px: 1,
+                                      py: 0.75,
+                                      bgcolor: (t) =>
+                                        i % 2 === 0 ? alpha(t.palette.text.primary, 0.04) : "transparent",
+                                    }}
+                                  >
                                     <ListItemText
                                       primary={`${i + 1}. ${n}`}
-                                      primaryTypographyProps={{ variant: "body2" }}
+                                      primaryTypographyProps={{ variant: "body2", fontWeight: 500 }}
                                     />
                                   </ListItem>
                                 ))
@@ -586,22 +774,22 @@ export default function WeeklyEventsSection({
                               sx={{
                                 mt: 2,
                                 p: 1.5,
-                                borderRadius: 1,
+                                borderRadius: 2,
                                 bgcolor: "action.hover",
                               }}
                             >
-                              <Typography variant="caption" color="text.secondary">
-                                Solo se muestra el nombre público. Cierre de
-                                preinscripción: {formatCloseNote(selectedEvent.startsAt)}.
+                              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+                                Solo nombres públicos. Cierre de preinscripción:{" "}
+                                <strong>{formatCloseNote(selectedEvent.startsAt)}</strong>.
                               </Typography>
                             </Box>
                           </DialogContent>
-                          <DialogActions sx={{ px: 3, pb: 2 }}>
+                          <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
                             <Button
                               variant="contained"
                               onClick={() => setParticipantsModalOpen(false)}
                             >
-                              Cerrar
+                              Listo
                             </Button>
                           </DialogActions>
                         </Dialog>
@@ -615,5 +803,39 @@ export default function WeeklyEventsSection({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function LinearCapacity({ value }: { value: number }) {
+  return (
+    <Box sx={{ mt: 0.5 }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
+        <Typography variant="caption" color="text.secondary" fontWeight={600}>
+          Cupo
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {value}%
+        </Typography>
+      </Stack>
+      <Box
+        sx={{
+          height: 6,
+          borderRadius: 3,
+          bgcolor: (t) => alpha(t.palette.text.primary, 0.08),
+          overflow: "hidden",
+        }}
+      >
+        <Box
+          sx={{
+            height: "100%",
+            width: `${value}%`,
+            borderRadius: 3,
+            bgcolor: (t) =>
+              value >= 90 ? t.palette.warning.main : t.palette.primary.main,
+            transition: "width 0.3s ease",
+          }}
+        />
+      </Box>
+    </Box>
   );
 }
