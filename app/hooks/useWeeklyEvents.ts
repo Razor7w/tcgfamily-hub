@@ -160,6 +160,8 @@ export interface AdminWeeklyEvent {
   location: string;
   /** Ronda actual del torneo; por defecto 0. */
   roundNum?: number;
+  /** Snapshots guardados al pulsar «Setear ronda» (persistidos en Mongo). */
+  roundSnapshots?: { roundNum: number; syncedAt?: string }[];
   participants: AdminEventParticipant[];
   createdAt?: string;
   updatedAt?: string;

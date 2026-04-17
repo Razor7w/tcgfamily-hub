@@ -57,12 +57,15 @@ type TournamentTdfLoaderProps = {
   eventId?: string;
   /** POP ID ya presentes en el evento (normalizados con `popidForStorage`), para no duplicar. */
   registeredPopIds?: string[];
+  /** Números de ronda ya guardados en el evento (no repetir «Setear ronda»). */
+  syncedRoundNums?: number[];
 };
 
 export default function TournamentTdfLoader({
   showIntro = true,
   eventId,
   registeredPopIds = [],
+  syncedRoundNums = [],
 }: TournamentTdfLoaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [raw, setRaw] = useState("");
@@ -99,6 +102,11 @@ export default function TournamentTdfLoader({
   const registeredSet = useMemo(
     () => new Set(registeredPopIds.map((id) => popidForStorage(id)).filter(Boolean)),
     [registeredPopIds],
+  );
+
+  const syncedRoundSet = useMemo(
+    () => new Set(syncedRoundNums.map((n) => Math.round(Number(n))).filter((n) => Number.isFinite(n))),
+    [syncedRoundNums],
   );
 
   const showEventActions = Boolean(eventId);
@@ -361,7 +369,8 @@ export default function TournamentTdfLoader({
                       disabled={
                         !eventId ||
                         syncRound.isPending ||
-                        list.length === 0
+                        list.length === 0 ||
+                        syncedRoundSet.has(roundNum)
                       }
                       onClick={async () => {
                         if (!eventId || list.length === 0) return;

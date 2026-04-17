@@ -72,6 +72,11 @@ export default function AdminEventoDetailPage() {
     [ev],
   );
 
+  const syncedRoundNumsForTdf = useMemo(
+    () => ev?.roundSnapshots?.map((s) => s.roundNum) ?? [],
+    [ev?.roundSnapshots],
+  );
+
   const [tab, setTab] = useState(0);
 
   return (
@@ -364,6 +369,7 @@ export default function AdminEventoDetailPage() {
                     <TournamentTdfLoader
                       eventId={ev._id}
                       registeredPopIds={registeredPopIdsForTdf}
+                      syncedRoundNums={syncedRoundNumsForTdf}
                     />
                   </Box>
                 ) : null}
