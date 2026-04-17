@@ -7,6 +7,9 @@ import {
   endOfWeekSunday,
   startOfWeekMonday,
 } from "@/components/events/weekUtils";
+import type { WeeklyEventState } from "@/models/WeeklyEvent";
+
+export type { WeeklyEventState };
 
 export interface PublicWeeklyEvent {
   _id: string;
@@ -20,6 +23,7 @@ export interface PublicWeeklyEvent {
   formatNotes: string;
   prizesNotes: string;
   location: string;
+  state: WeeklyEventState;
   participantNames: string[];
   participantCount: number;
   canPreRegister: boolean;
@@ -137,6 +141,7 @@ export interface AdminWeeklyEvent {
   kind: "tournament" | "trade_day" | "other";
   game: "pokemon" | "magic" | "other_tcg";
   pokemonSubtype?: string;
+  state: WeeklyEventState;
   priceClp: number;
   maxParticipants: number;
   formatNotes: string;

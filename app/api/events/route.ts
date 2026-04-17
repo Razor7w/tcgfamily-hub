@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import connectDB from "@/lib/mongodb";
 import WeeklyEvent from "@/models/WeeklyEvent";
+import type { WeeklyEventState } from "@/models/WeeklyEvent";
 import { canPreRegisterNow, canUnregisterNow } from "@/lib/weekly-events";
 
 function toPublicEvent(
@@ -12,6 +13,7 @@ function toPublicEvent(
     kind: string;
     game: string;
     pokemonSubtype?: string;
+    state?: WeeklyEventState;
     priceClp: number;
     maxParticipants: number;
     formatNotes: string;
@@ -52,6 +54,12 @@ function toPublicEvent(
     formatNotes: doc.formatNotes,
     prizesNotes: doc.prizesNotes,
     location: doc.location,
+    state:
+      doc.state === "schedule" ||
+      doc.state === "running" ||
+      doc.state === "close"
+        ? doc.state
+        : "schedule",
     participantNames: doc.participants.map((p) => p.displayName),
     participantCount: doc.participants.length,
     canPreRegister: canPreRegisterNow(startsAt, now),
@@ -110,6 +118,7 @@ export async function GET(request: NextRequest) {
           formatNotes: d.formatNotes ?? "",
           prizesNotes: d.prizesNotes ?? "",
           location: d.location ?? "",
+          state: d.state,
           participants: d.participants ?? [],
         },
         now,

@@ -5,6 +5,7 @@ import WeeklyEvent, {
   type WeeklyEventGame,
   type WeeklyEventKind,
   type PokemonTournamentSubtype,
+  type WeeklyEventState,
 } from "@/models/WeeklyEvent";
 
 const PRICE_MAX = 99_999_999;
@@ -28,6 +29,11 @@ function readGame(v: unknown): WeeklyEventGame | null {
 function readPokemonSubtype(v: unknown): PokemonTournamentSubtype | null | undefined {
   if (v === undefined || v === null || v === "") return undefined;
   if (v === "casual" || v === "cup" || v === "challenge") return v;
+  return null;
+}
+
+function readState(v: unknown): WeeklyEventState | null {
+  if (v === "schedule" || v === "running" || v === "close") return v;
   return null;
 }
 
@@ -97,9 +103,15 @@ export async function GET() {
         participants?: LeanPart[];
       };
       const { _id, participants, ...rest } = doc;
+      const rawState = rest.state;
+      const state =
+        rawState === "schedule" || rawState === "running" || rawState === "close"
+          ? rawState
+          : "schedule";
       return {
         ...rest,
         _id: String(_id),
+        state,
         participants: (participants ?? []).map((p) =>
           serializeAdminParticipant(p),
         ),
@@ -222,6 +234,18 @@ export async function POST(request: NextRequest) {
         ? body.location.trim().slice(0, 500)
         : "";
 
+    let state: WeeklyEventState = "schedule";
+    if (body.state !== undefined) {
+      const s = readState(body.state);
+      if (!s) {
+        return NextResponse.json(
+          { error: "Estado inválido (schedule, running o close)" },
+          { status: 400 },
+        );
+      }
+      state = s;
+    }
+
     await connectDB();
 
     const doc = await WeeklyEvent.create({
@@ -238,6 +262,7 @@ export async function POST(request: NextRequest) {
       formatNotes,
       prizesNotes,
       location,
+      state,
       participants: [],
     });
 

@@ -5,6 +5,7 @@ import WeeklyEvent, {
   type WeeklyEventGame,
   type WeeklyEventKind,
   type PokemonTournamentSubtype,
+  type WeeklyEventState,
 } from "@/models/WeeklyEvent";
 
 const PRICE_MAX = 99_999_999;
@@ -29,6 +30,11 @@ function readPokemonSubtype(v: unknown): PokemonTournamentSubtype | null | undef
   if (v === undefined) return undefined;
   if (v === null || v === "") return undefined;
   if (v === "casual" || v === "cup" || v === "challenge") return v;
+  return null;
+}
+
+function readState(v: unknown): WeeklyEventState | null {
+  if (v === "schedule" || v === "running" || v === "close") return v;
   return null;
 }
 
@@ -169,6 +175,17 @@ export async function PATCH(
     }
     if (typeof body.location === "string") {
       doc.location = body.location.trim().slice(0, 500);
+    }
+
+    if (body.state !== undefined) {
+      const s = readState(body.state);
+      if (!s) {
+        return NextResponse.json(
+          { error: "Estado inválido (schedule, running o close)" },
+          { status: 400 },
+        );
+      }
+      doc.state = s;
     }
 
     await doc.save();

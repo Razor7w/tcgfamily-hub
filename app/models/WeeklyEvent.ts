@@ -6,6 +6,9 @@ export type WeeklyEventGame = "pokemon" | "magic" | "other_tcg";
 
 export type PokemonTournamentSubtype = "casual" | "cup" | "challenge";
 
+/** Ciclo operativo del evento en tienda. */
+export type WeeklyEventState = "schedule" | "running" | "close";
+
 export interface IWeeklyParticipant {
   displayName: string;
   userId?: Types.ObjectId;
@@ -32,6 +35,8 @@ export interface IWeeklyEvent extends Document {
   formatNotes: string;
   prizesNotes: string;
   location: string;
+  /** Programado, en curso o cerrado. */
+  state: WeeklyEventState;
   participants: IWeeklyParticipant[];
 }
 
@@ -72,6 +77,11 @@ const WeeklyEventSchema = new Schema<IWeeklyEvent>(
     formatNotes: { type: String, default: "" },
     prizesNotes: { type: String, default: "" },
     location: { type: String, default: "" },
+    state: {
+      type: String,
+      enum: ["schedule", "running", "close"],
+      default: "schedule",
+    },
     participants: { type: [ParticipantSchema], default: [] },
   },
   { timestamps: true, strict: true },

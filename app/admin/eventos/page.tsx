@@ -40,6 +40,7 @@ import {
 import Link from "next/link";
 import {
   AdminWeeklyEvent,
+  type WeeklyEventState,
   useAdminEvents,
   useConfirmParticipantParticipation,
   useCreateAdminEvent,
@@ -56,6 +57,7 @@ function toDatetimeLocalValue(iso: string) {
 type FormState = {
   title: string;
   startsAtLocal: string;
+  state: WeeklyEventState;
   kind: "tournament" | "trade_day" | "other";
   game: "pokemon" | "magic" | "other_tcg";
   pokemonSubtype: "casual" | "cup" | "challenge" | "";
@@ -70,6 +72,7 @@ type FormState = {
 const emptyForm = (): FormState => ({
   title: "",
   startsAtLocal: toDatetimeLocalValue(new Date().toISOString()),
+  state: "schedule",
   kind: "tournament",
   game: "pokemon",
   pokemonSubtype: "casual",
@@ -93,10 +96,19 @@ function gameLabelAdmin(g: AdminWeeklyEvent["game"]) {
   return "Otro TCG";
 }
 
+function eventStateLabel(s: WeeklyEventState) {
+  if (s === "running") return "En curso";
+  if (s === "close") return "Cerrado";
+  return "Programado";
+}
+
 function formFromEvent(ev: AdminWeeklyEvent): FormState {
+  const state: WeeklyEventState =
+    ev.state === "running" || ev.state === "close" ? ev.state : "schedule";
   return {
     title: ev.title,
     startsAtLocal: toDatetimeLocalValue(ev.startsAt),
+    state,
     kind: ev.kind,
     game: ev.game,
     pokemonSubtype:
@@ -183,6 +195,7 @@ export default function AdminEventosPage() {
     const payload: Record<string, unknown> = {
       startsAt: startsAt.toISOString(),
       title: form.title.trim(),
+      state: form.state,
       kind: form.kind,
       game: form.game,
       maxParticipants,
@@ -355,6 +368,20 @@ export default function AdminEventosPage() {
                         {ev.title}
                       </Typography>
                       <Stack direction="row" flexWrap="wrap" gap={0.75} useFlexGap sx={{ mb: 1.5 }}>
+                        <Chip
+                          size="small"
+                          label={eventStateLabel(
+                            ev.state === "running" || ev.state === "close" ? ev.state : "schedule",
+                          )}
+                          color={
+                            ev.state === "running"
+                              ? "success"
+                              : ev.state === "close"
+                                ? "default"
+                                : "info"
+                          }
+                          variant={ev.state === "schedule" ? "outlined" : "filled"}
+                        />
                         <Chip size="small" label={kindLabelAdmin(ev.kind)} variant="outlined" />
                         <Chip size="small" label={gameLabelAdmin(ev.game)} variant="outlined" />
                         {ev.kind === "tournament" && ev.game === "pokemon" && ev.pokemonSubtype ? (
@@ -463,6 +490,24 @@ export default function AdminEventosPage() {
               fullWidth
               InputLabelProps={{ shrink: true }}
             />
+            <FormControl fullWidth>
+              <InputLabel id="event-state-label">Estado</InputLabel>
+              <Select
+                labelId="event-state-label"
+                label="Estado"
+                value={form.state}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    state: e.target.value as WeeklyEventState,
+                  }))
+                }
+              >
+                <MenuItem value="schedule">Programado</MenuItem>
+                <MenuItem value="running">En curso</MenuItem>
+                <MenuItem value="close">Cerrado</MenuItem>
+              </Select>
+            </FormControl>
             <FormControl fullWidth>
               <InputLabel id="kind-label">Tipo</InputLabel>
               <Select
