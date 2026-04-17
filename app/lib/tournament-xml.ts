@@ -287,6 +287,45 @@ export function buildMatchRecordsFromMatches(matches: ParsedMatch[]): Map<string
   return map
 }
 
+/**
+ * Mismo criterio que {@link buildMatchRecordsFromMatches}, pero solo con partidas
+ * cuyo `roundNumber` es &lt;= `maxRoundNumberInclusive`. Con rondas 1-based y `maxRoundNumberInclusive === 0`,
+ * no entra ninguna partida → mapa vacío (todo 0-0-0).
+ */
+export function buildMatchRecordsThroughRound(
+  matches: ParsedMatch[],
+  maxRoundNumberInclusive: number,
+): Map<string, MatchRecord> {
+  const filtered = matches.filter(
+    (m) => m.roundNumber <= maxRoundNumberInclusive,
+  )
+  return buildMatchRecordsFromMatches(filtered)
+}
+
+/**
+ * Récord W/L/T al publicar la ronda `roundNum`: acumulado **hasta el final de la ronda `roundNum - 1`**
+ * (p. ej. ronda 1 → 0-0-0 para todos; ronda 2 → solo resultados ya jugados en ronda 1).
+ */
+export function buildParticipantRecordsForSyncRound(
+  matches: ParsedMatch[],
+  players: ParsedPlayer[],
+  roundNum: number,
+): { popId: string; wins: number; losses: number; ties: number }[] {
+  const prefix = buildMatchRecordsThroughRound(
+    matches,
+    Math.max(0, roundNum - 1),
+  )
+  return players.map((p) => {
+    const r = prefix.get(p.popId)
+    return {
+      popId: p.popId,
+      wins: r?.wins ?? 0,
+      losses: r?.losses ?? 0,
+      ties: r?.ties ?? 0,
+    }
+  })
+}
+
 export function formatMatchRecordWlt(r: MatchRecord | undefined): string {
   if (!r) return '0-0-0'
   return `${r.wins}-${r.losses}-${r.ties}`

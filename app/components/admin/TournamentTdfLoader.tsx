@@ -20,6 +20,7 @@ import {
 import { EventSeat, FolderOpen, GroupAdd } from "@mui/icons-material";
 import {
   buildMatchRecordsFromMatches,
+  buildParticipantRecordsForSyncRound,
   buildPlayerNameLookup,
   buildRecordsBeforeEachMatch,
   formatMatchRecordWlt,
@@ -392,14 +393,11 @@ export default function TournamentTdfLoader({
                               player1PopId: m.player1UserId,
                               player2PopId: m.player2UserId,
                             })),
-                            participantRecords: Array.from(
-                              matchRecords.entries(),
-                            ).map(([popId, r]) => ({
-                              popId,
-                              wins: r.wins,
-                              losses: r.losses,
-                              ties: r.ties,
-                            })),
+                            participantRecords: buildParticipantRecordsForSyncRound(
+                              parsed.matches,
+                              parsed.players,
+                              roundNum,
+                            ),
                           });
                           setLastRoundSync(data);
                         } catch {
