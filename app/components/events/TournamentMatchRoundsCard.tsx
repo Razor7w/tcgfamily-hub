@@ -1743,6 +1743,21 @@ export default function TournamentMatchRoundsCard({
             </Box>
           </Card>
 
+          <Typography
+            variant="caption"
+            component="p"
+            color="text.secondary"
+            sx={{
+              textAlign: "center",
+              letterSpacing: "0.06em",
+              fontSize: "0.6875rem",
+              opacity: 0.9,
+              m: 0,
+            }}
+          >
+            Powered by TcgFamily HUB
+          </Typography>
+
           <Card
             elevation={0}
             sx={(t) => ({
