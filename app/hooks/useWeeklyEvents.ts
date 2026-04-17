@@ -7,6 +7,7 @@ import {
   endOfWeekSunday,
   startOfWeekMonday,
 } from "@/components/events/weekUtils";
+import type { MyTournamentWeekItem } from "@/lib/my-tournament-week-types";
 import type { FullTournamentUploadPayload } from "@/lib/tournament-tdf-payload";
 import type { WeeklyEventState } from "@/models/WeeklyEvent";
 
@@ -73,6 +74,31 @@ export function useWeekEvents(weekAnchor: Date | null) {
       const res = await fetch(`/api/events?${params.toString()}`);
       if (!res.ok) {
         throw new Error("Error al cargar eventos");
+      }
+      return res.json();
+    },
+    enabled: !!weekAnchor,
+  });
+}
+
+/** Torneos de la semana en los que participas (resumen informativo). */
+export function useMyTournamentsWeekReport(weekAnchor: Date | null) {
+  const from = weekAnchor ? startOfWeekMonday(weekAnchor) : null;
+  const to = weekAnchor ? endOfWeekSunday(weekAnchor) : null;
+
+  return useQuery<{ tournaments: MyTournamentWeekItem[] }>({
+    queryKey: ["my-tournaments-week", from?.toISOString(), to?.toISOString()],
+    queryFn: async () => {
+      if (!from || !to) {
+        return { tournaments: [] };
+      }
+      const params = new URLSearchParams({
+        from: from.toISOString(),
+        to: to.toISOString(),
+      });
+      const res = await fetch(`/api/events/my-tournaments-week?${params}`);
+      if (!res.ok) {
+        throw new Error("Error al cargar tu reporte de torneos");
       }
       return res.json();
     },
@@ -151,6 +177,7 @@ export function useRegisterWeeklyEvent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["weekly-events"] });
+      queryClient.invalidateQueries({ queryKey: ["my-tournaments-week"] });
     },
   });
 }
@@ -179,6 +206,7 @@ export function useUnregisterWeeklyEvent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["weekly-events"] });
+      queryClient.invalidateQueries({ queryKey: ["my-tournaments-week"] });
     },
   });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Email, Event, Home, Person } from "@mui/icons-material";
+import { Email, EmojiEvents, Event, Home, Person } from "@mui/icons-material";
 import {
   Box,
   Divider,
@@ -35,14 +35,24 @@ export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
             </ListItemButton>
           </ListItem>
           {showEvents ? (
-            <ListItem disablePadding>
-              <ListItemButton href="/dashboard/eventos">
-                <ListItemIcon>
-                  <Event />
-                </ListItemIcon>
-                <ListItemText primary="Eventos" />
-              </ListItemButton>
-            </ListItem>
+            <>
+              <ListItem disablePadding>
+                <ListItemButton href="/dashboard/eventos">
+                  <ListItemIcon>
+                    <Event />
+                  </ListItemIcon>
+                  <ListItemText primary="Eventos" />
+                </ListItemButton>
+              </ListItem>
+              <ListItem disablePadding>
+                <ListItemButton href="/dashboard/torneos-semana">
+                  <ListItemIcon>
+                    <EmojiEvents />
+                  </ListItemIcon>
+                  <ListItemText primary="Mis torneos" />
+                </ListItemButton>
+              </ListItem>
+            </>
           ) : null}
           {showMail ? (
             <ListItem disablePadding>

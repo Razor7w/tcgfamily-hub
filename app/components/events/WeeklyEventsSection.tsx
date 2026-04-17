@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -218,6 +218,9 @@ function TournamentFinishedStandingsTabs({
 
 type WeeklyEventsSectionProps = {
   showSeeAllLink?: boolean;
+  /** Semana controlada por el padre (p. ej. dashboard + reporte de torneos). */
+  weekAnchor?: Date;
+  onWeekAnchorChange?: (next: Date) => void;
 };
 
 function WeeklyEventPreRegisterForm({
@@ -309,11 +312,30 @@ function SectionLoading() {
 
 export default function WeeklyEventsSection({
   showSeeAllLink = true,
+  weekAnchor: weekAnchorProp,
+  onWeekAnchorChange,
 }: WeeklyEventsSectionProps) {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
   const { data: session } = useSession();
-  const [weekAnchor, setWeekAnchor] = useState(() => new Date());
+  const [internalWeekAnchor, setInternalWeekAnchor] = useState(() => new Date());
+  const isWeekControlled =
+    weekAnchorProp !== undefined && typeof onWeekAnchorChange === "function";
+  const weekAnchor = isWeekControlled ? weekAnchorProp! : internalWeekAnchor;
+  const setWeekAnchor = useCallback(
+    (updater: Date | ((prev: Date) => Date)) => {
+      const next =
+        typeof updater === "function"
+          ? (updater as (prev: Date) => Date)(weekAnchor)
+          : updater;
+      if (isWeekControlled) {
+        onWeekAnchorChange!(next);
+      } else {
+        setInternalWeekAnchor(next);
+      }
+    },
+    [weekAnchor, isWeekControlled, onWeekAnchorChange],
+  );
   const weekStart = useMemo(() => startOfWeekMonday(weekAnchor), [weekAnchor]);
 
   const [selectedOffset, setSelectedOffset] = useState(() =>

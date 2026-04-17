@@ -108,6 +108,7 @@ export async function PUT(request: NextRequest) {
 
     revalidatePath("/dashboard", "layout");
     revalidatePath("/dashboard/eventos");
+    revalidatePath("/dashboard/torneos-semana");
     revalidatePath("/dashboard/mail");
 
     return NextResponse.json({ settings }, { status: 200 });

@@ -31,7 +31,8 @@ import {
 } from "@/lib/dashboard-module-config";
 
 const LABELS: Record<DashboardModuleId, string> = {
-  weeklyEvents: "Eventos de la semana",
+  weeklyEvents:
+    "Eventos de la semana (calendario, preinscripción; enlace «Mis torneos» para el resumen)",
   mail: "Correo (últimos correos y registro)",
   storePoints: "Crédito de tienda (puntos)",
 };
