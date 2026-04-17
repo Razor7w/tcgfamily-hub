@@ -147,6 +147,8 @@ export interface AdminWeeklyEvent {
   formatNotes: string;
   prizesNotes: string;
   location: string;
+  /** Ronda actual del torneo; por defecto 0. */
+  roundNum?: number;
   participants: AdminEventParticipant[];
   createdAt?: string;
   updatedAt?: string;

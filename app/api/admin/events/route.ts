@@ -10,6 +10,7 @@ import WeeklyEvent, {
 
 const PRICE_MAX = 99_999_999;
 const PARTICIPANTS_MAX = 2048;
+const ROUND_NUM_MAX = 9999;
 
 function parseBody(body: unknown) {
   if (typeof body !== "object" || body === null) return null;
@@ -221,6 +222,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let roundNum = 0;
+    const rawRound = body.roundNum;
+    if (rawRound !== undefined && rawRound !== null && rawRound !== "") {
+      if (typeof rawRound === "number" && Number.isFinite(rawRound)) {
+        roundNum = Math.round(rawRound);
+      } else if (typeof rawRound === "string" && rawRound.trim() !== "") {
+        const n = Number(rawRound);
+        if (Number.isFinite(n)) roundNum = Math.round(n);
+      }
+    }
+    if (roundNum < 0 || roundNum > ROUND_NUM_MAX) {
+      return NextResponse.json(
+        { error: "Número de ronda inválido" },
+        { status: 400 },
+      );
+    }
+
     const formatNotes =
       typeof body.formatNotes === "string"
         ? body.formatNotes.trim().slice(0, 2000)
@@ -263,6 +281,7 @@ export async function POST(request: NextRequest) {
       prizesNotes,
       location,
       state,
+      roundNum,
       participants: [],
     });
 

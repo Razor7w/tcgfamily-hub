@@ -37,6 +37,8 @@ export interface IWeeklyEvent extends Document {
   location: string;
   /** Programado, en curso o cerrado. */
   state: WeeklyEventState;
+  /** Ronda actual del torneo (0 = sin iniciar / no aplica). */
+  roundNum?: number;
   participants: IWeeklyParticipant[];
 }
 
@@ -82,6 +84,7 @@ const WeeklyEventSchema = new Schema<IWeeklyEvent>(
       enum: ["schedule", "running", "close"],
       default: "schedule",
     },
+    roundNum: { type: Number, default: 0, min: 0 },
     participants: { type: [ParticipantSchema], default: [] },
   },
   { timestamps: true, strict: true },

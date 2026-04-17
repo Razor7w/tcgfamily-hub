@@ -62,6 +62,7 @@ type FormState = {
   formatNotes: string;
   prizesNotes: string;
   location: string;
+  roundNum: string;
 };
 
 const emptyForm = (): FormState => ({
@@ -77,6 +78,7 @@ const emptyForm = (): FormState => ({
   formatNotes: "",
   prizesNotes: "",
   location: "Av. Valparaíso 1195, Local 3",
+  roundNum: "0",
 });
 
 function kindLabelAdmin(k: AdminWeeklyEvent["kind"]) {
@@ -118,6 +120,7 @@ function formFromEvent(ev: AdminWeeklyEvent): FormState {
     formatNotes: ev.formatNotes ?? "",
     prizesNotes: ev.prizesNotes ?? "",
     location: ev.location ?? "",
+    roundNum: String(ev.roundNum ?? 0),
   };
 }
 
@@ -164,6 +167,10 @@ export default function AdminEventosPage() {
     if (!Number.isFinite(maxParticipants) || maxParticipants < 1) {
       throw new Error("Cupo máximo inválido");
     }
+    const roundNum = Math.round(Number(form.roundNum));
+    if (!Number.isFinite(roundNum) || roundNum < 0) {
+      throw new Error("Número de ronda inválido");
+    }
     let priceClp = 0;
     if (form.kind === "tournament") {
       if (!form.gratis) {
@@ -185,6 +192,7 @@ export default function AdminEventosPage() {
       prizesNotes: form.prizesNotes.trim(),
       location: form.location.trim(),
       priceClp,
+      roundNum,
     };
     if (form.kind === "tournament" && form.game === "pokemon") {
       if (!form.pokemonSubtype) {
@@ -484,6 +492,16 @@ export default function AdminEventosPage() {
                 <MenuItem value="close">Cerrado</MenuItem>
               </Select>
             </FormControl>
+            <TextField
+              label="Ronda (número)"
+              type="number"
+              inputProps={{ min: 0 }}
+              value={form.roundNum}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, roundNum: e.target.value }))
+              }
+              fullWidth
+            />
             <FormControl fullWidth>
               <InputLabel id="kind-label">Tipo</InputLabel>
               <Select
