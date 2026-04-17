@@ -3,6 +3,7 @@ import {
   AdminPanelSettings,
   CalendarMonth,
   CloudUpload,
+  DashboardCustomize,
   DataObject,
   Email,
   ExpandLess,
@@ -40,6 +41,14 @@ export default function AdminSidebarClient() {
               <People />
             </ListItemIcon>
             <ListItemText primary="Usuarios" />
+          </ListItemButton>
+        </List>
+        <List component="div" disablePadding>
+          <ListItemButton sx={{ pl: 4 }} href="/admin/dashboard-modules">
+            <ListItemIcon>
+              <DashboardCustomize />
+            </ListItemIcon>
+            <ListItemText primary="Inicio (dashboard)" />
           </ListItemButton>
         </List>
         <List component="div" disablePadding>

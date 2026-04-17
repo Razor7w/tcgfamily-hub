@@ -34,6 +34,7 @@ import Tooltip from '@mui/material/Tooltip'
 import DeleteIcon from '@mui/icons-material/Delete'
 import Snackbar from '@mui/material/Snackbar'
 import { useDeleteMail } from '@/hooks/useMails'
+import DashboardModuleRouteGate from '@/components/dashboard/DashboardModuleRouteGate'
 
 function getElapsedDays(createdAt: string): number {
   const created = new Date(createdAt).getTime()
@@ -65,7 +66,7 @@ function filterUserLabel(u: FilterUser) {
   return `${u.name || 'Sin nombre'} (${u.rut || '-'})`
 }
 
-export default function DashboardMailPage() {
+function DashboardMailPageContent() {
   const { data: session } = useSession()
   const currentUserId = session?.user?.id ?? ''
   const [registerMailOpen, setRegisterMailOpen] = useState(false)
@@ -511,5 +512,13 @@ export default function DashboardMailPage() {
       </Snackbar>
       </Container>
     </Box>
+  )
+}
+
+export default function DashboardMailPage() {
+  return (
+    <DashboardModuleRouteGate moduleId="mail">
+      <DashboardMailPageContent />
+    </DashboardModuleRouteGate>
   )
 }
