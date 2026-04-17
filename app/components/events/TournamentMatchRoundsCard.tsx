@@ -13,7 +13,6 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import TableRowsOutlinedIcon from "@mui/icons-material/TableRowsOutlined";
 import HandshakeOutlinedIcon from "@mui/icons-material/HandshakeOutlined";
 import PersonOffOutlinedIcon from "@mui/icons-material/PersonOffOutlined";
-import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
 import WavingHandOutlinedIcon from "@mui/icons-material/WavingHandOutlined";
 import Autocomplete, { createFilterOptions } from "@mui/material/Autocomplete";
@@ -800,14 +799,55 @@ export default function TournamentMatchRoundsCard({
                   </Typography>
                   <Typography
                     variant="h4"
+                    component="div"
                     fontWeight={800}
                     sx={{
                       fontVariantNumeric: "tabular-nums",
-                      lineHeight: 1.1,
+                      lineHeight: 1.15,
                       fontSize: { xs: "1.65rem", sm: "2.125rem" },
+                      display: "flex",
+                      alignItems: "baseline",
+                      justifyContent: { xs: "space-between", md: "flex-end" },
+                      gap: { xs: 2, md: 2.5 },
+                      flexWrap: "nowrap",
+                      width: "100%",
                     }}
                   >
-                    {record.wins}-{record.losses}-{record.ties}
+                    {eventState === "close" && tournamentPlacement ? (
+                      tournamentPlacement.isDnf ? (
+                        <>
+                          <Box
+                            component="span"
+                            sx={{ color: "error.main", fontWeight: 800, flexShrink: 0 }}
+                          >
+                            DNF
+                          </Box>
+                          <Box component="span" sx={{ flexShrink: 0 }}>
+                            {record.wins}-{record.losses}-{record.ties}
+                          </Box>
+                        </>
+                      ) : (
+                        <>
+                          <Box
+                            component="span"
+                            sx={{
+                              color: "success.dark",
+                              fontWeight: 800,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {tournamentPlacement.place}°
+                          </Box>
+                          <Box component="span" sx={{ flexShrink: 0 }}>
+                            {record.wins}-{record.losses}-{record.ties}
+                          </Box>
+                        </>
+                      )
+                    ) : (
+                      <Box component="span" sx={{ width: "100%", textAlign: { md: "right" } }}>
+                        {record.wins}-{record.losses}-{record.ties}
+                      </Box>
+                    )}
                   </Typography>
                   <Typography
                     variant="caption"
@@ -816,10 +856,15 @@ export default function TournamentMatchRoundsCard({
                       display: "block",
                       mt: 0.25,
                       maxWidth: { xs: "min(100%, 200px)", md: "none" },
+                      textAlign: { xs: "left", md: "right" },
                     }}
                   >
                     {showOfficialRecord
-                      ? "Victorias · Derrotas · Empates (torneo / TDF)"
+                      ? tournamentPlacement && !tournamentPlacement.isDnf
+                        ? `${tournamentPlacement.categoryLabel} · W · L · T`
+                        : tournamentPlacement?.isDnf
+                          ? `Categoría ${tournamentPlacement.categoryLabel} · sin completar el torneo`
+                          : "Victorias · Derrotas · Empates"
                       : "Victorias · Derrotas · Tablas (mesas que reportaste)"}
                   </Typography>
                 </Box>
@@ -848,65 +893,7 @@ export default function TournamentMatchRoundsCard({
             </Stack>
           </Stack>
 
-          {eventState === "close" && tournamentPlacement ? (
-            <Box
-              sx={(t) => ({
-                py: { xs: 1.25, sm: 1.5 },
-                px: { xs: 1.5, sm: 2 },
-                borderRadius: 2,
-                bgcolor: alpha(t.palette.success.main, 0.08),
-                border: "1px solid",
-                borderColor: alpha(t.palette.success.main, 0.35),
-              })}
-            >
-              <Stack direction="row" spacing={1.25} alignItems="flex-start">
-                <EmojiEventsIcon
-                  sx={{
-                    color: "success.main",
-                    fontSize: { xs: 20, sm: 22 },
-                    mt: 0.25,
-                    flexShrink: 0,
-                  }}
-                />
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    fontWeight={700}
-                    sx={{ display: "block", mb: 0.5 }}
-                  >
-                    Resultado en clasificación
-                  </Typography>
-                  <Typography variant="body2" component="div" sx={{ overflowWrap: "anywhere" }}>
-                    {tournamentPlacement.isDnf ? (
-                      <>
-                        Categoría{" "}
-                        <Box component="strong" fontWeight={700}>
-                          {tournamentPlacement.categoryLabel}
-                        </Box>
-                        :{" "}
-                        <Box component="span" fontWeight={800} color="error.main">
-                          DNF
-                        </Box>{" "}
-                        (no terminó el torneo)
-                      </>
-                    ) : (
-                      <>
-                        Puesto{" "}
-                        <Box component="strong" fontWeight={800} color="success.dark">
-                          {tournamentPlacement.place}º
-                        </Box>{" "}
-                        en categoría{" "}
-                        <Box component="strong" fontWeight={700}>
-                          {tournamentPlacement.categoryLabel}
-                        </Box>
-                      </>
-                    )}
-                  </Typography>
-                </Box>
-              </Stack>
-            </Box>
-          ) : eventState === "close" && !tournamentPlacement ? (
+          {eventState === "close" && !tournamentPlacement ? (
             <Typography
               variant="caption"
               color="text.secondary"
