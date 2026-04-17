@@ -23,17 +23,11 @@ import CardMails from "@/components/dashboard/CardMails";
 import MailFlowExplainer from "@/components/mails/MailFlowExplainer";
 import RegisterMailDialog from "@/components/mails/RegisterMailDialog";
 import { useStoreCredit } from "@/hooks/useStoreCredit";
-import { useDashboardModuleSettings } from "@/hooks/useDashboardModules";
-import {
-  mergeDashboardSettings,
-  type DashboardModuleId,
-} from "@/lib/dashboard-module-config";
+import { useDashboardModulesFromLayout } from "@/contexts/DashboardModulesContext";
+import type { DashboardModuleId } from "@/lib/dashboard-module-config";
 
 export default function DashboardHomeContent() {
-  const { data: settings, isPending: settingsLoading } =
-    useDashboardModuleSettings();
-  const merged = settings ?? mergeDashboardSettings(null);
-  const { visibility, order } = merged;
+  const { visibility, order } = useDashboardModulesFromLayout();
 
   const {
     data: credit,
@@ -241,14 +235,6 @@ export default function DashboardHomeContent() {
     mail: mailBlock,
     storePoints: storePointsBlock,
   };
-
-  if (settingsLoading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
-        <CircularProgress size={32} aria-label="Cargando panel" />
-      </Box>
-    );
-  }
 
   const visibleOrdered = order.filter((id) => {
     if (id === "weeklyEvents") return visibility.weeklyEvents;

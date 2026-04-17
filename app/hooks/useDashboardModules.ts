@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { DashboardModuleSettingsDTO } from "@/lib/dashboard-module-config";
 
-export function useDashboardModuleSettings() {
+/** Solo para /admin/dashboard-modules (requiere rol admin). */
+export function useAdminDashboardModuleSettings() {
   return useQuery<DashboardModuleSettingsDTO>({
-    queryKey: ["dashboard-modules"],
+    queryKey: ["admin", "dashboard-modules"],
     queryFn: async () => {
-      const response = await fetch("/api/dashboard-modules");
+      const response = await fetch("/api/admin/dashboard-modules");
       if (!response.ok) {
         throw new Error("Error al cargar módulos del panel");
       }
@@ -36,7 +37,7 @@ export function useUpdateDashboardModuleSettings() {
       return data.settings as DashboardModuleSettingsDTO;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dashboard-modules"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "dashboard-modules"] });
     },
   });
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import connectDB from "@/lib/mongodb";
 import {
@@ -104,6 +105,10 @@ export async function PUT(request: NextRequest) {
       visibility: doc.visibility,
       order: doc.order as DashboardModuleSettingsDTO["order"],
     });
+
+    revalidatePath("/dashboard", "layout");
+    revalidatePath("/dashboard/eventos");
+    revalidatePath("/dashboard/mail");
 
     return NextResponse.json({ settings }, { status: 200 });
   } catch (e) {

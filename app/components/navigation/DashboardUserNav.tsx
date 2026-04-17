@@ -1,6 +1,6 @@
 "use client";
 
-import { Email, Event, Home } from "@mui/icons-material";
+import { Email, Event, Home, Person } from "@mui/icons-material";
 import {
   Divider,
   List,
@@ -12,14 +12,12 @@ import {
 } from "@mui/material";
 import SignOutList from "@/components/auth/SignOutList";
 import AdminSidebarClient from "@/components/navigation/AdminSidebarClient";
-import { useDashboardModuleSettings } from "@/hooks/useDashboardModules";
-import { mergeDashboardSettings } from "@/lib/dashboard-module-config";
+import { useDashboardModulesFromLayout } from "@/contexts/DashboardModulesContext";
 
 export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
-  const { data: settings, isPending } = useDashboardModuleSettings();
-  const merged = settings ?? mergeDashboardSettings(null);
-  const showEvents = merged.visibility.weeklyEvents;
-  const showMail = merged.visibility.mail;
+  const { visibility } = useDashboardModulesFromLayout();
+  const showEvents = visibility.weeklyEvents;
+  const showMail = visibility.mail;
 
   return (
     <Stack>
@@ -34,7 +32,7 @@ export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
               <ListItemText primary="Inicio" />
             </ListItemButton>
           </ListItem>
-          {(isPending || showEvents) && (
+          {showEvents ? (
             <ListItem disablePadding>
               <ListItemButton href="/dashboard/eventos">
                 <ListItemIcon>
@@ -43,8 +41,8 @@ export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
                 <ListItemText primary="Eventos" />
               </ListItemButton>
             </ListItem>
-          )}
-          {(isPending || showMail) && (
+          ) : null}
+          {showMail ? (
             <ListItem disablePadding>
               <ListItemButton href="/dashboard/mail">
                 <ListItemIcon>
@@ -53,7 +51,15 @@ export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
                 <ListItemText primary="Correo" />
               </ListItemButton>
             </ListItem>
-          )}
+          ) : null}
+          <ListItem disablePadding>
+            <ListItemButton href="/dashboard/perfil">
+              <ListItemIcon>
+                <Person />
+              </ListItemIcon>
+              <ListItemText primary="Perfil" />
+            </ListItemButton>
+          </ListItem>
         </List>
       </nav>
 

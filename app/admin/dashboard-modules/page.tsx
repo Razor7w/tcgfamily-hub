@@ -21,7 +21,7 @@ import Divider from "@mui/material/Divider";
 import { alpha, type Theme } from "@mui/material/styles";
 import NextLink from "next/link";
 import {
-  useDashboardModuleSettings,
+  useAdminDashboardModuleSettings,
   useUpdateDashboardModuleSettings,
 } from "@/hooks/useDashboardModules";
 import {
@@ -219,7 +219,7 @@ function DashboardModulesEditor({
 
 export default function AdminDashboardModulesPage() {
   const { data, dataUpdatedAt, isPending, isError, error, refetch } =
-    useDashboardModuleSettings();
+    useAdminDashboardModuleSettings();
 
   return (
     <Box

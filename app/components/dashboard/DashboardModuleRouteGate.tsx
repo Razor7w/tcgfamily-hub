@@ -2,13 +2,8 @@
 
 import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import Box from "@mui/material/Box";
-import CircularProgress from "@mui/material/CircularProgress";
-import { useDashboardModuleSettings } from "@/hooks/useDashboardModules";
-import {
-  mergeDashboardSettings,
-  type DashboardModuleId,
-} from "@/lib/dashboard-module-config";
+import { useDashboardModulesFromLayout } from "@/contexts/DashboardModulesContext";
+import type { DashboardModuleId } from "@/lib/dashboard-module-config";
 
 type Props = {
   moduleId: DashboardModuleId;
@@ -20,31 +15,14 @@ type Props = {
  */
 export default function DashboardModuleRouteGate({ moduleId, children }: Props) {
   const router = useRouter();
-  const { data, isPending } = useDashboardModuleSettings();
-  const merged = data ?? mergeDashboardSettings(null);
-  const allowed = merged.visibility[moduleId];
+  const { visibility } = useDashboardModulesFromLayout();
+  const allowed = visibility[moduleId];
 
   useEffect(() => {
-    if (isPending) return;
     if (!allowed) {
       router.replace("/dashboard");
     }
-  }, [allowed, isPending, router]);
-
-  if (isPending) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "60dvh",
-        }}
-      >
-        <CircularProgress aria-label="Cargando" />
-      </Box>
-    );
-  }
+  }, [allowed, router]);
 
   if (!allowed) {
     return null;
