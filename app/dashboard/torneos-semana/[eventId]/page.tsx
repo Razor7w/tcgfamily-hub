@@ -16,6 +16,7 @@ import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import DashboardModuleRouteGate from "@/components/dashboard/DashboardModuleRouteGate";
 import ReportDeckDialog from "@/components/events/ReportDeckDialog";
+import TournamentMatchRoundsCard from "@/components/events/TournamentMatchRoundsCard";
 import { useDashboardEventDetail } from "@/hooks/useWeeklyEvents";
 import { getLimitlessPokemonSpriteUrl } from "@/lib/limitless-pokemon-sprite";
 import type { WeeklyEventState } from "@/models/WeeklyEvent";
@@ -76,115 +77,111 @@ export default function TorneoSemanaDetallePage() {
             </Alert>
           ) : !ev ? null : (
             <Stack spacing={3}>
-              <Stack spacing={1}>
-                <Typography variant="h4" component="h1" fontWeight={700}>
-                  {ev.title}
-                </Typography>
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                  <Chip
-                    size="small"
-                    label={stateLabel(ev.state)}
-                    color={stateColor(ev.state)}
-                  />
-                  <Typography variant="body2" color="text.secondary">
-                    {new Date(ev.startsAt).toLocaleString("es-CL", {
-                      weekday: "long",
-                      day: "numeric",
-                      month: "long",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </Typography>
-                </Stack>
-              </Stack>
-
               {!ev.myRegistration ? (
                 <Alert severity="info">
-                  No estás preinscrito en este torneo. Preinscríbete desde la vista de
-                  eventos para poder reportar tu deck aquí.
+                  No estás preinscrito en este torneo. Preinscríbete desde la vista de eventos
+                  para ver el detalle y reportar tu deck.
                 </Alert>
               ) : null}
 
               {ev.myRegistration &&
               ev.kind === "tournament" &&
               ev.game === "pokemon" ? (
-                <Card variant="outlined" sx={{ borderRadius: 2 }}>
-                  <CardContent>
-                    <Stack
-                      direction={{ xs: "column", sm: "row" }}
-                      spacing={2}
-                      alignItems={{ xs: "stretch", sm: "center" }}
-                      justifyContent="space-between"
-                    >
-                      <Stack direction="row" spacing={1.5} alignItems="center">
-                        <EmojiEvents color="primary" />
-                        <Box>
-                          <Typography variant="subtitle1" fontWeight={600}>
-                            Tu deck en el torneo
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Opcional: indica hasta dos Pokémon para mostrar el mazo que usaste
-                            (sprites Limitless).
-                          </Typography>
-                        </Box>
-                      </Stack>
-                      <Button
-                        variant="contained"
-                        onClick={() => setDeckOpen(true)}
-                        sx={{ flexShrink: 0 }}
-                      >
-                        {ev.myDeckPokemonSlugs?.length
-                          ? "Editar deck"
-                          : "Reportar mi deck"}
-                      </Button>
-                    </Stack>
+                <>
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                    <Chip
+                      size="small"
+                      label={stateLabel(ev.state)}
+                      color={stateColor(ev.state)}
+                    />
+                  </Stack>
 
-                    {ev.myDeckPokemonSlugs && ev.myDeckPokemonSlugs.length > 0 ? (
-                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 2 }}>
-                        {ev.myDeckPokemonSlugs.map((slug) => (
-                          <Chip
-                            key={slug}
-                            variant="outlined"
-                            label={
-                              <Stack direction="row" alignItems="center" spacing={0.75}>
-                                <Box
-                                  component="img"
-                                  src={getLimitlessPokemonSpriteUrl(slug)}
-                                  alt=""
-                                  sx={{
-                                    width: 22,
-                                    height: 22,
-                                    imageRendering: "pixelated",
-                                  }}
-                                />
-                                <Typography variant="body2" component="span">
-                                  {slug}
-                                </Typography>
-                              </Stack>
-                            }
-                          />
-                        ))}
+                  <TournamentMatchRoundsCard
+                    eventId={eventId}
+                    title={ev.title}
+                    startsAtIso={ev.startsAt}
+                    location={ev.location}
+                    pokemonSubtype={ev.pokemonSubtype}
+                    myDeckSlugs={ev.myDeckPokemonSlugs ?? []}
+                    rounds={ev.myMatchRounds ?? []}
+                  />
+
+                  <Card variant="outlined" sx={{ borderRadius: 2 }}>
+                    <CardContent>
+                      <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        spacing={2}
+                        alignItems={{ xs: "stretch", sm: "center" }}
+                        justifyContent="space-between"
+                      >
+                        <Stack direction="row" spacing={1.5} alignItems="center">
+                          <EmojiEvents color="primary" />
+                          <Box>
+                            <Typography variant="subtitle1" fontWeight={600}>
+                              Pokémon de tu deck (sprites)
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Edita los dos Pokémon que quieres mostrar junto a tu nombre.
+                            </Typography>
+                          </Box>
+                        </Stack>
+                        <Button
+                          variant="outlined"
+                          onClick={() => setDeckOpen(true)}
+                          sx={{ flexShrink: 0 }}
+                        >
+                          {ev.myDeckPokemonSlugs?.length ? "Editar" : "Elegir Pokémon"}
+                        </Button>
                       </Stack>
-                    ) : null}
-                  </CardContent>
-                </Card>
+                      {ev.myDeckPokemonSlugs && ev.myDeckPokemonSlugs.length > 0 ? (
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          flexWrap="wrap"
+                          useFlexGap
+                          sx={{ mt: 2 }}
+                        >
+                          {ev.myDeckPokemonSlugs.map((slug) => (
+                            <Chip
+                              key={slug}
+                              variant="outlined"
+                              label={
+                                <Stack direction="row" alignItems="center" spacing={0.75}>
+                                  <Box
+                                    component="img"
+                                    src={getLimitlessPokemonSpriteUrl(slug)}
+                                    alt=""
+                                    sx={{
+                                      width: 22,
+                                      height: 22,
+                                      imageRendering: "pixelated",
+                                    }}
+                                  />
+                                  <Typography variant="body2" component="span">
+                                    {slug}
+                                  </Typography>
+                                </Stack>
+                              }
+                            />
+                          ))}
+                        </Stack>
+                      ) : null}
+                    </CardContent>
+                  </Card>
+
+                  <ReportDeckDialog
+                    open={deckOpen}
+                    onClose={() => setDeckOpen(false)}
+                    eventId={eventId}
+                    eventTitle={ev.title}
+                    initialSlugs={ev.myDeckPokemonSlugs ?? []}
+                  />
+                </>
               ) : ev.myRegistration ? (
                 <Alert severity="warning">
-                  El reporte de deck solo aplica a torneos Pokémon TCG. Este evento es de otro
-                  tipo o juego.
+                  El reporte de deck y rondas solo aplica a torneos Pokémon TCG. Este evento es
+                  de otro tipo o juego.
                 </Alert>
-              ) : null}
-
-              {ev.myRegistration &&
-              ev.kind === "tournament" &&
-              ev.game === "pokemon" ? (
-                <ReportDeckDialog
-                  open={deckOpen}
-                  onClose={() => setDeckOpen(false)}
-                  eventId={eventId}
-                  eventTitle={ev.title}
-                  initialSlugs={ev.myDeckPokemonSlugs ?? []}
-                />
               ) : null}
             </Stack>
           )}

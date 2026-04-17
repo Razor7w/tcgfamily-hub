@@ -8,6 +8,7 @@ import {
   pairingExtrasForUser,
 } from "@/lib/weekly-events";
 import { buildTournamentStandingsPublic } from "@/lib/weekly-event-public";
+import type { ParticipantMatchRoundDTO } from "@/lib/participant-match-round";
 
 type LeanEvent = {
   _id: unknown;
@@ -36,6 +37,14 @@ type LeanEvent = {
     losses?: unknown;
     ties?: unknown;
     deckPokemonSlugs?: string[];
+    matchRounds?: {
+      _id?: unknown;
+      roundNum?: number;
+      opponentDeckSlugs?: string[];
+      gameResults?: string[];
+      turnOrders?: string[];
+      specialOutcome?: string;
+    }[];
   }[];
 };
 
@@ -108,6 +117,43 @@ export async function GET(
     const myDeckPokemonSlugs = Array.isArray(mine?.deckPokemonSlugs)
       ? mine.deckPokemonSlugs.filter((s): s is string => typeof s === "string")
       : [];
+
+    const myMatchRounds: ParticipantMatchRoundDTO[] = [];
+    if (Array.isArray(mine?.matchRounds)) {
+      for (const mr of mine.matchRounds) {
+        const roundNum = Math.round(Number(mr.roundNum));
+        if (!Number.isFinite(roundNum)) continue;
+        const opponentDeckSlugs = Array.isArray(mr.opponentDeckSlugs)
+          ? mr.opponentDeckSlugs.filter((s): s is string => typeof s === "string")
+          : [];
+        const gameResults = Array.isArray(mr.gameResults)
+          ? (mr.gameResults.filter((g): g is "W" | "L" | "T" =>
+              g === "W" || g === "L" || g === "T",
+            ) as ("W" | "L" | "T")[])
+          : [];
+        const turnOrders = Array.isArray(mr.turnOrders)
+          ? (mr.turnOrders.filter((t): t is "first" | "second" =>
+              t === "first" || t === "second",
+            ) as ("first" | "second")[])
+          : [];
+        const special =
+          mr.specialOutcome === "intentional_draw" ||
+          mr.specialOutcome === "no_show" ||
+          mr.specialOutcome === "bye"
+            ? mr.specialOutcome
+            : undefined;
+        const row: ParticipantMatchRoundDTO = {
+          ...(mr._id != null ? { id: String(mr._id) } : {}),
+          roundNum,
+          opponentDeckSlugs,
+          gameResults,
+          turnOrders,
+          ...(special ? { specialOutcome: special } : { specialOutcome: null }),
+        };
+        myMatchRounds.push(row);
+      }
+      myMatchRounds.sort((a, b) => a.roundNum - b.roundNum);
+    }
     const standingsPublic = tournamentClosed
       ? buildTournamentStandingsPublic(
           doc.tournamentStandings,
@@ -150,6 +196,7 @@ export async function GET(
         Boolean(myRegistration) &&
         doc.kind === "tournament" &&
         doc.game === "pokemon",
+      myMatchRounds,
       ...(tournamentClosed
         ? {
             standingsTopByCategory:

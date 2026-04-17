@@ -8,6 +8,7 @@ import {
   startOfWeekMonday,
 } from "@/components/events/weekUtils";
 import type { MyTournamentWeekItem } from "@/lib/my-tournament-week-types";
+import type { ParticipantMatchRoundDTO } from "@/lib/participant-match-round";
 import type { FullTournamentUploadPayload } from "@/lib/tournament-tdf-payload";
 import type { WeeklyEventState } from "@/models/WeeklyEvent";
 
@@ -110,6 +111,7 @@ export function useMyTournamentsWeekReport(weekAnchor: Date | null) {
 export type DashboardEventDetail = PublicWeeklyEvent & {
   myDeckPokemonSlugs: string[];
   canReportDeck: boolean;
+  myMatchRounds: ParticipantMatchRoundDTO[];
 };
 
 export function useDashboardEventDetail(eventId: string | null) {
@@ -117,7 +119,7 @@ export function useDashboardEventDetail(eventId: string | null) {
     queryKey: ["dashboard-event-detail", eventId],
     queryFn: async () => {
       if (!eventId?.trim()) throw new Error("ID requerido");
-      const res = await fetch(`/api/events/${eventId}`);
+      const res = await fetch(`/api/events/${eventId}`, { cache: "no-store" });
       const data = (await res.json().catch(() => ({}))) as {
         error?: string;
         event?: DashboardEventDetail;
@@ -150,6 +152,32 @@ export function useSaveMyDeck(eventId: string) {
         );
       }
       return data as { ok: boolean; deckPokemonSlugs: string[] };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["dashboard-event-detail", eventId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["my-tournaments-week"] });
+    },
+  });
+}
+
+export function useSaveMyMatchRounds(eventId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (rounds: ParticipantMatchRoundDTO[]) => {
+      const res = await fetch(`/api/events/${eventId}/my-match-rounds`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rounds }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === "string" ? data.error : "Error al guardar rondas",
+        );
+      }
+      return data as { ok: boolean };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

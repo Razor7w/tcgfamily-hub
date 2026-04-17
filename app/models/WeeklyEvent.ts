@@ -41,6 +41,15 @@ export interface ITournamentCategoryStandings {
   dnf: { popId: string }[];
 }
 
+/** Partido de torneo reportado por el participante (no confundir con roundSnapshots del evento). */
+export interface IParticipantMatchRound {
+  roundNum: number;
+  opponentDeckSlugs: string[];
+  gameResults: ("W" | "L" | "T")[];
+  turnOrders: ("first" | "second")[];
+  specialOutcome?: "intentional_draw" | "no_show" | "bye";
+}
+
 export interface IWeeklyParticipant {
   displayName: string;
   userId?: Types.ObjectId;
@@ -58,6 +67,8 @@ export interface IWeeklyParticipant {
   ties?: number;
   /** Slugs para sprites Limitless (gen9), hasta 2 Pokémon reportados por el jugador. */
   deckPokemonSlugs?: string[];
+  /** Rondas reportadas por el jugador (vs qué deck jugó y resultado). */
+  matchRounds?: IParticipantMatchRound[];
 }
 
 export interface IWeeklyEvent extends Document {
@@ -151,6 +162,21 @@ const TournamentCategoryStandingsSchema = new Schema<ITournamentCategoryStanding
   { _id: false },
 );
 
+const ParticipantMatchRoundSchema = new Schema<IParticipantMatchRound>(
+  {
+    roundNum: { type: Number, required: true, min: 1, max: 99 },
+    opponentDeckSlugs: { type: [String], default: [] },
+    gameResults: { type: [String], default: [] },
+    turnOrders: { type: [String], default: [] },
+    specialOutcome: {
+      type: String,
+      enum: ["intentional_draw", "no_show", "bye"],
+      required: false,
+    },
+  },
+  { _id: true },
+);
+
 const ParticipantSchema = new Schema<IWeeklyParticipant>(
   {
     displayName: { type: String, required: true, trim: true },
@@ -164,6 +190,7 @@ const ParticipantSchema = new Schema<IWeeklyParticipant>(
     losses: { type: Number, default: 0, min: 0 },
     ties: { type: Number, default: 0, min: 0 },
     deckPokemonSlugs: { type: [String], default: undefined },
+    matchRounds: { type: [ParticipantMatchRoundSchema], default: undefined },
   },
   { _id: true },
 );
