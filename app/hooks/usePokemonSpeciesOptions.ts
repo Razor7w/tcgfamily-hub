@@ -1,11 +1,34 @@
 "use client";
 
+import { createFilterOptions } from "@mui/material/Autocomplete";
 import { useQuery } from "@tanstack/react-query";
 
 export type PokemonSpeciesOption = {
   slug: string;
   label: string;
 };
+
+const pokemonAutocompleteFilter = createFilterOptions<PokemonSpeciesOption>({
+  stringify: (o) => `${o.label} ${o.slug}`,
+});
+
+/** Menú abierto sin texto: no se muestran filas hasta que el usuario escribe. */
+export const POKEMON_AUTOCOMPLETE_HINT_EMPTY =
+  "Empieza a escribir el nombre de un Pokémon…";
+
+export const POKEMON_AUTOCOMPLETE_NO_MATCH = "No hay coincidencias";
+
+/**
+ * Misma lógica que `createFilterOptions` del combo, pero sin resultados hasta que
+ * `inputValue` tenga al menos un carácter (tras trim).
+ */
+export function filterPokemonAutocompleteOptions(
+  options: PokemonSpeciesOption[],
+  params: Parameters<typeof pokemonAutocompleteFilter>[1],
+) {
+  if (!params.inputValue.trim()) return [];
+  return pokemonAutocompleteFilter(options, params);
+}
 
 function slugToLabel(slug: string): string {
   return slug

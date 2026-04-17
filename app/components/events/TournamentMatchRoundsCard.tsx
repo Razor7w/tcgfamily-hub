@@ -16,7 +16,7 @@ import HandshakeOutlinedIcon from "@mui/icons-material/HandshakeOutlined";
 import PersonOffOutlinedIcon from "@mui/icons-material/PersonOffOutlined";
 import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
 import WavingHandOutlinedIcon from "@mui/icons-material/WavingHandOutlined";
-import Autocomplete, { createFilterOptions } from "@mui/material/Autocomplete";
+import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -49,15 +49,14 @@ import {
 } from "@/lib/participant-match-round";
 import { getLimitlessPokemonSpriteUrl } from "@/lib/limitless-pokemon-sprite";
 import {
+  filterPokemonAutocompleteOptions,
+  POKEMON_AUTOCOMPLETE_HINT_EMPTY,
+  POKEMON_AUTOCOMPLETE_NO_MATCH,
   type PokemonSpeciesOption,
   usePokemonSpeciesOptions,
 } from "@/hooks/usePokemonSpeciesOptions";
 import { useSaveMyMatchRounds } from "@/hooks/useWeeklyEvents";
 import type { WeeklyEventState } from "@/models/WeeklyEvent";
-
-const filter = createFilterOptions<PokemonSpeciesOption>({
-  stringify: (o) => `${o.label} ${o.slug}`,
-});
 
 /** Verde para victorias en mesa (legible sobre fondo). */
 const MATCH_WIN_COLOR = "#15803d";
@@ -513,6 +512,10 @@ export default function TournamentMatchRoundsCard({
   const [editingRoundNum, setEditingRoundNum] = useState<number | null>(null);
   const [slot1, setSlot1] = useState<PokemonSpeciesOption | null>(null);
   const [slot2, setSlot2] = useState<PokemonSpeciesOption | null>(null);
+  const [slot1Open, setSlot1Open] = useState(false);
+  const [slot2Open, setSlot2Open] = useState(false);
+  const [slot1Query, setSlot1Query] = useState("");
+  const [slot2Query, setSlot2Query] = useState("");
   const [special, setSpecial] = useState<SpecialRoundOutcome | "none">("none");
   const [games, setGames] = useState<GameRowState[]>([
     { result: null, turn: null },
@@ -601,6 +604,10 @@ export default function TournamentMatchRoundsCard({
     setEditingRoundNum(null);
     setSlot1(null);
     setSlot2(null);
+    setSlot1Open(false);
+    setSlot2Open(false);
+    setSlot1Query("");
+    setSlot2Query("");
     setSpecial("none");
     setGames([{ result: null, turn: null }]);
   };
@@ -1337,14 +1344,33 @@ export default function TournamentMatchRoundsCard({
                     loading={optionsLoading}
                     value={slot1Value}
                     onChange={(_e, v) => setSlot1(v)}
-                    filterOptions={(opts, params) => filter(opts, params)}
+                    inputValue={
+                      slot1Open ? slot1Query : (slot1Value?.label ?? "")
+                    }
+                    onInputChange={(_e, v) => {
+                      if (slot1Open) setSlot1Query(v);
+                    }}
+                    onOpen={() => {
+                      setSlot1Open(true);
+                      setSlot1Query("");
+                    }}
+                    onClose={(_e, reason) => {
+                      setSlot1Open(false);
+                      if (reason !== "selectOption") setSlot1Query("");
+                    }}
+                    filterOptions={filterPokemonAutocompleteOptions}
                     getOptionLabel={(o) => o.label}
                     isOptionEqualToValue={(a, b) => a.slug === b.slug}
+                    noOptionsText={
+                      !slot1Query.trim()
+                        ? POKEMON_AUTOCOMPLETE_HINT_EMPTY
+                        : POKEMON_AUTOCOMPLETE_NO_MATCH
+                    }
                     renderOption={(props, option) =>
                       renderPokemonOption(props as AutocompleteLiProps, option)
                     }
                     renderInput={(params) => (
-                      <TextField {...params} label="Pokémon" placeholder="Selecciona Pokémon…" />
+                      <TextField {...params} label="Pokémon" placeholder="Busca por nombre…" />
                     )}
                   />
                   <Autocomplete
@@ -1353,14 +1379,33 @@ export default function TournamentMatchRoundsCard({
                     loading={optionsLoading}
                     value={slot2Value}
                     onChange={(_e, v) => setSlot2(v)}
-                    filterOptions={(opts, params) => filter(opts, params)}
+                    inputValue={
+                      slot2Open ? slot2Query : (slot2Value?.label ?? "")
+                    }
+                    onInputChange={(_e, v) => {
+                      if (slot2Open) setSlot2Query(v);
+                    }}
+                    onOpen={() => {
+                      setSlot2Open(true);
+                      setSlot2Query("");
+                    }}
+                    onClose={(_e, reason) => {
+                      setSlot2Open(false);
+                      if (reason !== "selectOption") setSlot2Query("");
+                    }}
+                    filterOptions={filterPokemonAutocompleteOptions}
                     getOptionLabel={(o) => o.label}
                     isOptionEqualToValue={(a, b) => a.slug === b.slug}
+                    noOptionsText={
+                      !slot2Query.trim()
+                        ? POKEMON_AUTOCOMPLETE_HINT_EMPTY
+                        : POKEMON_AUTOCOMPLETE_NO_MATCH
+                    }
                     renderOption={(props, option) =>
                       renderPokemonOption(props as AutocompleteLiProps, option)
                     }
                     renderInput={(params) => (
-                      <TextField {...params} label="Pokémon" placeholder="Selecciona Pokémon…" />
+                      <TextField {...params} label="Pokémon" placeholder="Busca por nombre…" />
                     )}
                   />
                 </Stack>
