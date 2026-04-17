@@ -749,47 +749,51 @@ export default function WeeklyEventsSection({
                                 ) : null}
                               </Stack>
                             ) : null}
-                            {!selectedEventStarted && selectedEvent.myAttendanceConfirmed ? (
-                              <Alert
-                                severity="success"
-                                variant="filled"
-                                icon={<Verified />}
-                                sx={{ alignItems: "center" }}
-                              >
-                                <Typography variant="body2" fontWeight={600}>
-                                  Asistencia confirmada por la tienda
-                                </Typography>
-                              </Alert>
-                            ) : selectedEvent.canUnregister ? (
-                              <Button
-                                type="button"
-                                variant="outlined"
-                                color="error"
-                                fullWidth
-                                size="large"
-                                disabled={unregister.isPending}
-                                onClick={async () => {
-                                  if (!selectedEvent) return;
-                                  try {
-                                    await unregister.mutateAsync(selectedEvent._id);
-                                  } catch {
-                                    /* error en estado */
-                                  }
-                                }}
-                              >
-                                {unregister.isPending ? "Quitando…" : "Desinscribirse"}
-                              </Button>
-                            ) : (
-                              <Alert severity="info" variant="outlined">
-                                No puedes desinscribirte: el evento ya comenzó.
-                              </Alert>
-                            )}
-                            {unregister.isError ? (
-                              <Alert severity="error" variant="outlined">
-                                {unregister.error instanceof Error
-                                  ? unregister.error.message
-                                  : "Error"}
-                              </Alert>
+                            {selectedEvent.state !== "running" ? (
+                              <>
+                                {!selectedEventStarted && selectedEvent.myAttendanceConfirmed ? (
+                                  <Alert
+                                    severity="success"
+                                    variant="filled"
+                                    icon={<Verified />}
+                                    sx={{ alignItems: "center" }}
+                                  >
+                                    <Typography variant="body2" fontWeight={600}>
+                                      Asistencia confirmada por la tienda
+                                    </Typography>
+                                  </Alert>
+                                ) : selectedEvent.canUnregister ? (
+                                  <Button
+                                    type="button"
+                                    variant="outlined"
+                                    color="error"
+                                    fullWidth
+                                    size="large"
+                                    disabled={unregister.isPending}
+                                    onClick={async () => {
+                                      if (!selectedEvent) return;
+                                      try {
+                                        await unregister.mutateAsync(selectedEvent._id);
+                                      } catch {
+                                        /* error en estado */
+                                      }
+                                    }}
+                                  >
+                                    {unregister.isPending ? "Quitando…" : "Desinscribirse"}
+                                  </Button>
+                                ) : (
+                                  <Alert severity="info" variant="outlined">
+                                    No puedes desinscribirte: el evento ya comenzó.
+                                  </Alert>
+                                )}
+                                {unregister.isError ? (
+                                  <Alert severity="error" variant="outlined">
+                                    {unregister.error instanceof Error
+                                      ? unregister.error.message
+                                      : "Error"}
+                                  </Alert>
+                                ) : null}
+                              </>
                             ) : null}
                           </Stack>
                         ) : (

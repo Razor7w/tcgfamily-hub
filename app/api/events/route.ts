@@ -74,7 +74,8 @@ function toPublicEvent(
   const canUnregister =
     Boolean(myRegistration) &&
     canUnregisterNow(startsAt, now) &&
-    !myAttendanceConfirmed;
+    !myAttendanceConfirmed &&
+    doc.state !== "running";
   return {
     _id: String(doc._id),
     startsAt: startsAt.toISOString(),

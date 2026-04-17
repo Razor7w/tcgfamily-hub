@@ -145,6 +145,16 @@ export async function DELETE(
       );
     }
 
+    if (existing.state === "running") {
+      return NextResponse.json(
+        {
+          error:
+            "No puedes desinscribirte mientras el evento está en curso.",
+        },
+        { status: 400 },
+      );
+    }
+
     const had = existing.participants.some(
       (p: { userId?: mongoose.Types.ObjectId }) =>
         p.userId && String(p.userId) === String(userId),

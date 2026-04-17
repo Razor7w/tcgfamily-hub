@@ -15,6 +15,7 @@ type LeanEvent = {
   kind: string;
   game: string;
   pokemonSubtype?: string;
+  state?: string;
   priceClp: number;
   maxParticipants: number;
   formatNotes?: string;
@@ -88,6 +89,10 @@ export async function GET(
           ),
         }
       : null;
+    const eventState =
+      doc.state === "schedule" || doc.state === "running" || doc.state === "close"
+        ? doc.state
+        : "schedule";
     const event = {
       _id: String(doc._id),
       startsAt: startsAt.toISOString(),
@@ -95,6 +100,7 @@ export async function GET(
       kind: doc.kind,
       game: doc.game,
       pokemonSubtype: doc.pokemonSubtype ?? null,
+      state: eventState,
       priceClp: doc.priceClp,
       maxParticipants: doc.maxParticipants,
       formatNotes: doc.formatNotes ?? "",
@@ -112,7 +118,8 @@ export async function GET(
       canUnregister:
         Boolean(myRegistration) &&
         canUnregisterNow(startsAt, now) &&
-        !myAttendanceConfirmed,
+        !myAttendanceConfirmed &&
+        doc.state !== "running",
     };
 
     return NextResponse.json({ event }, { status: 200 });
