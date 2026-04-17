@@ -27,6 +27,8 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import CircularProgress from "@mui/material/CircularProgress";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
 import { alpha, useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import {
@@ -118,6 +120,81 @@ function formatCloseNote(iso: string) {
 
 function formatWlt(r: { wins: number; losses: number; ties: number }) {
   return `${r.wins} / ${r.losses} / ${r.ties}`;
+}
+
+function standingsTabLabel(categoryIndex: number): string {
+  if (categoryIndex === 0) return "Júnior";
+  if (categoryIndex === 1) return "Sénior";
+  return "Máster";
+}
+
+/** Orden visual: Máster (2) → Sénior (1) → Júnior (0), de izquierda a derecha. */
+function categoryTabSortKey(categoryIndex: number): number {
+  if (categoryIndex === 2) return 0;
+  if (categoryIndex === 1) return 1;
+  if (categoryIndex === 0) return 2;
+  return 9;
+}
+
+function sortStandingsCategoriesForTabs(
+  categories: NonNullable<PublicWeeklyEvent["standingsTopByCategory"]>,
+): NonNullable<PublicWeeklyEvent["standingsTopByCategory"]> {
+  return [...categories].sort(
+    (a, b) => categoryTabSortKey(a.categoryIndex) - categoryTabSortKey(b.categoryIndex),
+  );
+}
+
+function TournamentFinishedStandingsTabs({
+  categories,
+}: {
+  categories: NonNullable<PublicWeeklyEvent["standingsTopByCategory"]>;
+}) {
+  const ordered = useMemo(
+    () => sortStandingsCategoriesForTabs(categories),
+    [categories],
+  );
+  const [tabIndex, setTabIndex] = useState(0);
+  const safeIndex = Math.min(tabIndex, Math.max(0, ordered.length - 1));
+  const rows = ordered[safeIndex]?.rows ?? [];
+
+  return (
+    <Stack spacing={2}>
+      <Tabs
+        value={safeIndex}
+        onChange={(_, v) => setTabIndex(v)}
+        variant={ordered.length <= 4 ? "fullWidth" : "scrollable"}
+        scrollButtons={ordered.length <= 4 ? false : "auto"}
+        sx={{
+          borderBottom: 1,
+          borderColor: "divider",
+          minHeight: 44,
+          "& .MuiTab-root": { minHeight: 44, py: 1, fontWeight: 600 },
+        }}
+      >
+        {ordered.map((c) => (
+          <Tab key={c.categoryIndex} label={standingsTabLabel(c.categoryIndex)} />
+        ))}
+      </Tabs>
+      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell width={72}>Puesto</TableCell>
+              <TableCell>Jugador</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rows.map((row, i) => (
+              <TableRow key={`${row.place}-${i}`}>
+                <TableCell sx={{ fontWeight: 700 }}>{row.place}º</TableCell>
+                <TableCell>{row.displayName}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Stack>
+  );
 }
 
 type WeeklyEventsSectionProps = {
@@ -260,6 +337,12 @@ export default function WeeklyEventsSection({
     currentRoundOpenForEventId !== null &&
     !!selectedEvent &&
     currentRoundOpenForEventId === selectedEvent._id;
+
+  const [standingsOpenForEventId, setStandingsOpenForEventId] = useState<string | null>(null);
+  const standingsModalOpen =
+    standingsOpenForEventId !== null &&
+    !!selectedEvent &&
+    standingsOpenForEventId === selectedEvent._id;
 
   const currentRoundQuery = useEventCurrentRound(
     currentRoundModalOpen ? selectedEvent._id : null,
@@ -714,7 +797,96 @@ export default function WeeklyEventsSection({
                                 </Box>
                               </Typography>
                             </Stack>
-                            {selectedEvent.kind === "tournament" ? (
+                            {selectedEvent.kind === "tournament" &&
+                            selectedEvent.state === "close" ? (
+                              <Stack spacing={2}>
+                                <Stack
+                                  spacing={1.25}
+                                  sx={{
+                                    py: 1.25,
+                                    px: 1.5,
+                                    borderRadius: 2,
+                                    bgcolor: (t) => alpha(t.palette.success.main, 0.06),
+                                    border: 1,
+                                    borderColor: (t) => alpha(t.palette.success.main, 0.28),
+                                  }}
+                                >
+                                  <Stack direction="row" spacing={1} alignItems="center">
+                                    <EmojiEvents fontSize="small" color="success" />
+                                    <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                                      Resultado final
+                                    </Typography>
+                                  </Stack>
+                                  {selectedEvent.myTournamentPlacement ? (
+                                    <Typography variant="body2">
+                                      {selectedEvent.myTournamentPlacement.isDnf ? (
+                                        <>
+                                          Clasificación en{" "}
+                                          <strong>
+                                            {selectedEvent.myTournamentPlacement.categoryLabel}
+                                          </strong>
+                                          :{" "}
+                                          <Box component="span" fontWeight={700}>
+                                            DNF (no terminó)
+                                          </Box>
+                                        </>
+                                      ) : (
+                                        <>
+                                          Puesto{" "}
+                                          <strong>
+                                            {selectedEvent.myTournamentPlacement.place}º
+                                          </strong>{" "}
+                                          en categoría{" "}
+                                          <strong>
+                                            {selectedEvent.myTournamentPlacement.categoryLabel}
+                                          </strong>
+                                        </>
+                                      )}
+                                    </Typography>
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                      No figuras en la clasificación publicada (revisa que tu POP ID
+                                      coincida con el del torneo).
+                                    </Typography>
+                                  )}
+                                  {selectedEvent.myMatchRecord ? (
+                                    <Typography variant="body2" color="text.secondary">
+                                      Récord final (W / L / T):{" "}
+                                      <Box
+                                        component="span"
+                                        fontWeight={700}
+                                        color="text.primary"
+                                      >
+                                        {selectedEvent.myMatchRecord.wins} /{" "}
+                                        {selectedEvent.myMatchRecord.losses} /{" "}
+                                        {selectedEvent.myMatchRecord.ties}
+                                      </Box>
+                                    </Typography>
+                                  ) : null}
+                                </Stack>
+                                {selectedEvent.standingsTopByCategory &&
+                                selectedEvent.standingsTopByCategory.length > 0 ? (
+                                  <Button
+                                    type="button"
+                                    variant="outlined"
+                                    color="success"
+                                    fullWidth
+                                    size="medium"
+                                    startIcon={<EmojiEvents />}
+                                    onClick={() =>
+                                      setStandingsOpenForEventId(selectedEvent._id)
+                                    }
+                                  >
+                                    Ver standings (top 8)
+                                  </Button>
+                                ) : (
+                                  <Alert severity="info" variant="outlined">
+                                    La clasificación detallada aún no está publicada para este
+                                    evento.
+                                  </Alert>
+                                )}
+                              </Stack>
+                            ) : selectedEvent.kind === "tournament" ? (
                               <>
                                 <Stack
                                   spacing={1}
@@ -791,7 +963,8 @@ export default function WeeklyEventsSection({
                                 </Button>
                               </>
                             ) : null}
-                            {selectedEvent.state !== "running" ? (
+                            {selectedEvent.state !== "running" &&
+                            !(selectedEvent.kind === "tournament" && selectedEvent.state === "close") ? (
                               <>
                                 {!selectedEventStarted && selectedEvent.myAttendanceConfirmed ? (
                                   <Alert
@@ -1062,6 +1235,43 @@ export default function WeeklyEventsSection({
                             <Button
                               variant="contained"
                               onClick={() => setCurrentRoundOpenForEventId(null)}
+                            >
+                              Cerrar
+                            </Button>
+                          </DialogActions>
+                        </Dialog>
+
+                        <Dialog
+                          open={standingsModalOpen}
+                          onClose={() => setStandingsOpenForEventId(null)}
+                          fullWidth
+                          maxWidth="sm"
+                          scroll="paper"
+                          aria-labelledby="standings-dialog-title"
+                        >
+                          <DialogTitle id="standings-dialog-title">
+                            Standings (top 8)
+                          </DialogTitle>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ px: 3, pb: 0, mt: -1 }}
+                          >
+                            {selectedEvent.title}
+                          </Typography>
+                          <DialogContent dividers sx={{ pt: 2 }}>
+                            {selectedEvent.standingsTopByCategory &&
+                            selectedEvent.standingsTopByCategory.length > 0 ? (
+                              <TournamentFinishedStandingsTabs
+                                key={selectedEvent._id}
+                                categories={selectedEvent.standingsTopByCategory}
+                              />
+                            ) : null}
+                          </DialogContent>
+                          <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+                            <Button
+                              variant="contained"
+                              onClick={() => setStandingsOpenForEventId(null)}
                             >
                               Cerrar
                             </Button>

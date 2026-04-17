@@ -8,6 +8,10 @@ import {
   canUnregisterNow,
   pairingExtrasForUser,
 } from "@/lib/weekly-events";
+import {
+  buildTournamentStandingsPublic,
+  type TournamentStandingLean,
+} from "@/lib/weekly-event-public";
 
 function toPublicEvent(
   doc: {
@@ -24,11 +28,13 @@ function toPublicEvent(
     prizesNotes: string;
     location: string;
     roundNum?: number;
+    tournamentStandings?: TournamentStandingLean[] | undefined;
     participants: {
       _id: unknown;
       displayName: string;
       userId?: unknown;
       confirmed?: boolean;
+      popId?: string;
       table?: string;
       opponentId?: string;
       wins?: unknown;
@@ -38,6 +44,7 @@ function toPublicEvent(
   },
   now: Date,
   currentUserId?: string,
+  currentUserPopId?: string,
 ) {
   const startsAt = doc.startsAt;
   const roundNum =
@@ -75,7 +82,19 @@ function toPublicEvent(
     Boolean(myRegistration) &&
     canUnregisterNow(startsAt, now) &&
     !myAttendanceConfirmed &&
-    doc.state !== "running";
+    doc.state !== "running" &&
+    doc.state !== "close";
+
+  const tournamentClosed =
+    doc.kind === "tournament" && doc.state === "close";
+  const standingsPublic = tournamentClosed
+    ? buildTournamentStandingsPublic(
+        doc.tournamentStandings,
+        doc.participants ?? [],
+        currentUserPopId,
+      )
+    : null;
+
   return {
     _id: String(doc._id),
     startsAt: startsAt.toISOString(),
@@ -104,6 +123,13 @@ function toPublicEvent(
     myOpponentName,
     myMatchRecord,
     canUnregister,
+    ...(tournamentClosed
+      ? {
+          standingsTopByCategory:
+            standingsPublic?.standingsTopByCategory ?? [],
+          myTournamentPlacement: standingsPublic?.myTournamentPlacement ?? null,
+        }
+      : {}),
   };
 }
 
@@ -116,6 +142,11 @@ export async function GET(request: NextRequest) {
     }
 
     const userId = session.user.id;
+    const userPopId =
+      session.user &&
+      typeof (session.user as { popid?: string }).popid === "string"
+        ? (session.user as { popid: string }).popid
+        : "";
 
     const { searchParams } = new URL(request.url);
     const fromRaw = searchParams.get("from");
@@ -158,11 +189,14 @@ export async function GET(request: NextRequest) {
           location: d.location ?? "",
           state: d.state,
           roundNum: d.roundNum,
+          tournamentStandings: (d as { tournamentStandings?: TournamentStandingLean[] })
+            .tournamentStandings,
           participants: (d.participants ?? []) as unknown as {
             _id: unknown;
             displayName: string;
             userId?: unknown;
             confirmed?: boolean;
+            popId?: string;
             table?: string;
             opponentId?: string;
             wins?: unknown;
@@ -172,6 +206,7 @@ export async function GET(request: NextRequest) {
         },
         now,
         userId,
+        userPopId,
       ),
     );
 

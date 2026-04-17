@@ -42,6 +42,18 @@ export interface PublicWeeklyEvent {
   /** Récord W-L-T persistido (TDF); null si no estás inscrito. */
   myMatchRecord: { wins: number; losses: number; ties: number } | null;
   canUnregister: boolean;
+  /** Solo si el torneo está cerrado y hay datos importados. */
+  standingsTopByCategory?: {
+    categoryIndex: number;
+    rows: { place: number; displayName: string }[];
+  }[];
+  /** Posición del usuario (POP) en su categoría; null si no figura. */
+  myTournamentPlacement?: {
+    categoryIndex: number;
+    categoryLabel: string;
+    place: number | null;
+    isDnf: boolean;
+  } | null;
 }
 
 export function useWeekEvents(weekAnchor: Date | null) {

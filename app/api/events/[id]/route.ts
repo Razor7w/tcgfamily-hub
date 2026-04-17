@@ -7,6 +7,7 @@ import {
   canUnregisterNow,
   pairingExtrasForUser,
 } from "@/lib/weekly-events";
+import { buildTournamentStandingsPublic } from "@/lib/weekly-event-public";
 
 type LeanEvent = {
   _id: unknown;
@@ -22,11 +23,13 @@ type LeanEvent = {
   prizesNotes?: string;
   location?: string;
   roundNum?: number;
+  tournamentStandings?: import("@/lib/weekly-event-public").TournamentStandingLean[];
   participants?: {
     _id: unknown;
     displayName: string;
     userId?: unknown;
     confirmed?: boolean;
+    popId?: string;
     table?: string;
     opponentId?: string;
     wins?: unknown;
@@ -60,6 +63,10 @@ export async function GET(
 
     const startsAt = doc.startsAt;
     const uid = session.user.id;
+    const userPopId =
+      typeof (session.user as { popid?: string }).popid === "string"
+        ? (session.user as { popid: string }).popid
+        : "";
     const parts = doc.participants ?? [];
     const mine = parts.find(
       (p) =>
@@ -93,6 +100,16 @@ export async function GET(
       doc.state === "schedule" || doc.state === "running" || doc.state === "close"
         ? doc.state
         : "schedule";
+    const tournamentClosed =
+      doc.kind === "tournament" && doc.state === "close";
+    const standingsPublic = tournamentClosed
+      ? buildTournamentStandingsPublic(
+          doc.tournamentStandings,
+          parts as { displayName: string; popId?: string }[],
+          userPopId,
+        )
+      : null;
+
     const event = {
       _id: String(doc._id),
       startsAt: startsAt.toISOString(),
@@ -119,7 +136,16 @@ export async function GET(
         Boolean(myRegistration) &&
         canUnregisterNow(startsAt, now) &&
         !myAttendanceConfirmed &&
-        doc.state !== "running",
+        doc.state !== "running" &&
+        doc.state !== "close",
+      ...(tournamentClosed
+        ? {
+            standingsTopByCategory:
+              standingsPublic?.standingsTopByCategory ?? [],
+            myTournamentPlacement:
+              standingsPublic?.myTournamentPlacement ?? null,
+          }
+        : {}),
     };
 
     return NextResponse.json({ event }, { status: 200 });
