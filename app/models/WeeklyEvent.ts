@@ -34,6 +34,13 @@ export interface IRoundSnapshot {
   skipped: { tableNumber: string; reason: string }[];
 }
 
+/** Standing final por categoría (índices TDF: 0 Júnior, 1 Sénior, 2 Máster). */
+export interface ITournamentCategoryStandings {
+  categoryIndex: number;
+  finished: { popId: string; place: number }[];
+  dnf: { popId: string }[];
+}
+
 export interface IWeeklyParticipant {
   displayName: string;
   userId?: Types.ObjectId;
@@ -70,6 +77,8 @@ export interface IWeeklyEvent extends Document {
   roundNum?: number;
   /** Historial por ronda: pairings y metadatos al pulsar «Setear ronda». */
   roundSnapshots?: IRoundSnapshot[];
+  /** Clasificación final por categoría (finished + DNF) tras import o carga manual. */
+  tournamentStandings?: ITournamentCategoryStandings[];
   participants: IWeeklyParticipant[];
 }
 
@@ -112,6 +121,32 @@ const RoundSnapshotSchema = new Schema<IRoundSnapshot>(
     },
   },
   { _id: true },
+);
+
+const TournamentCategoryStandingsSchema = new Schema<ITournamentCategoryStandings>(
+  {
+    categoryIndex: { type: Number, required: true, min: 0, max: 2 },
+    finished: {
+      type: [
+        {
+          popId: { type: String, required: true, maxlength: 32 },
+          place: { type: Number, required: true, min: 0, max: 9999 },
+          _id: false,
+        },
+      ],
+      default: [],
+    },
+    dnf: {
+      type: [
+        {
+          popId: { type: String, required: true, maxlength: 32 },
+          _id: false,
+        },
+      ],
+      default: [],
+    },
+  },
+  { _id: false },
 );
 
 const ParticipantSchema = new Schema<IWeeklyParticipant>(
@@ -161,6 +196,10 @@ const WeeklyEventSchema = new Schema<IWeeklyEvent>(
     },
     roundNum: { type: Number, default: 0, min: 0 },
     roundSnapshots: { type: [RoundSnapshotSchema], default: [] },
+    tournamentStandings: {
+      type: [TournamentCategoryStandingsSchema],
+      default: [],
+    },
     participants: { type: [ParticipantSchema], default: [] },
   },
   { timestamps: true, strict: true },

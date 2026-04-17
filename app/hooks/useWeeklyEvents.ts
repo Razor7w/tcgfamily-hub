@@ -7,7 +7,10 @@ import {
   endOfWeekSunday,
   startOfWeekMonday,
 } from "@/components/events/weekUtils";
+import type { FullTournamentUploadPayload } from "@/lib/tournament-tdf-payload";
 import type { WeeklyEventState } from "@/models/WeeklyEvent";
+
+export type { FullTournamentUploadPayload };
 
 export type { WeeklyEventState };
 
@@ -198,6 +201,12 @@ export interface AdminWeeklyEvent {
   roundNum?: number;
   /** Snapshots guardados al pulsar «Setear ronda» (persistidos en Mongo). */
   roundSnapshots?: { roundNum: number; syncedAt?: string }[];
+  /** Clasificación final por categoría (0 Júnior, 1 Sénior, 2 Máster). */
+  tournamentStandings?: {
+    categoryIndex: number;
+    finished: { popId: string; place: number }[];
+    dnf: { popId: string }[];
+  }[];
   participants: AdminEventParticipant[];
   createdAt?: string;
   updatedAt?: string;
@@ -298,6 +307,86 @@ export type AdminSyncRoundResult = {
 };
 
 /** Aplica mesa + oponente según TDF y fija `roundNum` en el WeeklyEvent. */
+/** Importa torneo completo desde TDF (.tdf final): participantes, rondas, standings, estado close. */
+export function useAdminUploadFullTournament() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      eventId: string;
+      payload: FullTournamentUploadPayload;
+    }) => {
+      const res = await fetch(
+        `/api/admin/events/${input.eventId}/full-tournament`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input.payload),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === "string"
+            ? data.error
+            : "Error al subir el torneo",
+        );
+      }
+      return data as {
+        ok: boolean;
+        roundNum: number;
+        state: string;
+        participantCount: number;
+        roundSnapshotsCount: number;
+        tournamentStandingsCategories: number;
+      };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-weekly-events"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-events"] });
+      queryClient.invalidateQueries({ queryKey: ["event-current-round"] });
+    },
+  });
+}
+
+/** Guarda una sola tabla (finished o DNF) de una categoría de standings. */
+export function useAdminUploadStandingsPod() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      eventId: string;
+      categoryIndex: 0 | 1 | 2;
+      podType: "finished" | "dnf";
+      rows: { popId: string; place?: number }[];
+    }) => {
+      const res = await fetch(
+        `/api/admin/events/${input.eventId}/standings-pod`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            categoryIndex: input.categoryIndex,
+            podType: input.podType,
+            rows: input.rows,
+          }),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === "string"
+            ? data.error
+            : "Error al guardar la tabla",
+        );
+      }
+      return data as { ok: boolean; categoryIndex: number; podType: string };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-weekly-events"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-events"] });
+    },
+  });
+}
+
 export function useAdminSyncEventRound() {
   const queryClient = useQueryClient();
   return useMutation({

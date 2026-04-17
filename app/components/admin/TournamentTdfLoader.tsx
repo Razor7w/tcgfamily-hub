@@ -16,13 +16,15 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import { EventSeat, FolderOpen, GroupAdd } from "@mui/icons-material";
+import { CloudUpload, EventSeat, FolderOpen, GroupAdd } from "@mui/icons-material";
+import { buildFullTournamentUploadPayload } from "@/lib/tournament-tdf-payload";
 import {
   buildMatchRecordsFromMatches,
   buildParticipantRecordsForSyncRound,
   buildPlayerNameLookup,
   buildRecordsBeforeEachMatch,
   formatMatchRecordWlt,
+  groupMatchesByRound,
   parseTournamentXml,
   type ParsedMatch,
 } from "@/lib/tournament-xml";
@@ -30,24 +32,31 @@ import { popidForStorage, validatePopidOptional } from "@/lib/rut-chile";
 import {
   useAdminPreinscribeBatch,
   useAdminSyncEventRound,
+  useAdminUploadFullTournament,
+  useAdminUploadStandingsPod,
   type AdminSyncRoundResult,
 } from "@/hooks/useWeeklyEvents";
 
 function standingsPodTypeLabel(type: string) {
   const t = type.toLowerCase();
   if (t === "finished") return "Finalizado";
-  if (t === "dnf") return "DNF";
+  if (t === "dnf") return "DNF (no terminó)";
   return type || "—";
 }
 
-function groupMatchesByRound(matches: ParsedMatch[]): Map<number, ParsedMatch[]> {
-  const map = new Map<number, ParsedMatch[]>();
-  for (const m of matches) {
-    const list = map.get(m.roundNumber) ?? [];
-    list.push(m);
-    map.set(m.roundNumber, list);
-  }
-  return new Map([...map.entries()].sort((a, b) => a[0] - b[0]));
+/** Índices TDF: 0 Júnior, 1 Sénior, 2 Máster. */
+function standingsCategoryTitle(category: string): string {
+  const n = parseInt(category, 10);
+  if (n === 0) return "Categoría Júnior";
+  if (n === 1) return "Categoría Sénior";
+  if (n === 2) return "Categoría Máster";
+  return `Categoría ${category || "—"}`;
+}
+
+function standingsCategoryIndex(cat: string): 0 | 1 | 2 | null {
+  const n = parseInt(cat, 10);
+  if (n === 0 || n === 1 || n === 2) return n;
+  return null;
 }
 
 type TournamentTdfLoaderProps = {
@@ -96,6 +105,8 @@ export default function TournamentTdfLoader({
 
   const preinscribeBatch = useAdminPreinscribeBatch();
   const syncRound = useAdminSyncEventRound();
+  const uploadFullTournament = useAdminUploadFullTournament();
+  const uploadStandingsPod = useAdminUploadStandingsPod();
   const [lastRoundSync, setLastRoundSync] = useState<AdminSyncRoundResult | null>(
     null,
   );
@@ -240,6 +251,56 @@ export default function TournamentTdfLoader({
           </Stack>
         </Paper>
       )}
+
+      {showEventActions && raw.trim() && !parsed.error && parsed.players.length > 0 ? (
+        <Stack spacing={1}>
+          <Button
+            type="button"
+            variant="contained"
+            color="success"
+            startIcon={<CloudUpload />}
+            disabled={
+              !eventId ||
+              uploadFullTournament.isPending ||
+              syncRound.isPending ||
+              preinscribeBatch.isPending
+            }
+            onClick={async () => {
+              if (!eventId) return;
+              try {
+                const payload = buildFullTournamentUploadPayload(parsed);
+                await uploadFullTournament.mutateAsync({ eventId, payload });
+                setLastRoundSync(null);
+                syncRound.reset();
+              } catch {
+                /* error en estado */
+              }
+            }}
+            sx={{ alignSelf: { xs: "stretch", sm: "flex-start" } }}
+          >
+            Subir torneo completo
+          </Button>
+          <Typography variant="caption" color="text.secondary" sx={{ maxWidth: 560, display: "block" }}>
+            Importa jugadores (actualiza récords), todas las rondas en el historial, clasificación por
+            categoría (Júnior / Sénior / Máster), deja el evento en estado <strong>cerrado</strong> y
+            aplica el emparejamiento de la última ronda al listado.
+          </Typography>
+          {uploadFullTournament.isError ? (
+            <Alert severity="error">
+              {uploadFullTournament.error instanceof Error
+                ? uploadFullTournament.error.message
+                : "Error al subir el torneo"}
+            </Alert>
+          ) : null}
+          {uploadFullTournament.isSuccess ? (
+            <Alert severity="success" onClose={() => uploadFullTournament.reset()}>
+              Torneo importado: estado <strong>{uploadFullTournament.data?.state}</strong>,{" "}
+              <strong>{uploadFullTournament.data?.participantCount}</strong> participantes,{" "}
+              <strong>{uploadFullTournament.data?.roundSnapshotsCount}</strong> ronda(s) guardada(s).
+            </Alert>
+          ) : null}
+        </Stack>
+      ) : null}
 
       {parsed.players.length > 0 && (
         <>
@@ -543,6 +604,10 @@ export default function TournamentTdfLoader({
               ? ` (${standingsPlayerCount} en standings)`
               : ""}
           </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 720 }}>
+            Categorías en el TDF: <strong>0</strong> = Júnior, <strong>1</strong> = Sénior,{" "}
+            <strong>2</strong> = Máster. <strong>DNF</strong> (did not finish) = no terminó el torneo.
+          </Typography>
           <Stack spacing={2}>
             {parsed.standings.map((pod, podIdx) => (
               <Paper
@@ -550,10 +615,21 @@ export default function TournamentTdfLoader({
                 variant="outlined"
                 sx={{ p: 0, borderRadius: 2, overflow: "hidden" }}
               >
-                <Box sx={{ px: 2, py: 1, bgcolor: "action.hover" }}>
+                <Box
+                  sx={{
+                    px: 2,
+                    py: 1,
+                    bgcolor: "action.hover",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1,
+                    flexWrap: "wrap",
+                  }}
+                >
                   <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                     <Typography variant="subtitle2" fontWeight={700}>
-                      Categoría {pod.category || "—"}
+                      {standingsCategoryTitle(pod.category)}
                     </Typography>
                     <Chip
                       size="small"
@@ -561,6 +637,44 @@ export default function TournamentTdfLoader({
                       variant="outlined"
                     />
                   </Stack>
+                  {showEventActions ? (
+                    <Button
+                      type="button"
+                      size="small"
+                      variant="outlined"
+                      disabled={
+                        !eventId ||
+                        uploadStandingsPod.isPending ||
+                        standingsCategoryIndex(pod.category) === null
+                      }
+                      onClick={async () => {
+                        if (!eventId) return;
+                        const ci = standingsCategoryIndex(pod.category);
+                        if (ci === null) return;
+                        const t = pod.type.toLowerCase();
+                        const podType = t === "dnf" ? "dnf" : "finished";
+                        const rows =
+                          podType === "finished"
+                            ? pod.players.map((row) => ({
+                                popId: row.popId,
+                                place: row.place,
+                              }))
+                            : pod.players.map((row) => ({ popId: row.popId }));
+                        try {
+                          await uploadStandingsPod.mutateAsync({
+                            eventId,
+                            categoryIndex: ci,
+                            podType,
+                            rows,
+                          });
+                        } catch {
+                          /* error en estado */
+                        }
+                      }}
+                    >
+                      Guardar esta tabla
+                    </Button>
+                  ) : null}
                 </Box>
                 {pod.players.length === 0 ? (
                   <Box sx={{ px: 2, py: 2 }}>
@@ -601,6 +715,18 @@ export default function TournamentTdfLoader({
               </Paper>
             ))}
           </Stack>
+          {showEventActions && uploadStandingsPod.isError ? (
+            <Alert severity="error">
+              {uploadStandingsPod.error instanceof Error
+                ? uploadStandingsPod.error.message
+                : "Error al guardar la tabla"}
+            </Alert>
+          ) : null}
+          {showEventActions && uploadStandingsPod.isSuccess ? (
+            <Alert severity="success" onClose={() => uploadStandingsPod.reset()}>
+              Tabla guardada en el evento.
+            </Alert>
+          ) : null}
         </>
       )}
 

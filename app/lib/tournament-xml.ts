@@ -229,6 +229,67 @@ export function parseTournamentXml(xmlString: string): ParseTournamentXmlResult 
   return { meta, players, matches, standings }
 }
 
+/** Agrupa partidas por número de ronda (orden ascendente). */
+export function groupMatchesByRound(matches: ParsedMatch[]): Map<number, ParsedMatch[]> {
+  const map = new Map<number, ParsedMatch[]>()
+  for (const m of matches) {
+    const list = map.get(m.roundNumber) ?? []
+    list.push(m)
+    map.set(m.roundNumber, list)
+  }
+  return new Map([...map.entries()].sort((a, b) => a[0] - b[0]))
+}
+
+/** Payload de clasificación por categoría (0 Júnior, 1 Sénior, 2 Máster). */
+export type TournamentStandingsCategoryPayload = {
+  categoryIndex: number
+  finished: { popId: string; place: number }[]
+  dnf: { popId: string }[]
+}
+
+/**
+ * Junta los &lt;pod&gt; de &lt;standings&gt; en tres categorías (finished vs DNF).
+ * `type="dnf"` en el TDF = did not finish.
+ */
+export function foldStandingsByCategory(
+  standings: ParsedStandingsPod[],
+): TournamentStandingsCategoryPayload[] {
+  const agg = new Map<
+    number,
+    { finished: ParsedStandingPlayer[]; dnf: Set<string> }
+  >()
+  for (const c of [0, 1, 2]) {
+    agg.set(c, { finished: [], dnf: new Set() })
+  }
+  for (const pod of standings) {
+    const ci = parseInt(pod.category, 10)
+    if (ci !== 0 && ci !== 1 && ci !== 2) continue
+    const slot = agg.get(ci)!
+    const t = pod.type.toLowerCase()
+    if (t === 'dnf') {
+      for (const pl of pod.players) {
+        if (pl.popId.trim()) slot.dnf.add(pl.popId.trim())
+      }
+    } else {
+      slot.finished.push(...pod.players)
+    }
+  }
+  const out: TournamentStandingsCategoryPayload[] = []
+  for (const c of [0, 1, 2]) {
+    const slot = agg.get(c)!
+    slot.finished.sort((a, b) => a.place - b.place)
+    out.push({
+      categoryIndex: c,
+      finished: slot.finished.map((p) => ({
+        popId: p.popId.trim(),
+        place: p.place,
+      })),
+      dnf: [...slot.dnf].map((popId) => ({ popId })),
+    })
+  }
+  return out
+}
+
 /** Mapa POP ID → nombre para mostrar en pairings. */
 export function buildPlayerNameLookup(players: ParsedPlayer[]): Map<string, string> {
   const map = new Map<string, string>()
