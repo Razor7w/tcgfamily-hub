@@ -22,27 +22,22 @@ import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
-import Grid from "@mui/material/Grid";
 import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
 import Tooltip from "@mui/material/Tooltip";
 import Chip from "@mui/material/Chip";
-import { alpha } from "@mui/material/styles";
+import { alpha, type Theme } from "@mui/material/styles";
 import {
   ArrowBack,
-  CheckCircle,
   Delete,
   Edit,
   EventAvailable,
-  Groups,
-  InfoOutlined,
 } from "@mui/icons-material";
 import Link from "next/link";
 import {
   AdminWeeklyEvent,
   type WeeklyEventState,
   useAdminEvents,
-  useConfirmParticipantParticipation,
   useCreateAdminEvent,
   useDeleteAdminEvent,
   useUpdateAdminEvent,
@@ -131,12 +126,8 @@ export default function AdminEventosPage() {
   const createEv = useCreateAdminEvent();
   const updateEv = useUpdateAdminEvent();
   const deleteEv = useDeleteAdminEvent();
-  const confirmParticipation = useConfirmParticipantParticipation();
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [participantsModalEventId, setParticipantsModalEventId] = useState<
-    string | null
-  >(null);
   const [editing, setEditing] = useState<AdminWeeklyEvent | null>(null);
   const [form, setForm] = useState<FormState>(() => emptyForm());
   const [formError, setFormError] = useState<string | null>(null);
@@ -149,15 +140,6 @@ export default function AdminEventosPage() {
         new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
     );
   }, [data?.events]);
-
-  /** Modal sincronizado con la lista: sin efectos que copien el evento al estado. */
-  const participantsModalEvent = useMemo(
-    () =>
-      participantsModalEventId
-        ? (eventsSorted.find((e) => e._id === participantsModalEventId) ?? null)
-        : null,
-    [eventsSorted, participantsModalEventId],
-  );
 
   const openCreate = () => {
     setEditing(null);
@@ -240,9 +222,6 @@ export default function AdminEventosPage() {
     if (!deleteTarget) return;
     try {
       await deleteEv.mutateAsync(deleteTarget._id);
-      if (participantsModalEventId === deleteTarget._id) {
-        setParticipantsModalEventId(null);
-      }
       setDeleteTarget(null);
     } catch {
       /* alert */
@@ -317,7 +296,7 @@ export default function AdminEventosPage() {
                   textAlign: "center",
                   borderRadius: 3,
                   borderStyle: "dashed",
-                  bgcolor: (t) => alpha(t.palette.text.primary, 0.02),
+                  bgcolor: (t: Theme) => alpha(t.palette.text.primary, 0.02),
                 }}
               >
                 <EventAvailable sx={{ fontSize: 48, color: "text.disabled", mb: 1.5 }} />
@@ -405,16 +384,13 @@ export default function AdminEventosPage() {
                         </span>
                       </Stack>
                       <Button
+                        component={Link}
+                        href={`/admin/eventos/${ev._id}`}
                         size="medium"
                         variant="outlined"
-                        startIcon={<Groups />}
                         sx={{ mt: 2, fontWeight: 600 }}
-                        onClick={() => setParticipantsModalEventId(ev._id)}
                       >
-                        Preinscritos
-                        {(ev.participants?.length ?? 0) > 0
-                          ? ` (${ev.participants?.length})`
-                          : ""}
+                        Detalle del evento
                       </Button>
                     </Box>
                     <Stack direction="row" spacing={0.5} sx={{ alignSelf: { xs: "flex-end", sm: "flex-start" } }}>
@@ -703,150 +679,6 @@ export default function AdminEventosPage() {
             disabled={deleteEv.isPending}
           >
             Eliminar
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog
-        open={Boolean(participantsModalEventId && participantsModalEvent)}
-        onClose={() => setParticipantsModalEventId(null)}
-        fullWidth
-        maxWidth="md"
-        scroll="paper"
-        aria-labelledby="preinscritos-dialog-title"
-      >
-        <DialogTitle id="preinscritos-dialog-title">
-          <Stack spacing={0.5}>
-            <Typography component="span" variant="h6" fontWeight={800}>
-              Preinscritos
-            </Typography>
-            {participantsModalEvent ? (
-              <Typography variant="body2" color="text.secondary" fontWeight={400}>
-                {participantsModalEvent.title}
-              </Typography>
-            ) : null}
-          </Stack>
-        </DialogTitle>
-        <DialogContent dividers>
-          {participantsModalEvent ? (
-            <>
-              <Alert severity="info" icon={<InfoOutlined />} sx={{ mb: 2 }}>
-                Toca el ícono de check para confirmar o cancelar la asistencia en tienda. POP ID
-                viene del perfil del usuario.
-              </Alert>
-              {confirmParticipation.isError ? (
-                <Alert severity="error" sx={{ mb: 2 }}>
-                  {confirmParticipation.error instanceof Error
-                    ? confirmParticipation.error.message
-                    : "Error"}
-                </Alert>
-              ) : null}
-              {participantsModalEvent.participants.length === 0 ? (
-                <Typography color="text.secondary">No hay preinscritos.</Typography>
-              ) : (
-                <Grid container spacing={2}>
-                  {participantsModalEvent.participants.map((p, idx) => (
-                    <Grid key={`${p.userId ?? "sin-usuario"}-${idx}`} size={{ xs: 6, md: 3 }}>
-                      <Paper
-                        variant="outlined"
-                        sx={{
-                          p: 1.5,
-                          height: "100%",
-                          display: "flex",
-                          flexDirection: "column",
-                          borderRadius: 2,
-                          transition: "box-shadow 0.2s, border-color 0.2s",
-                          "&:hover": {
-                            borderColor: "primary.light",
-                            boxShadow: 1,
-                          },
-                        }}
-                      >
-                        <Stack
-                          direction="row"
-                          alignItems="flex-start"
-                          justifyContent="space-between"
-                          gap={0.5}
-                          sx={{ minHeight: 72 }}
-                        >
-                          <Box sx={{ minWidth: 0, flex: 1 }}>
-                            <Typography
-                              variant="subtitle2"
-                              fontWeight={700}
-                              title={p.displayName}
-                              sx={{
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                display: "-webkit-box",
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: "vertical",
-                              }}
-                            >
-                              {p.displayName}
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              component="p"
-                              sx={{ mt: 0.5 }}
-                            >
-                              POP: {p.popId}
-                            </Typography>
-                            {!p.userId ? (
-                              <Typography
-                                variant="caption"
-                                color="warning.main"
-                                component="p"
-                                sx={{ mt: 0.5, lineHeight: 1.3 }}
-                              >
-                                Sin cuenta vinculada
-                              </Typography>
-                            ) : null}
-                          </Box>
-                          <IconButton
-                            size="small"
-                            disabled={!p.userId || confirmParticipation.isPending}
-                            onClick={async () => {
-                              if (!participantsModalEvent || !p.userId) return;
-                              try {
-                                await confirmParticipation.mutateAsync({
-                                  eventId: participantsModalEvent._id,
-                                  userId: p.userId,
-                                  confirmed: !p.confirmed,
-                                });
-                              } catch {
-                                /* error en estado */
-                              }
-                            }}
-                            aria-label={
-                              p.confirmed
-                                ? "Quitar confirmación"
-                                : "Confirmar participación"
-                            }
-                            sx={(theme) => ({
-                              flexShrink: 0,
-                              color: p.confirmed
-                                ? theme.palette.success.main
-                                : theme.palette.grey[500],
-                              "&.Mui-disabled": {
-                                color: theme.palette.action.disabled,
-                              },
-                            })}
-                          >
-                            <CheckCircle sx={{ fontSize: 28 }} />
-                          </IconButton>
-                        </Stack>
-                      </Paper>
-                    </Grid>
-                  ))}
-                </Grid>
-              )}
-            </>
-          ) : null}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2, bgcolor: (t) => alpha(t.palette.text.primary, 0.03) }}>
-          <Button variant="contained" onClick={() => setParticipantsModalEventId(null)} sx={{ fontWeight: 700 }}>
-            Cerrar
           </Button>
         </DialogActions>
       </Dialog>
