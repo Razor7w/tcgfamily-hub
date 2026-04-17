@@ -108,6 +108,64 @@ function matchRowAccentParts(outcome: RowOutcome): {
   };
 }
 
+/** Fila de la vista «compartir»: acento fino y fondos más suaves para captura. */
+function shareDrawerRowParts(outcome: RowOutcome): {
+  bgcolor: string;
+  borderLeftColor: string;
+} {
+  if (outcome === "win") {
+    return {
+      bgcolor: alpha(MATCH_WIN_COLOR, 0.09),
+      borderLeftColor: MATCH_WIN_COLOR,
+    };
+  }
+  if (outcome === "loss") {
+    return {
+      bgcolor: alpha(MATCH_LOSS_COLOR, 0.075),
+      borderLeftColor: MATCH_LOSS_COLOR,
+    };
+  }
+  if (outcome === "tie") {
+    return {
+      bgcolor: alpha(MATCH_TIE_COLOR, 0.1),
+      borderLeftColor: MATCH_TIE_COLOR,
+    };
+  }
+  return {
+    bgcolor: alpha("#64748b", 0.07),
+    borderLeftColor: alpha("#64748b", 0.45),
+  };
+}
+
+function shareDrawerResultPillSx(outcome: RowOutcome) {
+  if (outcome === "win") {
+    return {
+      color: MATCH_WIN_COLOR,
+      bgcolor: alpha(MATCH_WIN_COLOR, 0.14),
+      border: "none",
+    };
+  }
+  if (outcome === "loss") {
+    return {
+      color: MATCH_LOSS_COLOR,
+      bgcolor: alpha(MATCH_LOSS_COLOR, 0.12),
+      border: "none",
+    };
+  }
+  if (outcome === "tie") {
+    return {
+      color: MATCH_TIE_COLOR,
+      bgcolor: alpha(MATCH_TIE_COLOR, 0.14),
+      border: "none",
+    };
+  }
+  return {
+    color: "text.primary",
+    bgcolor: alpha("#64748b", 0.1),
+    border: "none",
+  };
+}
+
 function resultPillSx(outcome: RowOutcome) {
   if (outcome === "win") {
     return {
@@ -1217,7 +1275,7 @@ export default function TournamentMatchRoundsCard({
           >
             {maxSelfReportedRounds === 0
               ? "Tu récord oficial es 0-0-0: no hay rondas para registrar en la bitácora."
-              : "Ya registraste el máximo de rondas permitido según tu récord del torneo (W + L + T)."}
+              : "Ya registraste el máximo de rondas permitido según tu récord del torneo."}
           </Typography>
         )}
 
@@ -1594,12 +1652,12 @@ export default function TournamentMatchRoundsCard({
 
           <Card
             elevation={0}
-            sx={{
+            sx={(t) => ({
               borderRadius: 2,
-              border: "1px solid",
-              borderColor: "divider",
+              border: "none",
+              bgcolor: alpha(t.palette.primary.main, 0.03),
               overflow: "hidden",
-            }}
+            })}
           >
             <Box sx={{ px: 2, py: 2 }}>
               <Typography
@@ -1614,117 +1672,170 @@ export default function TournamentMatchRoundsCard({
                   —
                 </Typography>
               ) : (
-                <TableContainer
-                  sx={{
-                    borderRadius: 1.5,
-                    border: "1px solid",
-                    borderColor: "divider",
-                    overflow: "hidden",
-                  }}
+                <Box
+                  role="table"
+                  aria-label="Rondas registradas"
+                  sx={{ display: "flex", flexDirection: "column", gap: 1 }}
                 >
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow
-                        sx={(t) => ({
-                          bgcolor: alpha(t.palette.text.primary, 0.04),
-                          borderLeft: "4px solid transparent",
-                          "& .MuiTableCell-head": {
-                            fontWeight: 700,
-                            color: "text.secondary",
-                            fontSize: "0.75rem",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.06em",
-                            whiteSpace: "nowrap",
-                            verticalAlign: "middle",
-                            lineHeight: 1.2,
-                            py: 1,
-                          },
-                        })}
-                      >
-                        <TableCell width={72}>Ronda</TableCell>
-                        <TableCell sx={{ minWidth: 0 }}>Deck rival</TableCell>
-                        <TableCell width={120} align="right">
-                          Resultado
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {rounds.map((row) => {
-                        const outcome = roundTableOutcome(row);
-                        const p = matchRowAccentParts(outcome);
-                        return (
-                          <TableRow
-                            key={row.roundNum}
+                  <Box
+                    role="row"
+                    sx={(t) => ({
+                      display: "grid",
+                      gridTemplateColumns: "44px minmax(0,1fr) auto",
+                      columnGap: 1,
+                      alignItems: "center",
+                      px: 1.25,
+                      py: 1,
+                      borderRadius: 1,
+                      bgcolor: alpha(t.palette.primary.main, 0.04),
+                      border: "none",
+                      borderBottom: `1px solid ${alpha(t.palette.primary.main, 0.2)}`,
+                    })}
+                  >
+                    <Typography
+                      component="span"
+                      role="columnheader"
+                      variant="caption"
+                      fontWeight={700}
+                      color="text.secondary"
+                      sx={{
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
+                        fontSize: "0.65rem",
+                      }}
+                    >
+                      Ronda
+                    </Typography>
+                    <Typography
+                      component="span"
+                      role="columnheader"
+                      variant="caption"
+                      fontWeight={700}
+                      color="text.secondary"
+                      sx={{
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
+                        fontSize: "0.65rem",
+                      }}
+                    >
+                      Deck rival
+                    </Typography>
+                    <Typography
+                      component="span"
+                      role="columnheader"
+                      variant="caption"
+                      fontWeight={700}
+                      color="text.secondary"
+                      textAlign="right"
+                      sx={{
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
+                        fontSize: "0.65rem",
+                      }}
+                    >
+                      Resultado
+                    </Typography>
+                  </Box>
+                  <Stack component="div" spacing={1} role="rowgroup" sx={{ m: 0, p: 0 }}>
+                    {rounds.map((row) => {
+                      const outcome = roundTableOutcome(row);
+                      const sp = shareDrawerRowParts(outcome);
+                      return (
+                        <Box
+                          key={row.roundNum}
+                          role="row"
+                          sx={(t) => ({
+                            display: "grid",
+                            gridTemplateColumns: "44px minmax(0,1fr) auto",
+                            columnGap: 1,
+                            alignItems: "center",
+                            px: 1.25,
+                            py: 1.35,
+                            borderRadius: 2,
+                            border: "none",
+                            borderLeft: `3px solid ${sp.borderLeftColor}`,
+                            bgcolor: sp.bgcolor,
+                            boxShadow: `0 1px 3px ${alpha(t.palette.primary.main, 0.07)}`,
+                          })}
+                        >
+                          <Typography
+                            component="span"
+                            role="cell"
+                            fontWeight={800}
+                            variant="body2"
                             sx={{
-                              borderLeft: "4px solid",
-                              borderLeftColor: p.borderLeftColor,
-                              bgcolor: p.bgcolor,
+                              fontVariantNumeric: "tabular-nums",
+                              color:
+                                outcome === "win"
+                                  ? MATCH_WIN_COLOR
+                                  : outcome === "loss"
+                                    ? MATCH_LOSS_COLOR
+                                    : outcome === "tie"
+                                      ? MATCH_TIE_COLOR
+                                      : "text.secondary",
                             }}
                           >
-                            <TableCell sx={{ py: 1.25 }}>
-                              <Typography
-                                fontWeight={800}
-                                variant="body2"
-                                sx={
-                                  outcome === "win"
-                                    ? { color: MATCH_WIN_COLOR }
-                                    : outcome === "loss"
-                                      ? { color: MATCH_LOSS_COLOR }
-                                      : outcome === "tie"
-                                        ? { color: MATCH_TIE_COLOR }
-                                        : { color: "text.secondary" }
-                                }
-                              >
-                                {row.roundNum}
-                              </Typography>
-                            </TableCell>
-                            <TableCell sx={{ py: 1.25 }}>
-                              <Stack
-                                direction="row"
-                                spacing={0.75}
-                                alignItems="center"
-                                flexWrap="wrap"
-                              >
-                                {row.specialOutcome ? (
-                                  <Chip size="small" label={summarizeRoundResult(row)} />
-                                ) : row.opponentDeckSlugs.length === 0 ? (
-                                  <Typography variant="body2" color="text.secondary">
-                                    —
-                                  </Typography>
-                                ) : (
-                                  row.opponentDeckSlugs.map((slug) => (
-                                    <LimitlessSpriteThumb key={slug} slug={slug} size={32} />
-                                  ))
-                                )}
-                              </Stack>
-                            </TableCell>
-                            <TableCell align="right" sx={{ py: 1.25 }}>
-                              <Box
-                                component="span"
-                                sx={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  minWidth: 44,
-                                  px: 1.25,
-                                  py: 0.5,
-                                  borderRadius: 2,
-                                  fontWeight: 800,
-                                  fontSize: "0.8125rem",
-                                  letterSpacing: "0.04em",
-                                  lineHeight: 1.2,
-                                  ...resultPillSx(outcome),
-                                }}
-                              >
-                                {summarizeRoundResult(row)}
-                              </Box>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                            {row.roundNum}
+                          </Typography>
+                          <Box
+                            component="span"
+                            role="cell"
+                            sx={{ minWidth: 0 }}
+                          >
+                            <Stack
+                              direction="row"
+                              spacing={0.75}
+                              alignItems="center"
+                              flexWrap="wrap"
+                              useFlexGap
+                            >
+                              {row.specialOutcome ? (
+                                <Chip
+                                  size="small"
+                                  label={summarizeRoundResult(row)}
+                                  sx={{ fontWeight: 600 }}
+                                />
+                              ) : row.opponentDeckSlugs.length === 0 ? (
+                                <Typography variant="body2" color="text.secondary">
+                                  —
+                                </Typography>
+                              ) : (
+                                row.opponentDeckSlugs.map((slug) => (
+                                  <LimitlessSpriteThumb key={slug} slug={slug} size={34} />
+                                ))
+                              )}
+                            </Stack>
+                          </Box>
+                          <Box
+                            component="span"
+                            role="cell"
+                            sx={{ justifySelf: "end" }}
+                          >
+                            <Box
+                              component="span"
+                              sx={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                minWidth: 40,
+                                px: 1.1,
+                                py: 0.45,
+                                borderRadius: 1.5,
+                                fontWeight: 800,
+                                fontSize: "0.75rem",
+                                letterSpacing: "0.03em",
+                                lineHeight: 1.2,
+                                ...shareDrawerResultPillSx(outcome),
+                              }}
+                            >
+                              {summarizeRoundResult(row)}
+                            </Box>
+                          </Box>
+                        </Box>
+                      );
+                    })}
+                  </Stack>
+                </Box>
               )}
             </Box>
           </Card>
