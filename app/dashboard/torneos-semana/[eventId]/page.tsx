@@ -98,6 +98,7 @@ export default function TorneoSemanaDetallePage() {
                     eventState={ev.state}
                     officialMatchRecord={ev.myMatchRecord}
                     tournamentPlacement={ev.myTournamentPlacement ?? null}
+                    onRequestChoosePokemon={() => setDeckOpen(true)}
                   />
 
                   <Card

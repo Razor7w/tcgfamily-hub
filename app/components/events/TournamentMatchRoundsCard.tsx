@@ -9,7 +9,6 @@ import {
   type Key,
 } from "react";
 import AddIcon from "@mui/icons-material/Add";
-import CloseIcon from "@mui/icons-material/Close";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import ShareIcon from "@mui/icons-material/Share";
 import TableRowsOutlinedIcon from "@mui/icons-material/TableRowsOutlined";
@@ -487,6 +486,8 @@ type Props = {
   officialMatchRecord?: { wins: number; losses: number; ties: number } | null;
   /** Puesto en standings importados (solo si hay datos y coincide tu POP). */
   tournamentPlacement?: TournamentPlacementInfo | null;
+  /** Si no hay Pokémon en perfil, muestra un botón + que abre el flujo de elegir Pokémon (p. ej. `ReportDeckDialog`). */
+  onRequestChoosePokemon?: () => void;
 };
 
 export default function TournamentMatchRoundsCard({
@@ -500,6 +501,7 @@ export default function TournamentMatchRoundsCard({
   eventState,
   officialMatchRecord,
   tournamentPlacement,
+  onRequestChoosePokemon,
 }: Props) {
   const { data: allOptions = [], isPending: optionsLoading } =
     usePokemonSpeciesOptions();
@@ -971,14 +973,40 @@ export default function TournamentMatchRoundsCard({
                       <LimitlessSpriteThumb key={slug} slug={slug} size={40} circular />
                     ))
                   ) : (
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      fontStyle="italic"
-                      sx={{ textAlign: { xs: "right", lg: "right" }, maxWidth: 120 }}
+                    <Stack
+                      direction="column"
+                      alignItems="flex-end"
+                      spacing={0.75}
+                      sx={{ maxWidth: 160 }}
                     >
-                      Sin Pokémon en perfil
-                    </Typography>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        fontStyle="italic"
+                        sx={{ textAlign: "right", width: "100%" }}
+                      >
+                        Sin Pokémon en perfil
+                      </Typography>
+                      {onRequestChoosePokemon ? (
+                        <Tooltip title="Elegir Pokémon">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            aria-label="Elegir Pokémon para el perfil"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRequestChoosePokemon();
+                            }}
+                            sx={{
+                              border: "1px dashed",
+                              borderColor: "primary.main",
+                            }}
+                          >
+                            <AddIcon sx={{ fontSize: 20 }} />
+                          </IconButton>
+                        </Tooltip>
+                      ) : null}
+                    </Stack>
                   )}
                 </Stack>
               </Stack>
@@ -1518,34 +1546,25 @@ export default function TournamentMatchRoundsCard({
             flexShrink: 0,
             px: 2,
             py: 1.75,
-            pr: 6,
             borderBottom: "1px solid",
             borderColor: "divider",
-            position: "relative",
           }}
         >
           <Typography
             id="share-tournament-drawer-title"
             variant="h6"
             component="h2"
-            sx={{ fontWeight: 800, fontSize: "1.125rem", lineHeight: 1.35, pr: 1 }}
+            sx={{ fontWeight: 800, fontSize: "1.125rem", lineHeight: 1.35 }}
           >
             {title}
           </Typography>
           <Typography
             variant="body2"
             color="text.secondary"
-            sx={{ mt: 0.5, lineHeight: 1.4, pr: 1 }}
+            sx={{ mt: 0.5, lineHeight: 1.4 }}
           >
             {dateDayMonthYear}
           </Typography>
-          <IconButton
-            aria-label="Cerrar"
-            onClick={() => setShareOpen(false)}
-            sx={{ position: "absolute", right: 4, top: 12 }}
-          >
-            <CloseIcon />
-          </IconButton>
         </Box>
         <Box
           sx={{
