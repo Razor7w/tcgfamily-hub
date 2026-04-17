@@ -43,10 +43,24 @@ export type ParsedMatch = {
   tableNumber: string
 }
 
+/** Fila en el standing de un pod (atributos `id` y `place` en &lt;player&gt;). */
+export type ParsedStandingPlayer = {
+  popId: string
+  place: number
+}
+
+/** Un bloque &lt;pod&gt; dentro de &lt;standings&gt;. */
+export type ParsedStandingsPod = {
+  category: string
+  type: string
+  players: ParsedStandingPlayer[]
+}
+
 export type ParseTournamentXmlResult = {
   meta: ParsedTournamentMeta | null
   players: ParsedPlayer[]
   matches: ParsedMatch[]
+  standings: ParsedStandingsPod[]
   error?: string
 }
 
@@ -66,7 +80,7 @@ function parseBoolean(s: string | undefined | null): boolean {
 export function parseTournamentXml(xmlString: string): ParseTournamentXmlResult {
   const trimmed = xmlString.trim()
   if (!trimmed) {
-    return { meta: null, players: [], matches: [] }
+    return { meta: null, players: [], matches: [], standings: [] }
   }
 
   if (typeof window === 'undefined' || typeof DOMParser === 'undefined') {
@@ -74,6 +88,7 @@ export function parseTournamentXml(xmlString: string): ParseTournamentXmlResult 
       meta: null,
       players: [],
       matches: [],
+      standings: [],
       error: 'DOMParser no está disponible en este entorno.'
     }
   }
@@ -86,6 +101,7 @@ export function parseTournamentXml(xmlString: string): ParseTournamentXmlResult 
       meta: null,
       players: [],
       matches: [],
+      standings: [],
       error: 'XML inválido o mal formado.'
     }
   }
@@ -96,6 +112,7 @@ export function parseTournamentXml(xmlString: string): ParseTournamentXmlResult 
       meta: null,
       players: [],
       matches: [],
+      standings: [],
       error: 'No se encontró un elemento raíz <tournament>.'
     }
   }
@@ -182,7 +199,29 @@ export function parseTournamentXml(xmlString: string): ParseTournamentXmlResult 
     }
   }
 
-  return { meta, players, matches }
+  const standings: ParsedStandingsPod[] = []
+  const standingsEl = root.getElementsByTagName('standings')[0]
+  if (standingsEl) {
+    const podNodes = standingsEl.getElementsByTagName('pod')
+    for (let i = 0; i < podNodes.length; i++) {
+      const podEl = podNodes[i]
+      const category = podEl.getAttribute('category') ?? ''
+      const type = podEl.getAttribute('type') ?? ''
+      const standingPlayers: ParsedStandingPlayer[] = []
+      const stPlayerNodes = podEl.getElementsByTagName('player')
+      for (let j = 0; j < stPlayerNodes.length; j++) {
+        const pl = stPlayerNodes[j]
+        const popId = pl.getAttribute('id')?.trim() ?? ''
+        if (!popId) continue
+        const place = parseInt(pl.getAttribute('place') ?? '0', 10) || 0
+        standingPlayers.push({ popId, place })
+      }
+      standingPlayers.sort((a, b) => a.place - b.place)
+      standings.push({ category, type, players: standingPlayers })
+    }
+  }
+
+  return { meta, players, matches, standings }
 }
 
 /** Mapa POP ID → nombre para mostrar en pairings. */

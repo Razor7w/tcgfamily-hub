@@ -30,6 +30,13 @@ import {
   type AdminSyncRoundResult,
 } from "@/hooks/useWeeklyEvents";
 
+function standingsPodTypeLabel(type: string) {
+  const t = type.toLowerCase();
+  if (t === "finished") return "Finalizado";
+  if (t === "dnf") return "DNF";
+  return type || "—";
+}
+
 function groupMatchesByRound(matches: ParsedMatch[]): Map<number, ParsedMatch[]> {
   const map = new Map<number, ParsedMatch[]>();
   for (const m of matches) {
@@ -62,6 +69,11 @@ export default function TournamentTdfLoader({
   const parsed = useMemo(() => parseTournamentXml(raw), [raw]);
   const names = useMemo(() => buildPlayerNameLookup(parsed.players), [parsed.players]);
   const rounds = useMemo(() => groupMatchesByRound(parsed.matches), [parsed.matches]);
+  const standingsPlayerCount = useMemo(
+    () =>
+      parsed.standings.reduce((n, pod) => n + pod.players.length, 0),
+    [parsed.standings],
+  );
 
   const preinscribeBatch = useAdminPreinscribeBatch();
   const syncRound = useAdminSyncEventRound();
@@ -448,10 +460,79 @@ export default function TournamentTdfLoader({
         </>
       )}
 
-      {raw.trim() && !parsed.error && parsed.players.length === 0 && parsed.matches.length === 0 && (
+      {parsed.standings.length > 0 && (
+        <>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            Clasificación
+            {standingsPlayerCount > 0
+              ? ` (${standingsPlayerCount} en standings)`
+              : ""}
+          </Typography>
+          <Stack spacing={2}>
+            {parsed.standings.map((pod, podIdx) => (
+              <Paper
+                key={`standings-pod-${podIdx}-${pod.category}-${pod.type}`}
+                variant="outlined"
+                sx={{ p: 0, borderRadius: 2, overflow: "hidden" }}
+              >
+                <Box sx={{ px: 2, py: 1, bgcolor: "action.hover" }}>
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                    <Typography variant="subtitle2" fontWeight={700}>
+                      Categoría {pod.category || "—"}
+                    </Typography>
+                    <Chip
+                      size="small"
+                      label={standingsPodTypeLabel(pod.type)}
+                      variant="outlined"
+                    />
+                  </Stack>
+                </Box>
+                {pod.players.length === 0 ? (
+                  <Box sx={{ px: 2, py: 2 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Sin jugadores en este grupo.
+                    </Typography>
+                  </Box>
+                ) : (
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell width={88}>Puesto</TableCell>
+                          <TableCell width={120}>POP ID</TableCell>
+                          <TableCell>Nombre</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {pod.players.map((row) => (
+                          <TableRow key={`${podIdx}-${row.place}-${row.popId}`}>
+                            <TableCell>{row.place || "—"}</TableCell>
+                            <TableCell sx={{ fontFamily: "monospace", fontSize: 13 }}>
+                              {row.popId}
+                            </TableCell>
+                            <TableCell>
+                              {names.get(row.popId) ?? "—"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </Paper>
+            ))}
+          </Stack>
+        </>
+      )}
+
+      {raw.trim() &&
+        !parsed.error &&
+        parsed.players.length === 0 &&
+        parsed.matches.length === 0 &&
+        parsed.standings.length === 0 && (
         <Alert severity="info">
-          No se encontraron jugadores ni partidas en el XML. Revisa que incluya{" "}
-          <code>&lt;players&gt;</code> y <code>&lt;rounds&gt;</code>.
+          No se encontraron jugadores, partidas ni clasificación en el XML. Revisa que incluya{" "}
+          <code>&lt;players&gt;</code>, <code>&lt;rounds&gt;</code> o <code>&lt;standings&gt;</code>.
         </Alert>
       )}
     </Stack>

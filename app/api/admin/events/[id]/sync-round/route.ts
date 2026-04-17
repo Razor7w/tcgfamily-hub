@@ -74,6 +74,7 @@ export async function POST(
     }
 
     doc.roundNum = roundNum;
+    doc.state = "running";
 
     type Sub = mongoose.Types.Subdocument & {
       popId?: string;
@@ -178,6 +179,7 @@ export async function POST(
       {
         ok: true,
         roundNum: doc.roundNum,
+        state: doc.state,
         appliedMatches: applied,
         skipped,
         participantCount: doc.participants.length,

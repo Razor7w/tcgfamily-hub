@@ -246,6 +246,7 @@ export type AdminPreinscribeBatchResult = {
 export type AdminSyncRoundResult = {
   ok: boolean;
   roundNum: number;
+  state: WeeklyEventState;
   appliedMatches: number;
   skipped: { tableNumber: string; reason: string }[];
   participantCount: number;

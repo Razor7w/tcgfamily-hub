@@ -229,6 +229,11 @@ export default function WeeklyEventsSection({
     return eventsForDay[0] ?? null;
   }, [eventsForDay, selectedEventId]);
 
+  /** Oculta bloques de preinscripción cuando el evento ya está en curso o cerrado (admin marca `running` al setear ronda, etc.). */
+  const selectedEventStarted =
+    selectedEvent != null &&
+    (selectedEvent.state === "running" || selectedEvent.state === "close");
+
   const [participantsOpenForEventId, setParticipantsOpenForEventId] = useState<string | null>(null);
   const participantsModalOpen =
     participantsOpenForEventId !== null &&
@@ -658,12 +663,16 @@ export default function WeeklyEventsSection({
                       }}
                     >
                       <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-                        <Typography variant="overline" color="primary" sx={{ fontWeight: 700 }}>
-                          Tu inscripción
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 2 }}>
-                          Un nombre público en la lista. Puedes ver quién más va sin datos privados.
-                        </Typography>
+                        {!selectedEventStarted ? (
+                          <>
+                            <Typography variant="overline" color="primary" sx={{ fontWeight: 700 }}>
+                              Tu inscripción
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 2 }}>
+                              Un nombre público en la lista. Puedes ver quién más va sin datos privados.
+                            </Typography>
+                          </>
+                        ) : null}
                         {regReason ? (
                           <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
                             {regReason}
@@ -726,7 +735,7 @@ export default function WeeklyEventsSection({
                                 </Stack>
                               </Stack>
                             ) : null}
-                            {selectedEvent.myAttendanceConfirmed ? (
+                            {!selectedEventStarted && selectedEvent.myAttendanceConfirmed ? (
                               <Alert
                                 severity="success"
                                 variant="filled"
@@ -780,21 +789,23 @@ export default function WeeklyEventsSection({
                           />
                         )}
 
-                        <Button
-                          type="button"
-                          variant="outlined"
-                          color="inherit"
-                          fullWidth
-                          size="medium"
-                          sx={{ mt: 2 }}
-                          startIcon={<Groups />}
-                          onClick={() => setParticipantsOpenForEventId(selectedEvent._id)}
-                        >
-                          Ver lista de participantes
-                          {selectedEvent.participantCount > 0
-                            ? ` (${selectedEvent.participantCount})`
-                            : ""}
-                        </Button>
+                        {!selectedEventStarted ? (
+                          <Button
+                            type="button"
+                            variant="outlined"
+                            color="inherit"
+                            fullWidth
+                            size="medium"
+                            sx={{ mt: 2 }}
+                            startIcon={<Groups />}
+                            onClick={() => setParticipantsOpenForEventId(selectedEvent._id)}
+                          >
+                            Ver lista de participantes
+                            {selectedEvent.participantCount > 0
+                              ? ` (${selectedEvent.participantCount})`
+                              : ""}
+                          </Button>
+                        ) : null}
 
                         <Dialog
                           open={participantsModalOpen}
