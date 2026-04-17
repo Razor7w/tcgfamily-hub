@@ -2,7 +2,9 @@
 
 import {
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type HTMLAttributes,
   type KeyboardEvent,
@@ -37,7 +39,8 @@ import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { alpha } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { alpha, useTheme } from "@mui/material/styles";
 import {
   matchRecordFromRounds,
   roundTableOutcome,
@@ -507,6 +510,9 @@ export default function TournamentMatchRoundsCard({
   isCustomTournament = false,
   onRequestChoosePokemon,
 }: Props) {
+  const theme = useTheme();
+  const isMobileViewport = useMediaQuery(theme.breakpoints.down("sm"));
+  const roundFormScrollRef = useRef<HTMLDivElement>(null);
   const { data: allOptions = [], isPending: optionsLoading } =
     usePokemonSpeciesOptions();
   const saveRounds = useSaveMyMatchRounds(eventId);
@@ -555,6 +561,18 @@ export default function TournamentMatchRoundsCard({
   const canAddRound = rounds.length < maxSelfReportedRounds;
   /** Mostrar el botón del formulario: añadir ronda, o cerrar si el panel está abierto (p. ej. editando al límite). */
   const showRoundFormToggle = canAddRound || formOpen;
+
+  /** En pantallas estrechas, al abrir el formulario el scroll lleva el panel a la vista (tras la animación de Collapse). */
+  useEffect(() => {
+    if (!formOpen || !isMobileViewport) return;
+    const id = window.setTimeout(() => {
+      roundFormScrollRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 280);
+    return () => window.clearTimeout(id);
+  }, [formOpen, isMobileViewport]);
 
   const showOfficialRecord =
     !isCustomTournament &&
@@ -1325,14 +1343,16 @@ export default function TournamentMatchRoundsCard({
 
         <Collapse in={formOpen}>
           <Box
-            sx={{
+            ref={roundFormScrollRef}
+            sx={(t) => ({
               mt: 2,
               p: { xs: 1.5, sm: 2 },
               borderRadius: 2,
               border: "1px solid",
               borderColor: "divider",
               bgcolor: "background.paper",
-            }}
+              scrollMarginTop: { xs: t.spacing(2), sm: t.spacing(0) },
+            })}
           >
             <Typography variant="subtitle1" fontWeight={700} gutterBottom>
               {isEditing ? "Editar ronda" : "Ronda"} {formRoundLabel}
