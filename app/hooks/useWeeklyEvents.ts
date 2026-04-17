@@ -237,6 +237,55 @@ export type AdminPreinscribeBatchResult = {
   participantCount: number;
 };
 
+export type AdminSyncRoundResult = {
+  ok: boolean;
+  roundNum: number;
+  appliedMatches: number;
+  skipped: { tableNumber: string; reason: string }[];
+  participantCount: number;
+};
+
+/** Aplica mesa + oponente según TDF y fija `roundNum` en el WeeklyEvent. */
+export function useAdminSyncEventRound() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      eventId: string;
+      roundNum: number;
+      matches: {
+        tableNumber: string;
+        player1PopId: string;
+        player2PopId: string;
+      }[];
+    }) => {
+      const res = await fetch(
+        `/api/admin/events/${input.eventId}/sync-round`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roundNum: input.roundNum,
+            matches: input.matches,
+          }),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === "string"
+            ? data.error
+            : "Error al setear la ronda",
+        );
+      }
+      return data as AdminSyncRoundResult;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-weekly-events"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-events"] });
+    },
+  });
+}
+
 export function useAdminPreinscribeBatch() {
   const queryClient = useQueryClient();
   return useMutation({

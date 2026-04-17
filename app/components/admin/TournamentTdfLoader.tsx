@@ -17,14 +17,18 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { FolderOpen, GroupAdd } from "@mui/icons-material";
+import { EventSeat, FolderOpen, GroupAdd } from "@mui/icons-material";
 import {
   buildPlayerNameLookup,
   parseTournamentXml,
   type ParsedMatch,
 } from "@/lib/tournament-xml";
 import { popidForStorage, validatePopidOptional } from "@/lib/rut-chile";
-import { useAdminPreinscribeBatch } from "@/hooks/useWeeklyEvents";
+import {
+  useAdminPreinscribeBatch,
+  useAdminSyncEventRound,
+  type AdminSyncRoundResult,
+} from "@/hooks/useWeeklyEvents";
 
 function groupMatchesByRound(matches: ParsedMatch[]): Map<number, ParsedMatch[]> {
   const map = new Map<number, ParsedMatch[]>();
@@ -60,6 +64,10 @@ export default function TournamentTdfLoader({
   const rounds = useMemo(() => groupMatchesByRound(parsed.matches), [parsed.matches]);
 
   const preinscribeBatch = useAdminPreinscribeBatch();
+  const syncRound = useAdminSyncEventRound();
+  const [lastRoundSync, setLastRoundSync] = useState<AdminSyncRoundResult | null>(
+    null,
+  );
   const registeredSet = useMemo(
     () => new Set(registeredPopIds.map((id) => popidForStorage(id)).filter(Boolean)),
     [registeredPopIds],
@@ -96,6 +104,8 @@ export default function TournamentTdfLoader({
     reader.onload = () => {
       const text = typeof reader.result === "string" ? reader.result : "";
       setRaw(text);
+      setLastRoundSync(null);
+      syncRound.reset();
       setLoadedFileName(file.name);
       e.target.value = "";
     };
@@ -159,6 +169,8 @@ export default function TournamentTdfLoader({
         onChange={(e) => {
           setRaw(e.target.value);
           setLoadedFileName(null);
+          setLastRoundSync(null);
+          syncRound.reset();
         }}
         size="small"
         sx={{ "& textarea": { fontFamily: "monospace", fontSize: 12 } }}
@@ -312,10 +324,52 @@ export default function TournamentTdfLoader({
           <Stack spacing={2}>
             {[...rounds.entries()].map(([roundNum, list]) => (
               <Paper key={roundNum} variant="outlined" sx={{ p: 0, borderRadius: 2, overflow: "hidden" }}>
-                <Box sx={{ px: 2, py: 1, bgcolor: "action.hover" }}>
+                <Box
+                  sx={{
+                    px: 2,
+                    py: 1,
+                    bgcolor: "action.hover",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1,
+                    flexWrap: "wrap",
+                  }}
+                >
                   <Typography variant="subtitle2" fontWeight={700}>
                     Ronda {roundNum}
                   </Typography>
+                  {showEventActions ? (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<EventSeat />}
+                      disabled={
+                        !eventId ||
+                        syncRound.isPending ||
+                        list.length === 0
+                      }
+                      onClick={async () => {
+                        if (!eventId || list.length === 0) return;
+                        try {
+                          const data = await syncRound.mutateAsync({
+                            eventId,
+                            roundNum,
+                            matches: list.map((m) => ({
+                              tableNumber: m.tableNumber ?? "",
+                              player1PopId: m.player1UserId,
+                              player2PopId: m.player2UserId,
+                            })),
+                          });
+                          setLastRoundSync(data);
+                        } catch {
+                          setLastRoundSync(null);
+                        }
+                      }}
+                    >
+                      Setear ronda
+                    </Button>
+                  ) : null}
                 </Box>
                 <TableContainer>
                   <Table size="small">
@@ -364,6 +418,33 @@ export default function TournamentTdfLoader({
               </Paper>
             ))}
           </Stack>
+          {showEventActions && syncRound.isError ? (
+            <Alert severity="error">
+              {syncRound.error instanceof Error
+                ? syncRound.error.message
+                : "Error al setear la ronda"}
+            </Alert>
+          ) : null}
+          {showEventActions && lastRoundSync ? (
+            <Alert
+              severity={lastRoundSync.skipped.length > 0 ? "warning" : "success"}
+              onClose={() => setLastRoundSync(null)}
+            >
+              Ronda <strong>{lastRoundSync.roundNum}</strong> guardada en el evento.
+              Mesas aplicadas: <strong>{lastRoundSync.appliedMatches}</strong>.
+              {lastRoundSync.skipped.length > 0 ? (
+                <>
+                  {" "}
+                  Omitidas: {lastRoundSync.skipped.length} (
+                  {lastRoundSync.skipped
+                    .slice(0, 5)
+                    .map((s) => `mesa ${s.tableNumber}: ${s.reason}`)
+                    .join("; ")}
+                  {lastRoundSync.skipped.length > 5 ? "…" : ""}).
+                </>
+              ) : null}
+            </Alert>
+          ) : null}
         </>
       )}
 
