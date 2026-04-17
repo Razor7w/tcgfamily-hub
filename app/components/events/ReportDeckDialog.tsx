@@ -154,7 +154,7 @@ export default function ReportDeckDialog({
           <Stack alignItems="center" py={4}>
             <CircularProgress size={32} />
             <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              Cargando lista de Pokémon…
+              Cargando Pokémon…
             </Typography>
           </Stack>
         ) : (
