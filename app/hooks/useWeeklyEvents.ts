@@ -256,6 +256,7 @@ export type AdminSyncRoundResult = {
   recordsApplied: number;
   skipped: { tableNumber: string; reason: string }[];
   participantCount: number;
+  roundSnapshotsCount: number;
 };
 
 /** Aplica mesa + oponente según TDF y fija `roundNum` en el WeeklyEvent. */
@@ -276,6 +277,18 @@ export function useAdminSyncEventRound() {
         losses: number;
         ties: number;
       }[];
+      roundSnapshot: {
+        pairings: {
+          tableNumber: string;
+          player1PopId: string;
+          player2PopId: string;
+          player1Name: string;
+          player2Name: string;
+          player1Record: { wins: number; losses: number; ties: number };
+          player2Record: { wins: number; losses: number; ties: number };
+          isBye: boolean;
+        }[];
+      };
     }) => {
       const res = await fetch(
         `/api/admin/events/${input.eventId}/sync-round`,
@@ -286,6 +299,7 @@ export function useAdminSyncEventRound() {
             roundNum: input.roundNum,
             matches: input.matches,
             participantRecords: input.participantRecords,
+            roundSnapshot: input.roundSnapshot,
           }),
         },
       );

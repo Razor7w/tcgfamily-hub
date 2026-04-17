@@ -3,9 +3,12 @@ import mongoose from "mongoose";
 import { auth } from "@/auth";
 import connectDB from "@/lib/mongodb";
 import WeeklyEvent from "@/models/WeeklyEvent";
+import type { IRoundPairingSnapshot, IRoundSnapshot } from "@/models/WeeklyEvent";
 import { popidForStorage } from "@/lib/rut-chile";
 
 const ROUND_NUM_MAX = 9999;
+const NAME_MAX = 200;
+const MAX_PAIRINGS = 512;
 const WLT_MAX = 999;
 
 type MatchInput = {
@@ -25,6 +28,62 @@ function clampWlt(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);
   if (!Number.isFinite(n)) return 0;
   return Math.max(0, Math.min(WLT_MAX, Math.round(n)));
+}
+
+function trimStr(v: unknown, max: number): string {
+  if (typeof v !== "string") return "";
+  return v.trim().slice(0, max);
+}
+
+type PairingSnapshotInput = {
+  tableNumber?: unknown;
+  player1PopId?: unknown;
+  player2PopId?: unknown;
+  player1Name?: unknown;
+  player2Name?: unknown;
+  player1Record?: { wins?: unknown; losses?: unknown; ties?: unknown };
+  player2Record?: { wins?: unknown; losses?: unknown; ties?: unknown };
+  isBye?: unknown;
+};
+
+function sanitizePairingSnapshot(p: PairingSnapshotInput): IRoundPairingSnapshot {
+  const isBye = Boolean(p.isBye);
+  return {
+    tableNumber: trimStr(p.tableNumber, 40),
+    player1PopId: trimStr(p.player1PopId, 32),
+    player2PopId: trimStr(p.player2PopId, 32),
+    player1Name: trimStr(p.player1Name, NAME_MAX),
+    player2Name: trimStr(p.player2Name, NAME_MAX),
+    player1Record: {
+      wins: clampWlt(p.player1Record?.wins),
+      losses: clampWlt(p.player1Record?.losses),
+      ties: clampWlt(p.player1Record?.ties),
+    },
+    player2Record: {
+      wins: clampWlt(p.player2Record?.wins),
+      losses: clampWlt(p.player2Record?.losses),
+      ties: clampWlt(p.player2Record?.ties),
+    },
+    isBye,
+  };
+}
+
+function pairingsFromMatchesOnly(rows: MatchInput[]): IRoundPairingSnapshot[] {
+  return rows.slice(0, MAX_PAIRINGS).map((row) => {
+    const p1 = typeof row.player1PopId === "string" ? row.player1PopId : "";
+    const p2 = typeof row.player2PopId === "string" ? row.player2PopId : "";
+    const isBye = Boolean(p1 && !p2.trim());
+    return {
+      tableNumber: String(row.tableNumber ?? "").trim().slice(0, 40),
+      player1PopId: p1.trim().slice(0, 32),
+      player2PopId: p2.trim().slice(0, 32),
+      player1Name: "",
+      player2Name: isBye ? "" : "",
+      player1Record: { wins: 0, losses: 0, ties: 0 },
+      player2Record: { wins: 0, losses: 0, ties: 0 },
+      isBye,
+    };
+  });
 }
 
 /**
@@ -204,7 +263,38 @@ export async function POST(
       }
     }
 
+    const snapRec = rec.roundSnapshot;
+    let pairingsSnapshot: IRoundPairingSnapshot[];
+    if (
+      typeof snapRec === "object" &&
+      snapRec !== null &&
+      Array.isArray((snapRec as Record<string, unknown>).pairings)
+    ) {
+      const rawList = (snapRec as { pairings: PairingSnapshotInput[] }).pairings;
+      pairingsSnapshot = rawList
+        .slice(0, MAX_PAIRINGS)
+        .map((row) => sanitizePairingSnapshot(row));
+    } else {
+      pairingsSnapshot = pairingsFromMatchesOnly(rawMatches as MatchInput[]);
+    }
+
+    const snapshot: IRoundSnapshot = {
+      roundNum,
+      syncedAt: new Date(),
+      pairings: pairingsSnapshot,
+      skipped: skipped.map((s) => ({
+        tableNumber: s.tableNumber.slice(0, 40),
+        reason: s.reason.slice(0, 500),
+      })),
+    };
+
+    const prev = [...(doc.roundSnapshots ?? [])].filter(
+      (r) => (r as IRoundSnapshot).roundNum !== roundNum,
+    );
+    doc.roundSnapshots = [...prev, snapshot] as typeof doc.roundSnapshots;
+
     doc.markModified("participants");
+    doc.markModified("roundSnapshots");
     await doc.save();
 
     return NextResponse.json(
@@ -216,6 +306,7 @@ export async function POST(
         recordsApplied,
         skipped,
         participantCount: doc.participants.length,
+        roundSnapshotsCount: doc.roundSnapshots?.length ?? 0,
       },
       { status: 200 },
     );

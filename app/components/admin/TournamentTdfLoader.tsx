@@ -14,7 +14,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  TextField,
   Typography,
 } from "@mui/material";
 import { EventSeat, FolderOpen, GroupAdd } from "@mui/icons-material";
@@ -186,24 +185,6 @@ export default function TournamentTdfLoader({
       {fileReadError ? (
         <Alert severity="error">{fileReadError}</Alert>
       ) : null}
-
-      <TextField
-        fullWidth
-        multiline
-        minRows={10}
-        maxRows={20}
-        label="Contenido (XML / .tdf)"
-        placeholder='<?xml version="1.0" ...><tournament ...>'
-        value={raw}
-        onChange={(e) => {
-          setRaw(e.target.value);
-          setLoadedFileName(null);
-          setLastRoundSync(null);
-          syncRound.reset();
-        }}
-        size="small"
-        sx={{ "& textarea": { fontFamily: "monospace", fontSize: 12 } }}
-      />
 
       {raw.trim() && parsed.error && (
         <Alert severity="error">{parsed.error}</Alert>
@@ -398,6 +379,41 @@ export default function TournamentTdfLoader({
                               parsed.players,
                               roundNum,
                             ),
+                            roundSnapshot: {
+                              pairings: list.map((m) => {
+                                const mi = matchIndexByRef.get(m);
+                                const before =
+                                  mi !== undefined
+                                    ? recordsBeforeEachMatch[mi]
+                                    : undefined;
+                                const p2 = m.player2UserId?.trim() ?? "";
+                                const isBye = Boolean(
+                                  m.player1UserId && !p2,
+                                );
+                                return {
+                                  tableNumber: m.tableNumber ?? "",
+                                  player1PopId: m.player1UserId,
+                                  player2PopId: p2,
+                                  player1Name:
+                                    names.get(m.player1UserId) ??
+                                    m.player1UserId,
+                                  player2Name: isBye
+                                    ? ""
+                                    : names.get(p2) ?? p2,
+                                  player1Record: {
+                                    wins: before?.p1.wins ?? 0,
+                                    losses: before?.p1.losses ?? 0,
+                                    ties: before?.p1.ties ?? 0,
+                                  },
+                                  player2Record: {
+                                    wins: before?.p2.wins ?? 0,
+                                    losses: before?.p2.losses ?? 0,
+                                    ties: before?.p2.ties ?? 0,
+                                  },
+                                  isBye,
+                                };
+                              }),
+                            },
                           });
                           setLastRoundSync(data);
                         } catch {
@@ -491,6 +507,9 @@ export default function TournamentTdfLoader({
               Mesas aplicadas: <strong>{lastRoundSync.appliedMatches}</strong>.
               {" "}
               Récords W/L/T en listado: <strong>{lastRoundSync.recordsApplied}</strong>.
+              {" "}
+              Historial de rondas guardado: <strong>{lastRoundSync.roundSnapshotsCount}</strong>{" "}
+              entrada(s).
               {lastRoundSync.skipped.length > 0 ? (
                 <>
                   {" "}
