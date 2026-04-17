@@ -17,6 +17,7 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import CheckCircle from '@mui/icons-material/CheckCircle'
 import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked'
 import CircularProgress from '@mui/material/CircularProgress'
+import AppVersion from '@/components/AppVersion'
 import Header from '@/components/Header'
 import {
   getPasswordRuleChecks,
@@ -366,6 +367,9 @@ export default function RegisterPage() {
             </Link>
           </Typography>
         </Paper>
+      </Box>
+      <Box component="footer" sx={{ py: 2, textAlign: 'center' }}>
+        <AppVersion />
       </Box>
     </Box>
   )

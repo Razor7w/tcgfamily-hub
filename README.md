@@ -1,5 +1,9 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Versionado
+
+La versión del producto está en `package.json` y se muestra en la web (login, registro y menú lateral del panel). Cambios documentados: [`CHANGELOG.md`](./CHANGELOG.md). Criterio SemVer en fase 0.x: [`VERSIONING.md`](./VERSIONING.md). **Cómo publicar releases:** [`docs/RELEASES.md`](./docs/RELEASES.md).
+
 ## Getting Started
 
 First, run the development server:

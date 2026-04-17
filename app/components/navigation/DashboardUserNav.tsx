@@ -2,6 +2,7 @@
 
 import { Email, Event, Home, Person } from "@mui/icons-material";
 import {
+  Box,
   Divider,
   List,
   ListItem,
@@ -10,6 +11,7 @@ import {
   ListItemText,
   Stack,
 } from "@mui/material";
+import AppVersion from "@/components/AppVersion";
 import SignOutList from "@/components/auth/SignOutList";
 import AdminSidebarClient from "@/components/navigation/AdminSidebarClient";
 import { useDashboardModulesFromLayout } from "@/contexts/DashboardModulesContext";
@@ -70,6 +72,10 @@ export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
           <SignOutList />
         </List>
       </nav>
+
+      <Box sx={{ px: 2, pt: 2 }}>
+        <AppVersion align="left" />
+      </Box>
     </Stack>
   );
 }
