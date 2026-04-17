@@ -41,16 +41,19 @@ export default function TorneoSemanaDetallePage() {
           background: `linear-gradient(165deg, ${alpha(t.palette.primary.main, 0.06)} 0%, ${t.palette.background.default} 38%, ${t.palette.background.default} 100%)`,
         })}
       >
-        <Container maxWidth="md">
+        <Container maxWidth="lg" sx={{ px: { xs: 2, sm: 3 } }}>
           <Button
             component={Link}
             href="/dashboard/torneos-semana"
             startIcon={<ArrowBackIcon />}
+            size="medium"
             sx={(t) => ({
-              mb: 2.5,
+              mb: { xs: 2, sm: 2.5 },
+              ml: { xs: -0.5, sm: 0 },
               color: "text.secondary",
               fontWeight: 600,
               textTransform: "none",
+              minHeight: 44,
               "&:hover": {
                 bgcolor: alpha(t.palette.primary.main, 0.08),
                 color: "primary.main",
@@ -72,7 +75,7 @@ export default function TorneoSemanaDetallePage() {
               </Button>
             </Alert>
           ) : !ev ? null : (
-            <Stack spacing={{ xs: 2.5, sm: 3.5 }}>
+            <Stack spacing={{ xs: 2.25, sm: 3 }}>
               {!ev.myRegistration ? (
                 <Alert severity="info">
                   No estás preinscrito en este torneo. Preinscríbete desde la vista de eventos
@@ -100,7 +103,7 @@ export default function TorneoSemanaDetallePage() {
                   <Card
                     elevation={0}
                     sx={(t) => ({
-                      borderRadius: 3,
+                      borderRadius: { xs: 2.5, sm: 3 },
                       border: "1px solid",
                       borderColor: alpha(t.palette.text.primary, 0.08),
                       overflow: "hidden",
@@ -109,7 +112,7 @@ export default function TorneoSemanaDetallePage() {
                     <Box
                       sx={(t) => ({
                         px: { xs: 2, sm: 2.5 },
-                        py: 1.75,
+                        py: { xs: 1.5, sm: 1.75 },
                         background: `linear-gradient(90deg, ${alpha(t.palette.primary.main, 0.07)} 0%, ${alpha(t.palette.primary.dark, 0.02)} 100%)`,
                         borderBottom: "1px solid",
                         borderColor: "divider",
@@ -119,7 +122,7 @@ export default function TorneoSemanaDetallePage() {
                         Perfil de jugador
                       </Typography>
                     </Box>
-                    <CardContent sx={{ pt: 2.5, pb: 2.5, px: { xs: 2, sm: 2.5 } }}>
+                    <CardContent sx={{ pt: { xs: 2, sm: 2.5 }, pb: { xs: 2.25, sm: 2.5 }, px: { xs: 2, sm: 2.5 } }}>
                       <Stack
                         direction={{ xs: "column", sm: "row" }}
                         spacing={2}

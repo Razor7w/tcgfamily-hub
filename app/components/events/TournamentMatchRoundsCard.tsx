@@ -198,6 +198,143 @@ function renderPokemonOption(
   );
 }
 
+/** Lista compacta en viewport estrecho: evita tabla horizontal y mejora toques. */
+function RoundMobileCard({
+  row,
+  slugToLabel,
+  onEdit,
+  onDelete,
+  deleteDisabled,
+}: {
+  row: ParticipantMatchRoundDTO;
+  slugToLabel: Map<string, string>;
+  onEdit: () => void;
+  onDelete: () => void;
+  deleteDisabled: boolean;
+}) {
+  const outcome = roundTableOutcome(row);
+  const p = matchRowAccentParts(outcome);
+  return (
+    <Box
+      role="button"
+      tabIndex={0}
+      onClick={onEdit}
+      onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onEdit();
+        }
+      }}
+      aria-label={`Editar ronda ${row.roundNum}`}
+      sx={(t) => ({
+        borderRadius: 2,
+        border: "1px solid",
+        borderColor: "divider",
+        borderLeft: "4px solid",
+        borderLeftColor: p.borderLeftColor,
+        bgcolor: p.bgcolor,
+        p: { xs: 1.5, sm: 1.75 },
+        cursor: "pointer",
+        transition: "background-color 0.15s ease",
+        outlineOffset: 2,
+        WebkitTapHighlightColor: "transparent",
+        "&:focus-visible": {
+          outline: `2px solid ${t.palette.primary.main}`,
+        },
+        "&:hover": {
+          bgcolor:
+            outcome !== "neutral" && p.hoverBg
+              ? p.hoverBg
+              : t.palette.action.hover,
+        },
+      })}
+    >
+      <Stack
+        direction="row"
+        spacing={1.25}
+        alignItems="flex-start"
+        justifyContent="space-between"
+      >
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            fontWeight={700}
+            sx={{
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              display: "block",
+              mb: 0.75,
+            }}
+          >
+            Ronda {row.roundNum}
+          </Typography>
+          <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+            {row.specialOutcome ? (
+              <Chip size="small" label={summarizeRoundResult(row)} />
+            ) : row.opponentDeckSlugs.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                —
+              </Typography>
+            ) : (
+              row.opponentDeckSlugs.map((slug) => (
+                <Tooltip
+                  key={slug}
+                  title={slugToLabel.get(slug) ?? slug}
+                  placement="top"
+                >
+                  <Box sx={{ cursor: "default", display: "inline-flex" }}>
+                    <LimitlessSpriteThumb slug={slug} size={36} />
+                  </Box>
+                </Tooltip>
+              ))
+            )}
+          </Stack>
+        </Box>
+        <Stack
+          direction="row"
+          spacing={0.25}
+          alignItems="flex-start"
+          flexShrink={0}
+        >
+          <Box
+            component="span"
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minWidth: 44,
+              minHeight: 40,
+              px: 1.25,
+              py: 0.5,
+              borderRadius: 2,
+              fontWeight: 800,
+              fontSize: "0.8125rem",
+              letterSpacing: "0.04em",
+              lineHeight: 1.2,
+              ...resultPillSx(outcome),
+            }}
+          >
+            {summarizeRoundResult(row)}
+          </Box>
+          <IconButton
+            size="medium"
+            aria-label="Eliminar ronda"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            disabled={deleteDisabled}
+            sx={{ mt: -0.25 }}
+          >
+            <DeleteOutlineIcon fontSize="small" />
+          </IconButton>
+        </Stack>
+      </Stack>
+    </Box>
+  );
+}
+
 function subtypeLabel(s: string | null): string | null {
   if (!s) return null;
   if (s === "casual") return "Casual";
@@ -556,7 +693,7 @@ export default function TournamentMatchRoundsCard({
     <Card
       elevation={0}
       sx={{
-        borderRadius: 3,
+        borderRadius: { xs: 2.5, sm: 3 },
         border: "1px solid",
         borderColor: (t) => alpha(t.palette.text.primary, 0.08),
         overflow: "hidden",
@@ -565,7 +702,7 @@ export default function TournamentMatchRoundsCard({
       <Box
         sx={{
           px: { xs: 2, sm: 3 },
-          py: 2.5,
+          py: { xs: 2, sm: 2.5 },
           background: (t) =>
             `linear-gradient(135deg, ${alpha(t.palette.primary.main, 0.06)} 0%, ${alpha(
               t.palette.primary.dark,
@@ -573,103 +710,149 @@ export default function TournamentMatchRoundsCard({
             )} 100%)`,
         }}
       >
-        <Stack spacing={2}>
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={2}
-          justifyContent="space-between"
-          alignItems={{ xs: "flex-start", md: "flex-start" }}
-        >
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Stack
-              direction="row"
-              alignItems="center"
-              spacing={1}
-              flexWrap="wrap"
-              useFlexGap
-              sx={{ mb: 0.75 }}
-            >
-              <Typography variant="h5" fontWeight={800} component="h2" sx={{ m: 0 }}>
-                {title}
-              </Typography>
-              {eventState ? (
-                <Chip
-                  size="small"
-                  label={eventStateLabel(eventState)}
-                  color={eventStateChipColor(eventState)}
-                  sx={{ fontWeight: 700 }}
-                />
-              ) : null}
-            </Stack>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-              {dateStr}
-            </Typography>
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              {location ? (
-                <Chip
-                  size="small"
-                  icon={<PlaceOutlinedIcon sx={{ fontSize: 16 }} />}
-                  label={location}
-                  variant="outlined"
-                />
-              ) : null}
-              {st ? (
-                <Chip size="small" label={st} color="primary" variant="outlined" />
-              ) : null}
-              <Chip size="small" label="Torneo Pokémon" variant="outlined" />
-            </Stack>
-          </Box>
+        <Stack spacing={{ xs: 2, sm: 2.25 }}>
           <Stack
-            alignItems={{ xs: "flex-start", md: "flex-end" }}
-            spacing={1.25}
-            sx={{
-              flexShrink: 0,
-              p: 2,
-              borderRadius: 2,
-              border: "1px solid",
-              borderColor: (t) => alpha(t.palette.primary.main, 0.2),
-              bgcolor: (t) => alpha(t.palette.primary.main, 0.05),
-              minWidth: { md: 200 },
-            }}
+            direction={{ xs: "column", md: "row" }}
+            spacing={2}
+            justifyContent="space-between"
+            alignItems={{ xs: "stretch", md: "flex-start" }}
           >
-            <Typography
-              variant="overline"
-              color="text.secondary"
-              sx={{ lineHeight: 1.2, letterSpacing: "0.08em" }}
-            >
-              {showOfficialRecord ? "Récord oficial" : "Tu récord"}
-            </Typography>
-            <Typography
-              variant="h4"
-              fontWeight={800}
-              sx={{ fontVariantNumeric: "tabular-nums", lineHeight: 1.1 }}
-            >
-              {record.wins}-{record.losses}-{record.ties}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-              {showOfficialRecord
-                ? "Victorias · Derrotas · Empates (torneo / TDF)"
-                : "Victorias · Derrotas · Tablas (mesas que reportaste)"}
-            </Typography>
-            <Stack direction="row" spacing={0.75} sx={{ pt: 0.5 }}>
-              {myDeckSlugs.length > 0 ? (
-                myDeckSlugs.map((slug) => (
-                  <LimitlessSpriteThumb key={slug} slug={slug} size={40} circular />
-                ))
-              ) : (
-                <Typography variant="caption" color="text.secondary" fontStyle="italic">
-                  Sin Pokémon en perfil
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Stack
+                direction="row"
+                alignItems="center"
+                spacing={1}
+                flexWrap="wrap"
+                useFlexGap
+                sx={{ mb: 0.75 }}
+              >
+                <Typography
+                  variant="h5"
+                  fontWeight={800}
+                  component="h2"
+                  sx={{
+                    m: 0,
+                    fontSize: { xs: "1.2rem", sm: "1.5rem" },
+                    lineHeight: 1.25,
+                  }}
+                >
+                  {title}
                 </Typography>
-              )}
-            </Stack>
+                {eventState ? (
+                  <Chip
+                    size="small"
+                    label={eventStateLabel(eventState)}
+                    color={eventStateChipColor(eventState)}
+                    sx={{ fontWeight: 700 }}
+                  />
+                ) : null}
+              </Stack>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mb: 1.5, lineHeight: 1.5 }}
+              >
+                {dateStr}
+              </Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {location ? (
+                  <Chip
+                    size="small"
+                    icon={<PlaceOutlinedIcon sx={{ fontSize: 16 }} />}
+                    label={location}
+                    variant="outlined"
+                    sx={{ maxWidth: "100%", "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" } }}
+                  />
+                ) : null}
+                {st ? (
+                  <Chip size="small" label={st} color="primary" variant="outlined" />
+                ) : null}
+                <Chip size="small" label="Torneo Pokémon" variant="outlined" />
+              </Stack>
+            </Box>
+            <Stack
+              alignItems={{ xs: "stretch", md: "flex-end" }}
+              spacing={1.25}
+              sx={{
+                flexShrink: 0,
+                width: { xs: "100%", md: "auto" },
+                p: { xs: 1.75, sm: 2 },
+                borderRadius: 2,
+                border: "1px solid",
+                borderColor: (t) => alpha(t.palette.primary.main, 0.2),
+                bgcolor: (t) => alpha(t.palette.primary.main, 0.05),
+                minWidth: { md: 220 },
+              }}
+            >
+              <Stack
+                direction={{ xs: "row", md: "column" }}
+                spacing={{ xs: 2, md: 1.25 }}
+                alignItems={{ xs: "center", md: "flex-end" }}
+                justifyContent={{ xs: "space-between", md: "flex-end" }}
+              >
+                <Box sx={{ textAlign: { xs: "left", md: "right" }, minWidth: 0 }}>
+                  <Typography
+                    variant="overline"
+                    color="text.secondary"
+                    sx={{ lineHeight: 1.2, letterSpacing: "0.08em", display: "block" }}
+                  >
+                    {showOfficialRecord ? "Récord oficial" : "Tu récord"}
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    fontWeight={800}
+                    sx={{
+                      fontVariantNumeric: "tabular-nums",
+                      lineHeight: 1.1,
+                      fontSize: { xs: "1.65rem", sm: "2.125rem" },
+                    }}
+                  >
+                    {record.wins}-{record.losses}-{record.ties}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{
+                      display: "block",
+                      mt: 0.25,
+                      maxWidth: { xs: "min(100%, 200px)", md: "none" },
+                    }}
+                  >
+                    {showOfficialRecord
+                      ? "Victorias · Derrotas · Empates (torneo / TDF)"
+                      : "Victorias · Derrotas · Tablas (mesas que reportaste)"}
+                  </Typography>
+                </Box>
+                <Stack
+                  direction="row"
+                  spacing={0.75}
+                  sx={{ pt: { xs: 0, md: 0.5 }, flexShrink: 0 }}
+                  justifyContent="flex-end"
+                >
+                  {myDeckSlugs.length > 0 ? (
+                    myDeckSlugs.map((slug) => (
+                      <LimitlessSpriteThumb key={slug} slug={slug} size={40} circular />
+                    ))
+                  ) : (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      fontStyle="italic"
+                      sx={{ textAlign: { xs: "right", lg: "right" }, maxWidth: 120 }}
+                    >
+                      Sin Pokémon en perfil
+                    </Typography>
+                  )}
+                </Stack>
+              </Stack>
             </Stack>
           </Stack>
 
           {eventState === "close" && tournamentPlacement ? (
             <Box
               sx={(t) => ({
-                py: 1.5,
-                px: 2,
+                py: { xs: 1.25, sm: 1.5 },
+                px: { xs: 1.5, sm: 2 },
                 borderRadius: 2,
                 bgcolor: alpha(t.palette.success.main, 0.08),
                 border: "1px solid",
@@ -677,12 +860,24 @@ export default function TournamentMatchRoundsCard({
               })}
             >
               <Stack direction="row" spacing={1.25} alignItems="flex-start">
-                <EmojiEventsIcon sx={{ color: "success.main", fontSize: 22, mt: 0.25 }} />
-                <Box>
-                  <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ display: "block", mb: 0.5 }}>
+                <EmojiEventsIcon
+                  sx={{
+                    color: "success.main",
+                    fontSize: { xs: 20, sm: 22 },
+                    mt: 0.25,
+                    flexShrink: 0,
+                  }}
+                />
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    fontWeight={700}
+                    sx={{ display: "block", mb: 0.5 }}
+                  >
                     Resultado en clasificación
                   </Typography>
-                  <Typography variant="body2" component="div">
+                  <Typography variant="body2" component="div" sx={{ overflowWrap: "anywhere" }}>
                     {tournamentPlacement.isDnf ? (
                       <>
                         Categoría{" "}
@@ -712,7 +907,11 @@ export default function TournamentMatchRoundsCard({
               </Stack>
             </Box>
           ) : eventState === "close" && !tournamentPlacement ? (
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", px: 0.5 }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", px: { xs: 0, sm: 0.5 }, lineHeight: 1.5 }}
+            >
               Si no ves tu puesto, revisa que tu POP ID coincida con el del torneo importado.
             </Typography>
           ) : null}
@@ -721,8 +920,12 @@ export default function TournamentMatchRoundsCard({
 
       <Divider />
 
-      <Box sx={{ px: { xs: 2, sm: 3 }, py: 2.5 }}>
-        <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 0.5, letterSpacing: "-0.01em" }}>
+      <Box sx={{ px: { xs: 2, sm: 3 }, py: { xs: 2, sm: 2.5 } }}>
+        <Typography
+          variant="subtitle1"
+          fontWeight={800}
+          sx={{ mb: 0.5, letterSpacing: "-0.01em", fontSize: { xs: "1rem", sm: "1.25rem" } }}
+        >
           Rondas
         </Typography>
         <Typography
@@ -732,7 +935,7 @@ export default function TournamentMatchRoundsCard({
         >
           {rounds.length === 0
             ? "El emparejamiento oficial no se muestra aquí: puedes llevar tu propio registro de mesas."
-            : "Clic en una fila para editarla."}
+            : "Pulsa una fila o tarjeta para editarla."}
         </Typography>
         {showOfficialRecord ? (
           <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: "block", lineHeight: 1.5 }}>
@@ -777,15 +980,29 @@ export default function TournamentMatchRoundsCard({
             </Typography>
           </Box>
         ) : (
-          <TableContainer
-            sx={{
-              mb: 2,
-              borderRadius: 2,
-              border: "1px solid",
-              borderColor: "divider",
-              overflow: "hidden",
-            }}
-          >
+          <>
+            <Stack spacing={1.25} sx={{ display: { xs: "flex", sm: "none" }, mb: 2 }}>
+              {rounds.map((row) => (
+                <RoundMobileCard
+                  key={row.roundNum}
+                  row={row}
+                  slugToLabel={slugToLabel}
+                  onEdit={() => openEditRound(row)}
+                  onDelete={() => handleDeleteRound(row.roundNum)}
+                  deleteDisabled={saveRounds.isPending}
+                />
+              ))}
+            </Stack>
+            <TableContainer
+              sx={{
+                mb: 2,
+                display: { xs: "none", sm: "block" },
+                borderRadius: 2,
+                border: "1px solid",
+                borderColor: "divider",
+                overflow: "hidden",
+              }}
+            >
             <Table size="small">
               <TableHead>
                 <TableRow
@@ -932,6 +1149,7 @@ export default function TournamentMatchRoundsCard({
               </TableBody>
             </Table>
           </TableContainer>
+          </>
         )}
 
         {showRoundFormToggle ? (
@@ -982,7 +1200,7 @@ export default function TournamentMatchRoundsCard({
           <Box
             sx={{
               mt: 2,
-              p: 2,
+              p: { xs: 1.5, sm: 2 },
               borderRadius: 2,
               border: "1px solid",
               borderColor: "divider",
