@@ -14,12 +14,16 @@ function slugToLabel(slug: string): string {
     .join(" ");
 }
 
+/**
+ * Lista completa de entradas `pokemon` en PokéAPI (incluye formas: mega, Gmax, regionales, etc.).
+ * `pokemon-species` solo trae una fila por especie y omite Megas y otras formas con slug propio.
+ */
 async function fetchAllSpecies(): Promise<PokemonSpeciesOption[]> {
-  const first = await fetch("https://pokeapi.co/api/v2/pokemon-species?limit=1");
+  const first = await fetch("https://pokeapi.co/api/v2/pokemon?limit=1");
   if (!first.ok) throw new Error("No se pudo cargar la lista de Pokémon");
   const meta = (await first.json()) as { count: number };
   const res = await fetch(
-    `https://pokeapi.co/api/v2/pokemon-species?limit=${meta.count}`,
+    `https://pokeapi.co/api/v2/pokemon?limit=${meta.count}`,
   );
   if (!res.ok) throw new Error("No se pudo cargar la lista de Pokémon");
   const data = (await res.json()) as {
@@ -32,11 +36,12 @@ async function fetchAllSpecies(): Promise<PokemonSpeciesOption[]> {
 }
 
 /**
- * Lista completa de especies (PokéAPI) para autocompletar; cache larga en cliente.
+ * Lista completa de formas PokéAPI (`/pokemon`) para autocompletar; incluye mega evoluciones y
+ * otras formas con nombre propio; cache larga en cliente.
  */
 export function usePokemonSpeciesOptions() {
   return useQuery({
-    queryKey: ["pokemon-species-all"],
+    queryKey: ["pokemon-forms-all"],
     queryFn: fetchAllSpecies,
     staleTime: 1000 * 60 * 60 * 24,
     gcTime: 1000 * 60 * 60 * 24 * 7,
