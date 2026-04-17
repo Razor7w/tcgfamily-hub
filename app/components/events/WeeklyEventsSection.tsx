@@ -175,8 +175,15 @@ function TournamentFinishedStandingsTabs({
           <Tab key={c.categoryIndex} label={standingsTabLabel(c.categoryIndex)} />
         ))}
       </Tabs>
-      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
-        <Table size="small">
+      <TableContainer
+        component={Paper}
+        variant="outlined"
+        sx={{
+          borderRadius: 2,
+          maxHeight: { xs: "min(70vh, 520px)", sm: 520 },
+        }}
+      >
+        <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
               <TableCell width={72}>Puesto</TableCell>
@@ -877,7 +884,7 @@ export default function WeeklyEventsSection({
                                       setStandingsOpenForEventId(selectedEvent._id)
                                     }
                                   >
-                                    Ver standings (top 8)
+                                    Ver standings
                                   </Button>
                                 ) : (
                                   <Alert severity="info" variant="outlined">
@@ -1250,7 +1257,7 @@ export default function WeeklyEventsSection({
                           aria-labelledby="standings-dialog-title"
                         >
                           <DialogTitle id="standings-dialog-title">
-                            Standings (top 8)
+                            Clasificación
                           </DialogTitle>
                           <Typography
                             variant="body2"

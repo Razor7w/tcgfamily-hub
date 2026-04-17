@@ -87,11 +87,14 @@ function toPublicEvent(
 
   const tournamentClosed =
     doc.kind === "tournament" && doc.state === "close";
+  const myParticipantPopId =
+    mine && typeof mine.popId === "string" ? mine.popId : undefined;
   const standingsPublic = tournamentClosed
     ? buildTournamentStandingsPublic(
         doc.tournamentStandings,
         doc.participants ?? [],
         currentUserPopId,
+        myParticipantPopId,
       )
     : null;
 

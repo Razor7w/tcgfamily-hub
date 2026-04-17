@@ -42,7 +42,7 @@ export interface PublicWeeklyEvent {
   /** Récord W-L-T persistido (TDF); null si no estás inscrito. */
   myMatchRecord: { wins: number; losses: number; ties: number } | null;
   canUnregister: boolean;
-  /** Solo si el torneo está cerrado y hay datos importados. */
+  /** Solo si el torneo está cerrado y hay datos importados (todos los puestos publicados, hasta 512/categoría). */
   standingsTopByCategory?: {
     categoryIndex: number;
     rows: { place: number; displayName: string }[];
