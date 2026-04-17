@@ -3,7 +3,11 @@ import { auth } from "@/auth";
 import connectDB from "@/lib/mongodb";
 import WeeklyEvent from "@/models/WeeklyEvent";
 import type { WeeklyEventState } from "@/models/WeeklyEvent";
-import { canPreRegisterNow, canUnregisterNow } from "@/lib/weekly-events";
+import {
+  canPreRegisterNow,
+  canUnregisterNow,
+  pairingExtrasForUser,
+} from "@/lib/weekly-events";
 
 function toPublicEvent(
   doc: {
@@ -19,16 +23,24 @@ function toPublicEvent(
     formatNotes: string;
     prizesNotes: string;
     location: string;
+    roundNum?: number;
     participants: {
+      _id: unknown;
       displayName: string;
       userId?: unknown;
       confirmed?: boolean;
+      table?: string;
+      opponentId?: string;
     }[];
   },
   now: Date,
   currentUserId?: string,
 ) {
   const startsAt = doc.startsAt;
+  const roundNum =
+    typeof doc.roundNum === "number" && Number.isFinite(doc.roundNum)
+      ? Math.max(0, Math.round(doc.roundNum))
+      : 0;
   let myRegistration: string | null = null;
   let myAttendanceConfirmed = false;
   if (currentUserId) {
@@ -38,6 +50,10 @@ function toPublicEvent(
     myRegistration = mine?.displayName ?? null;
     myAttendanceConfirmed = Boolean(mine?.confirmed);
   }
+  const { myTable, myOpponentName } = pairingExtrasForUser(
+    doc.participants,
+    currentUserId,
+  );
   const canUnregister =
     Boolean(myRegistration) &&
     canUnregisterNow(startsAt, now) &&
@@ -60,11 +76,14 @@ function toPublicEvent(
       doc.state === "close"
         ? doc.state
         : "schedule",
+    roundNum,
     participantNames: doc.participants.map((p) => p.displayName),
     participantCount: doc.participants.length,
     canPreRegister: canPreRegisterNow(startsAt, now),
     myRegistration,
     myAttendanceConfirmed,
+    myTable,
+    myOpponentName,
     canUnregister,
   };
 }
@@ -119,7 +138,15 @@ export async function GET(request: NextRequest) {
           prizesNotes: d.prizesNotes ?? "",
           location: d.location ?? "",
           state: d.state,
-          participants: d.participants ?? [],
+          roundNum: d.roundNum,
+          participants: (d.participants ?? []) as unknown as {
+            _id: unknown;
+            displayName: string;
+            userId?: unknown;
+            confirmed?: boolean;
+            table?: string;
+            opponentId?: string;
+          }[],
         },
         now,
         userId,

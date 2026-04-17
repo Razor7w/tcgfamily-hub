@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import connectDB from "@/lib/mongodb";
 import WeeklyEvent from "@/models/WeeklyEvent";
-import { canPreRegisterNow, canUnregisterNow } from "@/lib/weekly-events";
+import {
+  canPreRegisterNow,
+  canUnregisterNow,
+  pairingExtrasForUser,
+} from "@/lib/weekly-events";
 
 type LeanEvent = {
   _id: unknown;
@@ -16,7 +20,15 @@ type LeanEvent = {
   formatNotes?: string;
   prizesNotes?: string;
   location?: string;
-  participants?: { displayName: string; userId?: unknown; confirmed?: boolean }[];
+  roundNum?: number;
+  participants?: {
+    _id: unknown;
+    displayName: string;
+    userId?: unknown;
+    confirmed?: boolean;
+    table?: string;
+    opponentId?: string;
+  }[];
 };
 
 export async function GET(
@@ -52,6 +64,11 @@ export async function GET(
     );
     const myRegistration = mine?.displayName ?? null;
     const myAttendanceConfirmed = Boolean(mine?.confirmed);
+    const roundNum =
+      typeof doc.roundNum === "number" && Number.isFinite(doc.roundNum)
+        ? Math.max(0, Math.round(doc.roundNum))
+        : 0;
+    const { myTable, myOpponentName } = pairingExtrasForUser(parts, uid);
     const event = {
       _id: String(doc._id),
       startsAt: startsAt.toISOString(),
@@ -64,11 +81,14 @@ export async function GET(
       formatNotes: doc.formatNotes ?? "",
       prizesNotes: doc.prizesNotes ?? "",
       location: doc.location ?? "",
+      roundNum,
       participantNames: parts.map((p) => p.displayName),
       participantCount: parts.length,
       canPreRegister: canPreRegisterNow(startsAt, now),
       myRegistration,
       myAttendanceConfirmed,
+      myTable,
+      myOpponentName,
       canUnregister:
         Boolean(myRegistration) &&
         canUnregisterNow(startsAt, now) &&

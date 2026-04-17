@@ -30,7 +30,9 @@ import {
   Groups,
   LocalActivity,
   OpenInNew,
+  PersonOutline,
   Place,
+  TableRestaurant,
   Verified,
 } from "@mui/icons-material";
 import { useSession } from "next-auth/react";
@@ -588,6 +590,15 @@ export default function WeeklyEventsSection({
                                 variant="outlined"
                               />
                             ) : null}
+                            {selectedEvent.kind === "tournament" &&
+                            selectedEvent.roundNum > 0 ? (
+                              <Chip
+                                size="small"
+                                label={`Ronda ${selectedEvent.roundNum}`}
+                                color="secondary"
+                                variant="outlined"
+                              />
+                            ) : null}
                           </Stack>
                           {selectedEvent.formatNotes ? (
                             <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
@@ -668,6 +679,53 @@ export default function WeeklyEventsSection({
                                 </Box>
                               </Typography>
                             </Stack>
+                            {selectedEvent.kind === "tournament" ? (
+                              <Stack
+                                spacing={1}
+                                sx={{
+                                  py: 1.25,
+                                  px: 1.5,
+                                  borderRadius: 2,
+                                  bgcolor: (t) => alpha(t.palette.secondary.main, 0.06),
+                                  border: 1,
+                                  borderColor: (t) => alpha(t.palette.secondary.main, 0.22),
+                                }}
+                              >
+                                <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                                  Emparejamiento
+                                </Typography>
+                                {selectedEvent.roundNum > 0 ? (
+                                  <Typography variant="body2">
+                                    Ronda <strong>{selectedEvent.roundNum}</strong>
+                                  </Typography>
+                                ) : (
+                                  <Typography variant="body2" color="text.secondary">
+                                    Ronda aún no publicada
+                                  </Typography>
+                                )}
+                                <Stack direction="row" spacing={1} alignItems="center">
+                                  <TableRestaurant fontSize="small" color="action" />
+                                  <Typography variant="body2">
+                                    Mesa{" "}
+                                    <strong>
+                                      {selectedEvent.myTable != null &&
+                                      selectedEvent.myTable.trim() !== ""
+                                        ? selectedEvent.myTable
+                                        : "—"}
+                                    </strong>
+                                  </Typography>
+                                </Stack>
+                                <Stack direction="row" spacing={1} alignItems="center">
+                                  <PersonOutline fontSize="small" color="action" />
+                                  <Typography variant="body2">
+                                    Oponente{" "}
+                                    <strong>
+                                      {selectedEvent.myOpponentName ?? "—"}
+                                    </strong>
+                                  </Typography>
+                                </Stack>
+                              </Stack>
+                            ) : null}
                             {selectedEvent.myAttendanceConfirmed ? (
                               <Alert
                                 severity="success"

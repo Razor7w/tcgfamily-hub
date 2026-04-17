@@ -24,12 +24,18 @@ export interface PublicWeeklyEvent {
   prizesNotes: string;
   location: string;
   state: WeeklyEventState;
+  /** Ronda actual del torneo (0 = sin iniciar / sin dato). */
+  roundNum: number;
   participantNames: string[];
   participantCount: number;
   canPreRegister: boolean;
   myRegistration: string | null;
   /** Confirmado por admin en el panel (asistencia). */
   myAttendanceConfirmed: boolean;
+  /** Mesa si estás inscrito; null si no. */
+  myTable: string | null;
+  /** Nombre del oponente si hay emparejamiento; null si no aplica. */
+  myOpponentName: string | null;
   canUnregister: boolean;
 }
 
