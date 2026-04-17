@@ -9,7 +9,9 @@ import {
   type Key,
 } from "react";
 import AddIcon from "@mui/icons-material/Add";
+import CloseIcon from "@mui/icons-material/Close";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import ShareIcon from "@mui/icons-material/Share";
 import TableRowsOutlinedIcon from "@mui/icons-material/TableRowsOutlined";
 import HandshakeOutlinedIcon from "@mui/icons-material/HandshakeOutlined";
 import PersonOffOutlinedIcon from "@mui/icons-material/PersonOffOutlined";
@@ -22,6 +24,7 @@ import Card from "@mui/material/Card";
 import Chip from "@mui/material/Chip";
 import Collapse from "@mui/material/Collapse";
 import Divider from "@mui/material/Divider";
+import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Table from "@mui/material/Table";
@@ -445,6 +448,7 @@ export default function TournamentMatchRoundsCard({
   const saveRounds = useSaveMyMatchRounds(eventId);
 
   const [formOpen, setFormOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   /** `null` = modo añadir; número = editar esa ronda. */
   const [editingRoundNum, setEditingRoundNum] = useState<number | null>(null);
   const [slot1, setSlot1] = useState<PokemonSpeciesOption | null>(null);
@@ -686,9 +690,21 @@ export default function TournamentMatchRoundsCard({
     [startsAtIso],
   );
 
+  /** Solo día, mes y año (p. ej. panel compartir). */
+  const dateDayMonthYear = useMemo(
+    () =>
+      new Date(startsAtIso).toLocaleDateString("es-CL", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+    [startsAtIso],
+  );
+
   const st = subtypeLabel(pokemonSubtype);
 
   return (
+    <>
     <Card
       elevation={0}
       sx={{
@@ -719,32 +735,50 @@ export default function TournamentMatchRoundsCard({
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Stack
                 direction="row"
-                alignItems="center"
+                alignItems="flex-start"
+                justifyContent="space-between"
                 spacing={1}
-                flexWrap="wrap"
-                useFlexGap
                 sx={{ mb: 0.75 }}
               >
-                <Typography
-                  variant="h5"
-                  fontWeight={800}
-                  component="h2"
-                  sx={{
-                    m: 0,
-                    fontSize: { xs: "1.2rem", sm: "1.5rem" },
-                    lineHeight: 1.25,
-                  }}
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  spacing={1}
+                  flexWrap="wrap"
+                  useFlexGap
+                  sx={{ flex: 1, minWidth: 0 }}
                 >
-                  {title}
-                </Typography>
-                {eventState ? (
-                  <Chip
+                  <Typography
+                    variant="h5"
+                    fontWeight={800}
+                    component="h2"
+                    sx={{
+                      m: 0,
+                      fontSize: { xs: "1.2rem", sm: "1.5rem" },
+                      lineHeight: 1.25,
+                    }}
+                  >
+                    {title}
+                  </Typography>
+                  {eventState ? (
+                    <Chip
+                      size="small"
+                      label={eventStateLabel(eventState)}
+                      color={eventStateChipColor(eventState)}
+                      sx={{ fontWeight: 700 }}
+                    />
+                  ) : null}
+                </Stack>
+                <Tooltip title="Compartir resumen">
+                  <IconButton
                     size="small"
-                    label={eventStateLabel(eventState)}
-                    color={eventStateChipColor(eventState)}
-                    sx={{ fontWeight: 700 }}
-                  />
-                ) : null}
+                    onClick={() => setShareOpen(true)}
+                    aria-label="Compartir resumen"
+                    sx={{ flexShrink: 0, mt: -0.25 }}
+                  >
+                    <ShareIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
               </Stack>
               <Typography
                 variant="body2"
@@ -1001,11 +1035,15 @@ export default function TournamentMatchRoundsCard({
                       fontSize: "0.75rem",
                       textTransform: "uppercase",
                       letterSpacing: "0.06em",
+                      whiteSpace: "nowrap",
+                      verticalAlign: "middle",
+                      lineHeight: 1.2,
+                      py: 1,
                     },
                   })}
                 >
                   <TableCell width={72}>Ronda</TableCell>
-                  <TableCell>Deck rival</TableCell>
+                  <TableCell sx={{ minWidth: 0 }}>Deck rival</TableCell>
                   <TableCell width={120} align="right">
                     Resultado
                   </TableCell>
@@ -1385,5 +1423,336 @@ export default function TournamentMatchRoundsCard({
         </Collapse>
       </Box>
     </Card>
+
+    <Drawer
+      anchor="right"
+      open={shareOpen}
+      onClose={() => setShareOpen(false)}
+      aria-labelledby="share-tournament-drawer-title"
+      slotProps={{
+        backdrop: { sx: { backgroundColor: (t) => alpha(t.palette.common.black, 0.45) } },
+      }}
+      PaperProps={{
+        sx: (t) => ({
+          width: { xs: "100%", sm: 440 },
+          maxWidth: { xs: "100%", sm: 440 },
+          height: "100%",
+          maxHeight: "100dvh",
+          display: "flex",
+          flexDirection: "column",
+          boxSizing: "border-box",
+          bgcolor: "background.paper",
+          borderLeft: { xs: "none", sm: `1px solid ${t.palette.divider}` },
+        }),
+      }}
+    >
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+          minHeight: 0,
+        }}
+      >
+        <Box
+          component="header"
+          sx={{
+            flexShrink: 0,
+            px: 2,
+            py: 1.75,
+            pr: 6,
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            position: "relative",
+          }}
+        >
+          <Typography
+            id="share-tournament-drawer-title"
+            variant="h6"
+            component="h2"
+            sx={{ fontWeight: 800, fontSize: "1.125rem", lineHeight: 1.35, pr: 1 }}
+          >
+            {title}
+          </Typography>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ mt: 0.5, lineHeight: 1.4, pr: 1 }}
+          >
+            {dateDayMonthYear}
+          </Typography>
+          <IconButton
+            aria-label="Cerrar"
+            onClick={() => setShareOpen(false)}
+            sx={{ position: "absolute", right: 4, top: 12 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflow: "auto",
+            px: 2,
+            py: 2,
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
+        <Stack spacing={2}>
+          <Card
+            elevation={0}
+            sx={{
+              borderRadius: 2,
+              border: "1px solid",
+              borderColor: (t) => alpha(t.palette.primary.main, 0.2),
+              bgcolor: (t) => alpha(t.palette.primary.main, 0.05),
+              overflow: "hidden",
+            }}
+          >
+            <Box sx={{ p: 2 }}>
+              <Stack
+                direction={{ xs: "row", sm: "column" }}
+                spacing={{ xs: 2, sm: 1.25 }}
+                alignItems={{ xs: "center", sm: "flex-end" }}
+                justifyContent={{ xs: "space-between", sm: "flex-end" }}
+              >
+                <Box sx={{ textAlign: { xs: "left", sm: "right" }, minWidth: 0, width: "100%" }}>
+                  <Typography
+                    variant="overline"
+                    color="text.secondary"
+                    sx={{ lineHeight: 1.2, letterSpacing: "0.08em", display: "block" }}
+                  >
+                    {showOfficialRecord ? "Récord oficial" : "Tu récord"}
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    component="div"
+                    fontWeight={800}
+                    sx={{
+                      fontVariantNumeric: "tabular-nums",
+                      lineHeight: 1.15,
+                      fontSize: { xs: "1.5rem", sm: "1.75rem" },
+                      display: "flex",
+                      alignItems: "baseline",
+                      justifyContent: { xs: "space-between", sm: "flex-end" },
+                      gap: { xs: 2, sm: 2.5 },
+                      flexWrap: "nowrap",
+                      width: "100%",
+                    }}
+                  >
+                    {eventState === "close" && tournamentPlacement ? (
+                      tournamentPlacement.isDnf ? (
+                        <>
+                          <Box
+                            component="span"
+                            sx={{ color: "error.main", fontWeight: 800, flexShrink: 0 }}
+                          >
+                            DNF
+                          </Box>
+                          <Box component="span" sx={{ flexShrink: 0 }}>
+                            {record.wins}-{record.losses}-{record.ties}
+                          </Box>
+                        </>
+                      ) : (
+                        <>
+                          <Box
+                            component="span"
+                            sx={{
+                              color: "success.dark",
+                              fontWeight: 800,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {tournamentPlacement.place}°
+                          </Box>
+                          <Box component="span" sx={{ flexShrink: 0 }}>
+                            {record.wins}-{record.losses}-{record.ties}
+                          </Box>
+                        </>
+                      )
+                    ) : (
+                      <Box
+                        component="span"
+                        sx={{ width: "100%", textAlign: { sm: "right" } }}
+                      >
+                        {record.wins}-{record.losses}-{record.ties}
+                      </Box>
+                    )}
+                  </Typography>
+                </Box>
+                <Stack direction="row" spacing={0.75} justifyContent="flex-end" flexShrink={0}>
+                  {myDeckSlugs.length > 0
+                    ? myDeckSlugs.map((slug) => (
+                        <LimitlessSpriteThumb key={slug} slug={slug} size={40} circular />
+                      ))
+                    : null}
+                </Stack>
+              </Stack>
+            </Box>
+          </Card>
+
+          <Card
+            elevation={0}
+            sx={{
+              borderRadius: 2,
+              border: "1px solid",
+              borderColor: "divider",
+              overflow: "hidden",
+            }}
+          >
+            <Box sx={{ px: 2, py: 2 }}>
+              <Typography
+                variant="subtitle1"
+                fontWeight={800}
+                sx={{ mb: 1.5, letterSpacing: "-0.01em" }}
+              >
+                Rondas
+              </Typography>
+              {rounds.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ py: 1, textAlign: "center" }}>
+                  —
+                </Typography>
+              ) : (
+                <TableContainer
+                  sx={{
+                    borderRadius: 1.5,
+                    border: "1px solid",
+                    borderColor: "divider",
+                    overflow: "hidden",
+                  }}
+                >
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow
+                        sx={(t) => ({
+                          bgcolor: alpha(t.palette.text.primary, 0.04),
+                          borderLeft: "4px solid transparent",
+                          "& .MuiTableCell-head": {
+                            fontWeight: 700,
+                            color: "text.secondary",
+                            fontSize: "0.75rem",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.06em",
+                            whiteSpace: "nowrap",
+                            verticalAlign: "middle",
+                            lineHeight: 1.2,
+                            py: 1,
+                          },
+                        })}
+                      >
+                        <TableCell width={72}>Ronda</TableCell>
+                        <TableCell sx={{ minWidth: 0 }}>Deck rival</TableCell>
+                        <TableCell width={120} align="right">
+                          Resultado
+                        </TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {rounds.map((row) => {
+                        const outcome = roundTableOutcome(row);
+                        const p = matchRowAccentParts(outcome);
+                        return (
+                          <TableRow
+                            key={row.roundNum}
+                            sx={{
+                              borderLeft: "4px solid",
+                              borderLeftColor: p.borderLeftColor,
+                              bgcolor: p.bgcolor,
+                            }}
+                          >
+                            <TableCell sx={{ py: 1.25 }}>
+                              <Typography
+                                fontWeight={800}
+                                variant="body2"
+                                sx={
+                                  outcome === "win"
+                                    ? { color: MATCH_WIN_COLOR }
+                                    : outcome === "loss"
+                                      ? { color: MATCH_LOSS_COLOR }
+                                      : outcome === "tie"
+                                        ? { color: MATCH_TIE_COLOR }
+                                        : { color: "text.secondary" }
+                                }
+                              >
+                                {row.roundNum}
+                              </Typography>
+                            </TableCell>
+                            <TableCell sx={{ py: 1.25 }}>
+                              <Stack
+                                direction="row"
+                                spacing={0.75}
+                                alignItems="center"
+                                flexWrap="wrap"
+                              >
+                                {row.specialOutcome ? (
+                                  <Chip size="small" label={summarizeRoundResult(row)} />
+                                ) : row.opponentDeckSlugs.length === 0 ? (
+                                  <Typography variant="body2" color="text.secondary">
+                                    —
+                                  </Typography>
+                                ) : (
+                                  row.opponentDeckSlugs.map((slug) => (
+                                    <LimitlessSpriteThumb key={slug} slug={slug} size={32} />
+                                  ))
+                                )}
+                              </Stack>
+                            </TableCell>
+                            <TableCell align="right" sx={{ py: 1.25 }}>
+                              <Box
+                                component="span"
+                                sx={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  minWidth: 44,
+                                  px: 1.25,
+                                  py: 0.5,
+                                  borderRadius: 2,
+                                  fontWeight: 800,
+                                  fontSize: "0.8125rem",
+                                  letterSpacing: "0.04em",
+                                  lineHeight: 1.2,
+                                  ...resultPillSx(outcome),
+                                }}
+                              >
+                                {summarizeRoundResult(row)}
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </Box>
+          </Card>
+        </Stack>
+        </Box>
+        <Box
+          component="footer"
+          sx={{
+            flexShrink: 0,
+            px: 2,
+            py: 2,
+            pt: 1.5,
+            borderTop: "1px solid",
+            borderColor: "divider",
+            bgcolor: "background.paper",
+          }}
+        >
+          <Button
+            fullWidth
+            onClick={() => setShareOpen(false)}
+            variant="contained"
+            sx={{ fontWeight: 700, textTransform: "none", py: 1.25 }}
+          >
+            Cerrar
+          </Button>
+        </Box>
+      </Box>
+    </Drawer>
+    </>
   );
 }
