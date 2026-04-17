@@ -1,6 +1,14 @@
 "use client";
 
-import { useMemo, useState, type HTMLAttributes, type Key } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type HTMLAttributes,
+  type KeyboardEvent,
+  type Key,
+} from "react";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import HandshakeOutlinedIcon from "@mui/icons-material/HandshakeOutlined";
@@ -262,6 +270,8 @@ export default function TournamentMatchRoundsCard({
   const saveRounds = useSaveMyMatchRounds(eventId);
 
   const [formOpen, setFormOpen] = useState(false);
+  /** `null` = modo añadir; número = editar esa ronda. */
+  const [editingRoundNum, setEditingRoundNum] = useState<number | null>(null);
   const [slot1, setSlot1] = useState<PokemonSpeciesOption | null>(null);
   const [slot2, setSlot2] = useState<PokemonSpeciesOption | null>(null);
   const [special, setSpecial] = useState<SpecialRoundOutcome | "none">("none");
@@ -269,10 +279,14 @@ export default function TournamentMatchRoundsCard({
     { result: null, turn: null },
   ]);
 
+  const isEditing = editingRoundNum != null;
+
   const nextRoundNum = useMemo(() => {
     if (rounds.length === 0) return 1;
     return Math.max(...rounds.map((r) => r.roundNum)) + 1;
   }, [rounds]);
+
+  const formRoundLabel = isEditing ? editingRoundNum : nextRoundNum;
 
   const record = useMemo(() => matchRecordFromRounds(rounds), [rounds]);
 
@@ -292,11 +306,66 @@ export default function TournamentMatchRoundsCard({
   );
 
   const resetForm = () => {
+    setEditingRoundNum(null);
     setSlot1(null);
     setSlot2(null);
     setSpecial("none");
     setGames([{ result: null, turn: null }]);
   };
+
+  const hydrateFormFromRound = useCallback(
+    (row: ParticipantMatchRoundDTO) => {
+      if (row.specialOutcome) {
+        setSpecial(row.specialOutcome);
+        setGames([{ result: null, turn: null }]);
+        setSlot1(null);
+        setSlot2(null);
+        return;
+      }
+      setSpecial("none");
+      if (row.gameResults.length === 0) {
+        setGames(reconcileMatchGames([{ result: null, turn: null }]));
+      } else {
+        const gr: GameRowState[] = row.gameResults.map((res, i) => ({
+          result: res,
+          turn: row.turnOrders[i] ?? null,
+        }));
+        setGames(reconcileMatchGames(gr));
+      }
+      const pick = (slug: string | undefined) =>
+        slug ? allOptions.find((o) => o.slug === slug) ?? null : null;
+      setSlot1(pick(row.opponentDeckSlugs[0]));
+      setSlot2(pick(row.opponentDeckSlugs[1]));
+    },
+    [allOptions],
+  );
+
+  const openEditRound = useCallback(
+    (row: ParticipantMatchRoundDTO) => {
+      setEditingRoundNum(row.roundNum);
+      setFormOpen(true);
+      hydrateFormFromRound(row);
+    },
+    [hydrateFormFromRound],
+  );
+
+  useEffect(() => {
+    if (editingRoundNum == null || allOptions.length === 0) return;
+    const row = rounds.find((r) => r.roundNum === editingRoundNum);
+    if (!row || row.specialOutcome) return;
+    setSlot1((prev) =>
+      prev ??
+      (row.opponentDeckSlugs[0]
+        ? allOptions.find((o) => o.slug === row.opponentDeckSlugs[0]) ?? null
+        : null),
+    );
+    setSlot2((prev) =>
+      prev ??
+      (row.opponentDeckSlugs[1]
+        ? allOptions.find((o) => o.slug === row.opponentDeckSlugs[1]) ?? null
+        : null),
+    );
+  }, [editingRoundNum, allOptions, rounds]);
 
   const patchGame = (idx: number, patch: Partial<GameRowState>) => {
     setGames((prev) => {
@@ -324,16 +393,26 @@ export default function TournamentMatchRoundsCard({
     return r != null && r.length >= 1;
   }, [gameRows]);
 
-  const handleAddRound = () => {
+  const handleSaveRound = () => {
+    const targetRoundNum = isEditing ? editingRoundNum! : nextRoundNum;
+    const previous =
+      isEditing && editingRoundNum != null
+        ? rounds.find((x) => x.roundNum === editingRoundNum)
+        : undefined;
+
     if (special !== "none") {
       const r: ParticipantMatchRoundDTO = {
-        roundNum: nextRoundNum,
+        ...(previous?.id ? { id: previous.id } : {}),
+        roundNum: targetRoundNum,
         opponentDeckSlugs: [],
         gameResults: [],
         turnOrders: [],
         specialOutcome: special,
       };
-      saveRounds.mutate([...rounds, r], {
+      const nextList = isEditing
+        ? rounds.map((x) => (x.roundNum === editingRoundNum ? r : x))
+        : [...rounds, r];
+      saveRounds.mutate(nextList, {
         onSuccess: () => {
           resetForm();
           setFormOpen(false);
@@ -356,14 +435,18 @@ export default function TournamentMatchRoundsCard({
     );
 
     const r: ParticipantMatchRoundDTO = {
-      roundNum: nextRoundNum,
+      ...(previous?.id ? { id: previous.id } : {}),
+      roundNum: targetRoundNum,
       opponentDeckSlugs: opp,
       gameResults: results,
       turnOrders: turns.length === results.length ? turns : [],
       specialOutcome: null,
     };
 
-    saveRounds.mutate([...rounds, r], {
+    const nextList = isEditing
+      ? rounds.map((x) => (x.roundNum === editingRoundNum ? r : x))
+      : [...rounds, r];
+    saveRounds.mutate(nextList, {
       onSuccess: () => {
         resetForm();
         setFormOpen(false);
@@ -372,6 +455,10 @@ export default function TournamentMatchRoundsCard({
   };
 
   const handleDeleteRound = (roundNum: number) => {
+    if (editingRoundNum === roundNum) {
+      resetForm();
+      setFormOpen(false);
+    }
     const next = rounds.filter((x) => x.roundNum !== roundNum);
     saveRounds.mutate(next);
   };
@@ -510,13 +597,29 @@ export default function TournamentMatchRoundsCard({
                   return (
                     <TableRow
                       key={row.roundNum}
+                      hover
+                      onClick={() => openEditRound(row)}
+                      onKeyDown={(e: KeyboardEvent<HTMLTableRowElement>) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openEditRound(row);
+                        }
+                      }}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`Editar ronda ${row.roundNum}`}
                       sx={(t) => {
                         const p = matchRowAccentParts(outcome);
                         return {
+                          cursor: "pointer",
                           borderLeft: "4px solid",
                           borderLeftColor: p.borderLeftColor,
                           bgcolor: p.bgcolor,
                           transition: "background-color 0.15s ease",
+                          outlineOffset: -2,
+                          "&:focus-visible": {
+                            outline: `2px solid ${t.palette.primary.main}`,
+                          },
                           "&:hover": {
                             bgcolor:
                               outcome !== "neutral" && p.hoverBg
@@ -598,7 +701,10 @@ export default function TournamentMatchRoundsCard({
                         <IconButton
                           size="small"
                           aria-label="Eliminar ronda"
-                          onClick={() => handleDeleteRound(row.roundNum)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteRound(row.roundNum);
+                          }}
                           disabled={saveRounds.isPending}
                         >
                           <DeleteOutlineIcon fontSize="small" />
@@ -616,7 +722,16 @@ export default function TournamentMatchRoundsCard({
           fullWidth
           variant="outlined"
           startIcon={<AddIcon />}
-          onClick={() => setFormOpen((v) => !v)}
+          onClick={() => {
+            setFormOpen((prev) => {
+              if (prev) {
+                resetForm();
+                return false;
+              }
+              resetForm();
+              return true;
+            });
+          }}
           sx={(t) => ({
             py: 1.35,
             borderStyle: "dashed",
@@ -646,7 +761,7 @@ export default function TournamentMatchRoundsCard({
             }}
           >
             <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-              Ronda {nextRoundNum}
+              {isEditing ? "Editar ronda" : "Ronda"} {formRoundLabel}
             </Typography>
 
             {special === "none" ? (
@@ -806,7 +921,7 @@ export default function TournamentMatchRoundsCard({
                   optionsLoading ||
                   (special === "none" && !canSaveNormalRound)
                 }
-                onClick={handleAddRound}
+                onClick={handleSaveRound}
                 sx={(t) => ({
                   py: 1.25,
                   fontWeight: 700,
@@ -815,7 +930,11 @@ export default function TournamentMatchRoundsCard({
                   "&:hover": { bgcolor: t.palette.grey[800] },
                 })}
               >
-                {saveRounds.isPending ? "Guardando…" : "Añadir ronda"}
+                {saveRounds.isPending
+                  ? "Guardando…"
+                  : isEditing
+                    ? "Guardar cambios"
+                    : "Añadir ronda"}
               </Button>
               <Button
                 fullWidth
