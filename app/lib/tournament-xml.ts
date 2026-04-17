@@ -22,7 +22,8 @@ export type ParsedTournamentMeta = {
 }
 
 export type ParsedPlayer = {
-  userId: string
+  /** POP ID del jugador (atributo `userid` en el XML). */
+  popId: string
   firstName: string
   lastName: string
   birthdate: string
@@ -140,10 +141,10 @@ export function parseTournamentXml(xmlString: string): ParseTournamentXmlResult 
     const list = playerNodes.getElementsByTagName('player')
     for (let i = 0; i < list.length; i++) {
       const el = list[i]
-      const userId = el.getAttribute('userid')?.trim() ?? ''
-      if (!userId) continue
+      const popId = el.getAttribute('userid')?.trim() ?? ''
+      if (!popId) continue
       players.push({
-        userId,
+        popId,
         firstName: childText(el, 'firstname'),
         lastName: childText(el, 'lastname'),
         birthdate: childText(el, 'birthdate'),
@@ -184,12 +185,12 @@ export function parseTournamentXml(xmlString: string): ParseTournamentXmlResult 
   return { meta, players, matches }
 }
 
-/** Mapa userid → nombre para mostrar en pairings. */
+/** Mapa POP ID → nombre para mostrar en pairings. */
 export function buildPlayerNameLookup(players: ParsedPlayer[]): Map<string, string> {
   const map = new Map<string, string>()
   for (const p of players) {
     const full = [p.firstName, p.lastName].filter(Boolean).join(' ').trim()
-    map.set(p.userId, full || p.userId)
+    map.set(p.popId, full || p.popId)
   }
   return map
 }

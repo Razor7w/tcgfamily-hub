@@ -184,7 +184,7 @@ export default function TournamentTdfLoader({ showIntro = true }: TournamentTdfL
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>User ID</TableCell>
+                  <TableCell>POP ID</TableCell>
                   <TableCell>Nombre</TableCell>
                   <TableCell>Nacimiento</TableCell>
                   <TableCell align="center">Starter</TableCell>
@@ -192,8 +192,8 @@ export default function TournamentTdfLoader({ showIntro = true }: TournamentTdfL
               </TableHead>
               <TableBody>
                 {parsed.players.map((p) => (
-                  <TableRow key={p.userId}>
-                    <TableCell sx={{ fontFamily: "monospace", fontSize: 13 }}>{p.userId}</TableCell>
+                  <TableRow key={p.popId}>
+                    <TableCell sx={{ fontFamily: "monospace", fontSize: 13 }}>{p.popId}</TableCell>
                     <TableCell>
                       {[p.firstName, p.lastName].filter(Boolean).join(" ") || "—"}
                     </TableCell>
