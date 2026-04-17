@@ -19,6 +19,14 @@ import DialogTitle from "@mui/material/DialogTitle";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
+import Paper from "@mui/material/Paper";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import CircularProgress from "@mui/material/CircularProgress";
 import { alpha, useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import {
@@ -27,6 +35,7 @@ import {
   ChevronRight,
   EmojiEvents,
   EventAvailable,
+  GridView,
   Groups,
   LocalActivity,
   OpenInNew,
@@ -39,6 +48,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
   PublicWeeklyEvent,
+  useEventCurrentRound,
   useRegisterWeeklyEvent,
   useUnregisterWeeklyEvent,
   useWeekEvents,
@@ -104,6 +114,10 @@ function formatCloseNote(iso: string) {
     second: "2-digit",
     hour12: false,
   });
+}
+
+function formatWlt(r: { wins: number; losses: number; ties: number }) {
+  return `${r.wins} / ${r.losses} / ${r.ties}`;
 }
 
 type WeeklyEventsSectionProps = {
@@ -239,6 +253,18 @@ export default function WeeklyEventsSection({
     participantsOpenForEventId !== null &&
     !!selectedEvent &&
     participantsOpenForEventId === selectedEvent._id;
+
+  const [currentRoundOpenForEventId, setCurrentRoundOpenForEventId] =
+    useState<string | null>(null);
+  const currentRoundModalOpen =
+    currentRoundOpenForEventId !== null &&
+    !!selectedEvent &&
+    currentRoundOpenForEventId === selectedEvent._id;
+
+  const currentRoundQuery = useEventCurrentRound(
+    currentRoundModalOpen ? selectedEvent._id : null,
+    currentRoundModalOpen,
+  );
 
   const dayKeys = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
@@ -689,65 +715,81 @@ export default function WeeklyEventsSection({
                               </Typography>
                             </Stack>
                             {selectedEvent.kind === "tournament" ? (
-                              <Stack
-                                spacing={1}
-                                sx={{
-                                  py: 1.25,
-                                  px: 1.5,
-                                  borderRadius: 2,
-                                  bgcolor: (t) => alpha(t.palette.secondary.main, 0.06),
-                                  border: 1,
-                                  borderColor: (t) => alpha(t.palette.secondary.main, 0.22),
-                                }}
-                              >
-                                <Typography variant="caption" color="text.secondary" fontWeight={700}>
-                                  Emparejamiento
-                                </Typography>
-                                {selectedEvent.roundNum > 0 ? (
-                                  <Typography variant="body2">
-                                    Ronda <strong>{selectedEvent.roundNum}</strong>
+                              <>
+                                <Stack
+                                  spacing={1}
+                                  sx={{
+                                    py: 1.25,
+                                    px: 1.5,
+                                    borderRadius: 2,
+                                    bgcolor: (t) => alpha(t.palette.secondary.main, 0.06),
+                                    border: 1,
+                                    borderColor: (t) => alpha(t.palette.secondary.main, 0.22),
+                                  }}
+                                >
+                                  <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                                    Emparejamiento
                                   </Typography>
-                                ) : (
-                                  <Typography variant="body2" color="text.secondary">
-                                    Ronda aún no publicada
-                                  </Typography>
-                                )}
-                                <Stack direction="row" spacing={1} alignItems="center">
-                                  <TableRestaurant fontSize="small" color="action" />
-                                  <Typography variant="body2">
-                                    Mesa{" "}
-                                    <strong>
-                                      {selectedEvent.myTable != null &&
-                                      selectedEvent.myTable.trim() !== ""
-                                        ? selectedEvent.myTable
-                                        : "—"}
-                                    </strong>
-                                  </Typography>
+                                  {selectedEvent.roundNum > 0 ? (
+                                    <Typography variant="body2">
+                                      Ronda <strong>{selectedEvent.roundNum}</strong>
+                                    </Typography>
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                      Ronda aún no publicada
+                                    </Typography>
+                                  )}
+                                  <Stack direction="row" spacing={1} alignItems="center">
+                                    <TableRestaurant fontSize="small" color="action" />
+                                    <Typography variant="body2">
+                                      Mesa{" "}
+                                      <strong>
+                                        {selectedEvent.myTable != null &&
+                                        selectedEvent.myTable.trim() !== ""
+                                          ? selectedEvent.myTable
+                                          : "—"}
+                                      </strong>
+                                    </Typography>
+                                  </Stack>
+                                  <Stack direction="row" spacing={1} alignItems="center">
+                                    <PersonOutline fontSize="small" color="action" />
+                                    <Typography variant="body2">
+                                      Oponente{" "}
+                                      <strong>
+                                        {selectedEvent.myOpponentName ?? "—"}
+                                      </strong>
+                                    </Typography>
+                                  </Stack>
+                                  {selectedEvent.myMatchRecord ? (
+                                    <Typography variant="body2" color="text.secondary">
+                                      Récord (W / L / T):{" "}
+                                      <Box
+                                        component="span"
+                                        fontWeight={700}
+                                        color="text.primary"
+                                      >
+                                        {selectedEvent.myMatchRecord.wins} /{" "}
+                                        {selectedEvent.myMatchRecord.losses} /{" "}
+                                        {selectedEvent.myMatchRecord.ties}
+                                      </Box>
+                                    </Typography>
+                                  ) : null}
                                 </Stack>
-                                <Stack direction="row" spacing={1} alignItems="center">
-                                  <PersonOutline fontSize="small" color="action" />
-                                  <Typography variant="body2">
-                                    Oponente{" "}
-                                    <strong>
-                                      {selectedEvent.myOpponentName ?? "—"}
-                                    </strong>
-                                  </Typography>
-                                </Stack>
-                                {selectedEvent.myMatchRecord ? (
-                                  <Typography variant="body2" color="text.secondary">
-                                    Récord (W / L / T):{" "}
-                                    <Box
-                                      component="span"
-                                      fontWeight={700}
-                                      color="text.primary"
-                                    >
-                                      {selectedEvent.myMatchRecord.wins} /{" "}
-                                      {selectedEvent.myMatchRecord.losses} /{" "}
-                                      {selectedEvent.myMatchRecord.ties}
-                                    </Box>
-                                  </Typography>
-                                ) : null}
-                              </Stack>
+                                <Button
+                                  type="button"
+                                  variant="outlined"
+                                  color="secondary"
+                                  fullWidth
+                                  size="medium"
+                                  sx={{ mt: 1 }}
+                                  startIcon={<GridView aria-hidden />}
+                                  onClick={() =>
+                                    setCurrentRoundOpenForEventId(selectedEvent._id)
+                                  }
+                                >
+                                  Ver emparejamientos de la ronda
+                                </Button>
+                              </>
                             ) : null}
                             {selectedEvent.state !== "running" ? (
                               <>
@@ -891,6 +933,137 @@ export default function WeeklyEventsSection({
                               onClick={() => setParticipantsOpenForEventId(null)}
                             >
                               Listo
+                            </Button>
+                          </DialogActions>
+                        </Dialog>
+
+                        <Dialog
+                          open={currentRoundModalOpen}
+                          onClose={() => setCurrentRoundOpenForEventId(null)}
+                          fullWidth
+                          maxWidth="md"
+                          scroll="paper"
+                          aria-labelledby="current-round-dialog-title"
+                        >
+                          <DialogTitle id="current-round-dialog-title">
+                            Ronda en curso
+                          </DialogTitle>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ px: 3, pb: 0, mt: -1 }}
+                          >
+                            {selectedEvent.title}
+                          </Typography>
+                          <DialogContent dividers sx={{ pt: 2 }}>
+                            {currentRoundQuery.isPending ? (
+                              <Stack alignItems="center" justifyContent="center" sx={{ py: 5 }}>
+                                <CircularProgress size={36} aria-label="Cargando ronda" />
+                              </Stack>
+                            ) : currentRoundQuery.isError ? (
+                              <Alert severity="error" variant="outlined">
+                                {currentRoundQuery.error instanceof Error
+                                  ? currentRoundQuery.error.message
+                                  : "No se pudo cargar la ronda"}
+                              </Alert>
+                            ) : currentRoundQuery.data ? (
+                              <Stack spacing={2}>
+                                <Typography variant="body2" color="text.secondary">
+                                  Ronda <strong>{currentRoundQuery.data.roundNum}</strong>
+                                  {currentRoundQuery.data.syncedAt
+                                    ? ` · Publicada ${new Date(
+                                        currentRoundQuery.data.syncedAt,
+                                      ).toLocaleString("es-CL")}`
+                                    : null}
+                                </Typography>
+                                {currentRoundQuery.data.roundNum === 0 ||
+                                !currentRoundQuery.data.hasSnapshot ? (
+                                  <Alert severity="info" variant="outlined">
+                                    {currentRoundQuery.data.roundNum === 0
+                                      ? "Todavía no hay una ronda en curso publicada para este torneo."
+                                      : "La tienda aún no ha publicado los emparejamientos de esta ronda. Vuelve a intentar más tarde."}
+                                  </Alert>
+                                ) : (
+                                  <TableContainer
+                                    component={Paper}
+                                    variant="outlined"
+                                    sx={{ borderRadius: 2, maxHeight: { xs: 360, sm: 480 } }}
+                                  >
+                                    <Table size="small" stickyHeader>
+                                      <TableHead>
+                                        <TableRow>
+                                          <TableCell>Mesa</TableCell>
+                                          <TableCell>Jugador 1</TableCell>
+                                          <TableCell align="center" sx={{ whiteSpace: "nowrap" }}>
+                                            W / L / T
+                                          </TableCell>
+                                          <TableCell>Jugador 2</TableCell>
+                                          <TableCell align="center" sx={{ whiteSpace: "nowrap" }}>
+                                            W / L / T
+                                          </TableCell>
+                                        </TableRow>
+                                      </TableHead>
+                                      <TableBody>
+                                        {currentRoundQuery.data.pairings.map((row, idx) => (
+                                          <TableRow key={`${row.tableNumber}-${idx}`}>
+                                            <TableCell sx={{ fontWeight: 600 }}>
+                                              {row.tableNumber || "—"}
+                                            </TableCell>
+                                            <TableCell>
+                                              {row.player1Name?.trim() || "—"}
+                                              {row.isBye ? (
+                                                <Typography
+                                                  component="span"
+                                                  variant="caption"
+                                                  color="text.secondary"
+                                                  sx={{ ml: 0.5 }}
+                                                >
+                                                  (bye)
+                                                </Typography>
+                                              ) : null}
+                                            </TableCell>
+                                            <TableCell align="center">
+                                              {formatWlt(row.player1Record)}
+                                            </TableCell>
+                                            <TableCell>
+                                              {row.isBye ? "—" : row.player2Name?.trim() || "—"}
+                                            </TableCell>
+                                            <TableCell align="center">
+                                              {row.isBye ? "—" : formatWlt(row.player2Record)}
+                                            </TableCell>
+                                          </TableRow>
+                                        ))}
+                                      </TableBody>
+                                    </Table>
+                                  </TableContainer>
+                                )}
+                                {currentRoundQuery.data.skipped.length > 0 ? (
+                                  <Alert severity="warning" variant="outlined">
+                                    <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
+                                      Mesas no aplicadas en el sistema
+                                    </Typography>
+                                    <Stack component="ul" sx={{ m: 0, pl: 2.5 }} spacing={0.5}>
+                                      {currentRoundQuery.data.skipped.map((s, i) => (
+                                        <Typography
+                                          component="li"
+                                          key={`${s.tableNumber}-${i}`}
+                                          variant="body2"
+                                        >
+                                          Mesa {s.tableNumber}: {s.reason}
+                                        </Typography>
+                                      ))}
+                                    </Stack>
+                                  </Alert>
+                                ) : null}
+                              </Stack>
+                            ) : null}
+                          </DialogContent>
+                          <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+                            <Button
+                              variant="contained"
+                              onClick={() => setCurrentRoundOpenForEventId(null)}
+                            >
+                              Cerrar
                             </Button>
                           </DialogActions>
                         </Dialog>

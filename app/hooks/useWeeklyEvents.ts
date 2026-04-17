@@ -65,6 +65,42 @@ export function useWeekEvents(weekAnchor: Date | null) {
   });
 }
 
+/** Respuesta de GET /api/events/[id]/current-round (emparejamientos publicados). */
+export type EventCurrentRoundResponse = {
+  roundNum: number;
+  syncedAt: string | null;
+  hasSnapshot: boolean;
+  pairings: {
+    tableNumber: string;
+    player1Name: string;
+    player2Name: string;
+    player1Record: { wins: number; losses: number; ties: number };
+    player2Record: { wins: number; losses: number; ties: number };
+    isBye: boolean;
+  }[];
+  skipped: { tableNumber: string; reason: string }[];
+};
+
+export function useEventCurrentRound(eventId: string | null, enabled: boolean) {
+  return useQuery<EventCurrentRoundResponse>({
+    queryKey: ["event-current-round", eventId],
+    queryFn: async () => {
+      const res = await fetch(`/api/events/${eventId}/current-round`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === "string"
+            ? data.error
+            : "Error al cargar la ronda",
+        );
+      }
+      return data as EventCurrentRoundResponse;
+    },
+    enabled: Boolean(eventId && enabled),
+    staleTime: 0,
+  });
+}
+
 export function useRegisterWeeklyEvent() {
   const queryClient = useQueryClient();
 
@@ -318,6 +354,7 @@ export function useAdminSyncEventRound() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-weekly-events"] });
       queryClient.invalidateQueries({ queryKey: ["weekly-events"] });
+      queryClient.invalidateQueries({ queryKey: ["event-current-round"] });
     },
   });
 }
