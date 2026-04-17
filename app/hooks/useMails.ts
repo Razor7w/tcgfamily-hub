@@ -200,9 +200,34 @@ export function useUpdateMail() {
       const res = await response.json();
       return res.mail as Mail;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["mails"] });
-      queryClient.invalidateQueries({ queryKey: ["mails", variables.mailId] });
+    onSuccess: (updatedMail, variables) => {
+      queryClient.setQueryData<{ mails: Mail[] }>(["mails"], (old) => {
+        if (!old?.mails) return old;
+        return {
+          mails: old.mails.map((m) =>
+            m._id === updatedMail._id ? updatedMail : m,
+          ),
+        };
+      });
+      queryClient.setQueryData(["mails", variables.mailId], updatedMail);
+
+      queryClient.setQueriesData(
+        {
+          predicate: (q) =>
+            Array.isArray(q.queryKey) &&
+            q.queryKey[0] === "mails" &&
+            q.queryKey[1] === "me",
+        },
+        (old: unknown) => {
+          const data = old as { mails: Mail[] } | undefined;
+          if (!data?.mails) return old;
+          const idx = data.mails.findIndex((m) => m._id === updatedMail._id);
+          if (idx === -1) return old;
+          const next = [...data.mails];
+          next[idx] = updatedMail;
+          return { mails: next };
+        },
+      );
     },
   });
 }
