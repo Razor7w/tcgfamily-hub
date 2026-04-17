@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EmojiEvents from "@mui/icons-material/EmojiEvents";
+import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -14,27 +15,13 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
+import { alpha } from "@mui/material/styles";
 import DashboardModuleRouteGate from "@/components/dashboard/DashboardModuleRouteGate";
 import ReportDeckDialog from "@/components/events/ReportDeckDialog";
 import TournamentMatchRoundsCard from "@/components/events/TournamentMatchRoundsCard";
 import { useDashboardEventDetail } from "@/hooks/useWeeklyEvents";
 import { getLimitlessPokemonSpriteUrl } from "@/lib/limitless-pokemon-sprite";
-import type { WeeklyEventState } from "@/models/WeeklyEvent";
 import Link from "next/link";
-
-function stateLabel(s: WeeklyEventState): string {
-  if (s === "schedule") return "Programado";
-  if (s === "running") return "En curso";
-  return "Finalizado";
-}
-
-function stateColor(
-  s: WeeklyEventState,
-): "default" | "primary" | "success" | "warning" {
-  if (s === "schedule") return "default";
-  if (s === "running") return "warning";
-  return "success";
-}
 
 export default function TorneoSemanaDetallePage() {
   const params = useParams();
@@ -48,18 +35,27 @@ export default function TorneoSemanaDetallePage() {
   return (
     <DashboardModuleRouteGate moduleId="weeklyEvents">
       <Box
-        sx={{
+        sx={(t) => ({
           minHeight: "100dvh",
-          bgcolor: "background.default",
           py: { xs: 2, sm: 4 },
-        }}
+          background: `linear-gradient(165deg, ${alpha(t.palette.primary.main, 0.06)} 0%, ${t.palette.background.default} 38%, ${t.palette.background.default} 100%)`,
+        })}
       >
         <Container maxWidth="md">
           <Button
             component={Link}
             href="/dashboard/torneos-semana"
             startIcon={<ArrowBackIcon />}
-            sx={{ mb: 2 }}
+            sx={(t) => ({
+              mb: 2.5,
+              color: "text.secondary",
+              fontWeight: 600,
+              textTransform: "none",
+              "&:hover": {
+                bgcolor: alpha(t.palette.primary.main, 0.08),
+                color: "primary.main",
+              },
+            })}
           >
             Volver a tus torneos
           </Button>
@@ -76,7 +72,7 @@ export default function TorneoSemanaDetallePage() {
               </Button>
             </Alert>
           ) : !ev ? null : (
-            <Stack spacing={3}>
+            <Stack spacing={{ xs: 2.5, sm: 3.5 }}>
               {!ev.myRegistration ? (
                 <Alert severity="info">
                   No estás preinscrito en este torneo. Preinscríbete desde la vista de eventos
@@ -88,14 +84,6 @@ export default function TorneoSemanaDetallePage() {
               ev.kind === "tournament" &&
               ev.game === "pokemon" ? (
                 <>
-                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                    <Chip
-                      size="small"
-                      label={stateLabel(ev.state)}
-                      color={stateColor(ev.state)}
-                    />
-                  </Stack>
-
                   <TournamentMatchRoundsCard
                     eventId={eventId}
                     title={ev.title}
@@ -104,33 +92,75 @@ export default function TorneoSemanaDetallePage() {
                     pokemonSubtype={ev.pokemonSubtype}
                     myDeckSlugs={ev.myDeckPokemonSlugs ?? []}
                     rounds={ev.myMatchRounds ?? []}
+                    eventState={ev.state}
                   />
 
-                  <Card variant="outlined" sx={{ borderRadius: 2 }}>
-                    <CardContent>
+                  <Card
+                    elevation={0}
+                    sx={(t) => ({
+                      borderRadius: 3,
+                      border: "1px solid",
+                      borderColor: alpha(t.palette.text.primary, 0.08),
+                      overflow: "hidden",
+                    })}
+                  >
+                    <Box
+                      sx={(t) => ({
+                        px: { xs: 2, sm: 2.5 },
+                        py: 1.75,
+                        background: `linear-gradient(90deg, ${alpha(t.palette.primary.main, 0.07)} 0%, ${alpha(t.palette.primary.dark, 0.02)} 100%)`,
+                        borderBottom: "1px solid",
+                        borderColor: "divider",
+                      })}
+                    >
+                      <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: "0.08em" }}>
+                        Perfil de jugador
+                      </Typography>
+                    </Box>
+                    <CardContent sx={{ pt: 2.5, pb: 2.5, px: { xs: 2, sm: 2.5 } }}>
                       <Stack
                         direction={{ xs: "column", sm: "row" }}
                         spacing={2}
                         alignItems={{ xs: "stretch", sm: "center" }}
                         justifyContent="space-between"
                       >
-                        <Stack direction="row" spacing={1.5} alignItems="center">
-                          <EmojiEvents color="primary" />
+                        <Stack direction="row" spacing={2} alignItems="flex-start">
+                          <Avatar
+                            variant="rounded"
+                            sx={(t) => ({
+                              width: 48,
+                              height: 48,
+                              borderRadius: 2,
+                              bgcolor: alpha(t.palette.primary.main, 0.12),
+                              color: "primary.main",
+                            })}
+                          >
+                            <EmojiEvents />
+                          </Avatar>
                           <Box>
-                            <Typography variant="subtitle1" fontWeight={600}>
-                              Pokémon de tu deck (sprites)
+                            <Typography variant="subtitle1" fontWeight={700}>
+                              Sprites de tu deck
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              Edita los dos Pokémon que quieres mostrar junto a tu nombre.
+                            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+                              Elige dos Pokémon para mostrarlos junto a tu récord en esta vista.
                             </Typography>
                           </Box>
                         </Stack>
                         <Button
-                          variant="outlined"
+                          variant="contained"
                           onClick={() => setDeckOpen(true)}
-                          sx={{ flexShrink: 0 }}
+                          sx={(t) => ({
+                            flexShrink: 0,
+                            fontWeight: 700,
+                            textTransform: "none",
+                            px: 2.5,
+                            boxShadow: "none",
+                            bgcolor: t.palette.grey[900],
+                            color: t.palette.common.white,
+                            "&:hover": { bgcolor: t.palette.grey[800], boxShadow: "none" },
+                          })}
                         >
-                          {ev.myDeckPokemonSlugs?.length ? "Editar" : "Elegir Pokémon"}
+                          {ev.myDeckPokemonSlugs?.length ? "Editar Pokémon" : "Elegir Pokémon"}
                         </Button>
                       </Stack>
                       {ev.myDeckPokemonSlugs && ev.myDeckPokemonSlugs.length > 0 ? (
@@ -139,25 +169,41 @@ export default function TorneoSemanaDetallePage() {
                           spacing={1}
                           flexWrap="wrap"
                           useFlexGap
-                          sx={{ mt: 2 }}
+                          sx={{ mt: 2.5 }}
                         >
                           {ev.myDeckPokemonSlugs.map((slug) => (
                             <Chip
                               key={slug}
                               variant="outlined"
+                              sx={{ borderColor: (t) => alpha(t.palette.primary.main, 0.35) }}
                               label={
                                 <Stack direction="row" alignItems="center" spacing={0.75}>
                                   <Box
-                                    component="img"
-                                    src={getLimitlessPokemonSpriteUrl(slug)}
-                                    alt=""
                                     sx={{
-                                      width: 22,
-                                      height: 22,
-                                      imageRendering: "pixelated",
+                                      width: 24,
+                                      height: 24,
+                                      borderRadius: 0.75,
+                                      overflow: "hidden",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      flexShrink: 0,
+                                      bgcolor: "background.paper",
                                     }}
-                                  />
-                                  <Typography variant="body2" component="span">
+                                  >
+                                    <Box
+                                      component="img"
+                                      src={getLimitlessPokemonSpriteUrl(slug)}
+                                      alt=""
+                                      sx={{
+                                        width: "100%",
+                                        height: "100%",
+                                        objectFit: "contain",
+                                        imageRendering: "pixelated",
+                                      }}
+                                    />
+                                  </Box>
+                                  <Typography variant="body2" component="span" fontWeight={600}>
                                     {slug}
                                   </Typography>
                                 </Stack>
@@ -165,7 +211,12 @@ export default function TorneoSemanaDetallePage() {
                             />
                           ))}
                         </Stack>
-                      ) : null}
+                      ) : (
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 2, fontStyle: "italic" }}>
+                          Aún no elegiste Pokémon: el récord mostrará “Sin Pokémon en perfil” hasta que
+                          los configures.
+                        </Typography>
+                      )}
                     </CardContent>
                   </Card>
 

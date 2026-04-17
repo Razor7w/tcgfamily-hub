@@ -11,6 +11,7 @@ import {
 } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import TableRowsOutlinedIcon from "@mui/icons-material/TableRowsOutlined";
 import HandshakeOutlinedIcon from "@mui/icons-material/HandshakeOutlined";
 import PersonOffOutlinedIcon from "@mui/icons-material/PersonOffOutlined";
 import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
@@ -51,6 +52,7 @@ import {
   usePokemonSpeciesOptions,
 } from "@/hooks/usePokemonSpeciesOptions";
 import { useSaveMyMatchRounds } from "@/hooks/useWeeklyEvents";
+import type { WeeklyEventState } from "@/models/WeeklyEvent";
 
 const filter = createFilterOptions<PokemonSpeciesOption>({
   stringify: (o) => `${o.label} ${o.slug}`,
@@ -74,21 +76,21 @@ function matchRowAccentParts(outcome: RowOutcome): {
     return {
       bgcolor: alpha(MATCH_WIN_COLOR, 0.16),
       borderLeftColor: MATCH_WIN_COLOR,
-      hoverBg: alpha(MATCH_WIN_COLOR, 0.24),
+      hoverBg: alpha(MATCH_WIN_COLOR, 0.4),
     };
   }
   if (outcome === "loss") {
     return {
       bgcolor: alpha(MATCH_LOSS_COLOR, 0.14),
       borderLeftColor: MATCH_LOSS_COLOR,
-      hoverBg: alpha(MATCH_LOSS_COLOR, 0.22),
+      hoverBg: alpha(MATCH_LOSS_COLOR, 0.38),
     };
   }
   if (outcome === "tie") {
     return {
       bgcolor: alpha(MATCH_TIE_COLOR, 0.2),
       borderLeftColor: MATCH_TIE_COLOR,
-      hoverBg: alpha(MATCH_TIE_COLOR, 0.28),
+      hoverBg: alpha(MATCH_TIE_COLOR, 0.44),
     };
   }
   return {
@@ -197,6 +199,20 @@ function subtypeLabel(s: string | null): string | null {
   return s;
 }
 
+function eventStateLabel(s: WeeklyEventState): string {
+  if (s === "schedule") return "Programado";
+  if (s === "running") return "En curso";
+  return "Finalizado";
+}
+
+function eventStateChipColor(
+  s: WeeklyEventState,
+): "default" | "primary" | "success" | "warning" {
+  if (s === "schedule") return "default";
+  if (s === "running") return "warning";
+  return "success";
+}
+
 type GameRowState = {
   result: GameResultLetter | null;
   turn: TurnOrder | null;
@@ -254,6 +270,8 @@ type Props = {
   pokemonSubtype: string | null;
   myDeckSlugs: string[];
   rounds: ParticipantMatchRoundDTO[];
+  /** Estado del evento (chip junto al título). */
+  eventState?: WeeklyEventState;
 };
 
 export default function TournamentMatchRoundsCard({
@@ -264,6 +282,7 @@ export default function TournamentMatchRoundsCard({
   pokemonSubtype,
   myDeckSlugs,
   rounds,
+  eventState,
 }: Props) {
   const { data: allOptions = [], isPending: optionsLoading } =
     usePokemonSpeciesOptions();
@@ -506,9 +525,26 @@ export default function TournamentMatchRoundsCard({
           alignItems={{ xs: "flex-start", md: "flex-start" }}
         >
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="h5" fontWeight={800} gutterBottom>
-              {title}
-            </Typography>
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={1}
+              flexWrap="wrap"
+              useFlexGap
+              sx={{ mb: 0.75 }}
+            >
+              <Typography variant="h5" fontWeight={800} component="h2" sx={{ m: 0 }}>
+                {title}
+              </Typography>
+              {eventState ? (
+                <Chip
+                  size="small"
+                  label={eventStateLabel(eventState)}
+                  color={eventStateChipColor(eventState)}
+                  sx={{ fontWeight: 700 }}
+                />
+              ) : null}
+            </Stack>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
               {dateStr}
             </Typography>
@@ -529,19 +565,44 @@ export default function TournamentMatchRoundsCard({
           </Box>
           <Stack
             alignItems={{ xs: "flex-start", md: "flex-end" }}
-            spacing={1}
-            sx={{ flexShrink: 0 }}
+            spacing={1.25}
+            sx={{
+              flexShrink: 0,
+              p: 2,
+              borderRadius: 2,
+              border: "1px solid",
+              borderColor: (t) => alpha(t.palette.primary.main, 0.2),
+              bgcolor: (t) => alpha(t.palette.primary.main, 0.05),
+              minWidth: { md: 200 },
+            }}
           >
-            <Typography variant="h4" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums" }}>
+            <Typography
+              variant="overline"
+              color="text.secondary"
+              sx={{ lineHeight: 1.2, letterSpacing: "0.08em" }}
+            >
+              Tu récord
+            </Typography>
+            <Typography
+              variant="h4"
+              fontWeight={800}
+              sx={{ fontVariantNumeric: "tabular-nums", lineHeight: 1.1 }}
+            >
               {record.wins}-{record.losses}-{record.ties}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              Récord (mesas que reportaste)
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+              Victorias · Derrotas · Tablas (mesas)
             </Typography>
-            <Stack direction="row" spacing={0.75}>
-              {myDeckSlugs.map((slug) => (
-                <LimitlessSpriteThumb key={slug} slug={slug} size={40} circular />
-              ))}
+            <Stack direction="row" spacing={0.75} sx={{ pt: 0.5 }}>
+              {myDeckSlugs.length > 0 ? (
+                myDeckSlugs.map((slug) => (
+                  <LimitlessSpriteThumb key={slug} slug={slug} size={40} circular />
+                ))
+              ) : (
+                <Typography variant="caption" color="text.secondary" fontStyle="italic">
+                  Sin Pokémon en perfil
+                </Typography>
+              )}
             </Stack>
           </Stack>
         </Stack>
@@ -549,16 +610,51 @@ export default function TournamentMatchRoundsCard({
 
       <Divider />
 
-      <Box sx={{ px: { xs: 2, sm: 3 }, py: 2 }}>
-        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
+      <Box sx={{ px: { xs: 2, sm: 3 }, py: 2.5 }}>
+        <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 0.5, letterSpacing: "-0.01em" }}>
           Rondas
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.55 }}>
+          {rounds.length === 0
+            ? "El emparejamiento oficial no se muestra aquí: puedes llevar tu propio registro de mesas."
+            : "Clic en una fila para editarla."}
         </Typography>
 
         {rounds.length === 0 ? (
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Aún no registras rondas. Añade la primera para recordar contra qué deck jugaste y el
-            resultado.
-          </Typography>
+          <Box
+            sx={(t) => ({
+              mb: 2,
+              p: 3,
+              borderRadius: 2,
+              textAlign: "center",
+              border: "2px dashed",
+              borderColor: alpha(t.palette.primary.main, 0.35),
+              bgcolor: alpha(t.palette.primary.main, 0.04),
+            })}
+          >
+            <TableRowsOutlinedIcon
+              color="primary"
+              sx={{
+                fontSize: 44,
+                opacity: 0.9,
+                mb: 1,
+              }}
+            />
+            <Typography variant="subtitle1" fontWeight={800} gutterBottom>
+              Aún no hay rondas registradas
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mb: 2, maxWidth: 440, mx: "auto", lineHeight: 1.6 }}
+            >
+              Cuando juegues una mesa, añádela aquí: rival (opcional), resultado por juego y
+              desenlaces como ID o bye.
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+              Usa el botón de abajo para crear la primera ronda.
+            </Typography>
+          </Box>
         ) : (
           <TableContainer
             sx={{
@@ -597,7 +693,6 @@ export default function TournamentMatchRoundsCard({
                   return (
                     <TableRow
                       key={row.roundNum}
-                      hover
                       onClick={() => openEditRound(row)}
                       onKeyDown={(e: KeyboardEvent<HTMLTableRowElement>) => {
                         if (e.key === "Enter" || e.key === " ") {
