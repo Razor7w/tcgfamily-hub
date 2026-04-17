@@ -25,6 +25,7 @@ import {
   UploadFile,
 } from "@mui/icons-material";
 import TournamentTdfLoader from "@/components/admin/TournamentTdfLoader";
+import { popidForStorage } from "@/lib/rut-chile";
 import {
   AdminWeeklyEvent,
   type WeeklyEventState,
@@ -59,6 +60,16 @@ export default function AdminEventoDetailPage() {
   const ev = useMemo(
     () => (id ? (data?.events.find((e) => e._id === id) ?? null) : null),
     [data?.events, id],
+  );
+
+  const registeredPopIdsForTdf = useMemo(
+    () =>
+      ev
+        ? ev.participants
+            .map((p) => popidForStorage(p.popId ?? ""))
+            .filter((pid) => pid.length > 0)
+        : [],
+    [ev],
   );
 
   const [tab, setTab] = useState(0);
@@ -350,7 +361,10 @@ export default function AdminEventoDetailPage() {
               >
                 {tab === 1 ? (
                   <Box sx={{ pt: 1 }}>
-                    <TournamentTdfLoader />
+                    <TournamentTdfLoader
+                      eventId={ev._id}
+                      registeredPopIds={registeredPopIdsForTdf}
+                    />
                   </Box>
                 ) : null}
               </Box>

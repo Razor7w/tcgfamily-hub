@@ -225,6 +225,48 @@ export function useConfirmParticipantParticipation() {
   });
 }
 
+export type AdminPreinscribeBatchResult = {
+  ok: boolean;
+  added: number;
+  skippedDuplicateInFile: number;
+  skippedInvalidPop: number;
+  skippedAlreadyRegistered: number;
+  skippedCapacity: number;
+  participantCount: number;
+};
+
+export function useAdminPreinscribeBatch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      eventId: string;
+      players: { displayName: string; popId: string }[];
+    }) => {
+      const res = await fetch(
+        `/api/admin/events/${input.eventId}/participants/batch`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ players: input.players }),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === "string"
+            ? data.error
+            : "Error al preinscribir en lote",
+        );
+      }
+      return data as AdminPreinscribeBatchResult;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-weekly-events"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-events"] });
+    },
+  });
+}
+
 export function useUpdateAdminEvent() {
   const queryClient = useQueryClient();
   return useMutation({

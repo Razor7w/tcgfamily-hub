@@ -17,12 +17,14 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { FolderOpen } from "@mui/icons-material";
+import { FolderOpen, GroupAdd } from "@mui/icons-material";
 import {
   buildPlayerNameLookup,
   parseTournamentXml,
   type ParsedMatch,
 } from "@/lib/tournament-xml";
+import { popidForStorage, validatePopidOptional } from "@/lib/rut-chile";
+import { useAdminPreinscribeBatch } from "@/hooks/useWeeklyEvents";
 
 function groupMatchesByRound(matches: ParsedMatch[]): Map<number, ParsedMatch[]> {
   const map = new Map<number, ParsedMatch[]>();
@@ -37,9 +39,17 @@ function groupMatchesByRound(matches: ParsedMatch[]): Map<number, ParsedMatch[]>
 type TournamentTdfLoaderProps = {
   /** Si es false, no muestra el párrafo introductorio (p. ej. la página Torneo XML ya lo tiene arriba). */
   showIntro?: boolean;
+  /** Evento semanal: muestra botón de preinscripción en lote al listado. */
+  eventId?: string;
+  /** POP ID ya presentes en el evento (normalizados con `popidForStorage`), para no duplicar. */
+  registeredPopIds?: string[];
 };
 
-export default function TournamentTdfLoader({ showIntro = true }: TournamentTdfLoaderProps) {
+export default function TournamentTdfLoader({
+  showIntro = true,
+  eventId,
+  registeredPopIds = [],
+}: TournamentTdfLoaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [raw, setRaw] = useState("");
   const [loadedFileName, setLoadedFileName] = useState<string | null>(null);
@@ -48,6 +58,32 @@ export default function TournamentTdfLoader({ showIntro = true }: TournamentTdfL
   const parsed = useMemo(() => parseTournamentXml(raw), [raw]);
   const names = useMemo(() => buildPlayerNameLookup(parsed.players), [parsed.players]);
   const rounds = useMemo(() => groupMatchesByRound(parsed.matches), [parsed.matches]);
+
+  const preinscribeBatch = useAdminPreinscribeBatch();
+  const registeredSet = useMemo(
+    () => new Set(registeredPopIds.map((id) => popidForStorage(id)).filter(Boolean)),
+    [registeredPopIds],
+  );
+
+  const showEventActions = Boolean(eventId);
+
+  const batchPlayers = useMemo(() => {
+    const seen = new Set<string>();
+    const out: { displayName: string; popId: string }[] = [];
+    for (const p of parsed.players) {
+      const popNorm = popidForStorage(p.popId);
+      if (!popNorm) continue;
+      if (validatePopidOptional(popNorm)) continue;
+      if (seen.has(popNorm)) continue;
+      seen.add(popNorm);
+      if (registeredSet.has(popNorm)) continue;
+      const displayName =
+        [p.firstName, p.lastName].filter(Boolean).join(" ").trim() ||
+        `Jugador ${popNorm}`;
+      out.push({ displayName, popId: p.popId });
+    }
+    return out;
+  }, [parsed.players, registeredSet]);
 
   const handlePickFile = () => fileInputRef.current?.click();
 
@@ -177,9 +213,70 @@ export default function TournamentTdfLoader({ showIntro = true }: TournamentTdfL
 
       {parsed.players.length > 0 && (
         <>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            Jugadores ({parsed.players.length})
-          </Typography>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1.5}
+            alignItems={{ xs: "stretch", sm: "center" }}
+            justifyContent="space-between"
+          >
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Jugadores ({parsed.players.length})
+            </Typography>
+            {showEventActions ? (
+              <Button
+                variant="contained"
+                size="medium"
+                startIcon={<GroupAdd />}
+                disabled={
+                  !eventId ||
+                  batchPlayers.length === 0 ||
+                  preinscribeBatch.isPending
+                }
+                onClick={async () => {
+                  if (!eventId || batchPlayers.length === 0) return;
+                  try {
+                    await preinscribeBatch.mutateAsync({
+                      eventId,
+                      players: batchPlayers,
+                    });
+                  } catch {
+                    /* error en estado */
+                  }
+                }}
+                sx={{ fontWeight: 700, alignSelf: { xs: "stretch", sm: "flex-start" } }}
+              >
+                Preinscribir todos
+                {batchPlayers.length > 0 ? ` (${batchPlayers.length})` : ""}
+              </Button>
+            ) : null}
+          </Stack>
+          {showEventActions && preinscribeBatch.isError ? (
+            <Alert severity="error">
+              {preinscribeBatch.error instanceof Error
+                ? preinscribeBatch.error.message
+                : "Error al preinscribir"}
+            </Alert>
+          ) : null}
+          {showEventActions && preinscribeBatch.isSuccess && preinscribeBatch.data ? (
+            <Alert
+              severity="success"
+              onClose={() => preinscribeBatch.reset()}
+            >
+              Añadidos al listado: <strong>{preinscribeBatch.data.added}</strong>.
+              {preinscribeBatch.data.skippedAlreadyRegistered > 0
+                ? ` Omitidos (ya en el evento o usuario duplicado): ${preinscribeBatch.data.skippedAlreadyRegistered}.`
+                : ""}
+              {preinscribeBatch.data.skippedDuplicateInFile > 0
+                ? ` Duplicados en el archivo: ${preinscribeBatch.data.skippedDuplicateInFile}.`
+                : ""}
+              {preinscribeBatch.data.skippedInvalidPop > 0
+                ? ` POP inválidos: ${preinscribeBatch.data.skippedInvalidPop}.`
+                : ""}
+              {preinscribeBatch.data.skippedCapacity > 0
+                ? ` Sin cupo: ${preinscribeBatch.data.skippedCapacity}.`
+                : ""}
+            </Alert>
+          ) : null}
           <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
             <Table size="small">
               <TableHead>
