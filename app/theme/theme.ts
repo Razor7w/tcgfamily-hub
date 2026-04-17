@@ -130,3 +130,117 @@ export const lightTheme = createTheme({
     },
   },
 });
+
+export const darkTheme = createTheme({
+  ...baseTheme,
+  palette: {
+    mode: "dark",
+    primary: {
+      main: "#2dd4bf",
+      light: "#5eead4",
+      dark: "#14b8a6",
+      contrastText: "#042f2e",
+    },
+    secondary: {
+      main: "#94a3b8",
+      light: "#cbd5e1",
+      dark: "#64748b",
+      contrastText: "#0f172a",
+    },
+    success: {
+      main: "#4ade80",
+      light: "#86efac",
+      dark: "#22c55e",
+    },
+    info: {
+      main: "#38bdf8",
+      light: "#7dd3fc",
+      dark: "#0ea5e9",
+    },
+    warning: {
+      main: "#fb923c",
+      light: "#fdba74",
+      dark: "#ea580c",
+    },
+    error: {
+      main: "#f87171",
+      light: "#fca5a5",
+      dark: "#ef4444",
+    },
+    background: {
+      default: "#0c0e12",
+      paper: "#14171f",
+    },
+    text: {
+      primary: "#f4f4f5",
+      secondary: "#a1a1aa",
+    },
+    divider: "rgba(244, 244, 245, 0.12)",
+    action: {
+      hover: "rgba(244, 244, 245, 0.06)",
+      selected: "rgba(45, 212, 191, 0.12)",
+    },
+  },
+  components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        body: {
+          WebkitFontSmoothing: "antialiased",
+        },
+      },
+    },
+    MuiButton: {
+      defaultProps: {
+        disableElevation: true,
+      },
+      styleOverrides: {
+        root: {
+          textTransform: "none",
+          fontWeight: 600,
+          borderRadius: 11,
+          transition:
+            "background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s cubic-bezier(0.16, 1, 0.3, 1)",
+        },
+        contained: {
+          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.35)",
+          "&:active": {
+            transform: "translateY(1px) scale(0.99)",
+          },
+        },
+        outlined: {
+          "&:active": {
+            transform: "translateY(1px) scale(0.99)",
+          },
+        },
+      },
+    },
+    MuiCard: {
+      defaultProps: {
+        elevation: 0,
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundImage: "none",
+        },
+      },
+    },
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          borderRadius: 18,
+          border: "1px solid rgba(244, 244, 245, 0.1)",
+          boxShadow: "0 24px 48px -12px rgba(0, 0, 0, 0.55)",
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          fontWeight: 600,
+        },
+      },
+    },
+  },
+});
