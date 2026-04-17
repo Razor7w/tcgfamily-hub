@@ -58,7 +58,7 @@ export default function DashboardPage() {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         bgcolor: 'background.default',
         py: 4
       }}

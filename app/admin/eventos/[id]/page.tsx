@@ -7,14 +7,12 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
 import Divider from "@mui/material/Divider";
-import Grid from "@mui/material/Grid";
 import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
 import Chip from "@mui/material/Chip";
-import CircularProgress from "@mui/material/CircularProgress";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import {
@@ -80,7 +78,13 @@ export default function AdminEventoDetailPage() {
   const [tab, setTab] = useState(0);
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", py: { xs: 2, sm: 4 } }}>
+    <Box
+      sx={{
+        minHeight: "100dvh",
+        bgcolor: "background.default",
+        py: { xs: 2, sm: 4 },
+      }}
+    >
       <Container maxWidth="lg">
         <Stack spacing={2.5}>
           <Button
@@ -89,15 +93,30 @@ export default function AdminEventoDetailPage() {
             variant="outlined"
             size="small"
             startIcon={<ArrowBack />}
-            sx={{ alignSelf: "flex-start" }}
+            sx={{
+              alignSelf: "flex-start",
+              borderColor: (theme) => theme.palette.divider,
+            }}
           >
             Volver a eventos
           </Button>
 
           {isPending ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
-              <CircularProgress />
-            </Box>
+            <Paper
+              elevation={0}
+              sx={{
+                borderRadius: 4,
+                border: "1px solid",
+                borderColor: "divider",
+                p: 3,
+              }}
+            >
+              <Stack spacing={1.5}>
+                <Box sx={{ height: 28, width: "55%", borderRadius: 1, bgcolor: "action.hover" }} />
+                <Box sx={{ height: 18, width: "35%", borderRadius: 1, bgcolor: "action.hover" }} />
+                <Box sx={{ height: 120, borderRadius: 2, bgcolor: "action.hover", mt: 1 }} />
+              </Stack>
+            </Paper>
           ) : isError ? (
             <Alert
               severity="error"
@@ -118,11 +137,21 @@ export default function AdminEventoDetailPage() {
             </Alert>
           ) : (
             <>
-              <Box>
-                <Typography variant="h4" component="h1" sx={{ fontWeight: 800, letterSpacing: -0.5 }}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: { xs: 2, sm: 2.5 },
+                  borderRadius: 4,
+                  border: "1px solid",
+                  borderColor: "divider",
+                  bgcolor: "background.paper",
+                  boxShadow: "0 20px 40px -24px rgba(24, 24, 27, 0.1)",
+                }}
+              >
+                <Typography variant="h4" component="h1" sx={{ fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.15 }}>
                   {ev.title}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1.25, fontVariantNumeric: "tabular-nums" }}>
                   {new Date(ev.startsAt).toLocaleString("es-CL", {
                     weekday: "long",
                     day: "numeric",
@@ -132,7 +161,7 @@ export default function AdminEventoDetailPage() {
                     minute: "2-digit",
                   })}
                 </Typography>
-              </Box>
+              </Paper>
 
               <Stack direction="row" flexWrap="wrap" gap={0.75} useFlexGap>
                 <Chip
@@ -206,16 +235,29 @@ export default function AdminEventoDetailPage() {
                 </Box>
               ) : null}
 
-              <Divider sx={{ my: 1 }} />
+              <Divider sx={{ my: 0.5 }} />
 
-              <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+              <Paper
+                elevation={0}
+                sx={{
+                  borderRadius: 3,
+                  border: "1px solid",
+                  borderColor: "divider",
+                  overflow: "hidden",
+                }}
+              >
+                <Box sx={{ borderBottom: 1, borderColor: "divider", bgcolor: (theme) => theme.palette.action.hover }}>
                 <Tabs
                   value={tab}
                   onChange={(_, v) => setTab(v)}
                   aria-label="Secciones del evento"
                   variant="fullWidth"
                   sx={{
-                    "& .MuiTab-root": { fontWeight: 700, textTransform: "none", minHeight: 48 },
+                    "& .MuiTab-root": {
+                      fontWeight: 700,
+                      textTransform: "none",
+                      minHeight: 52,
+                    },
                   }}
                 >
                   <Tab
@@ -235,17 +277,18 @@ export default function AdminEventoDetailPage() {
                     aria-controls="event-tabpanel-tdf"
                   />
                 </Tabs>
-              </Box>
+                </Box>
 
               <Box
                 role="tabpanel"
                 hidden={tab !== 0}
                 id="event-tabpanel-preinscritos"
                 aria-labelledby="event-tab-preinscritos"
+                sx={{ px: { xs: 2, sm: 2.5 }, pb: 2.5, pt: 0 }}
               >
                 {tab === 0 ? (
-                  <Stack spacing={2} sx={{ pt: 1 }}>
-                    <Alert severity="info" icon={<InfoOutlined />}>
+                  <Stack spacing={2} sx={{ pt: 2 }}>
+                    <Alert severity="info" icon={<InfoOutlined />} variant="outlined">
                       Toca el ícono de check para confirmar o cancelar la asistencia en tienda. POP ID
                       viene del perfil del usuario.
                     </Alert>
@@ -257,102 +300,103 @@ export default function AdminEventoDetailPage() {
                       </Alert>
                     ) : null}
                     {ev.participants.length === 0 ? (
-                      <Typography color="text.secondary">No hay preinscritos.</Typography>
+                      <Typography color="text.secondary" sx={{ py: 1 }}>
+                        No hay preinscritos.
+                      </Typography>
                     ) : (
-                      <Grid container spacing={2}>
+                      <Stack
+                        divider={<Divider flexItem />}
+                        sx={{
+                          border: "1px solid",
+                          borderColor: "divider",
+                          borderRadius: 2,
+                          overflow: "hidden",
+                        }}
+                      >
                         {ev.participants.map((p, idx) => (
-                          <Grid key={`${p.userId ?? "sin-usuario"}-${idx}`} size={{ xs: 6, md: 4 }}>
-                            <Paper
-                              variant="outlined"
-                              sx={{
-                                p: 1.5,
-                                height: "100%",
-                                display: "flex",
-                                flexDirection: "column",
-                                borderRadius: 2,
-                                transition: "box-shadow 0.2s, border-color 0.2s",
-                                "&:hover": {
-                                  borderColor: "primary.light",
-                                  boxShadow: 1,
-                                },
-                              }}
-                            >
-                              <Stack
-                                direction="row"
-                                alignItems="flex-start"
-                                justifyContent="space-between"
-                                gap={0.5}
-                                sx={{ minHeight: 72 }}
+                          <Stack
+                            key={`${p.userId ?? "sin-usuario"}-${idx}`}
+                            direction="row"
+                            alignItems="center"
+                            justifyContent="space-between"
+                            spacing={1.5}
+                            sx={{
+                              px: 2,
+                              py: 1.75,
+                              bgcolor: idx % 2 === 0 ? "action.hover" : "background.paper",
+                              transition: "background-color 0.2s ease",
+                            }}
+                          >
+                            <Box sx={{ minWidth: 0, flex: 1 }}>
+                              <Typography
+                                variant="subtitle2"
+                                fontWeight={700}
+                                title={p.displayName}
+                                sx={{
+                                  letterSpacing: "-0.01em",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
                               >
-                                <Box sx={{ minWidth: 0, flex: 1 }}>
-                                  <Typography
-                                    variant="subtitle2"
-                                    fontWeight={700}
-                                    title={p.displayName}
-                                    sx={{
-                                      overflow: "hidden",
-                                      textOverflow: "ellipsis",
-                                      display: "-webkit-box",
-                                      WebkitLineClamp: 2,
-                                      WebkitBoxOrient: "vertical",
-                                    }}
-                                  >
-                                    {p.displayName}
-                                  </Typography>
-                                  <Typography
-                                    variant="caption"
-                                    color="text.secondary"
-                                    component="p"
-                                    sx={{ mt: 0.5 }}
-                                  >
-                                    POP: {p.popId}
-                                  </Typography>
-                                  {!p.userId ? (
-                                    <Typography
-                                      variant="caption"
-                                      color="warning.main"
-                                      component="p"
-                                      sx={{ mt: 0.5, lineHeight: 1.3 }}
-                                    >
-                                      Sin cuenta vinculada
-                                    </Typography>
-                                  ) : null}
-                                </Box>
-                                <IconButton
-                                  size="small"
-                                  disabled={!p.userId || confirmParticipation.isPending}
-                                  onClick={async () => {
-                                    if (!p.userId) return;
-                                    try {
-                                      await confirmParticipation.mutateAsync({
-                                        eventId: ev._id,
-                                        userId: p.userId,
-                                        confirmed: !p.confirmed,
-                                      });
-                                    } catch {
-                                      /* error en estado */
-                                    }
-                                  }}
-                                  aria-label={
-                                    p.confirmed ? "Quitar confirmación" : "Confirmar participación"
-                                  }
-                                  sx={(theme) => ({
-                                    flexShrink: 0,
-                                    color: p.confirmed
-                                      ? theme.palette.success.main
-                                      : theme.palette.grey[500],
-                                    "&.Mui-disabled": {
-                                      color: theme.palette.action.disabled,
-                                    },
-                                  })}
+                                {p.displayName}
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                component="p"
+                                sx={{ mt: 0.35, fontVariantNumeric: "tabular-nums" }}
+                              >
+                                POP: {p.popId}
+                              </Typography>
+                              {!p.userId ? (
+                                <Typography
+                                  variant="caption"
+                                  color="warning.main"
+                                  component="p"
+                                  sx={{ mt: 0.35, lineHeight: 1.3 }}
                                 >
-                                  <CheckCircle sx={{ fontSize: 28 }} />
-                                </IconButton>
-                              </Stack>
-                            </Paper>
-                          </Grid>
+                                  Sin cuenta vinculada
+                                </Typography>
+                              ) : null}
+                            </Box>
+                            <IconButton
+                              size="small"
+                              disabled={!p.userId || confirmParticipation.isPending}
+                              onClick={async () => {
+                                if (!p.userId) return;
+                                try {
+                                  await confirmParticipation.mutateAsync({
+                                    eventId: ev._id,
+                                    userId: p.userId,
+                                    confirmed: !p.confirmed,
+                                  });
+                                } catch {
+                                  /* error en estado */
+                                }
+                              }}
+                              aria-label={
+                                p.confirmed ? "Quitar confirmación" : "Confirmar participación"
+                              }
+                              sx={(theme) => ({
+                                flexShrink: 0,
+                                border: "1px solid",
+                                borderColor: p.confirmed
+                                  ? theme.palette.success.main
+                                  : theme.palette.divider,
+                                color: p.confirmed
+                                  ? theme.palette.success.main
+                                  : theme.palette.grey[500],
+                                "&.Mui-disabled": {
+                                  color: theme.palette.action.disabled,
+                                },
+                              })}
+                            >
+                              <CheckCircle sx={{ fontSize: 26 }} />
+                            </IconButton>
+                          </Stack>
                         ))}
-                      </Grid>
+                      </Stack>
                     )}
                   </Stack>
                 ) : null}
@@ -363,9 +407,10 @@ export default function AdminEventoDetailPage() {
                 hidden={tab !== 1}
                 id="event-tabpanel-tdf"
                 aria-labelledby="event-tab-tdf"
+                sx={{ px: { xs: 2, sm: 2.5 }, pb: 2.5, pt: 0 }}
               >
                 {tab === 1 ? (
-                  <Box sx={{ pt: 1 }}>
+                  <Box sx={{ pt: 2 }}>
                     <TournamentTdfLoader
                       eventId={ev._id}
                       registeredPopIds={registeredPopIdsForTdf}
@@ -374,6 +419,7 @@ export default function AdminEventoDetailPage() {
                   </Box>
                 ) : null}
               </Box>
+              </Paper>
             </>
           )}
         </Stack>

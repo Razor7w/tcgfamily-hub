@@ -165,10 +165,21 @@ function TournamentFinishedStandingsTabs({
         variant={ordered.length <= 4 ? "fullWidth" : "scrollable"}
         scrollButtons={ordered.length <= 4 ? false : "auto"}
         sx={{
-          borderBottom: 1,
-          borderColor: "divider",
           minHeight: 44,
-          "& .MuiTab-root": { minHeight: 44, py: 1, fontWeight: 600 },
+          borderRadius: 2,
+          bgcolor: (t) => alpha(t.palette.text.primary, 0.03),
+          px: 0.5,
+          "& .MuiTab-root": {
+            minHeight: 44,
+            py: 1,
+            fontWeight: 700,
+            textTransform: "none",
+            borderRadius: 1.5,
+          },
+          "& .MuiTabs-indicator": {
+            height: 3,
+            borderRadius: 1,
+          },
         }}
       >
         {ordered.map((c) => (
@@ -179,8 +190,9 @@ function TournamentFinishedStandingsTabs({
         component={Paper}
         variant="outlined"
         sx={{
-          borderRadius: 2,
+          borderRadius: 2.5,
           maxHeight: { xs: "min(70vh, 520px)", sm: 520 },
+          borderColor: (t) => alpha(t.palette.text.primary, 0.1),
         }}
       >
         <Table size="small" stickyHeader>
@@ -276,11 +288,20 @@ function WeeklyEventPreRegisterForm({
 
 function SectionLoading() {
   return (
-    <Stack spacing={2} sx={{ py: 1 }}>
-      <Skeleton variant="rounded" height={56} sx={{ borderRadius: 2 }} />
+    <Stack spacing={2.5} sx={{ py: 0.5 }}>
+      <Skeleton variant="rounded" height={48} sx={{ borderRadius: 2, maxWidth: 360 }} />
+      <Skeleton variant="rounded" height={44} sx={{ borderRadius: 2 }} />
       <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-        <Skeleton variant="rounded" height={220} sx={{ flex: 1, borderRadius: 2 }} />
-        <Skeleton variant="rounded" height={220} sx={{ flex: 1, borderRadius: 2 }} />
+        <Skeleton
+          variant="rounded"
+          height={280}
+          sx={{ flex: 1, borderRadius: 3, border: "1px solid", borderColor: "divider" }}
+        />
+        <Skeleton
+          variant="rounded"
+          height={280}
+          sx={{ flex: 1, borderRadius: 3, border: "1px solid", borderColor: "divider" }}
+        />
       </Stack>
     </Stack>
   );
@@ -400,52 +421,77 @@ export default function WeeklyEventsSection({
 
   return (
     <Card
+      component="section"
       elevation={0}
       sx={{
-        borderRadius: 3,
-        border: 1,
-        borderColor: "divider",
+        borderRadius: { xs: 3, sm: 4 },
+        border: "1px solid",
+        borderColor: (t) => alpha(t.palette.text.primary, 0.08),
         overflow: "hidden",
         bgcolor: "background.paper",
+        boxShadow: "0 20px 40px -20px rgba(24, 24, 27, 0.12)",
       }}
     >
       <Box
         sx={{
-          px: { xs: 2, sm: 2.5 },
-          pt: { xs: 2, sm: 2.5 },
-          pb: 1.5,
-          background: (t) =>
-            `linear-gradient(180deg, ${alpha(t.palette.primary.main, 0.06)} 0%, transparent 100%)`,
+          px: { xs: 2, sm: 3 },
+          pt: { xs: 2.5, sm: 3 },
+          pb: { xs: 2, sm: 2.25 },
+          borderBottom: "1px solid",
+          borderColor: (t) => alpha(t.palette.text.primary, 0.06),
+          bgcolor: (t) => alpha(t.palette.text.primary, 0.02),
         }}
       >
         <Stack
-          direction="row"
-          alignItems="flex-start"
+          direction={{ xs: "column", sm: "row" }}
+          alignItems={{ xs: "flex-start", sm: "flex-start" }}
           justifyContent="space-between"
-          gap={1}
+          gap={2}
         >
-          <Stack direction="row" alignItems="center" gap={1.25} sx={{ minWidth: 0 }}>
+          <Stack direction="row" alignItems="flex-start" gap={1.5} sx={{ minWidth: 0, flex: 1 }}>
             <Box
               sx={{
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                width: 40,
-                height: 40,
-                borderRadius: 2,
-                bgcolor: (t) => alpha(t.palette.primary.main, 0.12),
-                color: "primary.main",
+                width: 44,
+                height: 44,
+                borderRadius: 2.5,
                 flexShrink: 0,
+                color: "primary.main",
+                bgcolor: (t) => alpha(t.palette.primary.main, 0.1),
+                border: "1px solid",
+                borderColor: (t) => alpha(t.palette.primary.main, 0.2),
+                boxShadow: (t) =>
+                  `inset 0 1px 0 ${alpha(t.palette.common.white, 0.45)}`,
               }}
             >
-              <CalendarMonth aria-hidden />
+              <CalendarMonth aria-hidden sx={{ fontSize: 22 }} />
             </Box>
-            <Box sx={{ minWidth: 0 }}>
-              <Typography variant="h6" component="h2" sx={{ fontWeight: 700, lineHeight: 1.25 }}>
+            <Box sx={{ minWidth: 0, pt: 0.25 }}>
+              <Typography
+                variant="h5"
+                component="h2"
+                sx={{
+                  fontWeight: 700,
+                  lineHeight: 1.15,
+                  letterSpacing: "-0.03em",
+                  color: "text.primary",
+                }}
+              >
                 Eventos de la semana
               </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
-                Elige el día y el evento para ver detalles e inscribirte
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  display: "block",
+                  mt: 0.75,
+                  lineHeight: 1.5,
+                  maxWidth: { sm: "42ch" },
+                }}
+              >
+                Elige día y horario; aquí ves el cartel, cupos y tu inscripción.
               </Typography>
             </Box>
           </Stack>
@@ -453,10 +499,16 @@ export default function WeeklyEventsSection({
             <Button
               component={Link}
               href="/dashboard/eventos"
-              size="small"
+              size="medium"
               color="primary"
-              endIcon={<OpenInNew sx={{ fontSize: 16 }} />}
-              sx={{ flexShrink: 0, fontWeight: 600 }}
+              variant="outlined"
+              endIcon={<OpenInNew sx={{ fontSize: 18 }} />}
+              sx={{
+                flexShrink: 0,
+                fontWeight: 600,
+                borderColor: (t) => alpha(t.palette.primary.main, 0.35),
+                alignSelf: { xs: "stretch", sm: "flex-start" },
+              }}
             >
               Vista completa
             </Button>
@@ -466,24 +518,46 @@ export default function WeeklyEventsSection({
 
       <CardContent
         sx={{
-          p: { xs: 2, sm: 2.5 },
-          pt: { xs: 1.5, sm: 2 },
-          "&:last-child": { pb: { xs: 2, sm: 2.5 } },
+          p: { xs: 2, sm: 3 },
+          pt: { xs: 2, sm: 2.5 },
+          "&:last-child": { pb: { xs: 2.5, sm: 3 } },
         }}
       >
-        <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 2 }}>
+        <Paper
+          elevation={0}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.5,
+            px: 1,
+            py: 0.75,
+            mb: 2,
+            borderRadius: 2.5,
+            border: "1px solid",
+            borderColor: (t) => alpha(t.palette.text.primary, 0.08),
+            bgcolor: (t) => alpha(t.palette.text.primary, 0.02),
+          }}
+        >
           <IconButton
             size="small"
             aria-label="Semana anterior"
             onClick={handlePrevWeek}
-            sx={{ color: "text.secondary" }}
+            sx={{
+              color: "text.secondary",
+              "&:hover": { bgcolor: (t) => alpha(t.palette.primary.main, 0.06) },
+            }}
           >
             <ChevronLeft />
           </IconButton>
           <Typography
             variant="body2"
             color="text.secondary"
-            sx={{ flex: 1, textAlign: "center", fontWeight: 500 }}
+            sx={{
+              flex: 1,
+              textAlign: "center",
+              fontWeight: 600,
+              fontVariantNumeric: "tabular-nums",
+            }}
           >
             {weekStart.toLocaleDateString("es-CL", {
               day: "numeric",
@@ -504,11 +578,14 @@ export default function WeeklyEventsSection({
             size="small"
             aria-label="Semana siguiente"
             onClick={handleNextWeek}
-            sx={{ color: "text.secondary" }}
+            sx={{
+              color: "text.secondary",
+              "&:hover": { bgcolor: (t) => alpha(t.palette.primary.main, 0.06) },
+            }}
           >
             <ChevronRight />
           </IconButton>
-        </Stack>
+        </Paper>
 
         <Box
           component="nav"
@@ -525,7 +602,7 @@ export default function WeeklyEventsSection({
             "&::-webkit-scrollbar": { height: 6 },
             "&::-webkit-scrollbar-thumb": {
               borderRadius: 3,
-              bgcolor: "action.disabledBackground",
+              bgcolor: (t) => alpha(t.palette.text.primary, 0.15),
             },
           }}
         >
@@ -545,22 +622,35 @@ export default function WeeklyEventsSection({
                 aria-pressed={selected}
                 aria-current={selected ? "date" : undefined}
                 sx={{
-                  minWidth: 56,
+                  minWidth: 58,
                   flexShrink: 0,
                   scrollSnapAlign: "start",
-                  py: 1.25,
+                  py: 1.35,
                   flexDirection: "column",
                   lineHeight: 1.2,
-                  borderRadius: 2,
+                  borderRadius: 2.5,
                   borderWidth: isToday && !selected ? 2 : 1,
-                  borderColor: isToday && !selected ? "primary.light" : undefined,
-                  boxShadow: selected ? 2 : 0,
+                  borderColor:
+                    isToday && !selected
+                      ? (t) => alpha(t.palette.primary.main, 0.45)
+                      : undefined,
+                  bgcolor: selected ? undefined : (t) => alpha(t.palette.background.paper, 0.8),
+                  transition:
+                    "background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+                  boxShadow: selected
+                    ? (t) => `0 8px 20px -8px ${alpha(t.palette.primary.main, 0.45)}`
+                    : "none",
+                  "&:active": { transform: "scale(0.98)" },
                 }}
               >
-                <Typography variant="caption" display="block" sx={{ opacity: 0.9 }}>
+                <Typography
+                  variant="caption"
+                  display="block"
+                  sx={{ opacity: selected ? 0.95 : 0.75, fontWeight: 600 }}
+                >
                   {WEEKDAY_SHORT[idx]}
                 </Typography>
-                <Typography variant="body2" fontWeight={700}>
+                <Typography variant="body2" fontWeight={800} sx={{ fontVariantNumeric: "tabular-nums" }}>
                   {d.getDate()}
                 </Typography>
                 {count > 0 ? (
@@ -572,7 +662,12 @@ export default function WeeklyEventsSection({
                     sx={{
                       mt: 0.5,
                       height: 20,
-                      "& .MuiChip-label": { px: 0.75, fontSize: 10, fontWeight: 600 },
+                      "& .MuiChip-label": {
+                        px: 0.75,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        fontVariantNumeric: "tabular-nums",
+                      },
                     }}
                   />
                 ) : null}
@@ -597,22 +692,41 @@ export default function WeeklyEventsSection({
           </Alert>
         ) : !eventsForDay.length ? (
           <Stack
-            alignItems="center"
-            spacing={1.5}
+            alignItems="flex-start"
+            spacing={1.25}
             sx={{
-              py: 5,
-              px: 2,
-              borderRadius: 2,
-              bgcolor: (t) => alpha(t.palette.text.primary, 0.04),
+              py: 4,
+              px: { xs: 2, sm: 2.5 },
+              borderRadius: 3,
+              border: "1px dashed",
+              borderColor: (t) => alpha(t.palette.text.primary, 0.12),
+              bgcolor: (t) => alpha(t.palette.text.primary, 0.02),
             }}
           >
-            <EventAvailable sx={{ fontSize: 48, color: "text.disabled", opacity: 0.8 }} />
-            <Typography color="text.secondary" align="center" fontWeight={500}>
-              No hay eventos este día
-            </Typography>
-            <Typography variant="body2" color="text.secondary" align="center" sx={{ maxWidth: 280 }}>
-              Prueba otro día de la barra superior o cambia de semana.
-            </Typography>
+            <Stack direction="row" alignItems="center" gap={1.5}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 40,
+                  height: 40,
+                  borderRadius: 2,
+                  bgcolor: (t) => alpha(t.palette.text.primary, 0.06),
+                  color: "text.secondary",
+                }}
+              >
+                <EventAvailable sx={{ fontSize: 22 }} />
+              </Box>
+              <Box>
+                <Typography color="text.primary" fontWeight={700} sx={{ letterSpacing: "-0.02em" }}>
+                  No hay eventos este día
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25, maxWidth: 360 }}>
+                  Cambia de día en la fila superior o navega a otra semana.
+                </Typography>
+              </Box>
+            </Stack>
           </Stack>
         ) : (
           <>
@@ -623,7 +737,7 @@ export default function WeeklyEventsSection({
                 aria-label="Eventos del día"
                 gap={1}
                 flexWrap="wrap"
-                sx={{ mb: 2 }}
+                sx={{ mb: 2.5 }}
               >
                 {eventsForDay.map((ev) => {
                   const active = ev._id === selectedEvent?._id;
@@ -634,7 +748,13 @@ export default function WeeklyEventsSection({
                       onClick={() => setSelectedEventId(ev._id)}
                       color={active ? "primary" : "default"}
                       variant={active ? "filled" : "outlined"}
-                      sx={{ fontWeight: active ? 600 : 500 }}
+                      sx={{
+                        fontWeight: active ? 700 : 600,
+                        borderRadius: 2,
+                        borderColor: active ? undefined : (t) => alpha(t.palette.text.primary, 0.14),
+                        transition: "transform 0.15s cubic-bezier(0.16, 1, 0.3, 1)",
+                        "&:active": { transform: "scale(0.98)" },
+                      }}
                     />
                   );
                 })}
@@ -651,10 +771,18 @@ export default function WeeklyEventsSection({
                   sx={{ mb: 2 }}
                 >
                   <Box sx={{ minWidth: 0 }}>
-                    <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.5 }}>
+                    <Typography
+                      variant="overline"
+                      color="text.secondary"
+                      sx={{ letterSpacing: "0.12em", fontWeight: 700 }}
+                    >
                       Horario
                     </Typography>
-                    <Typography variant="subtitle1" fontWeight={700} sx={{ lineHeight: 1.35 }}>
+                    <Typography
+                      variant="subtitle1"
+                      fontWeight={700}
+                      sx={{ lineHeight: 1.35, letterSpacing: "-0.02em", mt: 0.25 }}
+                    >
                       {formatWhen(selectedEvent.startsAt)}
                     </Typography>
                   </Box>
@@ -663,7 +791,13 @@ export default function WeeklyEventsSection({
                     label={`${selectedEvent.participantCount}/${selectedEvent.maxParticipants}`}
                     size="small"
                     variant="outlined"
-                    sx={{ fontWeight: 700, flexShrink: 0 }}
+                    sx={{
+                      fontWeight: 700,
+                      flexShrink: 0,
+                      fontVariantNumeric: "tabular-nums",
+                      borderRadius: 2,
+                      borderColor: (t) => alpha(t.palette.text.primary, 0.16),
+                    }}
                   />
                 </Stack>
 
@@ -673,19 +807,25 @@ export default function WeeklyEventsSection({
                   direction={{ xs: "column", md: "row" }}
                   spacing={2}
                   alignItems="stretch"
-                  sx={{ mt: 2 }}
+                  sx={{ mt: 2.5 }}
                 >
                   <Box sx={{ flex: isMdUp ? 7 : undefined, minWidth: 0 }}>
                     <Card
                       variant="outlined"
                       sx={{
                         height: "100%",
-                        borderRadius: 2,
+                        borderRadius: 3,
+                        borderColor: (t) => alpha(t.palette.text.primary, 0.1),
                         bgcolor: (t) => alpha(t.palette.text.primary, 0.02),
+                        boxShadow: "none",
                       }}
                     >
                       <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-                        <Typography variant="overline" color="primary" sx={{ fontWeight: 700 }}>
+                        <Typography
+                          variant="overline"
+                          color="primary"
+                          sx={{ fontWeight: 800, letterSpacing: "0.1em" }}
+                        >
                           Detalle del evento
                         </Typography>
                         <Stack spacing={1.75} sx={{ mt: 1 }}>
@@ -716,8 +856,12 @@ export default function WeeklyEventsSection({
                               <Chip
                                 size="small"
                                 label={`Ronda ${selectedEvent.roundNum}`}
-                                color="secondary"
                                 variant="outlined"
+                                sx={{
+                                  borderColor: (t) => alpha(t.palette.text.primary, 0.2),
+                                  color: "text.secondary",
+                                  fontVariantNumeric: "tabular-nums",
+                                }}
                               />
                             ) : null}
                           </Stack>
@@ -752,13 +896,15 @@ export default function WeeklyEventsSection({
                             sx={{
                               mt: 0.5,
                               p: 1.5,
-                              borderRadius: 2,
-                              bgcolor: (t) => alpha(t.palette.info.main, 0.08),
-                              border: 1,
-                              borderColor: (t) => alpha(t.palette.info.main, 0.2),
+                              borderRadius: 2.5,
+                              bgcolor: (t) => alpha(t.palette.primary.main, 0.06),
+                              border: "1px solid",
+                              borderColor: (t) => alpha(t.palette.primary.main, 0.18),
+                              boxShadow: (t) =>
+                                `inset 0 1px 0 ${alpha(t.palette.common.white, 0.5)}`,
                             }}
                           >
-                            <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.55 }}>
                               Preinscripción hasta las <strong>{formatCloseNote(selectedEvent.startsAt)}</strong>{" "}
                               (cierra 1 s antes del inicio).
                             </Typography>
@@ -773,9 +919,11 @@ export default function WeeklyEventsSection({
                       variant="outlined"
                       sx={{
                         height: "100%",
-                        borderRadius: 2,
-                        borderColor: (t) => alpha(t.palette.primary.main, 0.35),
-                        bgcolor: (t) => alpha(t.palette.primary.main, 0.02),
+                        borderRadius: 3,
+                        borderColor: (t) => alpha(t.palette.primary.main, 0.22),
+                        bgcolor: (t) => alpha(t.palette.primary.main, 0.04),
+                        boxShadow: (t) =>
+                          `inset 0 1px 0 ${alpha(t.palette.common.white, 0.55)}`,
                       }}
                     >
                       <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
@@ -1301,29 +1449,36 @@ function LinearCapacity({ value }: { value: number }) {
   return (
     <Box sx={{ mt: 0.5 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
-        <Typography variant="caption" color="text.secondary" fontWeight={600}>
+        <Typography variant="caption" color="text.secondary" fontWeight={700} letterSpacing="0.04em">
           Cupo
         </Typography>
-        <Typography variant="caption" color="text.secondary">
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ fontVariantNumeric: "tabular-nums", fontWeight: 700 }}
+        >
           {value}%
         </Typography>
       </Stack>
       <Box
         sx={{
-          height: 6,
-          borderRadius: 3,
-          bgcolor: (t) => alpha(t.palette.text.primary, 0.08),
+          height: 7,
+          borderRadius: 99,
+          bgcolor: (t) => alpha(t.palette.text.primary, 0.07),
           overflow: "hidden",
+          border: "1px solid",
+          borderColor: (t) => alpha(t.palette.text.primary, 0.06),
         }}
       >
         <Box
           sx={{
             height: "100%",
             width: `${value}%`,
-            borderRadius: 3,
+            borderRadius: 99,
             bgcolor: (t) =>
               value >= 90 ? t.palette.warning.main : t.palette.primary.main,
-            transition: "width 0.3s ease",
+            transition: "width 0.45s cubic-bezier(0.16, 1, 0.3, 1)",
+            boxShadow: (t) => `inset 0 -1px 0 ${alpha(t.palette.common.black, 0.08)}`,
           }}
         />
       </Box>

@@ -3,8 +3,6 @@
 import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
 import Checkbox from "@mui/material/Checkbox";
 import Container from "@mui/material/Container";
 import Dialog from "@mui/material/Dialog";
@@ -20,7 +18,6 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
-import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
@@ -245,43 +242,127 @@ export default function AdminEventosPage() {
         : null);
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", py: { xs: 2, sm: 4 } }}>
+    <Box
+      sx={{
+        minHeight: "100dvh",
+        bgcolor: "background.default",
+        py: { xs: 2, sm: 4 },
+      }}
+    >
       <Container maxWidth="lg">
-        <Stack spacing={2.5} sx={{ mb: 3 }}>
+        <Stack
+          spacing={2.5}
+          sx={{
+            mb: 3,
+            p: { xs: 2, sm: 2.5 },
+            borderRadius: { xs: 3, sm: 4 },
+            border: "1px solid",
+            borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.08),
+            bgcolor: "background.paper",
+            boxShadow: "0 20px 40px -24px rgba(24, 24, 27, 0.12)",
+          }}
+        >
           <Stack
-            direction={{ xs: "column", sm: "row" }}
-            alignItems={{ xs: "stretch", sm: "center" }}
-            spacing={2}
+            direction={{ xs: "column", lg: "row" }}
+            alignItems={{ xs: "stretch", lg: "flex-start" }}
+            justifyContent="space-between"
+            spacing={2.5}
           >
+            <Stack spacing={1.5} sx={{ flex: 1, minWidth: 0 }}>
+              <Button
+                component={Link}
+                href="/admin/users"
+                variant="outlined"
+                size="small"
+                startIcon={<ArrowBack />}
+                sx={{
+                  alignSelf: "flex-start",
+                  borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.18),
+                }}
+              >
+                Volver
+              </Button>
+              <Box>
+                <Typography
+                  variant="h4"
+                  component="h1"
+                  sx={{ fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.15 }}
+                >
+                  Eventos de la cartelera
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 1, maxWidth: 520, lineHeight: 1.6 }}
+                >
+                  Torneos con precio o entrada gratuita, jornadas de intercambio y otros bloques. Lo
+                  publicado aquí aparece en el panel de los jugadores.
+                </Typography>
+              </Box>
+            </Stack>
             <Button
-              component={Link}
-              href="/admin/users"
-              variant="outlined"
-              size="small"
-              startIcon={<ArrowBack />}
-              sx={{ alignSelf: { xs: "flex-start", sm: "center" } }}
+              variant="contained"
+              size="large"
+              onClick={openCreate}
+              sx={{
+                fontWeight: 700,
+                px: 2.5,
+                py: 1.25,
+                alignSelf: { xs: "stretch", lg: "flex-start" },
+                flexShrink: 0,
+              }}
             >
-              Volver
-            </Button>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography variant="h4" component="h1" sx={{ fontWeight: 800, letterSpacing: -0.5 }}>
-                Eventos
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, maxWidth: 560 }}>
-                Crea y edita la cartelera: torneos (precio o gratis), intercambios y otros. Los
-                jugadores se preinscriben desde su panel.
-              </Typography>
-            </Box>
-            <Button variant="contained" size="large" onClick={openCreate} sx={{ fontWeight: 700 }}>
               Nuevo evento
             </Button>
           </Stack>
         </Stack>
 
         {isPending ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-            <CircularProgress />
-          </Box>
+          <Stack spacing={1.5}>
+            {[0, 1, 2].map((i) => (
+              <Box
+                key={i}
+                sx={{
+                  borderRadius: 3,
+                  border: "1px solid",
+                  borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.08),
+                  bgcolor: "background.paper",
+                  p: 2.5,
+                }}
+              >
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                  <Box sx={{ flex: 1 }}>
+                    <Box
+                      sx={{
+                        height: 14,
+                        width: "40%",
+                        borderRadius: 1,
+                        bgcolor: (t: Theme) => alpha(t.palette.text.primary, 0.08),
+                        mb: 1.5,
+                      }}
+                    />
+                    <Box
+                      sx={{
+                        height: 22,
+                        width: "70%",
+                        borderRadius: 1,
+                        bgcolor: (t: Theme) => alpha(t.palette.text.primary, 0.1),
+                        mb: 1,
+                      }}
+                    />
+                    <Box
+                      sx={{
+                        height: 12,
+                        width: "55%",
+                        borderRadius: 1,
+                        bgcolor: (t: Theme) => alpha(t.palette.text.primary, 0.06),
+                      }}
+                    />
+                  </Box>
+                </Stack>
+              </Box>
+            ))}
+          </Stack>
         ) : isError ? (
           <Alert
             severity="error"
@@ -294,138 +375,227 @@ export default function AdminEventosPage() {
             {error instanceof Error ? error.message : "Error al cargar"}
           </Alert>
         ) : (
-          <Stack spacing={2}>
+          <Stack spacing={0}>
             {eventsSorted.length === 0 ? (
               <Paper
                 variant="outlined"
                 sx={{
                   py: 6,
                   px: 3,
-                  textAlign: "center",
-                  borderRadius: 3,
+                  textAlign: "left",
+                  borderRadius: 4,
                   borderStyle: "dashed",
+                  borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.14),
                   bgcolor: (t: Theme) => alpha(t.palette.text.primary, 0.02),
                 }}
               >
-                <EventAvailable sx={{ fontSize: 48, color: "text.disabled", mb: 1.5 }} />
-                <Typography fontWeight={700} gutterBottom>
-                  Aún no hay eventos
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2, maxWidth: 400, mx: "auto" }}>
-                  Publica el primero para que aparezca en el dashboard de los usuarios.
-                </Typography>
-                <Button variant="contained" onClick={openCreate}>
-                  Crear evento
-                </Button>
-              </Paper>
-            ) : (
-              eventsSorted.map((ev) => (
-                <Card
-                  key={ev._id}
-                  elevation={0}
-                  sx={{
-                    borderRadius: 3,
-                    border: 1,
-                    borderColor: "divider",
-                    borderLeftWidth: 4,
-                    borderLeftColor: "primary.main",
-                    overflow: "hidden",
-                  }}
-                >
-                  <CardContent
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }}>
+                  <Box
                     sx={{
                       display: "flex",
-                      flexDirection: { xs: "column", sm: "row" },
-                      gap: 2,
-                      alignItems: { sm: "flex-start" },
-                      p: { xs: 2, sm: 2.5 },
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 48,
+                      height: 48,
+                      borderRadius: 2.5,
+                      bgcolor: (t: Theme) => alpha(t.palette.text.primary, 0.06),
+                      color: "text.secondary",
+                      flexShrink: 0,
                     }}
                   >
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 700 }}>
-                        {new Date(ev.startsAt).toLocaleString("es-CL", {
-                          weekday: "long",
-                          day: "numeric",
-                          month: "long",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </Typography>
-                      <Typography variant="h6" component="h2" sx={{ fontWeight: 800, mt: 0.5, mb: 1 }}>
-                        {ev.title}
-                      </Typography>
-                      <Stack direction="row" flexWrap="wrap" gap={0.75} useFlexGap sx={{ mb: 1.5 }}>
-                        <Chip
-                          size="small"
-                          label={eventStateLabel(
-                            ev.state === "running" || ev.state === "close" ? ev.state : "schedule",
-                          )}
-                          color={
-                            ev.state === "running"
-                              ? "success"
-                              : ev.state === "close"
-                                ? "default"
-                                : "info"
-                          }
-                          variant={ev.state === "schedule" ? "outlined" : "filled"}
-                        />
-                        <Chip size="small" label={kindLabelAdmin(ev.kind)} variant="outlined" />
-                        <Chip size="small" label={gameLabelAdmin(ev.game)} variant="outlined" />
-                        {ev.kind === "tournament" && ev.game === "pokemon" && ev.pokemonSubtype ? (
-                          <Chip size="small" label={ev.pokemonSubtype} color="primary" variant="outlined" />
-                        ) : null}
+                    <EventAvailable sx={{ fontSize: 26 }} />
+                  </Box>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography fontWeight={800} sx={{ letterSpacing: "-0.02em" }}>
+                      Aún no hay eventos publicados
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, maxWidth: 480 }}>
+                      Cuando crees el primero, los jugadores lo verán en su dashboard con fecha, cupo y
+                      precio.
+                    </Typography>
+                    <Button variant="contained" onClick={openCreate} sx={{ mt: 2, fontWeight: 700 }}>
+                      Crear evento
+                    </Button>
+                  </Box>
+                </Stack>
+              </Paper>
+            ) : (
+              <Paper
+                elevation={0}
+                sx={{
+                  borderRadius: 4,
+                  border: "1px solid",
+                  borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.08),
+                  overflow: "hidden",
+                  bgcolor: "background.paper",
+                  boxShadow: "0 20px 40px -24px rgba(24, 24, 27, 0.1)",
+                }}
+              >
+                <Box
+                  sx={{
+                    px: { xs: 2, sm: 2.5 },
+                    py: 1.75,
+                    borderBottom: "1px solid",
+                    borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.08),
+                    bgcolor: (t: Theme) => alpha(t.palette.text.primary, 0.02),
+                  }}
+                >
+                  <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 800, letterSpacing: "0.12em" }}>
+                    Próximos en calendario
+                  </Typography>
+                </Box>
+                <Stack divider={<Divider flexItem />} sx={{ "& > *": { px: { xs: 2, sm: 2.5 }, py: 2.25 } }}>
+                  {eventsSorted.map((ev) => (
+                    <Stack
+                      key={ev._id}
+                      direction={{ xs: "column", md: "row" }}
+                      spacing={2}
+                      alignItems={{ md: "flex-start" }}
+                      justifyContent="space-between"
+                    >
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={2.5} sx={{ flex: 1, minWidth: 0 }}>
+                        <Box
+                          sx={{
+                            minWidth: { sm: 120, md: 140 },
+                            typography: "caption",
+                            color: "text.secondary",
+                            fontWeight: 700,
+                            letterSpacing: "0.06em",
+                            textTransform: "uppercase",
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        >
+                          {new Date(ev.startsAt).toLocaleDateString("es-CL", {
+                            weekday: "short",
+                            day: "numeric",
+                            month: "short",
+                          })}
+                          <Box
+                            component="span"
+                            sx={{
+                              display: "block",
+                              mt: 0.5,
+                              fontWeight: 600,
+                              letterSpacing: "0.04em",
+                            }}
+                          >
+                            {new Date(ev.startsAt).toLocaleTimeString("es-CL", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </Box>
+                        </Box>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography variant="h6" component="h2" sx={{ fontWeight: 800, letterSpacing: "-0.02em" }}>
+                            {ev.title}
+                          </Typography>
+                          <Stack direction="row" flexWrap="wrap" gap={0.75} useFlexGap sx={{ mt: 1.25, mb: 1.5 }}>
+                            <Chip
+                              size="small"
+                              label={eventStateLabel(
+                                ev.state === "running" || ev.state === "close" ? ev.state : "schedule",
+                              )}
+                              color={
+                                ev.state === "running"
+                                  ? "success"
+                                  : ev.state === "close"
+                                    ? "default"
+                                    : "info"
+                              }
+                              variant={ev.state === "schedule" ? "outlined" : "filled"}
+                            />
+                            <Chip size="small" label={kindLabelAdmin(ev.kind)} variant="outlined" />
+                            <Chip size="small" label={gameLabelAdmin(ev.game)} variant="outlined" />
+                            {ev.kind === "tournament" && ev.game === "pokemon" && ev.pokemonSubtype ? (
+                              <Chip size="small" label={ev.pokemonSubtype} color="primary" variant="outlined" />
+                            ) : null}
+                          </Stack>
+                          <Stack
+                            direction={{ xs: "column", sm: "row" }}
+                            spacing={{ xs: 0.5, sm: 3 }}
+                            sx={{
+                              typography: "body2",
+                              color: "text.secondary",
+                              fontVariantNumeric: "tabular-nums",
+                            }}
+                          >
+                            <span>
+                              <Box component="span" sx={{ color: "text.primary", fontWeight: 600 }}>
+                                Precio
+                              </Box>{" "}
+                              {ev.kind === "tournament"
+                                ? ev.priceClp > 0
+                                  ? `${ev.priceClp.toLocaleString("es-CL")} CLP`
+                                  : "Gratis"
+                                : "—"}
+                            </span>
+                            <span>
+                              <Box component="span" sx={{ color: "text.primary", fontWeight: 600 }}>
+                                Cupo
+                              </Box>{" "}
+                              {ev.maxParticipants}
+                            </span>
+                            <span>
+                              <Box component="span" sx={{ color: "text.primary", fontWeight: 600 }}>
+                                Inscritos
+                              </Box>{" "}
+                              {ev.participants?.length ?? 0}
+                            </span>
+                          </Stack>
+                          <Button
+                            component={Link}
+                            href={`/admin/eventos/${ev._id}`}
+                            size="medium"
+                            variant="outlined"
+                            sx={{
+                              mt: 2,
+                              fontWeight: 600,
+                              alignSelf: "flex-start",
+                              borderColor: (t: Theme) => alpha(t.palette.primary.main, 0.35),
+                            }}
+                          >
+                            Abrir detalle
+                          </Button>
+                        </Box>
                       </Stack>
-                      <Stack direction="row" flexWrap="wrap" gap={2} sx={{ typography: "body2", color: "text.secondary" }}>
-                        <span>
-                          <strong style={{ color: "inherit" }}>Precio:</strong>{" "}
-                          {ev.kind === "tournament"
-                            ? ev.priceClp > 0
-                              ? `${ev.priceClp.toLocaleString("es-CL")} CLP`
-                              : "Gratis"
-                            : "—"}
-                        </span>
-                        <span>
-                          <strong>Cupo:</strong> {ev.maxParticipants}
-                        </span>
-                        <span>
-                          <strong>Inscritos:</strong> {ev.participants?.length ?? 0}
-                        </span>
-                      </Stack>
-                      <Button
-                        component={Link}
-                        href={`/admin/eventos/${ev._id}`}
-                        size="medium"
-                        variant="outlined"
-                        sx={{ mt: 2, fontWeight: 600 }}
+                      <Stack
+                        direction="row"
+                        spacing={0.5}
+                        sx={{ alignSelf: { xs: "flex-end", md: "flex-start" }, flexShrink: 0 }}
                       >
-                        Detalle del evento
-                      </Button>
-                    </Box>
-                    <Stack direction="row" spacing={0.5} sx={{ alignSelf: { xs: "flex-end", sm: "flex-start" } }}>
-                      <Tooltip title="Editar evento">
-                        <IconButton
-                          aria-label="Editar"
-                          color="primary"
-                          onClick={() => openEdit(ev)}
-                          size="medium"
-                        >
-                          <Edit />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Eliminar evento">
-                        <IconButton
-                          aria-label="Eliminar"
-                          color="error"
-                          onClick={() => setDeleteTarget(ev)}
-                          size="medium"
-                        >
-                          <Delete />
-                        </IconButton>
-                      </Tooltip>
+                        <Tooltip title="Editar evento">
+                          <IconButton
+                            aria-label="Editar"
+                            color="primary"
+                            onClick={() => openEdit(ev)}
+                            size="medium"
+                            sx={{
+                              border: "1px solid",
+                              borderColor: (t: Theme) => alpha(t.palette.primary.main, 0.25),
+                            }}
+                          >
+                            <Edit />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Eliminar evento">
+                          <IconButton
+                            aria-label="Eliminar"
+                            color="error"
+                            onClick={() => setDeleteTarget(ev)}
+                            size="medium"
+                            sx={{
+                              border: "1px solid",
+                              borderColor: (t: Theme) => alpha(t.palette.error.main, 0.25),
+                            }}
+                          >
+                            <Delete />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
                     </Stack>
-                  </CardContent>
-                </Card>
-              ))
+                  ))}
+                </Stack>
+              </Paper>
             )}
           </Stack>
         )}
