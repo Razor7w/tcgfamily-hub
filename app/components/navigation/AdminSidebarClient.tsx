@@ -3,6 +3,7 @@ import {
   AdminPanelSettings,
   CalendarMonth,
   CloudUpload,
+  DataObject,
   Email,
   ExpandLess,
   ExpandMore,
@@ -63,6 +64,14 @@ export default function AdminSidebarClient() {
               <CloudUpload />
             </ListItemIcon>
             <ListItemText primary="Puntos (CSV)" />
+          </ListItemButton>
+        </List>
+        <List component="div" disablePadding>
+          <ListItemButton sx={{ pl: 4 }} href="/admin/torneo-xml">
+            <ListItemIcon>
+              <DataObject />
+            </ListItemIcon>
+            <ListItemText primary="Torneo (XML)" />
           </ListItemButton>
         </List>
       </Collapse>
