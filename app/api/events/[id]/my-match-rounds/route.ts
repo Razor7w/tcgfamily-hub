@@ -62,6 +62,9 @@ export async function PUT(
       );
     }
 
+    const isCustom =
+      (doc as { tournamentOrigin?: string }).tournamentOrigin === "custom";
+
     const w = Math.max(
       0,
       Math.min(999, Math.round(Number(part.wins) || 0)),
@@ -73,8 +76,9 @@ export async function PUT(
     const t = Math.max(0, Math.min(999, Math.round(Number(part.ties) || 0)));
     const recordSum = w + l + t;
     const tournamentClosed = doc.state === "close";
-    const maxRoundsAllowed =
-      recordSum > 0
+    const maxRoundsAllowed = isCustom
+      ? 20
+      : recordSum > 0
         ? recordSum
         : tournamentClosed
           ? 0

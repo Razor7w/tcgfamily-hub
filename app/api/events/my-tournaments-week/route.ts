@@ -9,6 +9,10 @@ import {
 import WeeklyEvent from "@/models/WeeklyEvent";
 import type { WeeklyEventState } from "@/models/WeeklyEvent";
 import type { MyTournamentWeekItem } from "@/lib/my-tournament-week-types";
+import {
+  matchRecordFromRounds,
+  parseParticipantMatchRoundsFromLean,
+} from "@/lib/participant-match-round";
 
 /**
  * Torneos de la semana en los que el usuario está inscrito (participante con userId).
@@ -78,12 +82,16 @@ export async function GET(request: NextRequest) {
       const mine = participants.find(
         (p) => p.userId && String(p.userId) === userId,
       );
+      const tournamentOrigin: "official" | "custom" =
+        (d as { tournamentOrigin?: string }).tournamentOrigin === "custom"
+          ? "custom"
+          : "official";
       const deckPokemonSlugs = Array.isArray(mine?.deckPokemonSlugs)
         ? mine.deckPokemonSlugs.filter((s): s is string => typeof s === "string")
         : undefined;
       const myParticipantPopId =
         mine && typeof mine.popId === "string" ? mine.popId : undefined;
-      const myMatchRecord = mine
+      let myMatchRecord = mine
         ? {
             wins: Math.max(
               0,
@@ -99,13 +107,21 @@ export async function GET(request: NextRequest) {
             ),
           }
         : null;
+      if (mine && tournamentOrigin === "custom") {
+        const rounds = parseParticipantMatchRoundsFromLean(
+          (mine as { matchRounds?: unknown }).matchRounds,
+        );
+        myMatchRecord = matchRecordFromRounds(rounds);
+      }
 
-      const state: WeeklyEventState =
+      const stateRaw: WeeklyEventState =
         d.state === "schedule" || d.state === "running" || d.state === "close"
           ? d.state
           : "schedule";
+      const state: WeeklyEventState =
+        tournamentOrigin === "custom" ? "close" : stateRaw;
 
-      const tournamentClosed = state === "close";
+      const tournamentClosed = stateRaw === "close";
       const standings = (d as { tournamentStandings?: TournamentStandingLean[] })
         .tournamentStandings;
 
@@ -138,6 +154,7 @@ export async function GET(request: NextRequest) {
             ? d.startsAt.toISOString()
             : new Date(d.startsAt as string).toISOString(),
         state,
+        tournamentOrigin,
         myMatchRecord,
         placement,
         ...(deckPokemonSlugs?.length ? { deckPokemonSlugs } : {}),

@@ -70,6 +70,8 @@ const MATCH_TIE_COLOR = "#ca8a04";
  * se permite un tope alto para la bitácora hasta que exista W+L+T.
  */
 const FALLBACK_MAX_SELF_REPORTED_ROUNDS = 15;
+/** Torneo custom: tope de rondas en bitácora (API y UI alineados). */
+const CUSTOM_TOURNAMENT_MAX_ROUNDS = 20;
 
 type RowOutcome = ReturnType<typeof roundTableOutcome>;
 
@@ -485,6 +487,8 @@ type Props = {
   officialMatchRecord?: { wins: number; losses: number; ties: number } | null;
   /** Puesto en standings importados (solo si hay datos y coincide tu POP). */
   tournamentPlacement?: TournamentPlacementInfo | null;
+  /** Torneo creado por el usuario (récord solo desde rondas reportadas; tope de rondas mayor). */
+  isCustomTournament?: boolean;
   /** Si no hay Pokémon en perfil, muestra un botón + que abre el flujo de elegir Pokémon (p. ej. `ReportDeckDialog`). */
   onRequestChoosePokemon?: () => void;
 };
@@ -500,6 +504,7 @@ export default function TournamentMatchRoundsCard({
   eventState,
   officialMatchRecord,
   tournamentPlacement,
+  isCustomTournament = false,
   onRequestChoosePokemon,
 }: Props) {
   const { data: allOptions = [], isPending: optionsLoading } =
@@ -535,6 +540,7 @@ export default function TournamentMatchRoundsCard({
    * Ej.: 1-3-0 → 4 rondas; 2-2-1 → 5.
    */
   const maxSelfReportedRounds = useMemo(() => {
+    if (isCustomTournament) return CUSTOM_TOURNAMENT_MAX_ROUNDS;
     if (officialMatchRecord != null) {
       const sum =
         officialMatchRecord.wins +
@@ -544,16 +550,19 @@ export default function TournamentMatchRoundsCard({
       if (eventState === "close") return 0;
     }
     return FALLBACK_MAX_SELF_REPORTED_ROUNDS;
-  }, [officialMatchRecord, eventState]);
+  }, [isCustomTournament, officialMatchRecord, eventState]);
 
   const canAddRound = rounds.length < maxSelfReportedRounds;
   /** Mostrar el botón del formulario: añadir ronda, o cerrar si el panel está abierto (p. ej. editando al límite). */
   const showRoundFormToggle = canAddRound || formOpen;
 
   const showOfficialRecord =
-    eventState === "close" && officialMatchRecord != null;
+    !isCustomTournament &&
+    eventState === "close" &&
+    officialMatchRecord != null;
 
   const record = useMemo(() => {
+    if (isCustomTournament) return matchRecordFromRounds(rounds);
     if (eventState === "close" && officialMatchRecord != null) {
       return {
         wins: officialMatchRecord.wins,
@@ -562,7 +571,7 @@ export default function TournamentMatchRoundsCard({
       };
     }
     return matchRecordFromRounds(rounds);
-  }, [eventState, officialMatchRecord, rounds]);
+  }, [isCustomTournament, eventState, officialMatchRecord, rounds]);
 
   const slugToLabel = useMemo(() => {
     const m = new Map<string, string>();
@@ -827,7 +836,7 @@ export default function TournamentMatchRoundsCard({
                   >
                     {title}
                   </Typography>
-                  {eventState ? (
+                  {eventState && !isCustomTournament ? (
                     <Chip
                       size="small"
                       label={eventStateLabel(eventState)}

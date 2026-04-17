@@ -71,11 +71,18 @@ export interface IWeeklyParticipant {
   matchRounds?: IParticipantMatchRound[];
 }
 
+/** Torneo creado en tienda vs torneo personal reportado por el usuario (no depende del calendario de la tienda). */
+export type TournamentOrigin = "official" | "custom";
+
 export interface IWeeklyEvent extends Document {
   startsAt: Date;
   title: string;
   kind: WeeklyEventKind;
   game: WeeklyEventGame;
+  /** `custom`: creado por el usuario (nombre + lugar); el resto son eventos de la tienda. */
+  tournamentOrigin?: TournamentOrigin;
+  /** Dueño del torneo custom (solo aplica si `tournamentOrigin === "custom"`). */
+  createdByUserId?: Types.ObjectId;
   /** Solo aplica a torneos Pokémon. */
   pokemonSubtype?: PokemonTournamentSubtype;
   /** Precio en CLP; 0 = gratuito. Solo relevante para torneos en UI. */
@@ -199,6 +206,18 @@ const WeeklyEventSchema = new Schema<IWeeklyEvent>(
   {
     startsAt: { type: Date, required: true, index: true },
     title: { type: String, required: true, trim: true },
+    tournamentOrigin: {
+      type: String,
+      enum: ["official", "custom"],
+      default: "official",
+      index: true,
+    },
+    createdByUserId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: false,
+      index: true,
+    },
     kind: {
       type: String,
       enum: ["tournament", "trade_day", "other"],

@@ -17,6 +17,7 @@ import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import { alpha } from "@mui/material/styles";
 import DashboardModuleRouteGate from "@/components/dashboard/DashboardModuleRouteGate";
+import DeleteCustomTournamentButton from "@/components/events/DeleteCustomTournamentButton";
 import ReportDeckDialog from "@/components/events/ReportDeckDialog";
 import TournamentMatchRoundsCard from "@/components/events/TournamentMatchRoundsCard";
 import { useDashboardEventDetail } from "@/hooks/useWeeklyEvents";
@@ -76,7 +77,7 @@ export default function TorneoSemanaDetallePage() {
             </Alert>
           ) : !ev ? null : (
             <Stack spacing={{ xs: 2.25, sm: 3 }}>
-              {!ev.myRegistration ? (
+              {!ev.myRegistration && ev.tournamentOrigin !== "custom" ? (
                 <Alert severity="info">
                   No estás preinscrito en este torneo. Preinscríbete desde la vista de eventos
                   para ver el detalle y reportar tu deck.
@@ -87,6 +88,28 @@ export default function TorneoSemanaDetallePage() {
               ev.kind === "tournament" &&
               ev.game === "pokemon" ? (
                 <>
+                  {ev.tournamentOrigin === "custom" ? (
+                    <Stack
+                      direction={{ xs: "column", sm: "row" }}
+                      spacing={1.5}
+                      alignItems={{ xs: "stretch", sm: "center" }}
+                      justifyContent="space-between"
+                    >
+                      <Typography variant="body2" color="text.secondary">
+                        Torneo <strong>custom</strong>: no está vinculado al calendario de la tienda.
+                        Tu récord se calcula con las rondas que reportes.
+                      </Typography>
+                      {ev.canDeleteCustomTournament ? (
+                        <DeleteCustomTournamentButton
+                          eventId={eventId}
+                          tournamentTitle={ev.title}
+                          onDeleted={() => router.push("/dashboard/torneos-semana")}
+                          size="small"
+                          variant="outlined"
+                        />
+                      ) : null}
+                    </Stack>
+                  ) : null}
                   <TournamentMatchRoundsCard
                     eventId={eventId}
                     title={ev.title}
@@ -98,6 +121,7 @@ export default function TorneoSemanaDetallePage() {
                     eventState={ev.state}
                     officialMatchRecord={ev.myMatchRecord}
                     tournamentPlacement={ev.myTournamentPlacement ?? null}
+                    isCustomTournament={ev.tournamentOrigin === "custom"}
                     onRequestChoosePokemon={() => setDeckOpen(true)}
                   />
 

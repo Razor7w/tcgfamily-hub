@@ -10,7 +10,7 @@ import {
 import type { MyTournamentWeekItem } from "@/lib/my-tournament-week-types";
 import type { ParticipantMatchRoundDTO } from "@/lib/participant-match-round";
 import type { FullTournamentUploadPayload } from "@/lib/tournament-tdf-payload";
-import type { WeeklyEventState } from "@/models/WeeklyEvent";
+import type { TournamentOrigin, WeeklyEventState } from "@/models/WeeklyEvent";
 
 export type { FullTournamentUploadPayload };
 
@@ -20,6 +20,7 @@ export interface PublicWeeklyEvent {
   _id: string;
   startsAt: string;
   title: string;
+  tournamentOrigin?: TournamentOrigin;
   kind: "tournament" | "trade_day" | "other";
   game: "pokemon" | "magic" | "other_tcg";
   pokemonSubtype: "casual" | "cup" | "challenge" | null;
@@ -112,6 +113,8 @@ export type DashboardEventDetail = PublicWeeklyEvent & {
   myDeckPokemonSlugs: string[];
   canReportDeck: boolean;
   myMatchRounds: ParticipantMatchRoundDTO[];
+  /** Solo torneos custom creados por el usuario actual. */
+  canDeleteCustomTournament?: boolean;
 };
 
 export function useDashboardEventDetail(eventId: string | null) {
@@ -158,6 +161,53 @@ export function useSaveMyDeck(eventId: string) {
         queryKey: ["dashboard-event-detail", eventId],
       });
       queryClient.invalidateQueries({ queryKey: ["my-tournaments-week"] });
+    },
+  });
+}
+
+export function useCreateCustomTournament() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { title: string; startsAt?: string }) => {
+      const res = await fetch("/api/events/custom-tournament", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === "string" ? data.error : "No se pudo crear el torneo",
+        );
+      }
+      return data as { ok: boolean; eventId: string };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["my-tournaments-week"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-event-detail"] });
+    },
+  });
+}
+
+export function useDeleteCustomTournament() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (eventId: string) => {
+      const res = await fetch(`/api/events/${eventId}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === "string"
+            ? data.error
+            : "No se pudo eliminar el torneo",
+        );
+      }
+      return data as { ok: boolean };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["my-tournaments-week"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-event-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-events"] });
     },
   });
 }

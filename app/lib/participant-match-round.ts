@@ -63,6 +63,50 @@ export function roundTableOutcome(
 }
 
 /** Récord agregado por mesas reportadas (W‑L‑T), alineado al torneo sin emparejamientos oficiales. */
+/** Convierte subdocumentos `matchRounds` guardados en Mongo a DTOs (p. ej. GET evento / reportes). */
+export function parseParticipantMatchRoundsFromLean(
+  raw: unknown,
+): ParticipantMatchRoundDTO[] {
+  if (!Array.isArray(raw)) return [];
+  const myMatchRounds: ParticipantMatchRoundDTO[] = [];
+  for (const mr of raw) {
+    if (!mr || typeof mr !== "object") continue;
+    const m = mr as Record<string, unknown>;
+    const roundNum = Math.round(Number(m.roundNum));
+    if (!Number.isFinite(roundNum)) continue;
+    const opponentDeckSlugs = Array.isArray(m.opponentDeckSlugs)
+      ? m.opponentDeckSlugs.filter((s): s is string => typeof s === "string")
+      : [];
+    const gameResults = Array.isArray(m.gameResults)
+      ? (m.gameResults.filter((g): g is "W" | "L" | "T" =>
+          g === "W" || g === "L" || g === "T",
+        ) as ("W" | "L" | "T")[])
+      : [];
+    const turnOrders = Array.isArray(m.turnOrders)
+      ? (m.turnOrders.filter((t): t is "first" | "second" =>
+          t === "first" || t === "second",
+        ) as ("first" | "second")[])
+      : [];
+    const special =
+      m.specialOutcome === "intentional_draw" ||
+      m.specialOutcome === "no_show" ||
+      m.specialOutcome === "bye"
+        ? m.specialOutcome
+        : undefined;
+    const row: ParticipantMatchRoundDTO = {
+      ...(m._id != null ? { id: String(m._id) } : {}),
+      roundNum,
+      opponentDeckSlugs,
+      gameResults,
+      turnOrders,
+      ...(special ? { specialOutcome: special } : { specialOutcome: null }),
+    };
+    myMatchRounds.push(row);
+  }
+  myMatchRounds.sort((a, b) => a.roundNum - b.roundNum);
+  return myMatchRounds;
+}
+
 export function matchRecordFromRounds(
   rounds: ParticipantMatchRoundDTO[],
 ): { wins: number; losses: number; ties: number } {

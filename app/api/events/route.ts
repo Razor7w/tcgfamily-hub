@@ -172,6 +172,7 @@ export async function GET(request: NextRequest) {
 
     const docs = await WeeklyEvent.find({
       startsAt: { $gte: from, $lte: to },
+      tournamentOrigin: { $ne: "custom" },
     })
       .sort({ startsAt: 1 })
       .lean();

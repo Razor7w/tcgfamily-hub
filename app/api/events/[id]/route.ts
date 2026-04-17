@@ -8,7 +8,11 @@ import {
   pairingExtrasForUser,
 } from "@/lib/weekly-events";
 import { buildTournamentStandingsPublic } from "@/lib/weekly-event-public";
-import type { ParticipantMatchRoundDTO } from "@/lib/participant-match-round";
+import {
+  matchRecordFromRounds,
+  parseParticipantMatchRoundsFromLean,
+  type ParticipantMatchRoundDTO,
+} from "@/lib/participant-match-round";
 
 type LeanEvent = {
   _id: unknown;
@@ -16,6 +20,7 @@ type LeanEvent = {
   title: string;
   kind: string;
   game: string;
+  tournamentOrigin?: string;
   pokemonSubtype?: string;
   state?: string;
   priceClp: number;
@@ -25,6 +30,7 @@ type LeanEvent = {
   location?: string;
   roundNum?: number;
   tournamentStandings?: import("@/lib/weekly-event-public").TournamentStandingLean[];
+  createdByUserId?: unknown;
   participants?: {
     _id: unknown;
     displayName: string;
@@ -90,7 +96,26 @@ export async function GET(
         ? Math.max(0, Math.round(doc.roundNum))
         : 0;
     const { myTable, myOpponentName } = pairingExtrasForUser(parts, uid);
-    const myMatchRecord = mine
+    const tournamentOrigin: "official" | "custom" =
+      doc.tournamentOrigin === "custom" ? "custom" : "official";
+
+    const createdByStr =
+      doc.createdByUserId != null ? String(doc.createdByUserId) : "";
+    /** Solo el creador puede borrar un torneo custom (fallback si falta el campo en datos viejos). */
+    const canDeleteCustomTournament =
+      tournamentOrigin === "custom" &&
+      (createdByStr === uid ||
+        (!createdByStr &&
+          Boolean(mine?.userId && String(mine.userId) === uid)));
+
+    const myMatchRounds: ParticipantMatchRoundDTO[] =
+      parseParticipantMatchRoundsFromLean(mine?.matchRounds);
+
+    let myMatchRecord: {
+      wins: number;
+      losses: number;
+      ties: number;
+    } | null = mine
       ? {
           wins: Math.max(
             0,
@@ -106,10 +131,17 @@ export async function GET(
           ),
         }
       : null;
-    const eventState =
+
+    if (mine && tournamentOrigin === "custom") {
+      myMatchRecord = matchRecordFromRounds(myMatchRounds);
+    }
+    const eventStateRaw =
       doc.state === "schedule" || doc.state === "running" || doc.state === "close"
         ? doc.state
         : "schedule";
+    /** Torneos custom no siguen el ciclo oficial; la API los expone siempre como cerrados. */
+    const eventState =
+      tournamentOrigin === "custom" ? "close" : eventStateRaw;
     const tournamentClosed =
       doc.kind === "tournament" && doc.state === "close";
     const myParticipantPopId =
@@ -117,43 +149,6 @@ export async function GET(
     const myDeckPokemonSlugs = Array.isArray(mine?.deckPokemonSlugs)
       ? mine.deckPokemonSlugs.filter((s): s is string => typeof s === "string")
       : [];
-
-    const myMatchRounds: ParticipantMatchRoundDTO[] = [];
-    if (Array.isArray(mine?.matchRounds)) {
-      for (const mr of mine.matchRounds) {
-        const roundNum = Math.round(Number(mr.roundNum));
-        if (!Number.isFinite(roundNum)) continue;
-        const opponentDeckSlugs = Array.isArray(mr.opponentDeckSlugs)
-          ? mr.opponentDeckSlugs.filter((s): s is string => typeof s === "string")
-          : [];
-        const gameResults = Array.isArray(mr.gameResults)
-          ? (mr.gameResults.filter((g): g is "W" | "L" | "T" =>
-              g === "W" || g === "L" || g === "T",
-            ) as ("W" | "L" | "T")[])
-          : [];
-        const turnOrders = Array.isArray(mr.turnOrders)
-          ? (mr.turnOrders.filter((t): t is "first" | "second" =>
-              t === "first" || t === "second",
-            ) as ("first" | "second")[])
-          : [];
-        const special =
-          mr.specialOutcome === "intentional_draw" ||
-          mr.specialOutcome === "no_show" ||
-          mr.specialOutcome === "bye"
-            ? mr.specialOutcome
-            : undefined;
-        const row: ParticipantMatchRoundDTO = {
-          ...(mr._id != null ? { id: String(mr._id) } : {}),
-          roundNum,
-          opponentDeckSlugs,
-          gameResults,
-          turnOrders,
-          ...(special ? { specialOutcome: special } : { specialOutcome: null }),
-        };
-        myMatchRounds.push(row);
-      }
-      myMatchRounds.sort((a, b) => a.roundNum - b.roundNum);
-    }
     const standingsPublic = tournamentClosed
       ? buildTournamentStandingsPublic(
           doc.tournamentStandings,
@@ -169,6 +164,7 @@ export async function GET(
       title: doc.title,
       kind: doc.kind,
       game: doc.game,
+      tournamentOrigin,
       pokemonSubtype: doc.pokemonSubtype ?? null,
       state: eventState,
       priceClp: doc.priceClp,
@@ -179,13 +175,15 @@ export async function GET(
       roundNum,
       participantNames: parts.map((p) => p.displayName),
       participantCount: parts.length,
-      canPreRegister: canPreRegisterNow(startsAt, now),
+      canPreRegister:
+        tournamentOrigin !== "custom" && canPreRegisterNow(startsAt, now),
       myRegistration,
       myAttendanceConfirmed,
       myTable,
       myOpponentName,
       myMatchRecord,
       canUnregister:
+        tournamentOrigin !== "custom" &&
         Boolean(myRegistration) &&
         canUnregisterNow(startsAt, now) &&
         !myAttendanceConfirmed &&
@@ -197,6 +195,7 @@ export async function GET(
         doc.kind === "tournament" &&
         doc.game === "pokemon",
       myMatchRounds,
+      canDeleteCustomTournament,
       ...(tournamentClosed
         ? {
             standingsTopByCategory:
@@ -212,6 +211,62 @@ export async function GET(
     console.error("GET /api/events/[id]:", error);
     return NextResponse.json(
       { error: "Error al obtener evento" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const { id } = await context.params;
+    if (!id?.trim()) {
+      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+    }
+
+    await connectDB();
+
+    const doc = await WeeklyEvent.findById(id).lean<LeanEvent | null>();
+    if (!doc) {
+      return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+    }
+
+    if (doc.tournamentOrigin !== "custom") {
+      return NextResponse.json(
+        { error: "Solo se pueden eliminar torneos personalizados" },
+        { status: 403 },
+      );
+    }
+
+    const uid = session.user.id;
+    const createdByStr =
+      doc.createdByUserId != null ? String(doc.createdByUserId) : "";
+    const parts = doc.participants ?? [];
+    const mine = parts.find(
+      (p) => p.userId && String(p.userId) === uid,
+    );
+    const isCreator =
+      createdByStr === uid ||
+      (!createdByStr &&
+        Boolean(mine?.userId && String(mine.userId) === uid));
+
+    if (!isCreator) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
+
+    await WeeklyEvent.deleteOne({ _id: doc._id });
+    return NextResponse.json({ ok: true }, { status: 200 });
+  } catch (error) {
+    console.error("DELETE /api/events/[id]:", error);
+    return NextResponse.json(
+      { error: "No se pudo eliminar el torneo" },
       { status: 500 },
     );
   }

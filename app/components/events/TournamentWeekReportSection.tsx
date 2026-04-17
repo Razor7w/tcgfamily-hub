@@ -11,6 +11,7 @@ import Skeleton from "@mui/material/Skeleton";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import Link from "next/link";
+import DeleteCustomTournamentButton from "@/components/events/DeleteCustomTournamentButton";
 import { useMyTournamentsWeekReport } from "@/hooks/useWeeklyEvents";
 import type { MyTournamentWeekItem } from "@/lib/my-tournament-week-types";
 import type { WeeklyEventState } from "@/models/WeeklyEvent";
@@ -42,6 +43,13 @@ function formatWhen(iso: string) {
 }
 
 function placementSummary(t: MyTournamentWeekItem): string {
+  if (t.tournamentOrigin === "custom") {
+    const r = t.myMatchRecord;
+    if (r && (r.wins > 0 || r.losses > 0 || r.ties > 0)) {
+      return `Récord ${r.wins}-${r.losses}-${r.ties} (según tus rondas reportadas)`;
+    }
+    return "Reporta tus rondas para ver tu récord";
+  }
   if (t.state !== "close") {
     if (t.state === "running") {
       const r = t.myMatchRecord;
@@ -140,10 +148,26 @@ export default function TournamentWeekReportSection({
                   >
                     <Chip
                       size="small"
-                      label={stateLabel(t.state)}
-                      color={stateColor(t.state)}
-                      variant={t.state === "close" ? "filled" : "outlined"}
+                      label={
+                        (t.tournamentOrigin ?? "official") === "custom"
+                          ? "Custom"
+                          : "Oficial"
+                      }
+                      color={
+                        (t.tournamentOrigin ?? "official") === "custom"
+                          ? "secondary"
+                          : "default"
+                      }
+                      variant="outlined"
                     />
+                    {(t.tournamentOrigin ?? "official") !== "custom" ? (
+                      <Chip
+                        size="small"
+                        label={stateLabel(t.state)}
+                        color={stateColor(t.state)}
+                        variant={t.state === "close" ? "filled" : "outlined"}
+                      />
+                    ) : null}
                     <Button
                       component={Link}
                       href={`/dashboard/torneos-semana/${t.eventId}`}
@@ -153,6 +177,15 @@ export default function TournamentWeekReportSection({
                     >
                       Ver detalle
                     </Button>
+                    {(t.tournamentOrigin ?? "official") === "custom" ? (
+                      <DeleteCustomTournamentButton
+                        eventId={t.eventId}
+                        tournamentTitle={t.title}
+                        size="small"
+                        variant="text"
+                        label="Eliminar"
+                      />
+                    ) : null}
                   </Stack>
                 </Stack>
                 <Typography variant="caption" color="text.secondary">
