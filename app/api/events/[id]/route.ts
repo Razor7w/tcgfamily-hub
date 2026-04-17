@@ -28,6 +28,9 @@ type LeanEvent = {
     confirmed?: boolean;
     table?: string;
     opponentId?: string;
+    wins?: unknown;
+    losses?: unknown;
+    ties?: unknown;
   }[];
 };
 
@@ -69,6 +72,22 @@ export async function GET(
         ? Math.max(0, Math.round(doc.roundNum))
         : 0;
     const { myTable, myOpponentName } = pairingExtrasForUser(parts, uid);
+    const myMatchRecord = mine
+      ? {
+          wins: Math.max(
+            0,
+            Math.min(999, Math.round(Number(mine.wins) || 0)),
+          ),
+          losses: Math.max(
+            0,
+            Math.min(999, Math.round(Number(mine.losses) || 0)),
+          ),
+          ties: Math.max(
+            0,
+            Math.min(999, Math.round(Number(mine.ties) || 0)),
+          ),
+        }
+      : null;
     const event = {
       _id: String(doc._id),
       startsAt: startsAt.toISOString(),
@@ -89,6 +108,7 @@ export async function GET(
       myAttendanceConfirmed,
       myTable,
       myOpponentName,
+      myMatchRecord,
       canUnregister:
         Boolean(myRegistration) &&
         canUnregisterNow(startsAt, now) &&

@@ -36,6 +36,8 @@ export interface PublicWeeklyEvent {
   myTable: string | null;
   /** Nombre del oponente si hay emparejamiento; null si no aplica. */
   myOpponentName: string | null;
+  /** Récord W-L-T persistido (TDF); null si no estás inscrito. */
+  myMatchRecord: { wins: number; losses: number; ties: number } | null;
   canUnregister: boolean;
 }
 
@@ -137,6 +139,9 @@ export type AdminEventParticipant = {
   table: string;
   opponentId: string;
   confirmed: boolean;
+  wins: number;
+  losses: number;
+  ties: number;
   createdAt?: string;
 };
 
@@ -248,6 +253,7 @@ export type AdminSyncRoundResult = {
   roundNum: number;
   state: WeeklyEventState;
   appliedMatches: number;
+  recordsApplied: number;
   skipped: { tableNumber: string; reason: string }[];
   participantCount: number;
 };
@@ -264,6 +270,12 @@ export function useAdminSyncEventRound() {
         player1PopId: string;
         player2PopId: string;
       }[];
+      participantRecords: {
+        popId: string;
+        wins: number;
+        losses: number;
+        ties: number;
+      }[];
     }) => {
       const res = await fetch(
         `/api/admin/events/${input.eventId}/sync-round`,
@@ -273,6 +285,7 @@ export function useAdminSyncEventRound() {
           body: JSON.stringify({
             roundNum: input.roundNum,
             matches: input.matches,
+            participantRecords: input.participantRecords,
           }),
         },
       );

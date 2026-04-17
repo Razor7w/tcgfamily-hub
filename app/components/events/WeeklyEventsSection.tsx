@@ -733,6 +733,20 @@ export default function WeeklyEventsSection({
                                     </strong>
                                   </Typography>
                                 </Stack>
+                                {selectedEvent.myMatchRecord ? (
+                                  <Typography variant="body2" color="text.secondary">
+                                    Récord (W / L / T):{" "}
+                                    <Box
+                                      component="span"
+                                      fontWeight={700}
+                                      color="text.primary"
+                                    >
+                                      {selectedEvent.myMatchRecord.wins} /{" "}
+                                      {selectedEvent.myMatchRecord.losses} /{" "}
+                                      {selectedEvent.myMatchRecord.ties}
+                                    </Box>
+                                  </Typography>
+                                ) : null}
                               </Stack>
                             ) : null}
                             {!selectedEventStarted && selectedEvent.myAttendanceConfirmed ? (

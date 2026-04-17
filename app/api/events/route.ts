@@ -31,6 +31,9 @@ function toPublicEvent(
       confirmed?: boolean;
       table?: string;
       opponentId?: string;
+      wins?: unknown;
+      losses?: unknown;
+      ties?: unknown;
     }[];
   },
   now: Date,
@@ -41,19 +44,33 @@ function toPublicEvent(
     typeof doc.roundNum === "number" && Number.isFinite(doc.roundNum)
       ? Math.max(0, Math.round(doc.roundNum))
       : 0;
-  let myRegistration: string | null = null;
-  let myAttendanceConfirmed = false;
-  if (currentUserId) {
-    const mine = doc.participants.find(
-      (p) => p.userId && String(p.userId) === currentUserId,
-    );
-    myRegistration = mine?.displayName ?? null;
-    myAttendanceConfirmed = Boolean(mine?.confirmed);
-  }
+  const mine = currentUserId
+    ? doc.participants.find(
+        (p) => p.userId && String(p.userId) === currentUserId,
+      )
+    : undefined;
+  const myRegistration = mine?.displayName ?? null;
+  const myAttendanceConfirmed = Boolean(mine?.confirmed);
   const { myTable, myOpponentName } = pairingExtrasForUser(
     doc.participants,
     currentUserId,
   );
+  const myMatchRecord = mine
+    ? {
+        wins: Math.max(
+          0,
+          Math.min(999, Math.round(Number(mine.wins) || 0)),
+        ),
+        losses: Math.max(
+          0,
+          Math.min(999, Math.round(Number(mine.losses) || 0)),
+        ),
+        ties: Math.max(
+          0,
+          Math.min(999, Math.round(Number(mine.ties) || 0)),
+        ),
+      }
+    : null;
   const canUnregister =
     Boolean(myRegistration) &&
     canUnregisterNow(startsAt, now) &&
@@ -84,6 +101,7 @@ function toPublicEvent(
     myAttendanceConfirmed,
     myTable,
     myOpponentName,
+    myMatchRecord,
     canUnregister,
   };
 }
@@ -146,6 +164,9 @@ export async function GET(request: NextRequest) {
             confirmed?: boolean;
             table?: string;
             opponentId?: string;
+            wins?: unknown;
+            losses?: unknown;
+            ties?: unknown;
           }[],
         },
         now,

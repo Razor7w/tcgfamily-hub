@@ -46,6 +46,9 @@ function serializeAdminParticipant(p: {
   popId?: string;
   table?: string;
   opponentId?: string;
+  wins?: unknown;
+  losses?: unknown;
+  ties?: unknown;
 }) {
   let userIdStr: string | null = null;
   const u = p.userId;
@@ -71,6 +74,9 @@ function serializeAdminParticipant(p: {
     table: typeof p.table === "string" ? p.table : "",
     opponentId: typeof p.opponentId === "string" ? p.opponentId : "",
     confirmed: Boolean(p.confirmed),
+    wins: Math.max(0, Math.min(999, Math.round(Number(p.wins) || 0))),
+    losses: Math.max(0, Math.min(999, Math.round(Number(p.losses) || 0))),
+    ties: Math.max(0, Math.min(999, Math.round(Number(p.ties) || 0))),
     createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : undefined,
   };
 }
@@ -96,6 +102,9 @@ export async function GET() {
       popId?: string;
       table?: string;
       opponentId?: string;
+      wins?: unknown;
+      losses?: unknown;
+      ties?: unknown;
     };
 
     const events = raw.map((ev) => {

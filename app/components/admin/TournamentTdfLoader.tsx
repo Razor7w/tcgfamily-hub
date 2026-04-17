@@ -392,6 +392,14 @@ export default function TournamentTdfLoader({
                               player1PopId: m.player1UserId,
                               player2PopId: m.player2UserId,
                             })),
+                            participantRecords: Array.from(
+                              matchRecords.entries(),
+                            ).map(([popId, r]) => ({
+                              popId,
+                              wins: r.wins,
+                              losses: r.losses,
+                              ties: r.ties,
+                            })),
                           });
                           setLastRoundSync(data);
                         } catch {
@@ -483,6 +491,8 @@ export default function TournamentTdfLoader({
             >
               Ronda <strong>{lastRoundSync.roundNum}</strong> guardada en el evento.
               Mesas aplicadas: <strong>{lastRoundSync.appliedMatches}</strong>.
+              {" "}
+              Récords W/L/T en listado: <strong>{lastRoundSync.recordsApplied}</strong>.
               {lastRoundSync.skipped.length > 0 ? (
                 <>
                   {" "}

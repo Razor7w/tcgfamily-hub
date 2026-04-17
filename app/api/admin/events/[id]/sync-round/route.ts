@@ -6,12 +6,26 @@ import WeeklyEvent from "@/models/WeeklyEvent";
 import { popidForStorage } from "@/lib/rut-chile";
 
 const ROUND_NUM_MAX = 9999;
+const WLT_MAX = 999;
 
 type MatchInput = {
   tableNumber?: string;
   player1PopId?: string;
   player2PopId?: string;
 };
+
+type ParticipantRecordInput = {
+  popId?: string;
+  wins?: unknown;
+  losses?: unknown;
+  ties?: unknown;
+};
+
+function clampWlt(v: unknown): number {
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(WLT_MAX, Math.round(n)));
+}
 
 /**
  * POST — Fija la ronda actual del evento y aplica mesa + oponente (por POP ID) según el TDF.
@@ -80,6 +94,9 @@ export async function POST(
       popId?: string;
       table?: string;
       opponentId?: string;
+      wins?: number;
+      losses?: number;
+      ties?: number;
       _id: mongoose.Types.ObjectId;
     };
 
@@ -172,6 +189,21 @@ export async function POST(
       applied++;
     }
 
+    const rawRecords = rec.participantRecords;
+    let recordsApplied = 0;
+    if (Array.isArray(rawRecords)) {
+      for (const row of rawRecords as ParticipantRecordInput[]) {
+        const popRaw = typeof row.popId === "string" ? row.popId : "";
+        if (!popRaw.trim()) continue;
+        const part = findByPop(popRaw);
+        if (!part) continue;
+        part.wins = clampWlt(row.wins);
+        part.losses = clampWlt(row.losses);
+        part.ties = clampWlt(row.ties);
+        recordsApplied++;
+      }
+    }
+
     doc.markModified("participants");
     await doc.save();
 
@@ -181,6 +213,7 @@ export async function POST(
         roundNum: doc.roundNum,
         state: doc.state,
         appliedMatches: applied,
+        recordsApplied,
         skipped,
         participantCount: doc.participants.length,
       },

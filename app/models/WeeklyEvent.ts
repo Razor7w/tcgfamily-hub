@@ -20,6 +20,10 @@ export interface IWeeklyParticipant {
   /** Mesa / emparejamiento (ej. torneo); vacío hasta asignación. */
   table?: string;
   opponentId?: string;
+  /** Récord del torneo según TDF (victorias / derrotas / empates). */
+  wins?: number;
+  losses?: number;
+  ties?: number;
 }
 
 export interface IWeeklyEvent extends Document {
@@ -51,6 +55,9 @@ const ParticipantSchema = new Schema<IWeeklyParticipant>(
     popId: { type: String, default: "" },
     table: { type: String, default: "" },
     opponentId: { type: String, default: "" },
+    wins: { type: Number, default: 0, min: 0 },
+    losses: { type: Number, default: 0, min: 0 },
+    ties: { type: Number, default: 0, min: 0 },
   },
   { _id: true },
 );
