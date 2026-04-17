@@ -9,6 +9,29 @@ function getAppOrigin(): string {
   return "http://localhost:3000";
 }
 
+function isLocalhostOrigin(origin: string): boolean {
+  try {
+    const u = new URL(origin);
+    const h = u.hostname.toLowerCase();
+    return h === "localhost" || h === "127.0.0.1" || h === "::1";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * No envía por Resend en desarrollo típico (yarn dev) ni cuando la URL canónica es localhost,
+ * salvo que RESEND_SEND_IN_DEV=1 o true.
+ */
+function shouldSkipResendForLocalEnvironment(): boolean {
+  const force =
+    process.env.RESEND_SEND_IN_DEV === "1" ||
+    process.env.RESEND_SEND_IN_DEV === "true";
+  if (force) return false;
+  if (process.env.NODE_ENV === "development") return true;
+  return isLocalhostOrigin(getAppOrigin());
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -47,6 +70,13 @@ export async function sendMailPickupReadyEmail(input: {
   recipientName?: string | null;
   mailCode: string;
 }): Promise<{ sent: boolean; skippedReason?: string }> {
+  if (shouldSkipResendForLocalEnvironment()) {
+    console.info(
+      "[email] Entorno local: no se envía correo por Resend. Define RESEND_SEND_IN_DEV=true para probar envíos reales.",
+    );
+    return { sent: false, skippedReason: "local_dev" };
+  }
+
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) {
     console.warn(
