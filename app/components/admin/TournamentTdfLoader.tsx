@@ -315,19 +315,16 @@ export default function TournamentTdfLoader({
                 <Box sx={{ px: 2, py: 1, bgcolor: "action.hover" }}>
                   <Typography variant="subtitle2" fontWeight={700}>
                     Ronda {roundNum}
-                    {list[0]?.roundType ? ` · tipo ${list[0].roundType}` : ""}
                   </Typography>
                 </Box>
                 <TableContainer>
                   <Table size="small">
                     <TableHead>
-                      <TableRow>
-                        <TableCell width={72}>Mesa</TableCell>
-                        <TableCell>Jugador 1</TableCell>
-                        <TableCell>Jugador 2</TableCell>
-                        <TableCell>Hora</TableCell>
-                        <TableCell>Outcome</TableCell>
-                      </TableRow>
+                        <TableRow>
+                          <TableCell width={72}>Mesa</TableCell>
+                          <TableCell>Jugador 1</TableCell>
+                          <TableCell>Jugador 2</TableCell>
+                        </TableRow>
                     </TableHead>
                     <TableBody>
                       {list.map((m, idx) => (
@@ -359,9 +356,7 @@ export default function TournamentTdfLoader({
                               {m.player2UserId}
                             </Typography>
                           </TableCell>
-                          <TableCell sx={{ whiteSpace: "nowrap" }}>{m.timestamp || "—"}</TableCell>
-                          <TableCell>{m.outcome}</TableCell>
-                        </TableRow>
+                          </TableRow>
                       ))}
                     </TableBody>
                   </Table>
