@@ -11,4 +11,6 @@ export type MyTournamentWeekItem = {
     place: number | null;
     isDnf: boolean;
   } | null;
+  /** Slugs reportados (sprites Limitless), si el usuario guardó su deck. */
+  deckPokemonSlugs?: string[];
 };

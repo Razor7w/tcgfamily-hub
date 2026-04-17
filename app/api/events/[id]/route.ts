@@ -35,6 +35,7 @@ type LeanEvent = {
     wins?: unknown;
     losses?: unknown;
     ties?: unknown;
+    deckPokemonSlugs?: string[];
   }[];
 };
 
@@ -104,6 +105,9 @@ export async function GET(
       doc.kind === "tournament" && doc.state === "close";
     const myParticipantPopId =
       mine && typeof mine.popId === "string" ? mine.popId : undefined;
+    const myDeckPokemonSlugs = Array.isArray(mine?.deckPokemonSlugs)
+      ? mine.deckPokemonSlugs.filter((s): s is string => typeof s === "string")
+      : [];
     const standingsPublic = tournamentClosed
       ? buildTournamentStandingsPublic(
           doc.tournamentStandings,
@@ -141,6 +145,11 @@ export async function GET(
         !myAttendanceConfirmed &&
         doc.state !== "running" &&
         doc.state !== "close",
+      myDeckPokemonSlugs,
+      canReportDeck:
+        Boolean(myRegistration) &&
+        doc.kind === "tournament" &&
+        doc.game === "pokemon",
       ...(tournamentClosed
         ? {
             standingsTopByCategory:

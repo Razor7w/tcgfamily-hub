@@ -10,6 +10,7 @@ import Typography from "@mui/material/Typography";
 import Skeleton from "@mui/material/Skeleton";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
+import Link from "next/link";
 import { useMyTournamentsWeekReport } from "@/hooks/useWeeklyEvents";
 import type { MyTournamentWeekItem } from "@/lib/my-tournament-week-types";
 import type { WeeklyEventState } from "@/models/WeeklyEvent";
@@ -125,19 +126,34 @@ export default function TournamentWeekReportSection({
               >
                 <Stack
                   direction={{ xs: "column", sm: "row" }}
-                  spacing={1}
+                  spacing={1.5}
                   justifyContent="space-between"
-                  alignItems={{ xs: "flex-start", sm: "center" }}
+                  alignItems={{ xs: "stretch", sm: "center" }}
                 >
                   <Typography variant="subtitle1" fontWeight={700}>
                     {t.title}
                   </Typography>
-                  <Chip
-                    size="small"
-                    label={stateLabel(t.state)}
-                    color={stateColor(t.state)}
-                    variant={t.state === "close" ? "filled" : "outlined"}
-                  />
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1}
+                    alignItems={{ xs: "stretch", sm: "center" }}
+                  >
+                    <Chip
+                      size="small"
+                      label={stateLabel(t.state)}
+                      color={stateColor(t.state)}
+                      variant={t.state === "close" ? "filled" : "outlined"}
+                    />
+                    <Button
+                      component={Link}
+                      href={`/dashboard/torneos-semana/${t.eventId}`}
+                      variant="outlined"
+                      size="small"
+                      sx={{ flexShrink: 0 }}
+                    >
+                      Ver detalle
+                    </Button>
+                  </Stack>
                 </Stack>
                 <Typography variant="caption" color="text.secondary">
                   {formatWhen(t.startsAt)}

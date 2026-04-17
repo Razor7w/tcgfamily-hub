@@ -73,10 +73,14 @@ export async function GET(request: NextRequest) {
         wins?: unknown;
         losses?: unknown;
         ties?: unknown;
+        deckPokemonSlugs?: string[];
       }[];
       const mine = participants.find(
         (p) => p.userId && String(p.userId) === userId,
       );
+      const deckPokemonSlugs = Array.isArray(mine?.deckPokemonSlugs)
+        ? mine.deckPokemonSlugs.filter((s): s is string => typeof s === "string")
+        : undefined;
       const myParticipantPopId =
         mine && typeof mine.popId === "string" ? mine.popId : undefined;
       const myMatchRecord = mine
@@ -136,6 +140,7 @@ export async function GET(request: NextRequest) {
         state,
         myMatchRecord,
         placement,
+        ...(deckPokemonSlugs?.length ? { deckPokemonSlugs } : {}),
       });
     }
 

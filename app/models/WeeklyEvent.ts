@@ -56,6 +56,8 @@ export interface IWeeklyParticipant {
   wins?: number;
   losses?: number;
   ties?: number;
+  /** Slugs para sprites Limitless (gen9), hasta 2 Pokémon reportados por el jugador. */
+  deckPokemonSlugs?: string[];
 }
 
 export interface IWeeklyEvent extends Document {
@@ -161,6 +163,7 @@ const ParticipantSchema = new Schema<IWeeklyParticipant>(
     wins: { type: Number, default: 0, min: 0 },
     losses: { type: Number, default: 0, min: 0 },
     ties: { type: Number, default: 0, min: 0 },
+    deckPokemonSlugs: { type: [String], default: undefined },
   },
   { _id: true },
 );

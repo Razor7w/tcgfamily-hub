@@ -106,6 +106,60 @@ export function useMyTournamentsWeekReport(weekAnchor: Date | null) {
   });
 }
 
+/** Detalle de evento para el dashboard (incluye deck reportado). */
+export type DashboardEventDetail = PublicWeeklyEvent & {
+  myDeckPokemonSlugs: string[];
+  canReportDeck: boolean;
+};
+
+export function useDashboardEventDetail(eventId: string | null) {
+  return useQuery({
+    queryKey: ["dashboard-event-detail", eventId],
+    queryFn: async () => {
+      if (!eventId?.trim()) throw new Error("ID requerido");
+      const res = await fetch(`/api/events/${eventId}`);
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        event?: DashboardEventDetail;
+      };
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === "string" ? data.error : "Error al cargar el evento",
+        );
+      }
+      if (!data.event) throw new Error("Respuesta inválida");
+      return data.event;
+    },
+    enabled: Boolean(eventId?.trim()),
+  });
+}
+
+export function useSaveMyDeck(eventId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (pokemon: string[]) => {
+      const res = await fetch(`/api/events/${eventId}/my-deck`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pokemon }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === "string" ? data.error : "Error al guardar",
+        );
+      }
+      return data as { ok: boolean; deckPokemonSlugs: string[] };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["dashboard-event-detail", eventId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["my-tournaments-week"] });
+    },
+  });
+}
+
 /** Respuesta de GET /api/events/[id]/current-round (emparejamientos publicados). */
 export type EventCurrentRoundResponse = {
   roundNum: number;
@@ -178,6 +232,7 @@ export function useRegisterWeeklyEvent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["weekly-events"] });
       queryClient.invalidateQueries({ queryKey: ["my-tournaments-week"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-event-detail"] });
     },
   });
 }
@@ -207,6 +262,7 @@ export function useUnregisterWeeklyEvent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["weekly-events"] });
       queryClient.invalidateQueries({ queryKey: ["my-tournaments-week"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-event-detail"] });
     },
   });
 }
