@@ -1171,7 +1171,7 @@ export default function MailsPage() {
                   }
                 />
               }
-              label="Recibido en tienda"
+              label="Recibido en tienda (envía un email al receptor con cuenta)"
             />
             <TextField
               label="Observaciones"

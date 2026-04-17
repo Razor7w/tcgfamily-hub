@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { sendMailPickupReadyEmail } from "@/lib/email/send-mail-pickup-ready";
 import connectDB from "@/lib/mongodb";
 import Mails from "@/models/Mails";
 import User from "@/models/User";
@@ -154,12 +155,51 @@ export async function PUT(
       existing.toUserId = toUserId as mongoose.Types.ObjectId;
     }
 
+    const wasReceivedInStore = existing.isRecivedInStore;
+
     if (typeof isRecived === "boolean") existing.isRecived = isRecived;
     if (typeof isRecivedInStore === "boolean")
       existing.isRecivedInStore = isRecivedInStore;
     if (observations !== undefined) existing.observations = observations ?? "";
 
+    const becameReadyInStore =
+      typeof isRecivedInStore === "boolean" &&
+      isRecivedInStore === true &&
+      !wasReceivedInStore;
+
     await existing.save();
+
+    if (becameReadyInStore && existing.toUserId) {
+      const recipientDoc = await User.findById(existing.toUserId)
+        .select("email name")
+        .lean();
+      const recipient = recipientDoc as {
+        email?: string;
+        name?: string;
+      } | null;
+      const toEmail =
+        recipient && typeof recipient.email === "string"
+          ? recipient.email.trim()
+          : "";
+      if (toEmail) {
+        try {
+          await sendMailPickupReadyEmail({
+            to: toEmail,
+            recipientName:
+              recipient && typeof recipient.name === "string"
+                ? recipient.name
+                : undefined,
+            mailCode: existing.code,
+          });
+        } catch (emailErr) {
+          console.error(
+            "[api/mail] Aviso por email de retiro en tienda no enviado:",
+            emailErr,
+          );
+        }
+      }
+    }
+
     const mail = await getMailOr404(mailId);
     return NextResponse.json({ mail }, { status: 200 });
   } catch (error) {
