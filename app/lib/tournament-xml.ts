@@ -184,8 +184,13 @@ export function parseTournamentXml(xmlString: string): ParseTournamentXmlResult 
       const matchEl = matchNodes[m]
       const p1 = matchEl.getElementsByTagName('player1')[0]
       const p2 = matchEl.getElementsByTagName('player2')[0]
-      const uid1 = p1?.getAttribute('userid')?.trim() ?? ''
-      const uid2 = p2?.getAttribute('userid')?.trim() ?? ''
+      let uid1 = p1?.getAttribute('userid')?.trim() ?? ''
+      let uid2 = p2?.getAttribute('userid')?.trim() ?? ''
+      if (!uid1 && !uid2) {
+        const lone = matchEl.getElementsByTagName('player')[0]
+        const u = lone?.getAttribute('userid')?.trim() ?? ''
+        if (u) uid1 = u
+      }
       matches.push({
         roundNumber,
         roundType,
@@ -232,4 +237,128 @@ export function buildPlayerNameLookup(players: ParsedPlayer[]): Map<string, stri
     map.set(p.popId, full || p.popId)
   }
   return map
+}
+
+export type MatchRecord = {
+  wins: number
+  losses: number
+  ties: number
+}
+
+/**
+ * Acumula victorias / derrotas / empates por POP a partir de `outcome` en cada partida.
+ * - `1` → gana jugador 1, `2` → gana jugador 2, `3` → empate (ambos), bye (un solo jugador) → victoria para ese jugador.
+ */
+export function buildMatchRecordsFromMatches(matches: ParsedMatch[]): Map<string, MatchRecord> {
+  const map = new Map<string, MatchRecord>()
+  const bump = (id: string) => {
+    if (!id) return
+    let r = map.get(id)
+    if (!r) {
+      r = { wins: 0, losses: 0, ties: 0 }
+      map.set(id, r)
+    }
+    return r
+  }
+
+  for (const m of matches) {
+    const o = m.outcome.trim()
+    let u1 = m.player1UserId.trim()
+    let u2 = m.player2UserId.trim()
+    if (u1 && !u2) {
+      const rec = bump(u1)
+      if (rec) rec.wins++
+      continue
+    }
+    if (!u1 || !u2) continue
+
+    if (o === '1') {
+      bump(u1)!.wins++
+      bump(u2)!.losses++
+    } else if (o === '2') {
+      bump(u2)!.wins++
+      bump(u1)!.losses++
+    } else if (o === '3') {
+      bump(u1)!.ties++
+      bump(u2)!.ties++
+    }
+  }
+
+  return map
+}
+
+export function formatMatchRecordWlt(r: MatchRecord | undefined): string {
+  if (!r) return '0-0-0'
+  return `${r.wins}-${r.losses}-${r.ties}`
+}
+
+export type MatchRecordsBeforeRow = {
+  p1: MatchRecord
+  p2: MatchRecord
+}
+
+/**
+ * Para cada partida, récord W/L/T de cada jugador **antes** de aplicar esa partida,
+ * procesando en orden de `roundNumber` (y orden de aparición en el XML dentro de la misma ronda).
+ */
+export function buildRecordsBeforeEachMatch(matches: ParsedMatch[]): (
+  | MatchRecordsBeforeRow
+  | undefined
+)[] {
+  const n = matches.length
+  const snapshots: (MatchRecordsBeforeRow | undefined)[] = new Array(n)
+  const running = new Map<string, MatchRecord>()
+  const getM = (id: string): MatchRecord => {
+    let r = running.get(id)
+    if (!r) {
+      r = { wins: 0, losses: 0, ties: 0 }
+      running.set(id, r)
+    }
+    return r
+  }
+  const cloneR = (r: MatchRecord): MatchRecord => ({
+    wins: r.wins,
+    losses: r.losses,
+    ties: r.ties
+  })
+
+  const indices = matches.map((_, i) => i).sort((a, b) => {
+    const ra = matches[a].roundNumber
+    const rb = matches[b].roundNumber
+    if (ra !== rb) return ra - rb
+    return a - b
+  })
+
+  for (const idx of indices) {
+    const m = matches[idx]
+    const u1 = m.player1UserId.trim()
+    const u2 = m.player2UserId.trim()
+    const o = m.outcome.trim()
+
+    if (u1) {
+      snapshots[idx] = {
+        p1: cloneR(getM(u1)),
+        p2: u2 ? cloneR(getM(u2)) : { wins: 0, losses: 0, ties: 0 }
+      }
+    }
+
+    if (u1 && !u2) {
+      getM(u1).wins++
+      continue
+    }
+    if (!u1 || !u2) continue
+
+    if (o === '1') {
+      getM(u1).wins++
+      getM(u2).losses++
+    } else if (o === '2') {
+      getM(u2).wins++
+      getM(u1).losses++
+    } else if (o === '3') {
+      getM(u1).ties++
+      getM(u2).ties++
+    }
+  }
+
+  return snapshots
 }

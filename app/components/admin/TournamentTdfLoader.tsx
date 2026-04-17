@@ -19,7 +19,10 @@ import {
 } from "@mui/material";
 import { EventSeat, FolderOpen, GroupAdd } from "@mui/icons-material";
 import {
+  buildMatchRecordsFromMatches,
   buildPlayerNameLookup,
+  buildRecordsBeforeEachMatch,
+  formatMatchRecordWlt,
   parseTournamentXml,
   type ParsedMatch,
 } from "@/lib/tournament-xml";
@@ -68,6 +71,19 @@ export default function TournamentTdfLoader({
 
   const parsed = useMemo(() => parseTournamentXml(raw), [raw]);
   const names = useMemo(() => buildPlayerNameLookup(parsed.players), [parsed.players]);
+  const matchRecords = useMemo(
+    () => buildMatchRecordsFromMatches(parsed.matches),
+    [parsed.matches],
+  );
+  const recordsBeforeEachMatch = useMemo(
+    () => buildRecordsBeforeEachMatch(parsed.matches),
+    [parsed.matches],
+  );
+  const matchIndexByRef = useMemo(() => {
+    const map = new Map<ParsedMatch, number>();
+    parsed.matches.forEach((m, i) => map.set(m, i));
+    return map;
+  }, [parsed.matches]);
   const rounds = useMemo(() => groupMatchesByRound(parsed.matches), [parsed.matches]);
   const standingsPlayerCount = useMemo(
     () =>
@@ -307,6 +323,7 @@ export default function TournamentTdfLoader({
                 <TableRow>
                   <TableCell>POP ID</TableCell>
                   <TableCell>Nombre</TableCell>
+                  <TableCell align="center">W / L / T</TableCell>
                   <TableCell>Nacimiento</TableCell>
                   <TableCell align="center">Starter</TableCell>
                 </TableRow>
@@ -317,6 +334,9 @@ export default function TournamentTdfLoader({
                     <TableCell sx={{ fontFamily: "monospace", fontSize: 13 }}>{p.popId}</TableCell>
                     <TableCell>
                       {[p.firstName, p.lastName].filter(Boolean).join(" ") || "—"}
+                    </TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600, whiteSpace: "nowrap" }}>
+                      {formatMatchRecordWlt(matchRecords.get(p.popId))}
                     </TableCell>
                     <TableCell>{p.birthdate || "—"}</TableCell>
                     <TableCell align="center">{p.starter ? "Sí" : "No"}</TableCell>
@@ -393,12 +413,19 @@ export default function TournamentTdfLoader({
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                      {list.map((m, idx) => (
+                      {list.map((m, idx) => {
+                        const mi = matchIndexByRef.get(m);
+                        const before =
+                          mi !== undefined ? recordsBeforeEachMatch[mi] : undefined;
+                        return (
                         <TableRow key={`${roundNum}-${idx}-${m.tableNumber}`}>
                           <TableCell>{m.tableNumber || "—"}</TableCell>
                           <TableCell>
                             <Typography variant="body2" component="span">
                               {names.get(m.player1UserId) ?? m.player1UserId}
+                            </Typography>
+                            <Typography variant="caption" color="primary" sx={{ ml: 0.75, fontWeight: 700 }}>
+                              ({formatMatchRecordWlt(before?.p1)})
                             </Typography>
                             <Typography
                               variant="caption"
@@ -410,20 +437,32 @@ export default function TournamentTdfLoader({
                             </Typography>
                           </TableCell>
                           <TableCell>
-                            <Typography variant="body2" component="span">
-                              {names.get(m.player2UserId) ?? m.player2UserId}
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              display="block"
-                              sx={{ fontFamily: "monospace" }}
-                            >
-                              {m.player2UserId}
-                            </Typography>
+                            {m.player2UserId ? (
+                              <>
+                                <Typography variant="body2" component="span">
+                                  {names.get(m.player2UserId) ?? m.player2UserId}
+                                </Typography>
+                                <Typography variant="caption" color="primary" sx={{ ml: 0.75, fontWeight: 700 }}>
+                                  ({formatMatchRecordWlt(before?.p2)})
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                  display="block"
+                                  sx={{ fontFamily: "monospace" }}
+                                >
+                                  {m.player2UserId}
+                                </Typography>
+                              </>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">
+                                Bye
+                              </Typography>
+                            )}
                           </TableCell>
                           </TableRow>
-                      ))}
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </TableContainer>
@@ -501,6 +540,7 @@ export default function TournamentTdfLoader({
                           <TableCell width={88}>Puesto</TableCell>
                           <TableCell width={120}>POP ID</TableCell>
                           <TableCell>Nombre</TableCell>
+                          <TableCell align="center">W / L / T</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -512,6 +552,9 @@ export default function TournamentTdfLoader({
                             </TableCell>
                             <TableCell>
                               {names.get(row.popId) ?? "—"}
+                            </TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 600 }}>
+                              {formatMatchRecordWlt(matchRecords.get(row.popId))}
                             </TableCell>
                           </TableRow>
                         ))}
