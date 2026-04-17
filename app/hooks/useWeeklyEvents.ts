@@ -57,11 +57,22 @@ export function useRegisterWeeklyEvent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: { eventId: string; displayName: string }) => {
+    mutationFn: async (input: {
+      eventId: string;
+      displayName: string;
+      popId: string;
+      table: string;
+      opponentId: string;
+    }) => {
       const res = await fetch(`/api/events/${input.eventId}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName: input.displayName }),
+        body: JSON.stringify({
+          displayName: input.displayName,
+          popId: input.popId,
+          table: input.table,
+          opponentId: input.opponentId,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -113,6 +124,8 @@ export type AdminEventParticipant = {
   displayName: string;
   userId: string | null;
   popId: string;
+  table: string;
+  opponentId: string;
   confirmed: boolean;
   createdAt?: string;
 };

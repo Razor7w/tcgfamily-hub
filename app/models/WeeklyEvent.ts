@@ -12,6 +12,11 @@ export interface IWeeklyParticipant {
   createdAt: Date;
   /** Confirmado por staff en el panel admin. */
   confirmed?: boolean;
+  /** POP ID del usuario al momento de preinscribirse. */
+  popId?: string;
+  /** Mesa / emparejamiento (ej. torneo); vacío hasta asignación. */
+  table?: string;
+  opponentId?: string;
 }
 
 export interface IWeeklyEvent extends Document {
@@ -36,6 +41,9 @@ const ParticipantSchema = new Schema<IWeeklyParticipant>(
     userId: { type: Schema.Types.ObjectId, ref: "User", required: false },
     createdAt: { type: Date, default: () => new Date() },
     confirmed: { type: Boolean, default: false },
+    popId: { type: String, default: "" },
+    table: { type: String, default: "" },
+    opponentId: { type: String, default: "" },
   },
   { _id: true },
 );
@@ -69,5 +77,10 @@ const WeeklyEventSchema = new Schema<IWeeklyEvent>(
   { timestamps: true, strict: true },
 );
 
-export default mongoose.models.WeeklyEvent ||
-  mongoose.model<IWeeklyEvent>("WeeklyEvent", WeeklyEventSchema);
+// Next.js recarga el módulo en dev pero `mongoose.models` conserva el modelo ya
+// compilado; sin esto, un esquema viejo sigue activo y se pierden campos nuevos al guardar.
+if (mongoose.models.WeeklyEvent) {
+  delete mongoose.models.WeeklyEvent;
+}
+
+export default mongoose.model<IWeeklyEvent>("WeeklyEvent", WeeklyEventSchema);

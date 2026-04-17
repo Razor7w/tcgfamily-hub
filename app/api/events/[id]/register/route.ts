@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { auth } from "@/auth";
 import connectDB from "@/lib/mongodb";
+import User from "@/models/User";
 import WeeklyEvent from "@/models/WeeklyEvent";
 import {
   canPreRegisterNow,
   canUnregisterNow,
   normalizeDisplayName,
 } from "@/lib/weekly-events";
+import { popidForStorage } from "@/lib/rut-chile";
 
 export async function POST(
   request: Request,
@@ -77,10 +79,18 @@ export async function POST(
       );
     }
 
+    const userDoc = await User.findById(session.user.id).select("popid");
+    const popId = popidForStorage(
+      userDoc && typeof userDoc.popid === "string" ? userDoc.popid : "",
+    );
+
     existing.participants.push({
       displayName,
       userId,
       createdAt: now,
+      popId,
+      table: "",
+      opponentId: "",
     });
     await existing.save();
 

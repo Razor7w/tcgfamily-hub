@@ -36,21 +36,33 @@ function serializeAdminParticipant(p: {
   userId?: unknown;
   createdAt?: Date;
   confirmed?: boolean;
+  popId?: string;
+  table?: string;
+  opponentId?: string;
 }) {
   let userIdStr: string | null = null;
-  let popId = "";
   const u = p.userId;
   if (u && typeof u === "object") {
     const o = u as { _id?: unknown; popid?: string };
     if (o._id !== undefined) userIdStr = String(o._id);
-    if (typeof o.popid === "string") popId = o.popid.trim();
   } else if (u) {
     userIdStr = String(u);
   }
+
+  let popId = "";
+  if (typeof p.popId === "string" && p.popId.trim()) {
+    popId = p.popId.trim();
+  } else if (u && typeof u === "object") {
+    const o = u as { popid?: string };
+    if (typeof o.popid === "string") popId = o.popid.trim();
+  }
+
   return {
     displayName: p.displayName,
     userId: userIdStr,
     popId: popId || "—",
+    table: typeof p.table === "string" ? p.table : "",
+    opponentId: typeof p.opponentId === "string" ? p.opponentId : "",
     confirmed: Boolean(p.confirmed),
     createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : undefined,
   };
@@ -74,6 +86,9 @@ export async function GET() {
       userId?: unknown;
       createdAt?: Date;
       confirmed?: boolean;
+      popId?: string;
+      table?: string;
+      opponentId?: string;
     };
 
     const events = raw.map((ev) => {

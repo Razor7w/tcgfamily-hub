@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -31,7 +31,6 @@ import {
   LocalActivity,
   OpenInNew,
   Place,
-  SportsMartialArts,
   Verified,
 } from "@mui/icons-material";
 import { useSession } from "next-auth/react";
@@ -109,6 +108,72 @@ type WeeklyEventsSectionProps = {
   showSeeAllLink?: boolean;
 };
 
+function WeeklyEventPreRegisterForm({
+  selectedEvent,
+  defaultName,
+  popId,
+  regReason,
+  register,
+}: {
+  selectedEvent: PublicWeeklyEvent;
+  defaultName: string;
+  popId: string;
+  regReason: string | null;
+  register: ReturnType<typeof useRegisterWeeklyEvent>;
+}) {
+  const [nameInput, setNameInput] = useState(defaultName);
+  const canSubmit =
+    !regReason &&
+    nameInput.trim().length > 0 &&
+    !register.isPending &&
+    !!selectedEvent;
+
+  return (
+    <Stack spacing={2} component="form" noValidate>
+      <TextField
+        label="Nombre en la lista"
+        placeholder="Ej. Ana o tu apodo"
+        value={nameInput}
+        onChange={(e) => setNameInput(e.target.value)}
+        fullWidth
+        size="medium"
+        disabled={!selectedEvent.canPreRegister}
+        helperText={
+          !selectedEvent.canPreRegister ? "Preinscripción cerrada para este horario" : undefined
+        }
+      />
+      <Button
+        type="button"
+        variant="contained"
+        size="large"
+        fullWidth
+        disabled={!canSubmit}
+        onClick={async () => {
+          if (!selectedEvent) return;
+          try {
+            await register.mutateAsync({
+              eventId: selectedEvent._id,
+              displayName: nameInput.trim(),
+              popId: popId.trim(),
+              table: "",
+              opponentId: "",
+            });
+          } catch {
+            /* error en estado */
+          }
+        }}
+      >
+        {register.isPending ? "Enviando…" : "Preinscribirme"}
+      </Button>
+      {register.isError ? (
+        <Alert severity="error" variant="outlined">
+          {register.error instanceof Error ? register.error.message : "Error"}
+        </Alert>
+      ) : null}
+    </Stack>
+  );
+}
+
 function SectionLoading() {
   return (
     <Stack spacing={2} sx={{ py: 1 }}>
@@ -138,7 +203,7 @@ export default function WeeklyEventsSection({
   const register = useRegisterWeeklyEvent();
   const unregister = useUnregisterWeeklyEvent();
 
-  const events = data?.events ?? [];
+  const events = useMemo(() => data?.events ?? [], [data?.events]);
   const todayKey = useMemo(() => localDayKey(new Date()), []);
 
   const selectedDate = useMemo(() => {
@@ -153,31 +218,20 @@ export default function WeeklyEventsSection({
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!eventsForDay.length) {
-      setSelectedEventId(null);
-      return;
+  const selectedEvent = useMemo(() => {
+    if (!eventsForDay.length) return null;
+    if (selectedEventId != null) {
+      const match = eventsForDay.find((e) => e._id === selectedEventId);
+      if (match) return match;
     }
-    setSelectedEventId((prev) => {
-      if (prev && eventsForDay.some((e) => e._id === prev)) return prev;
-      return eventsForDay[0]?._id ?? null;
-    });
-  }, [eventsForDay]);
+    return eventsForDay[0] ?? null;
+  }, [eventsForDay, selectedEventId]);
 
-  const selectedEvent =
-    eventsForDay.find((e) => e._id === selectedEventId) ?? eventsForDay[0] ?? null;
-
-  const [participantsModalOpen, setParticipantsModalOpen] = useState(false);
-
-  const [nameInput, setNameInput] = useState("");
-  useEffect(() => {
-    const n = session?.user?.name?.trim();
-    setNameInput(n ?? "");
-  }, [session?.user?.name, selectedEvent?._id]);
-
-  useEffect(() => {
-    setParticipantsModalOpen(false);
-  }, [selectedEvent?._id]);
+  const [participantsOpenForEventId, setParticipantsOpenForEventId] = useState<string | null>(null);
+  const participantsModalOpen =
+    participantsOpenForEventId !== null &&
+    !!selectedEvent &&
+    participantsOpenForEventId === selectedEvent._id;
 
   const dayKeys = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
@@ -213,11 +267,6 @@ export default function WeeklyEventsSection({
   };
 
   const regReason = registerDisabledReason(selectedEvent);
-  const canSubmit =
-    !regReason &&
-    nameInput.trim().length > 0 &&
-    !register.isPending &&
-    !!selectedEvent;
 
   const fillPct = selectedEvent
     ? Math.min(
@@ -663,49 +712,14 @@ export default function WeeklyEventsSection({
                             ) : null}
                           </Stack>
                         ) : (
-                          <Stack spacing={2} component="form" noValidate>
-                            <TextField
-                              label="Nombre en la lista"
-                              placeholder="Ej. Ana o tu apodo"
-                              value={nameInput}
-                              onChange={(e) => setNameInput(e.target.value)}
-                              fullWidth
-                              size="medium"
-                              disabled={!selectedEvent.canPreRegister}
-                              helperText={
-                                !selectedEvent.canPreRegister
-                                  ? "Preinscripción cerrada para este horario"
-                                  : undefined
-                              }
-                            />
-                            <Button
-                              type="button"
-                              variant="contained"
-                              size="large"
-                              fullWidth
-                              disabled={!canSubmit}
-                              onClick={async () => {
-                                if (!selectedEvent) return;
-                                try {
-                                  await register.mutateAsync({
-                                    eventId: selectedEvent._id,
-                                    displayName: nameInput.trim(),
-                                  });
-                                } catch {
-                                  /* error en estado */
-                                }
-                              }}
-                            >
-                              {register.isPending ? "Enviando…" : "Preinscribirme"}
-                            </Button>
-                            {register.isError ? (
-                              <Alert severity="error" variant="outlined">
-                                {register.error instanceof Error
-                                  ? register.error.message
-                                  : "Error"}
-                              </Alert>
-                            ) : null}
-                          </Stack>
+                          <WeeklyEventPreRegisterForm
+                            key={`${selectedEvent._id}-${session?.user?.name ?? ""}-${session?.user?.popid ?? ""}`}
+                            selectedEvent={selectedEvent}
+                            defaultName={session?.user?.name?.trim() ?? ""}
+                            popId={session?.user?.popid ?? ""}
+                            regReason={regReason}
+                            register={register}
+                          />
                         )}
 
                         <Button
@@ -716,7 +730,7 @@ export default function WeeklyEventsSection({
                           size="medium"
                           sx={{ mt: 2 }}
                           startIcon={<Groups />}
-                          onClick={() => setParticipantsModalOpen(true)}
+                          onClick={() => setParticipantsOpenForEventId(selectedEvent._id)}
                         >
                           Ver lista de participantes
                           {selectedEvent.participantCount > 0
@@ -726,7 +740,7 @@ export default function WeeklyEventsSection({
 
                         <Dialog
                           open={participantsModalOpen}
-                          onClose={() => setParticipantsModalOpen(false)}
+                          onClose={() => setParticipantsOpenForEventId(null)}
                           fullWidth
                           maxWidth="sm"
                           scroll="paper"
@@ -787,7 +801,7 @@ export default function WeeklyEventsSection({
                           <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
                             <Button
                               variant="contained"
-                              onClick={() => setParticipantsModalOpen(false)}
+                              onClick={() => setParticipantsOpenForEventId(null)}
                             >
                               Listo
                             </Button>
