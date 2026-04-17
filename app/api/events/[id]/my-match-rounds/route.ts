@@ -62,6 +62,35 @@ export async function PUT(
       );
     }
 
+    const w = Math.max(
+      0,
+      Math.min(999, Math.round(Number(part.wins) || 0)),
+    );
+    const l = Math.max(
+      0,
+      Math.min(999, Math.round(Number(part.losses) || 0)),
+    );
+    const t = Math.max(0, Math.min(999, Math.round(Number(part.ties) || 0)));
+    const recordSum = w + l + t;
+    const tournamentClosed = doc.state === "close";
+    const maxRoundsAllowed =
+      recordSum > 0
+        ? recordSum
+        : tournamentClosed
+          ? 0
+          : 15;
+    if (rounds.length > maxRoundsAllowed) {
+      return NextResponse.json(
+        {
+          error:
+            maxRoundsAllowed === 0
+              ? "Tu récord oficial es 0-0-0; no puedes registrar rondas en la bitácora."
+              : `Solo puedes registrar hasta ${maxRoundsAllowed} ronda(s) según tu récord del torneo (W+L+T).`,
+        },
+        { status: 400 },
+      );
+    }
+
     const toSave: IParticipantMatchRound[] = rounds.map((r) => ({
       roundNum: r.roundNum,
       opponentDeckSlugs: r.opponentDeckSlugs,

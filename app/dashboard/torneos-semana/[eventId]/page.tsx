@@ -93,6 +93,8 @@ export default function TorneoSemanaDetallePage() {
                     myDeckSlugs={ev.myDeckPokemonSlugs ?? []}
                     rounds={ev.myMatchRounds ?? []}
                     eventState={ev.state}
+                    officialMatchRecord={ev.myMatchRecord}
+                    tournamentPlacement={ev.myTournamentPlacement ?? null}
                   />
 
                   <Card

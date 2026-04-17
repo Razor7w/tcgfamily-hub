@@ -2,7 +2,6 @@
 
 import {
   useCallback,
-  useEffect,
   useMemo,
   useState,
   type HTMLAttributes,
@@ -14,6 +13,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import TableRowsOutlinedIcon from "@mui/icons-material/TableRowsOutlined";
 import HandshakeOutlinedIcon from "@mui/icons-material/HandshakeOutlined";
 import PersonOffOutlinedIcon from "@mui/icons-material/PersonOffOutlined";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
 import WavingHandOutlinedIcon from "@mui/icons-material/WavingHandOutlined";
 import Autocomplete, { createFilterOptions } from "@mui/material/Autocomplete";
@@ -64,6 +64,12 @@ const MATCH_WIN_COLOR = "#15803d";
 const MATCH_LOSS_COLOR = "#dc2626";
 /** Tono naranja/dorado para empates (mesas). */
 const MATCH_TIE_COLOR = "#ca8a04";
+
+/**
+ * Si aún no hay récord oficial con partidos (0-0-0) o no llega `officialMatchRecord`,
+ * se permite un tope alto para la bitácora hasta que exista W+L+T.
+ */
+const FALLBACK_MAX_SELF_REPORTED_ROUNDS = 15;
 
 type RowOutcome = ReturnType<typeof roundTableOutcome>;
 
@@ -180,7 +186,8 @@ function renderPokemonOption(
   props: AutocompleteLiProps,
   option: PokemonSpeciesOption,
 ) {
-  const { key, children: _children, ...rest } = props;
+  const { key, children, ...rest } = props;
+  void children;
   return (
     <li key={key ?? option.slug} {...rest}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -262,6 +269,13 @@ function buildGameResultsForSave(rows: GameRowState[]): GameResultLetter[] | nul
   return results;
 }
 
+export type TournamentPlacementInfo = {
+  categoryIndex: number;
+  categoryLabel: string;
+  place: number | null;
+  isDnf: boolean;
+};
+
 type Props = {
   eventId: string;
   title: string;
@@ -272,6 +286,10 @@ type Props = {
   rounds: ParticipantMatchRoundDTO[];
   /** Estado del evento (chip junto al título). */
   eventState?: WeeklyEventState;
+  /** Récord W‑L‑T del participante según TDF / admin (solo relevante si el torneo está cerrado). */
+  officialMatchRecord?: { wins: number; losses: number; ties: number } | null;
+  /** Puesto en standings importados (solo si hay datos y coincide tu POP). */
+  tournamentPlacement?: TournamentPlacementInfo | null;
 };
 
 export default function TournamentMatchRoundsCard({
@@ -283,6 +301,8 @@ export default function TournamentMatchRoundsCard({
   myDeckSlugs,
   rounds,
   eventState,
+  officialMatchRecord,
+  tournamentPlacement,
 }: Props) {
   const { data: allOptions = [], isPending: optionsLoading } =
     usePokemonSpeciesOptions();
@@ -307,7 +327,39 @@ export default function TournamentMatchRoundsCard({
 
   const formRoundLabel = isEditing ? editingRoundNum : nextRoundNum;
 
-  const record = useMemo(() => matchRecordFromRounds(rounds), [rounds]);
+  /**
+   * Máximo de filas en la bitácora = partidos jugados según récord oficial (W+L+T).
+   * Ej.: 1-3-0 → 4 rondas; 2-2-1 → 5.
+   */
+  const maxSelfReportedRounds = useMemo(() => {
+    if (officialMatchRecord != null) {
+      const sum =
+        officialMatchRecord.wins +
+        officialMatchRecord.losses +
+        officialMatchRecord.ties;
+      if (sum > 0) return sum;
+      if (eventState === "close") return 0;
+    }
+    return FALLBACK_MAX_SELF_REPORTED_ROUNDS;
+  }, [officialMatchRecord, eventState]);
+
+  const canAddRound = rounds.length < maxSelfReportedRounds;
+  /** Mostrar el botón del formulario: añadir ronda, o cerrar si el panel está abierto (p. ej. editando al límite). */
+  const showRoundFormToggle = canAddRound || formOpen;
+
+  const showOfficialRecord =
+    eventState === "close" && officialMatchRecord != null;
+
+  const record = useMemo(() => {
+    if (eventState === "close" && officialMatchRecord != null) {
+      return {
+        wins: officialMatchRecord.wins,
+        losses: officialMatchRecord.losses,
+        ties: officialMatchRecord.ties,
+      };
+    }
+    return matchRecordFromRounds(rounds);
+  }, [eventState, officialMatchRecord, rounds]);
 
   const slugToLabel = useMemo(() => {
     const m = new Map<string, string>();
@@ -315,13 +367,34 @@ export default function TournamentMatchRoundsCard({
     return m;
   }, [allOptions]);
 
+  /** Fila que se está editando (para resolver rivales si `allOptions` llega después). */
+  const editingRoundRow = useMemo(() => {
+    if (editingRoundNum == null) return undefined;
+    return rounds.find((r) => r.roundNum === editingRoundNum);
+  }, [editingRoundNum, rounds]);
+
+  const slot1Resolved = useMemo((): PokemonSpeciesOption | null => {
+    const slug = editingRoundRow?.opponentDeckSlugs?.[0];
+    if (!slug || allOptions.length === 0) return null;
+    return allOptions.find((o) => o.slug === slug) ?? null;
+  }, [editingRoundRow, allOptions]);
+
+  const slot2Resolved = useMemo((): PokemonSpeciesOption | null => {
+    const slug = editingRoundRow?.opponentDeckSlugs?.[1];
+    if (!slug || allOptions.length === 0) return null;
+    return allOptions.find((o) => o.slug === slug) ?? null;
+  }, [editingRoundRow, allOptions]);
+
+  const slot1Value = slot1 ?? slot1Resolved;
+  const slot2Value = slot2 ?? slot2Resolved;
+
   const optionsForSlot1 = useMemo(
-    () => allOptions.filter((o) => o.slug !== slot2?.slug),
-    [allOptions, slot2?.slug],
+    () => allOptions.filter((o) => o.slug !== slot2Value?.slug),
+    [allOptions, slot2Value?.slug],
   );
   const optionsForSlot2 = useMemo(
-    () => allOptions.filter((o) => o.slug !== slot1?.slug),
-    [allOptions, slot1?.slug],
+    () => allOptions.filter((o) => o.slug !== slot1Value?.slug),
+    [allOptions, slot1Value?.slug],
   );
 
   const resetForm = () => {
@@ -351,12 +424,10 @@ export default function TournamentMatchRoundsCard({
         }));
         setGames(reconcileMatchGames(gr));
       }
-      const pick = (slug: string | undefined) =>
-        slug ? allOptions.find((o) => o.slug === slug) ?? null : null;
-      setSlot1(pick(row.opponentDeckSlugs[0]));
-      setSlot2(pick(row.opponentDeckSlugs[1]));
+      setSlot1(null);
+      setSlot2(null);
     },
-    [allOptions],
+    [],
   );
 
   const openEditRound = useCallback(
@@ -367,24 +438,6 @@ export default function TournamentMatchRoundsCard({
     },
     [hydrateFormFromRound],
   );
-
-  useEffect(() => {
-    if (editingRoundNum == null || allOptions.length === 0) return;
-    const row = rounds.find((r) => r.roundNum === editingRoundNum);
-    if (!row || row.specialOutcome) return;
-    setSlot1((prev) =>
-      prev ??
-      (row.opponentDeckSlugs[0]
-        ? allOptions.find((o) => o.slug === row.opponentDeckSlugs[0]) ?? null
-        : null),
-    );
-    setSlot2((prev) =>
-      prev ??
-      (row.opponentDeckSlugs[1]
-        ? allOptions.find((o) => o.slug === row.opponentDeckSlugs[1]) ?? null
-        : null),
-    );
-  }, [editingRoundNum, allOptions, rounds]);
 
   const patchGame = (idx: number, patch: Partial<GameRowState>) => {
     setGames((prev) => {
@@ -413,6 +466,8 @@ export default function TournamentMatchRoundsCard({
   }, [gameRows]);
 
   const handleSaveRound = () => {
+    if (!isEditing && rounds.length >= maxSelfReportedRounds) return;
+
     const targetRoundNum = isEditing ? editingRoundNum! : nextRoundNum;
     const previous =
       isEditing && editingRoundNum != null
@@ -449,7 +504,7 @@ export default function TournamentMatchRoundsCard({
       const t = rows[i]?.turn;
       if (t === "first" || t === "second") turns.push(t);
     }
-    const opp = [slot1?.slug, slot2?.slug].filter(
+    const opp = [slot1Value?.slug, slot2Value?.slug].filter(
       (s): s is string => typeof s === "string" && s.length > 0,
     );
 
@@ -518,6 +573,7 @@ export default function TournamentMatchRoundsCard({
             )} 100%)`,
         }}
       >
+        <Stack spacing={2}>
         <Stack
           direction={{ xs: "column", md: "row" }}
           spacing={2}
@@ -581,7 +637,7 @@ export default function TournamentMatchRoundsCard({
               color="text.secondary"
               sx={{ lineHeight: 1.2, letterSpacing: "0.08em" }}
             >
-              Tu récord
+              {showOfficialRecord ? "Récord oficial" : "Tu récord"}
             </Typography>
             <Typography
               variant="h4"
@@ -591,7 +647,9 @@ export default function TournamentMatchRoundsCard({
               {record.wins}-{record.losses}-{record.ties}
             </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-              Victorias · Derrotas · Tablas (mesas)
+              {showOfficialRecord
+                ? "Victorias · Derrotas · Empates (torneo / TDF)"
+                : "Victorias · Derrotas · Tablas (mesas que reportaste)"}
             </Typography>
             <Stack direction="row" spacing={0.75} sx={{ pt: 0.5 }}>
               {myDeckSlugs.length > 0 ? (
@@ -604,7 +662,60 @@ export default function TournamentMatchRoundsCard({
                 </Typography>
               )}
             </Stack>
+            </Stack>
           </Stack>
+
+          {eventState === "close" && tournamentPlacement ? (
+            <Box
+              sx={(t) => ({
+                py: 1.5,
+                px: 2,
+                borderRadius: 2,
+                bgcolor: alpha(t.palette.success.main, 0.08),
+                border: "1px solid",
+                borderColor: alpha(t.palette.success.main, 0.35),
+              })}
+            >
+              <Stack direction="row" spacing={1.25} alignItems="flex-start">
+                <EmojiEventsIcon sx={{ color: "success.main", fontSize: 22, mt: 0.25 }} />
+                <Box>
+                  <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ display: "block", mb: 0.5 }}>
+                    Resultado en clasificación
+                  </Typography>
+                  <Typography variant="body2" component="div">
+                    {tournamentPlacement.isDnf ? (
+                      <>
+                        Categoría{" "}
+                        <Box component="strong" fontWeight={700}>
+                          {tournamentPlacement.categoryLabel}
+                        </Box>
+                        :{" "}
+                        <Box component="span" fontWeight={800} color="error.main">
+                          DNF
+                        </Box>{" "}
+                        (no terminó el torneo)
+                      </>
+                    ) : (
+                      <>
+                        Puesto{" "}
+                        <Box component="strong" fontWeight={800} color="success.dark">
+                          {tournamentPlacement.place}º
+                        </Box>{" "}
+                        en categoría{" "}
+                        <Box component="strong" fontWeight={700}>
+                          {tournamentPlacement.categoryLabel}
+                        </Box>
+                      </>
+                    )}
+                  </Typography>
+                </Box>
+              </Stack>
+            </Box>
+          ) : eventState === "close" && !tournamentPlacement ? (
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", px: 0.5 }}>
+              Si no ves tu puesto, revisa que tu POP ID coincida con el del torneo importado.
+            </Typography>
+          ) : null}
         </Stack>
       </Box>
 
@@ -614,11 +725,21 @@ export default function TournamentMatchRoundsCard({
         <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 0.5, letterSpacing: "-0.01em" }}>
           Rondas
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.55 }}>
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ mb: showOfficialRecord ? 1 : 2, lineHeight: 1.55 }}
+        >
           {rounds.length === 0
             ? "El emparejamiento oficial no se muestra aquí: puedes llevar tu propio registro de mesas."
             : "Clic en una fila para editarla."}
         </Typography>
+        {showOfficialRecord ? (
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: "block", lineHeight: 1.5 }}>
+            Lo que guardes en esta tabla es solo tu bitácora; no sustituye el récord oficial del torneo
+            (arriba).
+          </Typography>
+        ) : null}
 
         {rounds.length === 0 ? (
           <Box
@@ -813,36 +934,49 @@ export default function TournamentMatchRoundsCard({
           </TableContainer>
         )}
 
-        <Button
-          fullWidth
-          variant="outlined"
-          startIcon={<AddIcon />}
-          onClick={() => {
-            setFormOpen((prev) => {
-              if (prev) {
+        {showRoundFormToggle ? (
+          <Button
+            fullWidth
+            variant="outlined"
+            startIcon={formOpen ? undefined : <AddIcon />}
+            onClick={() => {
+              setFormOpen((prev) => {
+                if (prev) {
+                  resetForm();
+                  return false;
+                }
+                if (!canAddRound) return false;
                 resetForm();
-                return false;
-              }
-              resetForm();
-              return true;
-            });
-          }}
-          sx={(t) => ({
-            py: 1.35,
-            borderStyle: "dashed",
-            borderWidth: 2,
-            borderColor: alpha(t.palette.primary.main, 0.5),
-            bgcolor: alpha(t.palette.primary.main, 0.07),
-            color: "primary.main",
-            fontWeight: 700,
-            "&:hover": {
-              borderColor: t.palette.primary.main,
-              bgcolor: alpha(t.palette.primary.main, 0.14),
-            },
-          })}
-        >
-          {formOpen ? "Cerrar formulario" : "Añadir ronda"}
-        </Button>
+                return true;
+              });
+            }}
+            sx={(t) => ({
+              py: 1.35,
+              borderStyle: "dashed",
+              borderWidth: 2,
+              borderColor: alpha(t.palette.primary.main, 0.5),
+              bgcolor: alpha(t.palette.primary.main, 0.07),
+              color: "primary.main",
+              fontWeight: 700,
+              "&:hover": {
+                borderColor: t.palette.primary.main,
+                bgcolor: alpha(t.palette.primary.main, 0.14),
+              },
+            })}
+          >
+            {formOpen ? "Cerrar formulario" : "Añadir ronda"}
+          </Button>
+        ) : (
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ py: 1.5, textAlign: "center", fontStyle: "italic" }}
+          >
+            {maxSelfReportedRounds === 0
+              ? "Tu récord oficial es 0-0-0: no hay rondas para registrar en la bitácora."
+              : "Ya registraste el máximo de rondas permitido según tu récord del torneo (W + L + T)."}
+          </Typography>
+        )}
 
         <Collapse in={formOpen}>
           <Box
@@ -872,7 +1006,7 @@ export default function TournamentMatchRoundsCard({
                     fullWidth
                     options={optionsForSlot1}
                     loading={optionsLoading}
-                    value={slot1}
+                    value={slot1Value}
                     onChange={(_e, v) => setSlot1(v)}
                     filterOptions={(opts, params) => filter(opts, params)}
                     getOptionLabel={(o) => o.label}
@@ -888,7 +1022,7 @@ export default function TournamentMatchRoundsCard({
                     fullWidth
                     options={optionsForSlot2}
                     loading={optionsLoading}
-                    value={slot2}
+                    value={slot2Value}
                     onChange={(_e, v) => setSlot2(v)}
                     filterOptions={(opts, params) => filter(opts, params)}
                     getOptionLabel={(o) => o.label}
