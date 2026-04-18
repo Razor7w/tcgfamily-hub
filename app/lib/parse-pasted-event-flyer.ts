@@ -5,6 +5,16 @@
 
 export const WEEKLY_EVENT_PARTICIPANTS_MAX = 2048;
 
+/** Plantilla de ejemplo para el modal «Pegar evento» en admin. */
+export const DEFAULT_PASTE_EVENT_FLYER_TEMPLATE = `Torneo ESTANDAR TCG Family
+SABADO 18 DE ABRIL 17:00
+Rondas BO3 según cantidad de participantes
+Valor $3.000
+1/2 Sobre al pozo de Equilibrio Perfecto por jugador inscrito.
+Sobre de Liga para el top 50% (máx 8)
+Lugar: Av. Valparaiso 1195, Local 3
+Cupos 16`;
+
 const MONTHS: Record<string, number> = {
   enero: 0,
   febrero: 1,
@@ -66,6 +76,9 @@ function parseCupoFromLine(line: string): number | null {
   }
 
   let m = t.match(/^\s*cupo(?:\s+m[aá]ximo|\s+max)?\s*:?\s*(\d+)/i);
+  if (m) return parseInt(m[1], 10);
+
+  m = t.match(/^\s*cupos\s*:?\s*(\d+)\s*$/i);
   if (m) return parseInt(m[1], 10);
 
   m = t.match(/^\s*cupo\s+de\s+(\d+)/i);

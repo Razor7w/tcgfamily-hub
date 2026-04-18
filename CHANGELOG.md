@@ -10,6 +10,17 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [0.4.2] - 2026-04-19
+
+### Añadido
+
+- **Admin — Pegar evento** (`/admin/eventos`): botón **«Crear plantilla»** que rellena el área de texto con [`DEFAULT_PASTE_EVENT_FLYER_TEMPLATE`](./app/lib/parse-pasted-event-flyer.ts) (mismo contenido que el placeholder).
+
+### Cambiado
+
+- **Cupo en el texto del cartel**: el cupo se indica solo con una línea al final del pegado (p. ej. **«Cupos 16»**); ya no hay campo numérico aparte. La plantilla de ejemplo incluye esa línea; si se omite o se borra, el cupo queda ilimitado (máximo API).
+- **Parser** [`parse-pasted-event-flyer`](./app/lib/parse-pasted-event-flyer.ts): reconoce líneas dedicadas **«Cupos N»** (plural) para fijar `maxParticipants`.
+
 ## [0.4.1] - 2026-04-18
 
 ### Cambiado
@@ -74,4 +85,4 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 Línea base anterior en `package.json` antes de este changelog; el detalle de cambios queda en el historial de git.
 
-Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.4.1…HEAD`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
+Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.4.2…HEAD`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).

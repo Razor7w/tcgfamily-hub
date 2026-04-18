@@ -41,6 +41,7 @@ import {
   useUpdateAdminEvent,
 } from "@/hooks/useWeeklyEvents";
 import {
+  DEFAULT_PASTE_EVENT_FLYER_TEMPLATE,
   parsePastedEventFlyer,
   WEEKLY_EVENT_PARTICIPANTS_MAX,
 } from "@/lib/parse-pasted-event-flyer";
@@ -248,6 +249,11 @@ export default function AdminEventosPage() {
     setPasteOpen(true);
   };
 
+  const fillPasteTemplate = () => {
+    setPasteText(DEFAULT_PASTE_EVENT_FLYER_TEMPLATE);
+    setPasteError(null);
+  };
+
   const handlePasteGenerate = async () => {
     setPasteError(null);
     const parsed = parsePastedEventFlyer(pasteText);
@@ -255,6 +261,7 @@ export default function AdminEventosPage() {
       setPasteError(parsed.error);
       return;
     }
+
     try {
       await createEv.mutateAsync(parsed.payload);
       setPasteOpen(false);
@@ -676,13 +683,23 @@ export default function AdminEventosPage() {
             </Typography>
             <Typography variant="body2" color="text.secondary" fontWeight={400}>
               Pega el texto del cartel (título en la primera línea, fecha tipo «18 DE ABRIL 17:00», valor y
-              lugar). Si no indicas cupo en una línea aparte, el cupo queda al máximo (sin tope práctico).
+              lugar). Usa Crear plantilla para un ejemplo que ya incluye una línea de cupo al final; puedes
+              editarla o borrarla.
             </Typography>
           </Stack>
         </DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ pt: 0.5 }}>
             {pasteError ? <Alert severity="error">{pasteError}</Alert> : null}
+            <Button
+              type="button"
+              variant="outlined"
+              size="small"
+              onClick={fillPasteTemplate}
+              sx={{ alignSelf: "flex-start", fontWeight: 600 }}
+            >
+              Crear plantilla
+            </Button>
             <TextField
               label="Texto del cartel"
               value={pasteText}
@@ -692,14 +709,9 @@ export default function AdminEventosPage() {
               }}
               fullWidth
               multiline
-              minRows={14}
-              placeholder={`Torneo ESTANDAR TCG Family
-SABADO 18 DE ABRIL 17:00
-Rondas BO3 según cantidad de participantes
-Valor $3.000
-1/2 Sobre al pozo de Equilibrio Perfecto por jugador inscrito.
-Sobre de Liga para el top 50% (máx 8)
-Lugar: Av. Valparaiso 1195, Local 3`}
+              minRows={15}
+              placeholder={DEFAULT_PASTE_EVENT_FLYER_TEMPLATE}
+              helperText='Incluye al final una línea como «Cupos 16» si quieres cupo limitado; sin esa línea, ilimitado.'
               InputLabelProps={{ shrink: true }}
             />
           </Stack>
