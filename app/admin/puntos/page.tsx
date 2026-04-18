@@ -77,7 +77,7 @@ export default function AdminPuntosPage() {
         <Stack spacing={3}>
           <Button
             component={Link}
-            href="/admin"
+            href="/admin/users"
             variant="outlined"
             size="small"
             startIcon={<ArrowBack />}

@@ -7,9 +7,9 @@ import { normalizeEmail, validateEmailFormat } from '@/lib/password-rules'
 import {
   popidForStorage,
   rutForStorage,
-  validatePopidOptional,
-  validateRutChile
+  validatePopidOptional
 } from '@/lib/rut-chile'
+import { getRutFieldError } from '@/lib/rut-input'
 
 // GET - Obtener un usuario por ID
 export async function GET(
@@ -160,7 +160,7 @@ export async function PUT(
     if (rut !== undefined) {
       const rutStr = typeof rut === 'string' ? rut : ''
       if (rutStr.trim()) {
-        const rutErr = validateRutChile(rutStr)
+        const rutErr = getRutFieldError(rutStr, false)
         if (rutErr) return NextResponse.json({ error: rutErr }, { status: 400 })
         user.rut = rutForStorage(rutStr)
       } else {

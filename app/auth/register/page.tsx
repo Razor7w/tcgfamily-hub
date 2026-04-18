@@ -17,6 +17,7 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import CheckCircle from '@mui/icons-material/CheckCircle'
 import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked'
 import CircularProgress from '@mui/material/CircularProgress'
+import AppVersion from '@/components/AppVersion'
 import Header from '@/components/Header'
 import {
   getPasswordRuleChecks,
@@ -26,10 +27,12 @@ import {
   validatePasswordStrength,
   validateRegisterName
 } from '@/lib/password-rules'
+import { validatePopidOptional } from '@/lib/rut-chile'
 import {
-  validatePopidOptional,
-  validateRutChile
-} from '@/lib/rut-chile'
+  formatRutOnBlur,
+  getRutFieldError,
+  onlyDigits
+} from '@/lib/rut-input'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -69,7 +72,7 @@ export default function RegisterPage() {
     if (loading) return false
     if (validateRegisterName(name) !== null) return false
     if (validateEmailFormat(normalizeEmail(email)) !== null) return false
-    if (validateRutChile(rut) !== null) return false
+    if (getRutFieldError(rut, true) !== null) return false
     if (validatePopidOptional(popid) !== null) return false
     if (!isPasswordStrengthSatisfied(password)) return false
     if (!passwordsMatch) return false
@@ -104,7 +107,7 @@ export default function RegisterPage() {
       return
     }
 
-    const rutErr = validateRutChile(rut)
+    const rutErr = getRutFieldError(rut, true)
     if (rutErr) {
       setError(rutErr)
       return
@@ -124,7 +127,7 @@ export default function RegisterPage() {
         body: JSON.stringify({
           name: name.trim(),
           email: em,
-          rut,
+          rut: formatRutOnBlur(rut),
           popid,
           password,
           confirmPassword: confirm
@@ -235,13 +238,14 @@ export default function RegisterPage() {
               autoComplete="off"
               value={rut}
               onChange={e => setRut(e.target.value)}
+              onBlur={() => setRut(formatRutOnBlur(rut))}
               disabled={loading}
               required
               fullWidth
               placeholder="12.345.678-9"
-              error={Boolean(rut.trim()) && validateRutChile(rut) !== null}
+              error={Boolean(rut.trim()) && getRutFieldError(rut, true) !== null}
               helperText={
-                validateRutChile(rut) ??
+                getRutFieldError(rut, true) ??
                 (!rut.trim()
                   ? 'Obligatorio. Formato chileno con dígito verificador.'
                   : undefined)
@@ -253,14 +257,14 @@ export default function RegisterPage() {
               name="popid"
               autoComplete="off"
               value={popid}
-              onChange={e => setPopid(e.target.value)}
+              onChange={e => setPopid(onlyDigits(e.target.value, 64))}
               disabled={loading}
               fullWidth
-              helperText="Opcional."
+              helperText="Opcional. Solo números."
               error={
                 Boolean(popid.trim()) && validatePopidOptional(popid) !== null
               }
-              inputProps={{ maxLength: 64 }}
+              inputProps={{ maxLength: 64, inputMode: 'numeric', pattern: '[0-9]*' }}
             />
             <TextField
               label="Contraseña"
@@ -363,6 +367,9 @@ export default function RegisterPage() {
             </Link>
           </Typography>
         </Paper>
+      </Box>
+      <Box component="footer" sx={{ py: 2, textAlign: 'center' }}>
+        <AppVersion />
       </Box>
     </Box>
   )

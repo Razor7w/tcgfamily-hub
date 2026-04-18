@@ -10,7 +10,7 @@
  * - Acciones y actualizaciones
  */
 
-import { useAppStore, useSidebar, useTheme } from "@/store/useAppStore";
+import { useAppStore, useSidebar, useAppThemeMode } from "@/store/useAppStore";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
@@ -253,7 +253,7 @@ function Example3Notifications() {
 function Example4Selectors() {
   // Usando selectores personalizados (más eficiente)
   const sidebarOpen = useSidebar();
-  const theme = useTheme();
+  const theme = useAppThemeMode();
 
   // O usando directamente (también funciona, pero menos eficiente si hay muchos componentes)
   const setTheme = useAppStore((state) => state.setTheme);
@@ -264,7 +264,7 @@ function Example4Selectors() {
         4. Selectores para Performance
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Los selectores personalizados (useSidebar, useTheme) solo se
+        Los selectores personalizados (useSidebar, useAppThemeMode) solo se
         re-renderizan cuando cambia ese valor específico, mejorando el
         performance.
       </Typography>

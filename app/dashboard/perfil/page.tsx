@@ -22,6 +22,7 @@ import {
   validateRegisterName
 } from '@/lib/password-rules'
 import { validatePopidOptional } from '@/lib/rut-chile'
+import { onlyDigits } from '@/lib/rut-input'
 import CheckCircle from '@mui/icons-material/CheckCircle'
 import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked'
 
@@ -267,14 +268,14 @@ export default function PerfilPage() {
             label="Pop ID"
             name="popid"
             value={popid}
-            onChange={e => setPopid(e.target.value)}
+            onChange={e => setPopid(onlyDigits(e.target.value, 64))}
             disabled={savingProfile}
             fullWidth
-            helperText="Opcional."
+            helperText="Opcional. Solo números."
             error={
               Boolean(popid.trim()) && validatePopidOptional(popid) !== null
             }
-            inputProps={{ maxLength: 64 }}
+            inputProps={{ maxLength: 64, inputMode: 'numeric', pattern: '[0-9]*' }}
           />
           <Button
             type="submit"

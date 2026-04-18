@@ -27,6 +27,7 @@ interface AppActions {
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   setTheme: (theme: "light" | "dark") => void;
+  toggleTheme: () => void;
   
   // Filter Actions
   setUserFilter: (filter: Partial<AppState["userFilter"]>) => void;
@@ -61,6 +62,11 @@ export const useAppStore = create<AppStore>()(
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       
       setTheme: (theme) => set({ theme }),
+
+      toggleTheme: () =>
+        set((state) => ({
+          theme: state.theme === "light" ? "dark" : "light",
+        })),
 
       // Filter Actions
       setUserFilter: (filter) =>
@@ -106,5 +112,5 @@ export const useAppStore = create<AppStore>()(
 
 // Selectores útiles (opcional, pero recomendado para performance)
 export const useSidebar = () => useAppStore((state) => state.sidebarOpen);
-export const useTheme = () => useAppStore((state) => state.theme);
+export const useAppThemeMode = () => useAppStore((state) => state.theme);
 export const useUserFilter = () => useAppStore((state) => state.userFilter);

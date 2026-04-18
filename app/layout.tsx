@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import ThemeRegistry from "@/components/ThemeRegistry";
 import ProfileCompletionGate from "@/components/auth/ProfileCompletionGate";
 import { QueryProvider } from "@/lib/query-client";
+import { outfit } from "@/fonts";
 
 export default async function RootLayout({
   children,
@@ -13,7 +14,7 @@ export default async function RootLayout({
   const session = await auth();
 
   return (
-    <html lang="es">
+    <html lang="es" className={outfit.variable}>
       <body>
         <AppRouterCacheProvider>
           <QueryProvider>

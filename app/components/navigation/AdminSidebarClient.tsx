@@ -1,12 +1,13 @@
 'use client'
 import {
   AdminPanelSettings,
+  CalendarMonth,
   CloudUpload,
-  Dashboard,
   Email,
   ExpandLess,
   ExpandMore,
-  People
+  People,
+  Settings
 } from '@mui/icons-material'
 import {
   Collapse,
@@ -34,19 +35,19 @@ export default function AdminSidebarClient() {
       </ListItemButton>
       <Collapse in={open} timeout="auto" unmountOnExit>
         <List component="div" disablePadding>
-          <ListItemButton sx={{ pl: 4 }} href="/admin">
-            <ListItemIcon>
-              <Dashboard />
-            </ListItemIcon>
-            <ListItemText primary="Panel" />
-          </ListItemButton>
-        </List>
-        <List component="div" disablePadding>
           <ListItemButton sx={{ pl: 4 }} href="/admin/users">
             <ListItemIcon>
               <People />
             </ListItemIcon>
             <ListItemText primary="Usuarios" />
+          </ListItemButton>
+        </List>
+        <List component="div" disablePadding>
+          <ListItemButton sx={{ pl: 4 }} href="/admin/eventos">
+            <ListItemIcon>
+              <CalendarMonth />
+            </ListItemIcon>
+            <ListItemText primary="Eventos" />
           </ListItemButton>
         </List>
         <List component="div" disablePadding>
@@ -63,6 +64,14 @@ export default function AdminSidebarClient() {
               <CloudUpload />
             </ListItemIcon>
             <ListItemText primary="Puntos (CSV)" />
+          </ListItemButton>
+        </List>
+        <List component="div" disablePadding>
+          <ListItemButton sx={{ pl: 4 }} href="/admin/configuracion">
+            <ListItemIcon>
+              <Settings />
+            </ListItemIcon>
+            <ListItemText primary="Configuración" />
           </ListItemButton>
         </List>
       </Collapse>

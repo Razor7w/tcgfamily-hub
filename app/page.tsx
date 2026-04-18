@@ -11,6 +11,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
 import Alert from '@mui/material/Alert'
 import GoogleIcon from '@mui/icons-material/Google'
+import AppVersion from '@/components/AppVersion'
 import Header from '@/components/Header'
 import EmailPasswordSignInForm from '@/components/auth/EmailPasswordSignInForm'
 import { signIn } from 'next-auth/react'
@@ -125,6 +126,9 @@ export default function LoginPage() {
             Iniciar sesión con Google
           </Button>
         </Paper>
+      </Box>
+      <Box component="footer" sx={{ py: 2, textAlign: 'center' }}>
+        <AppVersion />
       </Box>
     </Box>
   )

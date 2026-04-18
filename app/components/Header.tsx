@@ -23,6 +23,8 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle'
 import CloseIcon from '@mui/icons-material/Close'
 import MenuIcon from '@mui/icons-material/Menu'
 import PersonIcon from '@mui/icons-material/Person'
+import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined'
+import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined'
 import { useAppStore } from '@/store/useAppStore'
 
 const ACCOUNT_DRAWER_WIDTH = 300
@@ -31,15 +33,17 @@ export default function Header() {
   const { data: session } = useSession()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [accountDrawerOpen, setAccountDrawerOpen] = useState(false)
-  const theme = useTheme()
+  const muiTheme = useTheme()
+  const appThemeMode = useAppStore((s) => s.theme)
+  const toggleTheme = useAppStore((s) => s.toggleTheme)
   // Importante: evita mismatch de hidratación. En SSR + primer render del cliente
   // asumimos "mobile-first" y solo calculamos desktop tras montar.
   const [isDesktop, setIsDesktop] = useState(false)
   const desktopQuery = useMemo(() => {
     // theme.breakpoints.up('md') => '@media (min-width:900px)'
-    const q = theme.breakpoints.up('md')
+    const q = muiTheme.breakpoints.up('md')
     return q.startsWith('@media ') ? q.slice('@media '.length) : q
-  }, [theme])
+  }, [muiTheme])
   useEffect(() => {
     const mq = window.matchMedia(desktopQuery)
     const onChange = () => setIsDesktop(mq.matches)
@@ -105,6 +109,25 @@ export default function Header() {
         </Typography>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Tooltip
+            title={appThemeMode === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+          >
+            <IconButton
+              color="inherit"
+              onClick={() => toggleTheme()}
+              aria-label={
+                appThemeMode === 'dark'
+                  ? 'Activar modo claro'
+                  : 'Activar modo oscuro'
+              }
+            >
+              {appThemeMode === 'dark' ? (
+                <LightModeOutlinedIcon />
+              ) : (
+                <DarkModeOutlinedIcon />
+              )}
+            </IconButton>
+          </Tooltip>
           {/* User Menu */}
           {session?.user && (
             <>

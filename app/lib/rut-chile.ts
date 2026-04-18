@@ -43,6 +43,9 @@ const POPID_MAX = 64
 export function validatePopidOptional(raw: string): string | null {
   const t = raw.trim()
   if (!t) return null
+  if (!/^\d+$/.test(t)) {
+    return 'El Pop ID solo puede contener números.'
+  }
   if (t.length > POPID_MAX) {
     return `El Pop ID no puede superar ${POPID_MAX} caracteres.`
   }
