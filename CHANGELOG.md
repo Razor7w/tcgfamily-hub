@@ -10,6 +10,18 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [0.4.6] - 2026-04-23
+
+### Añadido
+
+- **Admin — Configuración** (`/admin/configuracion`): sustituye la ruta **`/admin/dashboard-modules`** (redirección automática al nuevo path). Incluye apartado **Correo (Resend)** para activar o desactivar el envío del aviso cuando el admin marca un envío como **recepcionado en tienda** (persistido en `DashboardModuleSettings.resendNotifyPickupInStoreEnabled`, por defecto activo).
+- API unificada **`GET`/`PUT /api/admin/configuracion`**: devuelve y actualiza bloques del dashboard y/o el flag de correo (cuerpo parcial permitido).
+- [`getResendNotifyPickupInStoreEnabled`](./app/lib/get-resend-notify-pickup-enabled.ts) usada en [`PUT` `/api/mail/[id]`](./app/api/mail/[id]/route.ts) antes de llamar a Resend.
+
+### Cambiado
+
+- Eliminada **`/api/admin/dashboard-modules`** en favor de **`/api/admin/configuracion`**. Hooks de admin usan la query key **`["admin", "configuracion"]`**.
+
 ## [0.4.5] - 2026-04-22
 
 ### Añadido
@@ -115,4 +127,4 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 Línea base anterior en `package.json` antes de este changelog; el detalle de cambios queda en el historial de git.
 
-Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.4.5…HEAD`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
+Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.4.6…HEAD`, `[0.4.6]: …/compare/v0.4.5…v0.4.6`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).

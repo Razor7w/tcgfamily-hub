@@ -67,7 +67,7 @@ export default function AdminSidebarClient() {
           </ListItemButton>
         </List>
         <List component="div" disablePadding>
-          <ListItemButton sx={{ pl: 4 }} href="/admin/dashboard-modules">
+          <ListItemButton sx={{ pl: 4 }} href="/admin/configuracion">
             <ListItemIcon>
               <Settings />
             </ListItemIcon>

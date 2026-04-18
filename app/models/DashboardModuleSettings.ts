@@ -10,6 +10,8 @@ export interface IDashboardModuleSettings extends Document {
     storePoints: boolean;
   };
   order: DashboardModuleId[];
+  /** Aviso Resend al usuario cuando el admin marca el envío como recepcionado en tienda. */
+  resendNotifyPickupInStoreEnabled: boolean;
 }
 
 const DashboardModuleSettingsSchema = new Schema<IDashboardModuleSettings>(
@@ -24,6 +26,7 @@ const DashboardModuleSettingsSchema = new Schema<IDashboardModuleSettings>(
       type: [String],
       default: () => [...DEFAULT_DASHBOARD_ORDER],
     },
+    resendNotifyPickupInStoreEnabled: { type: Boolean, default: true },
   },
   { timestamps: true },
 );

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { sendMailPickupReadyEmail } from "@/lib/email/send-mail-pickup-ready";
+import { getResendNotifyPickupInStoreEnabled } from "@/lib/get-resend-notify-pickup-enabled";
 import connectDB from "@/lib/mongodb";
 import Mails from "@/models/Mails";
 import User from "@/models/User";
@@ -183,14 +184,21 @@ export async function PUT(
           : "";
       if (toEmail) {
         try {
-          await sendMailPickupReadyEmail({
-            to: toEmail,
-            recipientName:
-              recipient && typeof recipient.name === "string"
-                ? recipient.name
-                : undefined,
-            mailCode: existing.code,
-          });
+          const notifyEnabled = await getResendNotifyPickupInStoreEnabled();
+          if (notifyEnabled) {
+            await sendMailPickupReadyEmail({
+              to: toEmail,
+              recipientName:
+                recipient && typeof recipient.name === "string"
+                  ? recipient.name
+                  : undefined,
+              mailCode: existing.code,
+            });
+          } else {
+            console.info(
+              "[api/mail] Aviso Resend desactivado en configuración (recepción en tienda).",
+            );
+          }
         } catch (emailErr) {
           console.error(
             "[api/mail] Aviso por email de retiro en tienda no enviado:",
