@@ -10,6 +10,13 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [0.4.3] - 2026-04-20
+
+### Cambiado
+
+- **Dashboard — Eventos de la semana** (`WeeklyEventsSection`): si el torneo oficial está en estado **`close`**, la columna derecha muestra **clasificación final** (tabs por categoría, tu puesto y récord si aplicas) en lugar del formulario de preinscripción cerrada; emparejamiento de ronda solo en **`running`**. Eliminado el modal duplicado solo de clasificación.
+- **Clasificación pública** ([`buildTournamentStandingsPublic`](./app/lib/weekly-event-public.ts)): la tabla por categoría en la API y la UI lista como máximo el **top 4**; la posición del usuario en «Tu resultado» sigue resolviéndose con el orden completo del torneo.
+
 ## [0.4.2] - 2026-04-19
 
 ### Añadido
@@ -85,4 +92,4 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 Línea base anterior en `package.json` antes de este changelog; el detalle de cambios queda en el historial de git.
 
-Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.4.2…HEAD`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
+Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.4.3…HEAD`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).

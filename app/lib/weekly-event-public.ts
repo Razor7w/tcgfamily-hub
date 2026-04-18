@@ -1,7 +1,7 @@
 import { popidForStorage } from "@/lib/rut-chile";
 
-/** Límite de filas por categoría en la respuesta pública (evita payloads enormes). */
-const MAX_STANDING_ROWS_PER_CATEGORY = 512;
+/** Filas por categoría en la tabla de clasificación pública (top N). */
+const PUBLIC_STANDINGS_TOP_N = 4;
 
 export type TournamentStandingLean = {
   categoryIndex?: number;
@@ -67,7 +67,7 @@ export function buildTournamentStandingsPublic(
     if (ci !== 0 && ci !== 1 && ci !== 2) continue;
 
     const sorted = [...(cat.finished ?? [])].sort((a, b) => a.place - b.place);
-    const rowsPublic = sorted.slice(0, MAX_STANDING_ROWS_PER_CATEGORY).map((row) => ({
+    const rowsPublic = sorted.slice(0, PUBLIC_STANDINGS_TOP_N).map((row) => ({
       place: Math.max(0, Math.round(Number(row.place) || 0)),
       displayName: popToName.get(popidForStorage(row.popId))?.trim() || "—",
     }));

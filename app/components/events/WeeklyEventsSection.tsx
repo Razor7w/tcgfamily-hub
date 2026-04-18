@@ -404,12 +404,6 @@ export default function WeeklyEventsSection({
     !!selectedEvent &&
     currentRoundOpenForEventId === selectedEvent._id;
 
-  const [standingsOpenForEventId, setStandingsOpenForEventId] = useState<string | null>(null);
-  const standingsModalOpen =
-    standingsOpenForEventId !== null &&
-    !!selectedEvent &&
-    standingsOpenForEventId === selectedEvent._id;
-
   const currentRoundQuery = useEventCurrentRound(
     currentRoundModalOpen ? selectedEvent._id : null,
     currentRoundModalOpen,
@@ -1081,6 +1075,120 @@ export default function WeeklyEventsSection({
                       }}
                     >
                       <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                        {selectedEvent.kind === "tournament" && selectedEvent.state === "close" ? (
+                          <Stack spacing={2.5}>
+                            <Box>
+                              <Typography
+                                variant="overline"
+                                color="primary"
+                                sx={{ fontWeight: 800, letterSpacing: "0.08em" }}
+                              >
+                                Clasificación final
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+                                Torneo cerrado. Tabla por categoría y tu resultado si participaste.
+                              </Typography>
+                            </Box>
+                            {selectedEvent.myRegistration ? (
+                              <Typography variant="body2">
+                                Lista como{" "}
+                                <Box component="strong" sx={{ color: "text.primary" }}>
+                                  {selectedEvent.myRegistration}
+                                </Box>
+                              </Typography>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">
+                                No estás inscrito en este torneo con tu cuenta.
+                              </Typography>
+                            )}
+                            {selectedEvent.myRegistration ? (
+                              <Stack
+                                spacing={1.25}
+                                sx={{
+                                  py: 1.25,
+                                  px: 1.5,
+                                  borderRadius: 2,
+                                  bgcolor: (t) => alpha(t.palette.success.main, 0.06),
+                                  border: 1,
+                                  borderColor: (t) => alpha(t.palette.success.main, 0.28),
+                                }}
+                              >
+                                <Stack direction="row" spacing={1} alignItems="center">
+                                  <EmojiEvents fontSize="small" color="success" />
+                                  <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                                    Tu resultado
+                                  </Typography>
+                                </Stack>
+                                {selectedEvent.myTournamentPlacement ? (
+                                  <Typography variant="body2">
+                                    {selectedEvent.myTournamentPlacement.isDnf ? (
+                                      <>
+                                        Clasificación en{" "}
+                                        <strong>
+                                          {selectedEvent.myTournamentPlacement.categoryLabel}
+                                        </strong>
+                                        :{" "}
+                                        <Box component="span" fontWeight={700}>
+                                          DNF (no terminó)
+                                        </Box>
+                                      </>
+                                    ) : (
+                                      <>
+                                        Puesto{" "}
+                                        <strong>{selectedEvent.myTournamentPlacement.place}º</strong> en
+                                        categoría{" "}
+                                        <strong>
+                                          {selectedEvent.myTournamentPlacement.categoryLabel}
+                                        </strong>
+                                      </>
+                                    )}
+                                  </Typography>
+                                ) : (
+                                  <Typography variant="body2" color="text.secondary">
+                                    No figuras en la clasificación publicada (revisa que tu POP ID
+                                    coincida con el del torneo).
+                                  </Typography>
+                                )}
+                                {selectedEvent.myMatchRecord ? (
+                                  <Typography variant="body2" color="text.secondary">
+                                    Récord final (W / L / T):{" "}
+                                    <Box component="span" fontWeight={700} color="text.primary">
+                                      {selectedEvent.myMatchRecord.wins} /{" "}
+                                      {selectedEvent.myMatchRecord.losses} /{" "}
+                                      {selectedEvent.myMatchRecord.ties}
+                                    </Box>
+                                  </Typography>
+                                ) : null}
+                              </Stack>
+                            ) : null}
+                            {selectedEvent.standingsTopByCategory &&
+                            selectedEvent.standingsTopByCategory.length > 0 ? (
+                              <TournamentFinishedStandingsTabs
+                                key={selectedEvent._id}
+                                categories={selectedEvent.standingsTopByCategory}
+                              />
+                            ) : (
+                              <Alert severity="info" variant="outlined">
+                                La clasificación detallada aún no está publicada para este evento.
+                              </Alert>
+                            )}
+                            <Button
+                              type="button"
+                              variant="outlined"
+                              color="inherit"
+                              fullWidth
+                              size="medium"
+                              startIcon={<Groups />}
+                              onClick={() => setParticipantsOpenForEventId(selectedEvent._id)}
+                            >
+                              Ver lista de participantes
+                              {selectedEvent.participantCount > 0
+                                ? ` (${selectedEvent.participantCount})`
+                                : ""}
+                            </Button>
+                          </Stack>
+                        ) : (
+                          <>
                         {!selectedEventStarted ? (
                           <>
                             <Typography variant="overline" color="primary" sx={{ fontWeight: 700 }}>
@@ -1106,96 +1214,7 @@ export default function WeeklyEventsSection({
                                 </Box>
                               </Typography>
                             </Stack>
-                            {selectedEvent.kind === "tournament" &&
-                            selectedEvent.state === "close" ? (
-                              <Stack spacing={2}>
-                                <Stack
-                                  spacing={1.25}
-                                  sx={{
-                                    py: 1.25,
-                                    px: 1.5,
-                                    borderRadius: 2,
-                                    bgcolor: (t) => alpha(t.palette.success.main, 0.06),
-                                    border: 1,
-                                    borderColor: (t) => alpha(t.palette.success.main, 0.28),
-                                  }}
-                                >
-                                  <Stack direction="row" spacing={1} alignItems="center">
-                                    <EmojiEvents fontSize="small" color="success" />
-                                    <Typography variant="caption" color="text.secondary" fontWeight={700}>
-                                      Resultado final
-                                    </Typography>
-                                  </Stack>
-                                  {selectedEvent.myTournamentPlacement ? (
-                                    <Typography variant="body2">
-                                      {selectedEvent.myTournamentPlacement.isDnf ? (
-                                        <>
-                                          Clasificación en{" "}
-                                          <strong>
-                                            {selectedEvent.myTournamentPlacement.categoryLabel}
-                                          </strong>
-                                          :{" "}
-                                          <Box component="span" fontWeight={700}>
-                                            DNF (no terminó)
-                                          </Box>
-                                        </>
-                                      ) : (
-                                        <>
-                                          Puesto{" "}
-                                          <strong>
-                                            {selectedEvent.myTournamentPlacement.place}º
-                                          </strong>{" "}
-                                          en categoría{" "}
-                                          <strong>
-                                            {selectedEvent.myTournamentPlacement.categoryLabel}
-                                          </strong>
-                                        </>
-                                      )}
-                                    </Typography>
-                                  ) : (
-                                    <Typography variant="body2" color="text.secondary">
-                                      No figuras en la clasificación publicada (revisa que tu POP ID
-                                      coincida con el del torneo).
-                                    </Typography>
-                                  )}
-                                  {selectedEvent.myMatchRecord ? (
-                                    <Typography variant="body2" color="text.secondary">
-                                      Récord final (W / L / T):{" "}
-                                      <Box
-                                        component="span"
-                                        fontWeight={700}
-                                        color="text.primary"
-                                      >
-                                        {selectedEvent.myMatchRecord.wins} /{" "}
-                                        {selectedEvent.myMatchRecord.losses} /{" "}
-                                        {selectedEvent.myMatchRecord.ties}
-                                      </Box>
-                                    </Typography>
-                                  ) : null}
-                                </Stack>
-                                {selectedEvent.standingsTopByCategory &&
-                                selectedEvent.standingsTopByCategory.length > 0 ? (
-                                  <Button
-                                    type="button"
-                                    variant="outlined"
-                                    color="success"
-                                    fullWidth
-                                    size="medium"
-                                    startIcon={<EmojiEvents />}
-                                    onClick={() =>
-                                      setStandingsOpenForEventId(selectedEvent._id)
-                                    }
-                                  >
-                                    Ver standings
-                                  </Button>
-                                ) : (
-                                  <Alert severity="info" variant="outlined">
-                                    La clasificación detallada aún no está publicada para este
-                                    evento.
-                                  </Alert>
-                                )}
-                              </Stack>
-                            ) : selectedEvent.kind === "tournament" ? (
+                            {selectedEvent.kind === "tournament" && selectedEvent.state === "running" ? (
                               <>
                                 <Stack
                                   spacing={1}
@@ -1348,6 +1367,8 @@ export default function WeeklyEventsSection({
                               : ""}
                           </Button>
                         ) : null}
+                        </>
+                        )}
 
                         <Dialog
                           open={participantsModalOpen}
@@ -1544,43 +1565,6 @@ export default function WeeklyEventsSection({
                             <Button
                               variant="contained"
                               onClick={() => setCurrentRoundOpenForEventId(null)}
-                            >
-                              Cerrar
-                            </Button>
-                          </DialogActions>
-                        </Dialog>
-
-                        <Dialog
-                          open={standingsModalOpen}
-                          onClose={() => setStandingsOpenForEventId(null)}
-                          fullWidth
-                          maxWidth="sm"
-                          scroll="paper"
-                          aria-labelledby="standings-dialog-title"
-                        >
-                          <DialogTitle id="standings-dialog-title">
-                            Clasificación
-                          </DialogTitle>
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ px: 3, pb: 0, mt: -1 }}
-                          >
-                            {selectedEvent.title}
-                          </Typography>
-                          <DialogContent dividers sx={{ pt: 2 }}>
-                            {selectedEvent.standingsTopByCategory &&
-                            selectedEvent.standingsTopByCategory.length > 0 ? (
-                              <TournamentFinishedStandingsTabs
-                                key={selectedEvent._id}
-                                categories={selectedEvent.standingsTopByCategory}
-                              />
-                            ) : null}
-                          </DialogContent>
-                          <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
-                            <Button
-                              variant="contained"
-                              onClick={() => setStandingsOpenForEventId(null)}
                             >
                               Cerrar
                             </Button>
