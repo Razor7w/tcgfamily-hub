@@ -6,6 +6,7 @@ import {
 import {
   endOfWeekSunday,
   startOfWeekMonday,
+  weekDayKeysFromMonday,
 } from "@/components/events/weekUtils";
 import type { MyTournamentWeekItem } from "@/lib/my-tournament-week-types";
 import type { ParticipantMatchRoundDTO } from "@/lib/participant-match-round";
@@ -62,9 +63,11 @@ export interface PublicWeeklyEvent {
 export function useWeekEvents(weekAnchor: Date | null) {
   const from = weekAnchor ? startOfWeekMonday(weekAnchor) : null;
   const to = weekAnchor ? endOfWeekSunday(weekAnchor) : null;
+  const weekYmds =
+    from !== null ? weekDayKeysFromMonday(from).join(",") : "";
 
   return useQuery<{ events: PublicWeeklyEvent[] }>({
-    queryKey: ["weekly-events", from?.toISOString(), to?.toISOString()],
+    queryKey: ["weekly-events", from?.toISOString(), to?.toISOString(), weekYmds],
     queryFn: async () => {
       if (!from || !to) {
         return { events: [] };
@@ -72,6 +75,7 @@ export function useWeekEvents(weekAnchor: Date | null) {
       const params = new URLSearchParams({
         from: from.toISOString(),
         to: to.toISOString(),
+        weekYmds,
       });
       const res = await fetch(`/api/events?${params.toString()}`);
       if (!res.ok) {

@@ -41,3 +41,14 @@ export function localDayKey(d: Date): string {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+
+/** Los 7 `YYYY-MM-DD` locales del lunes a domingo a partir del lunes de esa semana (00:00 local). */
+export function weekDayKeysFromMonday(weekStartMonday: Date): string[] {
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStartMonday);
+    d.setDate(weekStartMonday.getDate() + i);
+    return localDayKey(d);
+  });
+}
+
+export { santiagoDayKey } from "@/lib/santiago-day-key";

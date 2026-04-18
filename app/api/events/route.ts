@@ -8,6 +8,7 @@ import {
   canUnregisterNow,
   pairingExtrasForUser,
 } from "@/lib/weekly-events";
+import { santiagoDayKey } from "@/lib/santiago-day-key";
 import {
   buildTournamentStandingsPublic,
   type TournamentStandingLean,
@@ -167,15 +168,45 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Fechas inválidas" }, { status: 400 });
     }
 
+    const weekYmdsRaw = searchParams.get("weekYmds");
+    const weekYmdSet =
+      weekYmdsRaw && weekYmdsRaw.length > 0
+        ? new Set(
+            weekYmdsRaw
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean),
+          )
+        : null;
+
     await connectDB();
     const now = new Date();
 
-    const docs = await WeeklyEvent.find({
-      startsAt: { $gte: from, $lte: to },
-      tournamentOrigin: { $ne: "custom" },
-    })
-      .sort({ startsAt: 1 })
-      .lean();
+    const PAD_MS = 72 * 60 * 60 * 1000;
+    const queryRange =
+      weekYmdSet && weekYmdSet.size > 0
+        ? {
+            startsAt: {
+              $gte: new Date(from.getTime() - PAD_MS),
+              $lte: new Date(to.getTime() + PAD_MS),
+            },
+            tournamentOrigin: { $ne: "custom" },
+          }
+        : {
+            startsAt: { $gte: from, $lte: to },
+            tournamentOrigin: { $ne: "custom" },
+          };
+
+    let docs = await WeeklyEvent.find(queryRange).sort({ startsAt: 1 }).lean();
+
+    if (weekYmdSet && weekYmdSet.size > 0) {
+      docs = docs.filter((d) => {
+        const at = d.startsAt;
+        if (!at) return false;
+        const key = santiagoDayKey(at as Date);
+        return weekYmdSet.has(key);
+      });
+    }
 
     const events = docs.map((d) =>
       toPublicEvent(
