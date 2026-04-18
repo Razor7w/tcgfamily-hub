@@ -160,6 +160,41 @@ export function useDashboardEventDetail(eventId: string | null) {
   });
 }
 
+/** Clasificación completa por categoría (`GET /api/events/[id]?standings=full`). */
+export function useWeeklyEventFullStandings(eventId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ["weekly-event-full-standings", eventId],
+    queryFn: async () => {
+      if (!eventId?.trim()) throw new Error("ID requerido");
+      const res = await fetch(
+        `/api/events/${encodeURIComponent(eventId)}?standings=full`,
+        { cache: "no-store" },
+      );
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        event?: {
+          standingsFullByCategory?: NonNullable<
+            PublicWeeklyEvent["standingsTopByCategory"]
+          >;
+        };
+      };
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === "string"
+            ? data.error
+            : "Error al cargar la clasificación",
+        );
+      }
+      const cats = data.event?.standingsFullByCategory;
+      if (!Array.isArray(cats)) {
+        throw new Error("Respuesta inválida");
+      }
+      return { standingsFullByCategory: cats };
+    },
+    enabled: Boolean(eventId?.trim()) && enabled,
+  });
+}
+
 export function useSaveMyDeck(eventId: string) {
   const queryClient = useQueryClient();
   return useMutation({

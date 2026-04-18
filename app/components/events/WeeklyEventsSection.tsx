@@ -50,6 +50,7 @@ import {
   useEventCurrentRound,
   useRegisterWeeklyEvent,
   useUnregisterWeeklyEvent,
+  useWeeklyEventFullStandings,
   useWeekEvents,
 } from "@/hooks/useWeeklyEvents";
 import WeekRangeNavigator from "@/components/events/WeekRangeNavigator";
@@ -148,8 +149,11 @@ function sortStandingsCategoriesForTabs(
 
 function TournamentFinishedStandingsTabs({
   categories,
+  /** En modal: una sola barra de scroll (tabla); en tarjeta: altura acotada como antes. */
+  variant = "inline",
 }: {
   categories: NonNullable<PublicWeeklyEvent["standingsTopByCategory"]>;
+  variant?: "inline" | "dialog";
 }) {
   const ordered = useMemo(
     () => sortStandingsCategoriesForTabs(categories),
@@ -160,7 +164,19 @@ function TournamentFinishedStandingsTabs({
   const rows = ordered[safeIndex]?.rows ?? [];
 
   return (
-    <Stack spacing={2}>
+    <Stack
+      spacing={2}
+      sx={
+        variant === "dialog"
+          ? {
+              flex: 1,
+              minHeight: 0,
+              maxHeight: "100%",
+              overflow: "hidden",
+            }
+          : undefined
+      }
+    >
       <Tabs
         value={safeIndex}
         onChange={(_, v) => setTabIndex(v)}
@@ -193,8 +209,17 @@ function TournamentFinishedStandingsTabs({
         variant="outlined"
         sx={{
           borderRadius: 2.5,
-          maxHeight: { xs: "min(70vh, 520px)", sm: 520 },
           borderColor: (t) => alpha(t.palette.text.primary, 0.1),
+          ...(variant === "dialog"
+            ? {
+                flex: 1,
+                minHeight: 0,
+                maxHeight: { xs: "min(58vh, 520px)", sm: "min(62vh, 560px)" },
+                overflow: "auto",
+              }
+            : {
+                maxHeight: { xs: "min(70vh, 520px)", sm: 520 },
+              }),
         }}
       >
         <Table size="small" stickyHeader>
@@ -393,6 +418,18 @@ export default function WeeklyEventsSection({
     participantsOpenForEventId !== null &&
     !!selectedEvent &&
     participantsOpenForEventId === selectedEvent._id;
+
+  const [fullStandingsOpenForEventId, setFullStandingsOpenForEventId] =
+    useState<string | null>(null);
+  const fullStandingsModalOpen =
+    fullStandingsOpenForEventId !== null &&
+    !!selectedEvent &&
+    fullStandingsOpenForEventId === selectedEvent._id;
+
+  const fullStandingsQuery = useWeeklyEventFullStandings(
+    fullStandingsModalOpen ? selectedEvent._id : null,
+    fullStandingsModalOpen,
+  );
 
   const [currentRoundOpenForEventId, setCurrentRoundOpenForEventId] =
     useState<string | null>(null);
@@ -1110,13 +1147,10 @@ export default function WeeklyEventsSection({
                               color="inherit"
                               fullWidth
                               size="medium"
-                              startIcon={<Groups />}
-                              onClick={() => setParticipantsOpenForEventId(selectedEvent._id)}
+                              startIcon={<EmojiEvents />}
+                              onClick={() => setFullStandingsOpenForEventId(selectedEvent._id)}
                             >
-                              Ver lista de participantes
-                              {selectedEvent.participantCount > 0
-                                ? ` (${selectedEvent.participantCount})`
-                                : ""}
+                              Ver standing completo
                             </Button>
                           </Stack>
                         ) : (
@@ -1355,6 +1389,78 @@ export default function WeeklyEventsSection({
                               onClick={() => setParticipantsOpenForEventId(null)}
                             >
                               Listo
+                            </Button>
+                          </DialogActions>
+                        </Dialog>
+
+                        <Dialog
+                          open={fullStandingsModalOpen}
+                          onClose={() => setFullStandingsOpenForEventId(null)}
+                          fullWidth
+                          maxWidth="md"
+                          aria-labelledby="full-standings-dialog-title"
+                          PaperProps={{
+                            sx: {
+                              maxHeight: "min(92vh, 880px)",
+                              display: "flex",
+                              flexDirection: "column",
+                              overflow: "hidden",
+                            },
+                          }}
+                        >
+                          <DialogTitle
+                            id="full-standings-dialog-title"
+                            sx={{ flexShrink: 0 }}
+                          >
+                            Clasificación completa
+                          </DialogTitle>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ px: 3, pb: 0, mt: -1, flexShrink: 0 }}
+                          >
+                            {selectedEvent.title}
+                          </Typography>
+                          <DialogContent
+                            dividers
+                            sx={{
+                              pt: 2,
+                              overflow: "hidden",
+                              display: "flex",
+                              flexDirection: "column",
+                              flex: "1 1 auto",
+                              minHeight: 0,
+                            }}
+                          >
+                            {fullStandingsQuery.isPending ? (
+                              <Stack alignItems="center" justifyContent="center" sx={{ py: 5 }}>
+                                <CircularProgress size={36} aria-label="Cargando clasificación" />
+                              </Stack>
+                            ) : fullStandingsQuery.isError ? (
+                              <Alert severity="error" variant="outlined">
+                                {fullStandingsQuery.error instanceof Error
+                                  ? fullStandingsQuery.error.message
+                                  : "No se pudo cargar la clasificación"}
+                              </Alert>
+                            ) : fullStandingsQuery.data?.standingsFullByCategory &&
+                              fullStandingsQuery.data.standingsFullByCategory.length > 0 ? (
+                              <TournamentFinishedStandingsTabs
+                                key={`${selectedEvent._id}-full`}
+                                variant="dialog"
+                                categories={fullStandingsQuery.data.standingsFullByCategory}
+                              />
+                            ) : (
+                              <Alert severity="info" variant="outlined">
+                                La clasificación detallada aún no está publicada para este evento.
+                              </Alert>
+                            )}
+                          </DialogContent>
+                          <DialogActions sx={{ px: 3, pb: 2, pt: 1, flexShrink: 0 }}>
+                            <Button
+                              variant="contained"
+                              onClick={() => setFullStandingsOpenForEventId(null)}
+                            >
+                              Cerrar
                             </Button>
                           </DialogActions>
                         </Dialog>

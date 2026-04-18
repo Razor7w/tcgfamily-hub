@@ -10,6 +10,18 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [0.4.5] - 2026-04-22
+
+### Añadido
+
+- **Dashboard — Eventos de la semana** (`WeeklyEventsSection`): con torneo en **`close`**, botón **«Ver standing completo»** y modal **Clasificación completa** con la tabla ordenada por categoría (hasta 512 filas por categoría). Datos vía **`GET /api/events/[id]?standings=full`** y hook [`useWeeklyEventFullStandings`](./app/hooks/useWeeklyEvents.ts).
+- [`buildTournamentStandingsPublic`](./app/lib/weekly-event-public.ts): opción `maxRowsPerCategory` y constante **`PUBLIC_STANDINGS_FULL_MAX`** para la respuesta ampliada sin duplicar lógica.
+
+### Cambiado
+
+- **Detalle del evento** (columna izquierda): el aviso *«Preinscripción hasta las …»* **no** se muestra si el estado es **`close`**.
+- **Modal de clasificación completa**: layout flex en el `Dialog` y variante `dialog` en **`TournamentFinishedStandingsTabs`** para evitar **doble scrollbar** (scroll principal solo en la tabla).
+
 ## [0.4.4] - 2026-04-21
 
 ### Añadido
@@ -103,4 +115,4 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 Línea base anterior en `package.json` antes de este changelog; el detalle de cambios queda en el historial de git.
 
-Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.4.4…HEAD`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
+Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.4.5…HEAD`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).

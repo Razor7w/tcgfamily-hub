@@ -10,6 +10,7 @@ import {
 import {
   buildTournamentStandingsPublic,
   categoryLabelEs,
+  PUBLIC_STANDINGS_FULL_MAX,
 } from "@/lib/weekly-event-public";
 import {
   matchRecordFromRounds,
@@ -63,7 +64,7 @@ type LeanEvent = {
 };
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -71,6 +72,9 @@ export async function GET(
     if (!session) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
+
+    const url = new URL(request.url);
+    const wantFullStandings = url.searchParams.get("standings") === "full";
 
     const { id } = await context.params;
     if (!id?.trim()) {
@@ -163,6 +167,9 @@ export async function GET(
           parts as { displayName: string; popId?: string }[],
           userPopId,
           myParticipantPopId,
+          wantFullStandings
+            ? { maxRowsPerCategory: PUBLIC_STANDINGS_FULL_MAX }
+            : undefined,
         )
       : null;
 
@@ -232,11 +239,17 @@ export async function GET(
       myMatchRounds,
       canDeleteCustomTournament,
       ...(tournamentClosed
-        ? {
-            standingsTopByCategory:
-              standingsPublic?.standingsTopByCategory ?? [],
-            myTournamentPlacement,
-          }
+        ? wantFullStandings
+          ? {
+              standingsFullByCategory:
+                standingsPublic?.standingsTopByCategory ?? [],
+              myTournamentPlacement,
+            }
+          : {
+              standingsTopByCategory:
+                standingsPublic?.standingsTopByCategory ?? [],
+              myTournamentPlacement,
+            }
         : {}),
     };
 

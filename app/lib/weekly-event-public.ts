@@ -1,7 +1,14 @@
 import { popidForStorage } from "@/lib/rut-chile";
 
-/** Filas por categoría en la tabla de clasificación pública (top N). */
-const PUBLIC_STANDINGS_TOP_N = 4;
+/** Filas por categoría en listados compactos (tarjeta «Eventos de la semana»). */
+export const PUBLIC_STANDINGS_TOP_N = 4;
+
+/** Máximo de filas por categoría al pedir clasificación completa (evita payloads absurdos). */
+export const PUBLIC_STANDINGS_FULL_MAX = 512;
+
+export type BuildTournamentStandingsOptions = {
+  maxRowsPerCategory?: number;
+};
 
 export type TournamentStandingLean = {
   categoryIndex?: number;
@@ -25,6 +32,7 @@ export function buildTournamentStandingsPublic(
   participants: { displayName: string; popId?: string }[],
   userPopIdFromSession: string | undefined,
   userPopIdFromParticipant?: string | undefined,
+  options?: BuildTournamentStandingsOptions,
 ): {
   standingsTopByCategory: {
     categoryIndex: number;
@@ -37,6 +45,16 @@ export function buildTournamentStandingsPublic(
     isDnf: boolean;
   } | null;
 } {
+  const maxRows =
+    typeof options?.maxRowsPerCategory === "number" &&
+    Number.isFinite(options.maxRowsPerCategory) &&
+    options.maxRowsPerCategory >= 1
+      ? Math.min(
+          PUBLIC_STANDINGS_FULL_MAX,
+          Math.max(1, Math.floor(options.maxRowsPerCategory)),
+        )
+      : PUBLIC_STANDINGS_TOP_N;
+
   const popToName = new Map<string, string>();
   for (const p of participants) {
     const k = popidForStorage(typeof p.popId === "string" ? p.popId : "");
@@ -67,7 +85,7 @@ export function buildTournamentStandingsPublic(
     if (ci !== 0 && ci !== 1 && ci !== 2) continue;
 
     const sorted = [...(cat.finished ?? [])].sort((a, b) => a.place - b.place);
-    const rowsPublic = sorted.slice(0, PUBLIC_STANDINGS_TOP_N).map((row) => ({
+    const rowsPublic = sorted.slice(0, maxRows).map((row) => ({
       place: Math.max(0, Math.round(Number(row.place) || 0)),
       displayName: popToName.get(popidForStorage(row.popId))?.trim() || "—",
     }));
