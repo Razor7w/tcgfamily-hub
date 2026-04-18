@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
@@ -27,30 +26,16 @@ export default function TorneosSemanaPage() {
         }}
       >
         <Container maxWidth="lg">
-          <Stack spacing={2} sx={{ mb: 2 }}>
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={2}
-              alignItems={{ xs: "stretch", sm: "flex-start" }}
-              justifyContent="space-between"
-            >
-              <Box>
-                <Typography variant="h4" component="h1" fontWeight={700}>
-                  Tus torneos de la semana
-                </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 720, mt: 1 }}>
-                  Resumen informativo de los torneos en los que participas: estado, récord y
-                  posición cuando la tabla final esté publicada.
-                </Typography>
-              </Box>
-              <Button
-                variant="outlined"
-                onClick={() => setCustomOpen(true)}
-                sx={{ flexShrink: 0, textTransform: "none", fontWeight: 600 }}
-              >
-                Reportar torneo custom
-              </Button>
-            </Stack>
+          <Stack spacing={2.5} sx={{ mb: 2.5 }}>
+            <Box>
+              <Typography variant="h4" component="h1" fontWeight={700}>
+                Tus torneos de la semana
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 720, mt: 1.25, lineHeight: 1.6 }}>
+                Elige la semana y separa torneos del calendario de la tienda de los que registras
+                como custom. En cada tarjeta verás récord y detalle al abrir la vista completa.
+              </Typography>
+            </Box>
           </Stack>
 
           <WeekAnchorToolbar
@@ -58,7 +43,10 @@ export default function TorneosSemanaPage() {
             onWeekAnchorChange={setWeekAnchor}
           />
 
-          <TournamentWeekReportSection weekAnchor={weekAnchor} />
+          <TournamentWeekReportSection
+            weekAnchor={weekAnchor}
+            onOpenCreateCustomDialog={() => setCustomOpen(true)}
+          />
 
           <ReportCustomTournamentDialog
             open={customOpen}
