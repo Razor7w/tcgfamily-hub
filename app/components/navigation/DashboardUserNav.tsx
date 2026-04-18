@@ -19,6 +19,7 @@ import { useDashboardModulesFromLayout } from "@/contexts/DashboardModulesContex
 export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
   const { visibility } = useDashboardModulesFromLayout();
   const showEvents = visibility.weeklyEvents;
+  const showMyTournaments = visibility.myTournaments;
   const showMail = visibility.mail;
 
   return (
@@ -35,24 +36,24 @@ export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
             </ListItemButton>
           </ListItem>
           {showEvents ? (
-            <>
-              <ListItem disablePadding>
-                <ListItemButton href="/dashboard/eventos">
-                  <ListItemIcon>
-                    <Event />
-                  </ListItemIcon>
-                  <ListItemText primary="Eventos" />
-                </ListItemButton>
-              </ListItem>
-              <ListItem disablePadding>
-                <ListItemButton href="/dashboard/torneos-semana">
-                  <ListItemIcon>
-                    <EmojiEvents />
-                  </ListItemIcon>
-                  <ListItemText primary="Mis torneos" />
-                </ListItemButton>
-              </ListItem>
-            </>
+            <ListItem disablePadding>
+              <ListItemButton href="/dashboard/eventos">
+                <ListItemIcon>
+                  <Event />
+                </ListItemIcon>
+                <ListItemText primary="Eventos" />
+              </ListItemButton>
+            </ListItem>
+          ) : null}
+          {showMyTournaments ? (
+            <ListItem disablePadding>
+              <ListItemButton href="/dashboard/torneos-semana">
+                <ListItemIcon>
+                  <EmojiEvents />
+                </ListItemIcon>
+                <ListItemText primary="Mis torneos" />
+              </ListItemButton>
+            </ListItem>
           ) : null}
           {showMail ? (
             <ListItem disablePadding>

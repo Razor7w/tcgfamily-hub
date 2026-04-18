@@ -3,12 +3,11 @@ import {
   AdminPanelSettings,
   CalendarMonth,
   CloudUpload,
-  DashboardCustomize,
-  DataObject,
   Email,
   ExpandLess,
   ExpandMore,
-  People
+  People,
+  Settings
 } from '@mui/icons-material'
 import {
   Collapse,
@@ -44,14 +43,6 @@ export default function AdminSidebarClient() {
           </ListItemButton>
         </List>
         <List component="div" disablePadding>
-          <ListItemButton sx={{ pl: 4 }} href="/admin/dashboard-modules">
-            <ListItemIcon>
-              <DashboardCustomize />
-            </ListItemIcon>
-            <ListItemText primary="Inicio (dashboard)" />
-          </ListItemButton>
-        </List>
-        <List component="div" disablePadding>
           <ListItemButton sx={{ pl: 4 }} href="/admin/eventos">
             <ListItemIcon>
               <CalendarMonth />
@@ -76,11 +67,11 @@ export default function AdminSidebarClient() {
           </ListItemButton>
         </List>
         <List component="div" disablePadding>
-          <ListItemButton sx={{ pl: 4 }} href="/admin/torneo-xml">
+          <ListItemButton sx={{ pl: 4 }} href="/admin/dashboard-modules">
             <ListItemIcon>
-              <DataObject />
+              <Settings />
             </ListItemIcon>
-            <ListItemText primary="Torneo (XML)" />
+            <ListItemText primary="Configuración" />
           </ListItemButton>
         </List>
       </Collapse>

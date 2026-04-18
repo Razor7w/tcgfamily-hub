@@ -51,11 +51,22 @@ function formatWhen(iso: string) {
 
 function placementSummary(t: MyTournamentWeekItem): string {
   if (t.tournamentOrigin === "custom") {
+    const parts: string[] = [];
     const r = t.myMatchRecord;
     if (r && (r.wins > 0 || r.losses > 0 || r.ties > 0)) {
-      return `Récord ${r.wins}-${r.losses}-${r.ties} (según tus rondas reportadas)`;
+      parts.push(`Récord ${r.wins}-${r.losses}-${r.ties} (rondas reportadas)`);
     }
-    return "Reporta tus rondas para ver tu récord";
+    if (t.placement) {
+      if (t.placement.isDnf) {
+        parts.push(`${t.placement.categoryLabel} · DNF`);
+      } else if (t.placement.place != null && t.placement.place > 0) {
+        parts.push(`${t.placement.categoryLabel} · ${t.placement.place}º lugar`);
+      } else {
+        parts.push(t.placement.categoryLabel);
+      }
+    }
+    if (parts.length > 0) return parts.join(" · ");
+    return "Reporta tus rondas o indica tu posición al crear el torneo.";
   }
   if (t.state !== "close") {
     if (t.state === "running") {
@@ -95,7 +106,7 @@ type TournamentWeekReportSectionProps = {
 
 /**
  * Resumen informativo de torneos en los que el usuario participa en la semana seleccionada.
- * Visible solo cuando el módulo «Eventos de la semana» está activo (misma visibilidad).
+ * Visible cuando el módulo «Mis torneos» está activo en el panel (inicio o página dedicada).
  */
 export default function TournamentWeekReportSection({
   weekAnchor,

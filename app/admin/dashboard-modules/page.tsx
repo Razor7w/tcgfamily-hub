@@ -25,14 +25,16 @@ import {
   useUpdateDashboardModuleSettings,
 } from "@/hooks/useDashboardModules";
 import {
+  DASHBOARD_MODULE_IDS,
   mergeDashboardSettings,
   type DashboardModuleId,
   type DashboardModuleSettingsDTO,
 } from "@/lib/dashboard-module-config";
 
 const LABELS: Record<DashboardModuleId, string> = {
-  weeklyEvents:
-    "Eventos de la semana (calendario, preinscripción; enlace «Mis torneos» para el resumen)",
+  weeklyEvents: "Eventos de la semana (calendario y preinscripción)",
+  myTournaments:
+    "Mis torneos (resumen de participaciones, rondas y torneos custom)",
   mail: "Correo (últimos correos y registro)",
   storePoints: "Crédito de tienda (puntos)",
 };
@@ -88,45 +90,20 @@ function DashboardModulesEditor({
           Visibilidad
         </Typography>
         <Stack sx={{ mt: 1.5, mb: 3 }} spacing={0.5}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={visibility.weeklyEvents}
-                onChange={(e) =>
-                  setVisibility((v) => ({
-                    ...v,
-                    weeklyEvents: e.target.checked,
-                  }))
-                }
-              />
-            }
-            label={LABELS.weeklyEvents}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={visibility.mail}
-                onChange={(e) =>
-                  setVisibility((v) => ({ ...v, mail: e.target.checked }))
-                }
-              />
-            }
-            label={LABELS.mail}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={visibility.storePoints}
-                onChange={(e) =>
-                  setVisibility((v) => ({
-                    ...v,
-                    storePoints: e.target.checked,
-                  }))
-                }
-              />
-            }
-            label={LABELS.storePoints}
-          />
+          {DASHBOARD_MODULE_IDS.map((id) => (
+            <FormControlLabel
+              key={id}
+              control={
+                <Checkbox
+                  checked={visibility[id]}
+                  onChange={(e) =>
+                    setVisibility((v) => ({ ...v, [id]: e.target.checked }))
+                  }
+                />
+              }
+              label={LABELS[id]}
+            />
+          ))}
         </Stack>
 
         <Typography
@@ -243,25 +220,13 @@ export default function AdminDashboardModulesPage() {
             boxShadow: "0 20px 40px -24px rgba(24, 24, 27, 0.12)",
           }}
         >
-          <Button
-            component={NextLink}
-            href="/admin/users"
-            variant="outlined"
-            size="small"
-            sx={{
-              alignSelf: "flex-start",
-              borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.18),
-            }}
-          >
-            Volver al admin
-          </Button>
           <Box>
             <Typography
               variant="h4"
               component="h1"
               sx={{ fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.15 }}
             >
-              Panel de inicio (usuarios)
+              Configuración de bloques (usuarios)
             </Typography>
             <Typography
               variant="body2"
@@ -272,8 +237,8 @@ export default function AdminDashboardModulesPage() {
               <Link href="/dashboard" component={NextLink} fontWeight={600}>
                 /dashboard
               </Link>{" "}
-              y en qué orden aparecen. Los enlaces del menú lateral ocultan Eventos y
-              Correo si están desactivados.
+              y en qué orden aparecen. El menú lateral muestra u oculta Eventos, Mis torneos
+              y Correo según cada interruptor.
             </Typography>
           </Box>
         </Stack>

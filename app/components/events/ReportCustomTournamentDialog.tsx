@@ -2,10 +2,17 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Button from "@mui/material/Button";
+import Checkbox from "@mui/material/Checkbox";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
+import Divider from "@mui/material/Divider";
+import FormControl from "@mui/material/FormControl";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import InputLabel from "@mui/material/InputLabel";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
@@ -19,6 +26,12 @@ type ReportCustomTournamentDialogProps = {
   weekAnchor: Date;
   onCreated: (eventId: string) => void;
 };
+
+const CATEGORY_OPTIONS = [
+  { value: 0, label: "Júnior" },
+  { value: 1, label: "Sénior" },
+  { value: 2, label: "Máster" },
+];
 
 function defaultStartsAtIsoForWeek(weekAnchor: Date): string {
   const monday = startOfWeekMonday(weekAnchor);
@@ -34,7 +47,7 @@ function defaultStartsAtIsoForWeek(weekAnchor: Date): string {
 }
 
 /**
- * Crear torneo Pokémon personal (nombre y fecha) sin depender del calendario de la tienda.
+ * Crear torneo Pokémon personal (nombre, fecha y posición opcional) sin depender del calendario de la tienda.
  */
 export default function ReportCustomTournamentDialog({
   open,
@@ -47,10 +60,18 @@ export default function ReportCustomTournamentDialog({
   const [startsAtLocal, setStartsAtLocal] = useState(() =>
     defaultStartsAtIsoForWeek(weekAnchor),
   );
+  const [includePlacement, setIncludePlacement] = useState(false);
+  const [categoryIndex, setCategoryIndex] = useState(2);
+  const [placeStr, setPlaceStr] = useState("");
+  const [placementDnf, setPlacementDnf] = useState(false);
 
   useEffect(() => {
     if (open) {
       setStartsAtLocal(defaultStartsAtIsoForWeek(weekAnchor));
+      setIncludePlacement(false);
+      setCategoryIndex(2);
+      setPlaceStr("");
+      setPlacementDnf(false);
     }
   }, [open, weekAnchor]);
 
@@ -63,17 +84,59 @@ export default function ReportCustomTournamentDialog({
     if (!t) return;
     const iso = new Date(startsAtLocal);
     if (Number.isNaN(iso.getTime())) return;
+
+    let placement:
+      | { categoryIndex: number; place: number | null; isDnf: boolean }
+      | undefined;
+    if (includePlacement) {
+      if (placementDnf) {
+        placement = {
+          categoryIndex,
+          place: null,
+          isDnf: true,
+        };
+      } else {
+        const n = Number.parseInt(placeStr.trim(), 10);
+        if (!Number.isFinite(n) || n < 1 || n > 999) return;
+        placement = {
+          categoryIndex,
+          place: n,
+          isDnf: false,
+        };
+      }
+    }
+
     createTournament.mutate(
-      { title: t, startsAt: iso.toISOString() },
+      {
+        title: t,
+        startsAt: iso.toISOString(),
+        ...(placement ? { placement } : {}),
+      },
       {
         onSuccess: (data) => {
           onCreated(data.eventId);
           setTitle("");
+          setIncludePlacement(false);
+          setCategoryIndex(2);
+          setPlaceStr("");
+          setPlacementDnf(false);
           onClose();
         },
       },
     );
   };
+
+  const placeInvalid =
+    includePlacement &&
+    !placementDnf &&
+    (!placeStr.trim() ||
+      !Number.isFinite(Number.parseInt(placeStr.trim(), 10)) ||
+      Number.parseInt(placeStr.trim(), 10) < 1);
+
+  const canSubmit =
+    title.trim() &&
+    !createTournament.isPending &&
+    (!includePlacement || placementDnf || !placeInvalid);
 
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
@@ -82,8 +145,8 @@ export default function ReportCustomTournamentDialog({
         <Stack spacing={2} sx={{ pt: 1 }}>
           <Typography variant="body2" color="text.secondary">
             Registra un torneo que no esté en el calendario de la tienda. Tu récord W‑L‑T se
-            calculará solo con las rondas que reportes (hasta 20). Aparecerá en el listado de la
-            semana donde caiga la fecha elegida (usa el selector de semana arriba si no lo ves).
+            calculará con las rondas que reportes (hasta 20). Puedes indicar tu posición final
+            para verla en el resumen junto a torneos oficiales.
           </Typography>
           <TextField
             label="Nombre del torneo"
@@ -102,6 +165,65 @@ export default function ReportCustomTournamentDialog({
             InputLabelProps={{ shrink: true }}
             inputProps={{ style: { fontVariantNumeric: "tabular-nums" } }}
           />
+
+          <Divider />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={includePlacement}
+                onChange={(e) => setIncludePlacement(e.target.checked)}
+              />
+            }
+            label="Incluir mi posición final"
+          />
+          {includePlacement ? (
+            <Stack spacing={2} sx={{ pl: { xs: 0, sm: 0.5 } }}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="custom-category-label">Categoría</InputLabel>
+                <Select
+                  labelId="custom-category-label"
+                  label="Categoría"
+                  value={categoryIndex}
+                  onChange={(e) => setCategoryIndex(Number(e.target.value))}
+                >
+                  {CATEGORY_OPTIONS.map((o) => (
+                    <MenuItem key={o.value} value={o.value}>
+                      {o.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={placementDnf}
+                    onChange={(e) => {
+                      setPlacementDnf(e.target.checked);
+                      if (e.target.checked) setPlaceStr("");
+                    }}
+                  />
+                }
+                label="DNF (no terminé clasificación)"
+              />
+              <TextField
+                label="Puesto"
+                type="number"
+                value={placeStr}
+                onChange={(e) => setPlaceStr(e.target.value)}
+                fullWidth
+                size="small"
+                disabled={placementDnf}
+                required={!placementDnf}
+                inputProps={{ min: 1, max: 999, style: { fontVariantNumeric: "tabular-nums" } }}
+                helperText={
+                  placementDnf
+                    ? "No aplica puesto numérico con DNF"
+                    : "Ej.: 12 para 12º lugar"
+                }
+              />
+            </Stack>
+          ) : null}
+
           {createTournament.isError ? (
             <Typography variant="body2" color="error">
               {createTournament.error instanceof Error
@@ -118,7 +240,7 @@ export default function ReportCustomTournamentDialog({
         <Button
           variant="contained"
           onClick={handleSubmit}
-          disabled={createTournament.isPending || !title.trim()}
+          disabled={!canSubmit}
         >
           Crear y abrir
         </Button>

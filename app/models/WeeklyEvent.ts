@@ -69,6 +69,15 @@ export interface IWeeklyParticipant {
   deckPokemonSlugs?: string[];
   /** Rondas reportadas por el jugador (vs qué deck jugó y resultado). */
   matchRounds?: IParticipantMatchRound[];
+  /**
+   * Posición declarada al crear un torneo custom (sin tabla importada).
+   * `categoryIndex`: 0 Júnior, 1 Sénior, 2 Máster.
+   */
+  manualPlacement?: {
+    categoryIndex: number;
+    place: number | null;
+    isDnf: boolean;
+  };
 }
 
 /** Torneo creado en tienda vs torneo personal reportado por el usuario (no depende del calendario de la tienda). */
@@ -198,6 +207,17 @@ const ParticipantSchema = new Schema<IWeeklyParticipant>(
     ties: { type: Number, default: 0, min: 0 },
     deckPokemonSlugs: { type: [String], default: undefined },
     matchRounds: { type: [ParticipantMatchRoundSchema], default: undefined },
+    manualPlacement: {
+      type: new Schema(
+        {
+          categoryIndex: { type: Number, required: true, min: 0, max: 2 },
+          place: { type: Number, default: null, min: 0, max: 999 },
+          isDnf: { type: Boolean, default: false },
+        },
+        { _id: false },
+      ),
+      required: false,
+    },
   },
   { _id: true },
 );

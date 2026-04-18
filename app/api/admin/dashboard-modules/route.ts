@@ -53,12 +53,16 @@ export async function PUT(request: NextRequest) {
 
     if (!vis || typeof vis !== "object") {
       return NextResponse.json(
-        { error: "Se requiere visibility con weeklyEvents, mail y storePoints" },
+        {
+          error:
+            "Se requiere visibility con weeklyEvents, myTournaments, mail y storePoints",
+        },
         { status: 400 },
       );
     }
     if (
       typeof vis.weeklyEvents !== "boolean" ||
+      typeof vis.myTournaments !== "boolean" ||
       typeof vis.mail !== "boolean" ||
       typeof vis.storePoints !== "boolean"
     ) {
@@ -73,7 +77,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "order debe ser una permutación de weeklyEvents, mail, storePoints",
+            "order debe ser una permutación de weeklyEvents, myTournaments, mail y storePoints",
         },
         { status: 400 },
       );
@@ -86,6 +90,7 @@ export async function PUT(request: NextRequest) {
       doc = await DashboardModuleSettings.create({
         visibility: {
           weeklyEvents: vis.weeklyEvents,
+          myTournaments: vis.myTournaments,
           mail: vis.mail,
           storePoints: vis.storePoints,
         },
@@ -94,6 +99,7 @@ export async function PUT(request: NextRequest) {
     } else {
       doc.visibility = {
         weeklyEvents: vis.weeklyEvents,
+        myTournaments: vis.myTournaments,
         mail: vis.mail,
         storePoints: vis.storePoints,
       };

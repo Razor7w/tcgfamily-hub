@@ -4,11 +4,12 @@ import { auth } from "@/auth";
 import connectDB from "@/lib/mongodb";
 import { buildMyTournamentWeekItemFromLean } from "@/lib/build-my-tournament-week-item";
 import WeeklyEvent from "@/models/WeeklyEvent";
-import type { MyTournamentWeekItem } from "@/lib/my-tournament-week-types";
+
+const DEFAULT_LIMIT = 2;
+const MAX_LIMIT = 5;
 
 /**
- * Torneos de la semana en los que el usuario está inscrito (participante con userId).
- * Misma ventana de fechas que GET /api/events?from&to.
+ * Últimos torneos en los que participa el usuario (por fecha de inicio, más recientes primero).
  */
 export async function GET(request: NextRequest) {
   try {
@@ -23,20 +24,13 @@ export async function GET(request: NextRequest) {
         ? (session.user as { popid: string }).popid
         : "";
 
-    const { searchParams } = new URL(request.url);
-    const fromRaw = searchParams.get("from");
-    const toRaw = searchParams.get("to");
-    if (!fromRaw || !toRaw) {
-      return NextResponse.json(
-        { error: "Parámetros from y to requeridos (ISO 8601)" },
-        { status: 400 },
-      );
-    }
-
-    const from = new Date(fromRaw);
-    const to = new Date(toRaw);
-    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
-      return NextResponse.json({ error: "Fechas inválidas" }, { status: 400 });
+    let limit = DEFAULT_LIMIT;
+    const rawLimit = request.nextUrl.searchParams.get("limit");
+    if (rawLimit != null) {
+      const n = Number.parseInt(rawLimit, 10);
+      if (Number.isFinite(n) && n >= 1 && n <= MAX_LIMIT) {
+        limit = n;
+      }
     }
 
     let uid: mongoose.Types.ObjectId;
@@ -52,24 +46,22 @@ export async function GET(request: NextRequest) {
     await connectDB();
 
     const docs = await WeeklyEvent.find({
-      startsAt: { $gte: from, $lte: to },
       kind: "tournament",
       participants: { $elemMatch: { userId: uid } },
     })
-      .sort({ startsAt: 1 })
+      .sort({ startsAt: -1 })
+      .limit(limit)
       .lean();
 
-    const items: MyTournamentWeekItem[] = [];
-    for (const d of docs) {
-      const item = buildMyTournamentWeekItemFromLean(d, userId, userPopId);
-      if (item) items.push(item);
-    }
+    const tournaments = docs
+      .map((d) => buildMyTournamentWeekItemFromLean(d, userId, userPopId))
+      .filter((x): x is NonNullable<typeof x> => x != null);
 
-    return NextResponse.json({ tournaments: items }, { status: 200 });
+    return NextResponse.json({ tournaments }, { status: 200 });
   } catch (error) {
-    console.error("GET /api/events/my-tournaments-week:", error);
+    console.error("GET /api/events/my-recent-tournaments:", error);
     return NextResponse.json(
-      { error: "Error al obtener el reporte" },
+      { error: "Error al obtener torneos" },
       { status: 500 },
     );
   }

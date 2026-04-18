@@ -34,7 +34,7 @@ export default function TorneoSemanaDetallePage() {
   const [deckOpen, setDeckOpen] = useState(false);
 
   return (
-    <DashboardModuleRouteGate moduleId="weeklyEvents">
+    <DashboardModuleRouteGate moduleId="myTournaments">
       <Box
         sx={(t) => ({
           minHeight: "100dvh",

@@ -108,6 +108,23 @@ export function useMyTournamentsWeekReport(weekAnchor: Date | null) {
   });
 }
 
+/** Últimos N torneos en los que participas (más recientes por fecha de inicio). */
+export function useMyRecentTournaments(limit = 2) {
+  return useQuery<{ tournaments: MyTournamentWeekItem[] }>({
+    queryKey: ["my-recent-tournaments", limit],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        limit: String(Math.max(1, Math.min(5, limit))),
+      });
+      const res = await fetch(`/api/events/my-recent-tournaments?${params}`);
+      if (!res.ok) {
+        throw new Error("Error al cargar torneos recientes");
+      }
+      return res.json();
+    },
+  });
+}
+
 /** Detalle de evento para el dashboard (incluye deck reportado). */
 export type DashboardEventDetail = PublicWeeklyEvent & {
   myDeckPokemonSlugs: string[];
@@ -161,6 +178,7 @@ export function useSaveMyDeck(eventId: string) {
         queryKey: ["dashboard-event-detail", eventId],
       });
       queryClient.invalidateQueries({ queryKey: ["my-tournaments-week"] });
+      queryClient.invalidateQueries({ queryKey: ["my-recent-tournaments"] });
     },
   });
 }
@@ -168,7 +186,15 @@ export function useSaveMyDeck(eventId: string) {
 export function useCreateCustomTournament() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { title: string; startsAt?: string }) => {
+    mutationFn: async (payload: {
+      title: string;
+      startsAt?: string;
+      placement?: {
+        categoryIndex: number;
+        place: number | null;
+        isDnf: boolean;
+      };
+    }) => {
       const res = await fetch("/api/events/custom-tournament", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -185,6 +211,7 @@ export function useCreateCustomTournament() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-tournaments-week"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-event-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["my-recent-tournaments"] });
     },
   });
 }
@@ -208,6 +235,7 @@ export function useDeleteCustomTournament() {
       queryClient.invalidateQueries({ queryKey: ["my-tournaments-week"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-event-detail"] });
       queryClient.invalidateQueries({ queryKey: ["weekly-events"] });
+      queryClient.invalidateQueries({ queryKey: ["my-recent-tournaments"] });
     },
   });
 }
@@ -234,6 +262,7 @@ export function useSaveMyMatchRounds(eventId: string) {
         queryKey: ["dashboard-event-detail", eventId],
       });
       queryClient.invalidateQueries({ queryKey: ["my-tournaments-week"] });
+      queryClient.invalidateQueries({ queryKey: ["my-recent-tournaments"] });
     },
   });
 }

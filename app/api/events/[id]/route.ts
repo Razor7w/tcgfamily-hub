@@ -7,7 +7,10 @@ import {
   canUnregisterNow,
   pairingExtrasForUser,
 } from "@/lib/weekly-events";
-import { buildTournamentStandingsPublic } from "@/lib/weekly-event-public";
+import {
+  buildTournamentStandingsPublic,
+  categoryLabelEs,
+} from "@/lib/weekly-event-public";
 import {
   matchRecordFromRounds,
   parseParticipantMatchRoundsFromLean,
@@ -51,6 +54,11 @@ type LeanEvent = {
       turnOrders?: string[];
       specialOutcome?: string;
     }[];
+    manualPlacement?: {
+      categoryIndex?: number;
+      place?: number | null;
+      isDnf?: boolean;
+    };
   }[];
 };
 
@@ -158,6 +166,33 @@ export async function GET(
         )
       : null;
 
+    let myTournamentPlacement =
+      standingsPublic?.myTournamentPlacement ?? null;
+    if (
+      !myTournamentPlacement &&
+      tournamentClosed &&
+      tournamentOrigin === "custom" &&
+      mine?.manualPlacement &&
+      typeof mine.manualPlacement.categoryIndex === "number"
+    ) {
+      const mp = mine.manualPlacement;
+      const idx = Math.max(
+        0,
+        Math.min(2, Math.round(Number(mp.categoryIndex))),
+      );
+      const isDnf = Boolean(mp.isDnf);
+      let placeNum: number | null = null;
+      if (!isDnf && typeof mp.place === "number" && Number.isFinite(mp.place)) {
+        placeNum = Math.max(1, Math.min(999, Math.round(mp.place)));
+      }
+      myTournamentPlacement = {
+        categoryIndex: idx,
+        categoryLabel: categoryLabelEs(idx),
+        place: isDnf ? null : placeNum,
+        isDnf,
+      };
+    }
+
     const event = {
       _id: String(doc._id),
       startsAt: startsAt.toISOString(),
@@ -200,8 +235,7 @@ export async function GET(
         ? {
             standingsTopByCategory:
               standingsPublic?.standingsTopByCategory ?? [],
-            myTournamentPlacement:
-              standingsPublic?.myTournamentPlacement ?? null,
+            myTournamentPlacement,
           }
         : {}),
     };

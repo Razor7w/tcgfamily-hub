@@ -5,6 +5,7 @@ import { DEFAULT_DASHBOARD_ORDER } from "@/lib/dashboard-module-config";
 export interface IDashboardModuleSettings extends Document {
   visibility: {
     weeklyEvents: boolean;
+    myTournaments: boolean;
     mail: boolean;
     storePoints: boolean;
   };
@@ -15,6 +16,7 @@ const DashboardModuleSettingsSchema = new Schema<IDashboardModuleSettings>(
   {
     visibility: {
       weeklyEvents: { type: Boolean, default: true },
+      myTournaments: { type: Boolean, default: true },
       mail: { type: Boolean, default: true },
       storePoints: { type: Boolean, default: true },
     },

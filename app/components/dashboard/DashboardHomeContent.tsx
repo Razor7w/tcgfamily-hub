@@ -18,6 +18,7 @@ import { alpha } from "@mui/material/styles";
 import { Divider } from "@mui/material";
 import { InfoOutlined, MarkunreadMailbox, Storefront } from "@mui/icons-material";
 import Link from "next/link";
+import MyTournamentsHomeSection from "@/components/dashboard/MyTournamentsHomeSection";
 import WeeklyEventsSection from "@/components/events/WeeklyEventsSection";
 import CardMails from "@/components/dashboard/CardMails";
 import MailFlowExplainer from "@/components/mails/MailFlowExplainer";
@@ -63,6 +64,10 @@ export default function DashboardHomeContent() {
 
   const weeklyEventsBlock = visibility.weeklyEvents ? (
     <WeeklyEventsSection />
+  ) : null;
+
+  const myTournamentsBlock = visibility.myTournaments ? (
+    <MyTournamentsHomeSection showPageHeading={false} />
   ) : null;
 
   const mailBlock = visibility.mail ? (
@@ -232,15 +237,12 @@ export default function DashboardHomeContent() {
 
   const blocks: Record<DashboardModuleId, ReactNode> = {
     weeklyEvents: weeklyEventsBlock,
+    myTournaments: myTournamentsBlock,
     mail: mailBlock,
     storePoints: storePointsBlock,
   };
 
-  const visibleOrdered = order.filter((id) => {
-    if (id === "weeklyEvents") return visibility.weeklyEvents;
-    if (id === "mail") return visibility.mail;
-    return visibility.storePoints;
-  });
+  const visibleOrdered = order.filter((id) => visibility[id]);
 
   if (visibleOrdered.length === 0) {
     return (
