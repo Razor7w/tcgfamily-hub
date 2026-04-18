@@ -972,23 +972,26 @@ export default function WeeklyEventsSection({
                               </Typography>
                             </Stack>
                           ) : null}
-                          <Box
-                            sx={{
-                              mt: 0.5,
-                              p: 1.5,
-                              borderRadius: 2.5,
-                              bgcolor: (t) => alpha(t.palette.primary.main, 0.06),
-                              border: "1px solid",
-                              borderColor: (t) => alpha(t.palette.primary.main, 0.18),
-                              boxShadow: (t) =>
-                                `inset 0 1px 0 ${alpha(t.palette.common.white, 0.5)}`,
-                            }}
-                          >
-                            <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.55 }}>
-                              Preinscripción hasta las <strong>{formatCloseNote(selectedEvent.startsAt)}</strong>{" "}
-                              (cierra 1 s antes del inicio).
-                            </Typography>
-                          </Box>
+                          {selectedEvent.state !== "close" ? (
+                            <Box
+                              sx={{
+                                mt: 0.5,
+                                p: 1.5,
+                                borderRadius: 2.5,
+                                bgcolor: (t) => alpha(t.palette.primary.main, 0.06),
+                                border: "1px solid",
+                                borderColor: (t) => alpha(t.palette.primary.main, 0.18),
+                                boxShadow: (t) =>
+                                  `inset 0 1px 0 ${alpha(t.palette.common.white, 0.5)}`,
+                              }}
+                            >
+                              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.55 }}>
+                                Preinscripción hasta las{" "}
+                                <strong>{formatCloseNote(selectedEvent.startsAt)}</strong>{" "}
+                                (cierra 1 s antes del inicio).
+                              </Typography>
+                            </Box>
+                          ) : null}
                         </Stack>
                       </CardContent>
                     </Card>
@@ -1016,9 +1019,6 @@ export default function WeeklyEventsSection({
                                 sx={{ fontWeight: 800, letterSpacing: "0.08em" }}
                               >
                                 Clasificación final
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
-                                Torneo cerrado. Tabla por categoría y tu resultado si participaste.
                               </Typography>
                             </Box>
                             {selectedEvent.myRegistration ? (
@@ -1348,19 +1348,6 @@ export default function WeeklyEventsSection({
                                 ))
                               )}
                             </List>
-                            <Box
-                              sx={{
-                                mt: 2,
-                                p: 1.5,
-                                borderRadius: 2,
-                                bgcolor: "action.hover",
-                              }}
-                            >
-                              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.5 }}>
-                                Solo nombres públicos. Cierre de preinscripción:{" "}
-                                <strong>{formatCloseNote(selectedEvent.startsAt)}</strong>.
-                              </Typography>
-                            </Box>
                           </DialogContent>
                           <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
                             <Button
