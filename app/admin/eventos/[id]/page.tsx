@@ -7,8 +7,16 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
 import Divider from "@mui/material/Divider";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
 import IconButton from "@mui/material/IconButton";
+import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
+import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
@@ -21,6 +29,7 @@ import {
   CheckCircle,
   Groups,
   InfoOutlined,
+  Settings,
   UploadFile,
 } from "@mui/icons-material";
 import TournamentTdfLoader from "@/components/admin/TournamentTdfLoader";
@@ -30,6 +39,7 @@ import {
   AdminWeeklyEvent,
   type WeeklyEventState,
   useAdminEvents,
+  useAdminLeagues,
   useConfirmParticipantParticipation,
   useUpdateAdminEvent,
 } from "@/hooks/useWeeklyEvents";
@@ -56,6 +66,7 @@ export default function AdminEventoDetailPage() {
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : "";
   const { data, isPending, isError, error, refetch } = useAdminEvents();
+  const { data: leaguesData } = useAdminLeagues();
   const confirmParticipation = useConfirmParticipantParticipation();
   const updateEv = useUpdateAdminEvent();
 
@@ -81,15 +92,19 @@ export default function AdminEventoDetailPage() {
 
   const [tab, setTab] = useState(0);
   const [dashboardCapInput, setDashboardCapInput] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [leagueIdInput, setLeagueIdInput] = useState("");
 
   useEffect(() => {
     if (!ev) {
       setDashboardCapInput("");
+      setLeagueIdInput("");
       return;
     }
     const c = ev.dashboardRoundCap ?? 0;
     setDashboardCapInput(c > 0 ? String(c) : "");
-  }, [ev?._id, ev?.dashboardRoundCap]);
+    setLeagueIdInput(ev.leagueId ?? "");
+  }, [ev?._id, ev?.dashboardRoundCap, ev?.leagueId]);
 
   const saveDashboardRoundCap = async () => {
     if (!ev || ev.kind !== "tournament") return;
@@ -101,6 +116,19 @@ export default function AdminEventoDetailPage() {
         id: ev._id,
         body: { dashboardRoundCap: Math.round(n) },
       });
+    } catch {
+      /* error en estado */
+    }
+  };
+
+  const saveLeagueAssignment = async () => {
+    if (!ev || ev.kind !== "tournament") return;
+    try {
+      await updateEv.mutateAsync({
+        id: ev._id,
+        body: { leagueId: leagueIdInput.trim() || null },
+      });
+      setSettingsOpen(false);
     } catch {
       /* error en estado */
     }
@@ -177,19 +205,38 @@ export default function AdminEventoDetailPage() {
                   boxShadow: "0 20px 40px -24px rgba(24, 24, 27, 0.1)",
                 }}
               >
-                <Typography variant="h4" component="h1" sx={{ fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.15 }}>
-                  {ev.title}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1.25, fontVariantNumeric: "tabular-nums" }}>
-                  {new Date(ev.startsAt).toLocaleString("es-CL", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </Typography>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={2}
+                  alignItems={{ sm: "flex-start" }}
+                  justifyContent="space-between"
+                >
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography variant="h4" component="h1" sx={{ fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.15 }}>
+                      {ev.title}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1.25, fontVariantNumeric: "tabular-nums" }}>
+                      {new Date(ev.startsAt).toLocaleString("es-CL", {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </Typography>
+                  </Box>
+                  {ev.kind === "tournament" ? (
+                    <Button
+                      variant="outlined"
+                      startIcon={<Settings />}
+                      onClick={() => setSettingsOpen(true)}
+                      sx={{ alignSelf: { xs: "stretch", sm: "flex-start" }, fontWeight: 700 }}
+                    >
+                      Ajustes
+                    </Button>
+                  ) : null}
+                </Stack>
               </Paper>
 
               <Stack direction="row" flexWrap="wrap" gap={0.75} useFlexGap>
@@ -211,6 +258,14 @@ export default function AdminEventoDetailPage() {
                 <Chip size="small" label={gameLabelAdmin(ev.game)} variant="outlined" />
                 {ev.kind === "tournament" && ev.game === "pokemon" && ev.pokemonSubtype ? (
                   <Chip size="small" label={ev.pokemonSubtype} color="primary" variant="outlined" />
+                ) : null}
+                {ev.kind === "tournament" ? (
+                  <Chip
+                    size="small"
+                    label={ev.league?.name ?? "Sin liga"}
+                    color={ev.league ? "secondary" : "default"}
+                    variant="outlined"
+                  />
                 ) : null}
               </Stack>
 
@@ -503,6 +558,64 @@ export default function AdminEventoDetailPage() {
                 ) : null}
               </Box>
               </Paper>
+
+              <Dialog
+                open={settingsOpen}
+                onClose={() => setSettingsOpen(false)}
+                fullWidth
+                maxWidth="sm"
+                aria-labelledby="event-settings-title"
+              >
+                <DialogTitle id="event-settings-title">Ajustes del torneo</DialogTitle>
+                <DialogContent dividers>
+                  <Stack spacing={2} sx={{ pt: 0.5 }}>
+                    <Alert severity="info" variant="outlined">
+                      Asigna una liga para que este torneo sume puntos en la tabla pública cuando quede
+                      cerrado y tenga standings importados.
+                    </Alert>
+                    <FormControl fullWidth>
+                      <InputLabel id="event-league-select-label">Liga</InputLabel>
+                      <Select
+                        labelId="event-league-select-label"
+                        label="Liga"
+                        value={leagueIdInput}
+                        onChange={(e) => setLeagueIdInput(String(e.target.value))}
+                      >
+                        <MenuItem value="">Sin liga</MenuItem>
+                        {(leaguesData?.leagues ?? [])
+                          .filter((l) => l.isActive)
+                          .map((l) => (
+                            <MenuItem key={l._id} value={l._id}>
+                              {l.name}
+                            </MenuItem>
+                          ))}
+                      </Select>
+                    </FormControl>
+                    {ev.league ? (
+                      <Typography variant="body2" color="text.secondary">
+                        Liga actual: <strong>{ev.league.name}</strong>
+                      </Typography>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        Este torneo no tiene una liga asignada.
+                      </Typography>
+                    )}
+                    {updateEv.isError && updateEv.error instanceof Error ? (
+                      <Alert severity="error">{updateEv.error.message}</Alert>
+                    ) : null}
+                  </Stack>
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={() => setSettingsOpen(false)}>Cancelar</Button>
+                  <Button
+                    variant="contained"
+                    onClick={() => void saveLeagueAssignment()}
+                    disabled={updateEv.isPending}
+                  >
+                    Guardar liga
+                  </Button>
+                </DialogActions>
+              </Dialog>
             </>
           )}
         </Stack>

@@ -6,6 +6,7 @@ import {
   Email,
   ExpandLess,
   ExpandMore,
+  MilitaryTech,
   People,
   Settings
 } from '@mui/icons-material'
@@ -48,6 +49,14 @@ export default function AdminSidebarClient() {
               <CalendarMonth />
             </ListItemIcon>
             <ListItemText primary="Eventos" />
+          </ListItemButton>
+        </List>
+        <List component="div" disablePadding>
+          <ListItemButton sx={{ pl: 4 }} href="/admin/ligas">
+            <ListItemIcon>
+              <MilitaryTech />
+            </ListItemIcon>
+            <ListItemText primary="Ligas" />
           </ListItemButton>
         </List>
         <List component="div" disablePadding>

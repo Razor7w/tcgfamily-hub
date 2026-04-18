@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { auth } from "@/auth";
 import {
   ADMIN_WEEKLY_EVENTS_ORIGIN_FILTER,
   adminWeeklyEventForbiddenResponse,
 } from "@/lib/admin-weekly-event-access";
 import connectDB from "@/lib/mongodb";
+import League from "@/models/League";
 import WeeklyEvent, {
   type WeeklyEventGame,
   type WeeklyEventKind,
@@ -217,6 +219,27 @@ export async function PATCH(
       doc.roundNum = roundNum;
     }
 
+    if (body.leagueId !== undefined) {
+      if (doc.kind !== "tournament" || doc.tournamentOrigin !== "official") {
+        doc.set("leagueId", undefined);
+      } else if (body.leagueId === null || body.leagueId === "") {
+        doc.set("leagueId", undefined);
+      } else {
+        const lid =
+          typeof body.leagueId === "string"
+            ? body.leagueId.trim()
+            : String(body.leagueId);
+        if (!mongoose.Types.ObjectId.isValid(lid)) {
+          return NextResponse.json({ error: "leagueId inválido" }, { status: 400 });
+        }
+        const lg = await League.findById(lid).select("_id").lean();
+        if (!lg) {
+          return NextResponse.json({ error: "Liga no encontrada" }, { status: 400 });
+        }
+        doc.leagueId = new mongoose.Types.ObjectId(lid);
+      }
+    }
+
     if (body.dashboardRoundCap !== undefined) {
       if (doc.kind !== "tournament") {
         doc.dashboardRoundCap = 0;
@@ -244,6 +267,11 @@ export async function PATCH(
 
     if (doc.kind !== "tournament") {
       doc.dashboardRoundCap = 0;
+      doc.set("leagueId", undefined);
+    }
+
+    if (doc.tournamentOrigin !== "official") {
+      doc.set("leagueId", undefined);
     }
 
     await doc.save();

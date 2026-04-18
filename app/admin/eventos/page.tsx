@@ -39,6 +39,7 @@ import {
   AdminWeeklyEvent,
   type WeeklyEventState,
   useAdminEvents,
+  useAdminLeagues,
   useCreateAdminEvent,
   useDeleteAdminEvent,
   useUpdateAdminEvent,
@@ -136,6 +137,8 @@ type FormState = {
   prizesNotes: string;
   location: string;
   roundNum: string;
+  /** ID de liga Mongo o vacío. */
+  leagueId: string;
 };
 
 const emptyForm = (): FormState => ({
@@ -152,6 +155,7 @@ const emptyForm = (): FormState => ({
   prizesNotes: "",
   location: "Av. Valparaíso 1195, Local 3",
   roundNum: "0",
+  leagueId: "",
 });
 
 function kindLabelAdmin(k: AdminWeeklyEvent["kind"]) {
@@ -194,6 +198,7 @@ function formFromEvent(ev: AdminWeeklyEvent): FormState {
     prizesNotes: ev.prizesNotes ?? "",
     location: ev.location ?? "",
     roundNum: String(ev.roundNum ?? 0),
+    leagueId: ev.leagueId ?? "",
   };
 }
 
@@ -202,6 +207,7 @@ export default function AdminEventosPage() {
   const createEv = useCreateAdminEvent();
   const updateEv = useUpdateAdminEvent();
   const deleteEv = useDeleteAdminEvent();
+  const { data: leaguesData } = useAdminLeagues();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AdminWeeklyEvent | null>(null);
@@ -303,6 +309,11 @@ export default function AdminEventosPage() {
       payload.pokemonSubtype = form.pokemonSubtype;
     } else {
       payload.pokemonSubtype = null;
+    }
+    if (form.kind === "tournament") {
+      payload.leagueId = form.leagueId.trim() || null;
+    } else {
+      payload.leagueId = null;
     }
     return payload;
   };
@@ -918,6 +929,17 @@ export default function AdminEventosPage() {
                             {ev.kind === "tournament" && ev.game === "pokemon" && ev.pokemonSubtype ? (
                               <Chip size="small" label={ev.pokemonSubtype} color="primary" variant="outlined" />
                             ) : null}
+                            {ev.kind === "tournament" && ev.league ? (
+                              <Chip
+                                size="small"
+                                component={Link}
+                                href={`/ligas/${encodeURIComponent(ev.league.slug)}`}
+                                clickable
+                                label={ev.league.name}
+                                color="secondary"
+                                variant="outlined"
+                              />
+                            ) : null}
                           </Stack>
                           <Stack
                             direction={{ xs: "column", sm: "row" }}
@@ -1156,6 +1178,7 @@ export default function AdminEventosPage() {
                   setForm((f) => ({
                     ...f,
                     kind,
+                    leagueId: kind === "tournament" ? f.leagueId : "",
                     pokemonSubtype:
                       kind === "tournament" && f.game === "pokemon"
                         ? f.pokemonSubtype || "casual"
@@ -1208,6 +1231,28 @@ export default function AdminEventosPage() {
                   <MenuItem value="casual">Casual</MenuItem>
                   <MenuItem value="cup">Cup</MenuItem>
                   <MenuItem value="challenge">Challenge</MenuItem>
+                </Select>
+              </FormControl>
+            ) : null}
+            {form.kind === "tournament" ? (
+              <FormControl fullWidth>
+                <InputLabel id="league-label">Liga (opcional)</InputLabel>
+                <Select
+                  labelId="league-label"
+                  label="Liga (opcional)"
+                  value={form.leagueId}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, leagueId: e.target.value }))
+                  }
+                >
+                  <MenuItem value="">Sin liga</MenuItem>
+                  {(leaguesData?.leagues ?? [])
+                    .filter((l) => l.isActive)
+                    .map((l) => (
+                      <MenuItem key={l._id} value={l._id}>
+                        {l.name}
+                      </MenuItem>
+                    ))}
                 </Select>
               </FormControl>
             ) : null}

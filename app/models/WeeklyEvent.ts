@@ -92,6 +92,8 @@ export interface IWeeklyEvent extends Document {
   tournamentOrigin?: TournamentOrigin;
   /** Dueño del torneo custom (solo aplica si `tournamentOrigin === "custom"`). */
   createdByUserId?: Types.ObjectId;
+  /** Liga local (solo torneos oficiales en tienda; opcional). */
+  leagueId?: Types.ObjectId | null;
   /** Solo aplica a torneos Pokémon. */
   pokemonSubtype?: PokemonTournamentSubtype;
   /** Precio en CLP; 0 = gratuito. Solo relevante para torneos en UI. */
@@ -240,6 +242,12 @@ const WeeklyEventSchema = new Schema<IWeeklyEvent>(
     createdByUserId: {
       type: Schema.Types.ObjectId,
       ref: "User",
+      required: false,
+      index: true,
+    },
+    leagueId: {
+      type: Schema.Types.ObjectId,
+      ref: "League",
       required: false,
       index: true,
     },

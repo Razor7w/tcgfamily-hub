@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import connectDB from "@/lib/mongodb";
+import mongoose from "mongoose";
 import { ADMIN_WEEKLY_EVENTS_ORIGIN_FILTER } from "@/lib/admin-weekly-event-access";
+import League from "@/models/League";
 import WeeklyEvent, {
   type WeeklyEventGame,
   type WeeklyEventKind,
@@ -93,6 +95,7 @@ export async function GET() {
     const raw = await WeeklyEvent.find(ADMIN_WEEKLY_EVENTS_ORIGIN_FILTER)
       .sort({ startsAt: 1 })
       .populate({ path: "participants.userId", select: "popid" })
+      .populate({ path: "leagueId", select: "name slug" })
       .lean();
 
     type LeanPart = {
@@ -112,17 +115,38 @@ export async function GET() {
       const doc = ev as Record<string, unknown> & {
         _id: unknown;
         participants?: LeanPart[];
+        leagueId?: unknown;
       };
-      const { _id, participants, ...rest } = doc;
+      const { _id, participants, leagueId: leagueRaw, ...rest } = doc;
       const rawState = rest.state;
       const state =
         rawState === "schedule" || rawState === "running" || rawState === "close"
           ? rawState
           : "schedule";
+
+      let leagueId: string | null = null;
+      let league: { name: string; slug: string } | null = null;
+      if (
+        leagueRaw &&
+        typeof leagueRaw === "object" &&
+        leagueRaw !== null &&
+        "_id" in leagueRaw
+      ) {
+        leagueId = String((leagueRaw as { _id: unknown })._id);
+        const o = leagueRaw as { name?: string; slug?: string };
+        if (typeof o.name === "string" && typeof o.slug === "string") {
+          league = { name: o.name, slug: o.slug };
+        }
+      } else if (leagueRaw) {
+        leagueId = String(leagueRaw);
+      }
+
       return {
         ...rest,
         _id: String(_id),
         state,
+        leagueId,
+        league,
         participants: (participants ?? []).map((p) =>
           serializeAdminParticipant(p),
         ),
@@ -276,6 +300,25 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
 
+    let leagueOid: mongoose.Types.ObjectId | undefined = undefined;
+    if (
+      kind === "tournament" &&
+      body.leagueId !== undefined &&
+      body.leagueId !== null &&
+      body.leagueId !== ""
+    ) {
+      const lid =
+        typeof body.leagueId === "string"
+          ? body.leagueId.trim()
+          : String(body.leagueId);
+      if (mongoose.Types.ObjectId.isValid(lid)) {
+        const lg = await League.findById(lid).select("_id").lean();
+        if (lg) {
+          leagueOid = new mongoose.Types.ObjectId(lid);
+        }
+      }
+    }
+
     const doc = await WeeklyEvent.create({
       startsAt,
       title,
@@ -294,6 +337,7 @@ export async function POST(request: NextRequest) {
       state,
       roundNum,
       participants: [],
+      ...(leagueOid ? { leagueId: leagueOid } : {}),
     });
 
     return NextResponse.json({ event: doc.toObject() }, { status: 201 });
