@@ -61,6 +61,9 @@ export async function POST(
     const now = new Date();
 
     const existing = await WeeklyEvent.findById(eventId.trim());
+    if (!existing) {
+      return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+    }
     const forbidden = adminWeeklyEventForbiddenResponse(existing);
     if (forbidden) return forbidden;
 

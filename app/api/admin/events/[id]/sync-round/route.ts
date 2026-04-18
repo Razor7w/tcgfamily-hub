@@ -143,6 +143,9 @@ export async function POST(
     await connectDB();
 
     const doc = await WeeklyEvent.findById(eventId.trim());
+    if (!doc) {
+      return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+    }
     const forbidden = adminWeeklyEventForbiddenResponse(doc);
     if (forbidden) return forbidden;
 
