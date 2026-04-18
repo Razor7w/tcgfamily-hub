@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import connectDB from "@/lib/mongodb";
+import { ADMIN_WEEKLY_EVENTS_ORIGIN_FILTER } from "@/lib/admin-weekly-event-access";
 import WeeklyEvent, {
   type WeeklyEventGame,
   type WeeklyEventKind,
@@ -89,7 +90,7 @@ export async function GET() {
     }
 
     await connectDB();
-    const raw = await WeeklyEvent.find({})
+    const raw = await WeeklyEvent.find(ADMIN_WEEKLY_EVENTS_ORIGIN_FILTER)
       .sort({ startsAt: 1 })
       .populate({ path: "participants.userId", select: "popid" })
       .lean();
@@ -278,6 +279,7 @@ export async function POST(request: NextRequest) {
     const doc = await WeeklyEvent.create({
       startsAt,
       title,
+      tournamentOrigin: "official",
       kind,
       game,
       pokemonSubtype:

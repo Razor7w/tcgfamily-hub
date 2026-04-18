@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { adminWeeklyEventForbiddenResponse } from "@/lib/admin-weekly-event-access";
 import connectDB from "@/lib/mongodb";
 import WeeklyEvent from "@/models/WeeklyEvent";
 import { popidForStorage } from "@/lib/rut-chile";
@@ -72,9 +73,8 @@ export async function POST(
 
     await connectDB();
     const doc = await WeeklyEvent.findById(eventId.trim());
-    if (!doc) {
-      return NextResponse.json({ error: "Evento no encontrado" }, { status: 404 });
-    }
+    const forbidden = adminWeeklyEventForbiddenResponse(doc);
+    if (forbidden) return forbidden;
 
     const list = doc.tournamentStandings ?? [];
     type Entry = (typeof list)[number];

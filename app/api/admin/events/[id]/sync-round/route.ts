@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { auth } from "@/auth";
+import { adminWeeklyEventForbiddenResponse } from "@/lib/admin-weekly-event-access";
 import connectDB from "@/lib/mongodb";
 import WeeklyEvent from "@/models/WeeklyEvent";
 import type { IRoundPairingSnapshot, IRoundSnapshot } from "@/models/WeeklyEvent";
@@ -142,9 +143,8 @@ export async function POST(
     await connectDB();
 
     const doc = await WeeklyEvent.findById(eventId.trim());
-    if (!doc) {
-      return NextResponse.json({ error: "Evento no encontrado" }, { status: 404 });
-    }
+    const forbidden = adminWeeklyEventForbiddenResponse(doc);
+    if (forbidden) return forbidden;
 
     doc.roundNum = roundNum;
     doc.state = "running";

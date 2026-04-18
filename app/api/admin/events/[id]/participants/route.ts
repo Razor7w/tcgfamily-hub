@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { auth } from "@/auth";
+import { adminWeeklyEventForbiddenResponse } from "@/lib/admin-weekly-event-access";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 import WeeklyEvent from "@/models/WeeklyEvent";
@@ -60,9 +61,8 @@ export async function POST(
     const now = new Date();
 
     const existing = await WeeklyEvent.findById(eventId.trim());
-    if (!existing) {
-      return NextResponse.json({ error: "Evento no encontrado" }, { status: 404 });
-    }
+    const forbidden = adminWeeklyEventForbiddenResponse(existing);
+    if (forbidden) return forbidden;
 
     if (!canPreRegisterNow(existing.startsAt, now)) {
       return NextResponse.json(

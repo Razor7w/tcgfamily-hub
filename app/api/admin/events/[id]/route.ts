@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
+import {
+  ADMIN_WEEKLY_EVENTS_ORIGIN_FILTER,
+  adminWeeklyEventForbiddenResponse,
+} from "@/lib/admin-weekly-event-access";
 import connectDB from "@/lib/mongodb";
 import WeeklyEvent, {
   type WeeklyEventGame,
@@ -61,9 +65,8 @@ export async function PATCH(
 
     await connectDB();
     const doc = await WeeklyEvent.findById(id);
-    if (!doc) {
-      return NextResponse.json({ error: "No encontrado" }, { status: 404 });
-    }
+    const forbidden = adminWeeklyEventForbiddenResponse(doc);
+    if (forbidden) return forbidden;
 
     if (typeof body.startsAt === "string") {
       const d = new Date(body.startsAt);
@@ -238,7 +241,10 @@ export async function DELETE(
     }
 
     await connectDB();
-    const res = await WeeklyEvent.findByIdAndDelete(id);
+    const res = await WeeklyEvent.findOneAndDelete({
+      _id: id,
+      ...ADMIN_WEEKLY_EVENTS_ORIGIN_FILTER,
+    });
     if (!res) {
       return NextResponse.json({ error: "No encontrado" }, { status: 404 });
     }
