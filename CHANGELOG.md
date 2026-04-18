@@ -10,6 +10,13 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [0.4.1] - 2026-04-18
+
+### Cambiado
+
+- **Dashboard — Eventos de la semana** (`WeeklyEventsSection`): si el cupo del evento es el máximo permitido (**2048**, ilimitado práctico), ya no se muestra el chip `inscritos/máximo` junto al horario ni la fila **Cupo** con barra de progreso (alineado con la etiqueta «Ilimitado» en admin).
+- **Selector horizontal de días** (móvil): scroll automático para que el día seleccionado sea visible; en **sábado y domingo** el carrusel hace scroll **hasta el final** (`scrollWidth − clientWidth`) en lugar de centrar con `scrollIntoView`, para que el fin de semana no quede cortado a la derecha.
+
 ## [0.4.0] - 2026-04-17
 
 ### Añadido
@@ -67,4 +74,4 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 Línea base anterior en `package.json` antes de este changelog; el detalle de cambios queda en el historial de git.
 
-Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.4.0…HEAD`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
+Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.4.1…HEAD`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).

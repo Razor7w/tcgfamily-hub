@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -63,8 +63,13 @@ import {
   startOfWeekMonday,
 } from "@/components/events/weekUtils";
 import { registrationClosesAt } from "@/lib/weekly-events";
+import { WEEKLY_EVENT_PARTICIPANTS_MAX } from "@/lib/parse-pasted-event-flyer";
 
 const WEEKDAY_SHORT = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+function isUnlimitedWeeklyCapacity(maxParticipants: number): boolean {
+  return maxParticipants >= WEEKLY_EVENT_PARTICIPANTS_MAX;
+}
 
 function gameLabel(g: PublicWeeklyEvent["game"]) {
   if (g === "pokemon") return "Pokémon";
@@ -342,6 +347,11 @@ export default function WeeklyEventsSection({
     mondayIndexFromDate(new Date()),
   );
 
+  /** Refs a cada botón del carrusel de días para hacer scroll horizontal al día seleccionado (móvil). */
+  const dayPickerButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  /** Contenedor con `overflow-x: auto`; fin de semana se lleva al final del scroll. */
+  const dayPickerStripRef = useRef<HTMLDivElement | null>(null);
+
   const { data, isPending, isError, error, refetch } = useWeekEvents(weekAnchor);
   const register = useRegisterWeeklyEvent();
   const unregister = useUnregisterWeeklyEvent();
@@ -416,6 +426,30 @@ export default function WeeklyEventsSection({
     return m;
   }, [events]);
 
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      const strip = dayPickerStripRef.current;
+      if (!strip) return;
+
+      if (selectedOffset >= 5) {
+        strip.scrollTo({
+          left: Math.max(0, strip.scrollWidth - strip.clientWidth),
+          behavior: "smooth",
+        });
+        return;
+      }
+
+      const btn = dayPickerButtonRefs.current[selectedOffset];
+      if (!btn) return;
+      btn.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest",
+      });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [selectedOffset, weekStart]);
+
   const handlePrevWeek = () => {
     setWeekAnchor((a) => addWeeks(startOfWeekMonday(a), -1));
   };
@@ -433,6 +467,10 @@ export default function WeeklyEventsSection({
   };
 
   const regReason = registerDisabledReason(selectedEvent);
+
+  const selectedUnlimitedCapacity = selectedEvent
+    ? isUnlimitedWeeklyCapacity(selectedEvent.maxParticipants)
+    : false;
 
   const fillPct = selectedEvent
     ? Math.min(
@@ -610,6 +648,7 @@ export default function WeeklyEventsSection({
         </Paper>
 
         <Box
+          ref={dayPickerStripRef}
           component="nav"
           aria-label="Días de la semana"
           sx={{
@@ -637,6 +676,9 @@ export default function WeeklyEventsSection({
             return (
               <Button
                 key={key}
+                ref={(el) => {
+                  dayPickerButtonRefs.current[idx] = el;
+                }}
                 onClick={() => setSelectedOffset(idx)}
                 variant={selected ? "contained" : "outlined"}
                 color={selected ? "primary" : "inherit"}
@@ -808,22 +850,24 @@ export default function WeeklyEventsSection({
                       {formatWhen(selectedEvent.startsAt)}
                     </Typography>
                   </Box>
-                  <Chip
-                    icon={<Groups sx={{ fontSize: "18px !important" }} />}
-                    label={`${selectedEvent.participantCount}/${selectedEvent.maxParticipants}`}
-                    size="small"
-                    variant="outlined"
-                    sx={{
-                      fontWeight: 700,
-                      flexShrink: 0,
-                      fontVariantNumeric: "tabular-nums",
-                      borderRadius: 2,
-                      borderColor: (t) => alpha(t.palette.text.primary, 0.16),
-                    }}
-                  />
+                  {!selectedUnlimitedCapacity ? (
+                    <Chip
+                      icon={<Groups sx={{ fontSize: "18px !important" }} />}
+                      label={`${selectedEvent.participantCount}/${selectedEvent.maxParticipants}`}
+                      size="small"
+                      variant="outlined"
+                      sx={{
+                        fontWeight: 700,
+                        flexShrink: 0,
+                        fontVariantNumeric: "tabular-nums",
+                        borderRadius: 2,
+                        borderColor: (t) => alpha(t.palette.text.primary, 0.16),
+                      }}
+                    />
+                  ) : null}
                 </Stack>
 
-                <LinearCapacity value={fillPct} />
+                {!selectedUnlimitedCapacity ? <LinearCapacity value={fillPct} /> : null}
 
                 <Stack
                   direction={{ xs: "column", md: "row" }}
