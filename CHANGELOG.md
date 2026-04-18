@@ -10,6 +10,18 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [0.4.0] - 2026-04-17
+
+### Añadido
+
+- **Admin — Pegar evento** (`/admin/eventos`): botón **«Pegar evento»** abre un modal con un campo de texto para pegar el cartel (título en la primera línea, fecha tipo «18 DE ABRIL 17:00», valor, lugar, notas de formato y premios). Genera un torneo oficial vía `POST /api/admin/events` usando el parser [`app/lib/parse-pasted-event-flyer.ts`](./app/lib/parse-pasted-event-flyer.ts).
+- **Cupo desde el texto**: si el pegado incluye líneas explícitas de cupo o plazas (`Cupo: N`, `Hasta N jugadores`, etc.), se usa ese número; si **no** se menciona cupo, se guarda el máximo permitido por API (**2048**) como cupo prácticamente ilimitado. No se interpreta «máx N» dentro de líneas de premios (p. ej. top %).
+- **Etiqueta «Ilimitado»** en la lista y el detalle de admin cuando el cupo es ≥ 2048 (constante `WEEKLY_EVENT_PARTICIPANTS_MAX`).
+
+### Cambiado
+
+- **Panel admin de eventos de cartelera** (`/admin/eventos` y APIs bajo `/api/admin/events`): solo gestionan eventos **oficiales** (`tournamentOrigin` distinto de `custom`). El listado GET filtra custom; al crear desde admin se fija `tournamentOrigin: "official"`; PATCH/DELETE y rutas anidadas (participantes, TDF, ronda, standings) responden **404** si el ID corresponde a un torneo custom, para coherencia y seguridad.
+
 ## [0.3.0] - 2026-04-17
 
 ### Añadido
@@ -55,4 +67,4 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 Línea base anterior en `package.json` antes de este changelog; el detalle de cambios queda en el historial de git.
 
-Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.3.0…HEAD`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
+Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.4.0…HEAD`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
