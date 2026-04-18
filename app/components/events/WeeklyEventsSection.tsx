@@ -8,7 +8,6 @@ import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
-import IconButton from "@mui/material/IconButton";
 import Chip from "@mui/material/Chip";
 import Alert from "@mui/material/Alert";
 import Skeleton from "@mui/material/Skeleton";
@@ -33,8 +32,6 @@ import { alpha, useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import {
   CalendarMonth,
-  ChevronLeft,
-  ChevronRight,
   EmojiEvents,
   EventAvailable,
   GridView,
@@ -55,8 +52,8 @@ import {
   useUnregisterWeeklyEvent,
   useWeekEvents,
 } from "@/hooks/useWeeklyEvents";
+import WeekRangeNavigator from "@/components/events/WeekRangeNavigator";
 import {
-  addWeeks,
   localDayKey,
   mondayIndexFromDate,
   sameLocalDay,
@@ -450,14 +447,6 @@ export default function WeeklyEventsSection({
     return () => cancelAnimationFrame(id);
   }, [selectedOffset, weekStart]);
 
-  const handlePrevWeek = () => {
-    setWeekAnchor((a) => addWeeks(startOfWeekMonday(a), -1));
-  };
-
-  const handleNextWeek = () => {
-    setWeekAnchor((a) => addWeeks(startOfWeekMonday(a), 1));
-  };
-
   const registerDisabledReason = (ev: PublicWeeklyEvent | null) => {
     if (!ev) return "No hay evento seleccionado";
     if (ev.myRegistration) return null;
@@ -583,69 +572,12 @@ export default function WeeklyEventsSection({
           "&:last-child": { pb: { xs: 2.5, sm: 3 } },
         }}
       >
-        <Paper
-          elevation={0}
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.5,
-            px: 1,
-            py: 0.75,
-            mb: 2,
-            borderRadius: 2.5,
-            border: "1px solid",
-            borderColor: (t) => alpha(t.palette.text.primary, 0.08),
-            bgcolor: (t) => alpha(t.palette.text.primary, 0.02),
-          }}
-        >
-          <IconButton
-            size="small"
-            aria-label="Semana anterior"
-            onClick={handlePrevWeek}
-            sx={{
-              color: "text.secondary",
-              "&:hover": { bgcolor: (t) => alpha(t.palette.primary.main, 0.06) },
-            }}
-          >
-            <ChevronLeft />
-          </IconButton>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{
-              flex: 1,
-              textAlign: "center",
-              fontWeight: 600,
-              fontVariantNumeric: "tabular-nums",
-            }}
-          >
-            {weekStart.toLocaleDateString("es-CL", {
-              day: "numeric",
-              month: "short",
-            })}{" "}
-            —{" "}
-            {(() => {
-              const end = new Date(weekStart);
-              end.setDate(weekStart.getDate() + 6);
-              return end.toLocaleDateString("es-CL", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              });
-            })()}
-          </Typography>
-          <IconButton
-            size="small"
-            aria-label="Semana siguiente"
-            onClick={handleNextWeek}
-            sx={{
-              color: "text.secondary",
-              "&:hover": { bgcolor: (t) => alpha(t.palette.primary.main, 0.06) },
-            }}
-          >
-            <ChevronRight />
-          </IconButton>
-        </Paper>
+        <Box sx={{ mb: 2 }}>
+          <WeekRangeNavigator
+            weekAnchor={weekAnchor}
+            onWeekAnchorChange={(d) => setWeekAnchor(d)}
+          />
+        </Box>
 
         <Box
           ref={dayPickerStripRef}

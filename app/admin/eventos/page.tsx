@@ -45,6 +45,8 @@ import {
   parsePastedEventFlyer,
   WEEKLY_EVENT_PARTICIPANTS_MAX,
 } from "@/lib/parse-pasted-event-flyer";
+import WeekRangeNavigator from "@/components/events/WeekRangeNavigator";
+import { isEventInLocalWeek } from "@/components/events/weekUtils";
 
 function toDatetimeLocalValue(iso: string) {
   const d = new Date(iso);
@@ -143,6 +145,8 @@ export default function AdminEventosPage() {
   const [pasteText, setPasteText] = useState("");
   const [pasteError, setPasteError] = useState<string | null>(null);
 
+  const [weekAnchor, setWeekAnchor] = useState(() => new Date());
+
   const eventsSorted = useMemo(() => {
     const list = data?.events ?? [];
     return [...list].sort(
@@ -150,6 +154,10 @@ export default function AdminEventosPage() {
         new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
     );
   }, [data?.events]);
+
+  const eventsInSelectedWeek = useMemo(() => {
+    return eventsSorted.filter((ev) => isEventInLocalWeek(ev.startsAt, weekAnchor));
+  }, [eventsSorted, weekAnchor]);
 
   const openCreate = () => {
     setEditing(null);
@@ -382,6 +390,32 @@ export default function AdminEventosPage() {
           </Stack>
         </Stack>
 
+        <Stack
+          spacing={1.5}
+          sx={{
+            mb: 3,
+            p: { xs: 2, sm: 2.5 },
+            borderRadius: { xs: 3, sm: 4 },
+            border: "1px solid",
+            borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.08),
+            bgcolor: "background.paper",
+            boxShadow: "0 20px 40px -24px rgba(24, 24, 27, 0.12)",
+          }}
+        >
+          <Typography
+            variant="subtitle2"
+            color="text.secondary"
+            sx={{ fontWeight: 700, letterSpacing: "0.04em" }}
+          >
+            Vista por semana
+          </Typography>
+          <WeekRangeNavigator weekAnchor={weekAnchor} onWeekAnchorChange={setWeekAnchor} />
+          <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.55 }}>
+            Solo se listan los eventos cuya fecha de inicio cae entre el lunes y el domingo de la semana
+            seleccionada (hora local).
+          </Typography>
+        </Stack>
+
         {isPending ? (
           <Stack spacing={1.5}>
             {[0, 1, 2].map((i) => (
@@ -484,6 +518,30 @@ export default function AdminEventosPage() {
                   </Box>
                 </Stack>
               </Paper>
+            ) : eventsInSelectedWeek.length === 0 ? (
+              <Paper
+                variant="outlined"
+                sx={{
+                  py: 5,
+                  px: 3,
+                  textAlign: "left",
+                  borderRadius: 4,
+                  borderStyle: "dashed",
+                  borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.14),
+                  bgcolor: (t: Theme) => alpha(t.palette.text.primary, 0.02),
+                }}
+              >
+                <Typography fontWeight={800} sx={{ letterSpacing: "-0.02em" }}>
+                  No hay eventos en esta semana
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1, maxWidth: 520 }}>
+                  Cambia de semana con las flechas o crea un evento cuya fecha caiga en el rango mostrado.
+                  Hay {eventsSorted.length} evento{eventsSorted.length === 1 ? "" : "s"} en otras fechas.
+                </Typography>
+                <Button variant="contained" onClick={openCreate} sx={{ mt: 2, fontWeight: 700 }}>
+                  Nuevo evento
+                </Button>
+              </Paper>
             ) : (
               <Paper
                 elevation={0}
@@ -506,11 +564,11 @@ export default function AdminEventosPage() {
                   }}
                 >
                   <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 800, letterSpacing: "0.12em" }}>
-                    Próximos en calendario
+                    Esta semana
                   </Typography>
                 </Box>
                 <Stack divider={<Divider flexItem />} sx={{ "& > *": { px: { xs: 2, sm: 2.5 }, py: 2.25 } }}>
-                  {eventsSorted.map((ev) => (
+                  {eventsInSelectedWeek.map((ev) => (
                     <Stack
                       key={ev._id}
                       direction={{ xs: "column", md: "row" }}

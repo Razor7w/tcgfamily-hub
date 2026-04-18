@@ -21,6 +21,15 @@ export function endOfWeekSunday(from: Date): Date {
   return sun;
 }
 
+/** `true` si el instante del evento (ISO) cae en la semana local del lunes `weekAnchor` (lun 00:00 → dom 23:59:59.999). */
+export function isEventInLocalWeek(iso: string, weekAnchor: Date): boolean {
+  const mon = startOfWeekMonday(weekAnchor);
+  const nextMon = new Date(mon);
+  nextMon.setDate(mon.getDate() + 7);
+  const t = new Date(iso).getTime();
+  return t >= mon.getTime() && t < nextMon.getTime();
+}
+
 export function addWeeks(weekStartMonday: Date, delta: number): Date {
   const n = new Date(weekStartMonday);
   n.setDate(n.getDate() + delta * 7);

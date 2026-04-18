@@ -10,6 +10,17 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [0.4.4] - 2026-04-21
+
+### Añadido
+
+- **Admin — Eventos de la cartelera** (`/admin/eventos`): bloque **Vista por semana** con el mismo selector de rango (lunes–domingo) que en el dashboard; la lista muestra solo eventos cuya fecha de inicio cae en esa semana (hora local). Mensaje dedicado si no hay eventos en la semana pero sí en otras fechas.
+- Componente compartido [`WeekRangeNavigator`](./app/components/events/WeekRangeNavigator.tsx) y utilidad [`isEventInLocalWeek`](./app/components/events/weekUtils.ts) para filtrar por semana.
+
+### Cambiado
+
+- **Dashboard — Eventos de la semana** (`WeeklyEventsSection`): el selector de semana reutiliza `WeekRangeNavigator` (sin cambio de comportamiento).
+
 ## [0.4.3] - 2026-04-20
 
 ### Cambiado
@@ -92,4 +103,4 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 Línea base anterior en `package.json` antes de este changelog; el detalle de cambios queda en el historial de git.
 
-Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.4.3…HEAD`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
+Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.4.4…HEAD`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
