@@ -23,6 +23,7 @@ import {
   UploadFile,
 } from "@mui/icons-material";
 import TournamentTdfLoader from "@/components/admin/TournamentTdfLoader";
+import { WEEKLY_EVENT_PARTICIPANTS_MAX } from "@/lib/parse-pasted-event-flyer";
 import { popidForStorage } from "@/lib/rut-chile";
 import {
   AdminWeeklyEvent,
@@ -195,7 +196,10 @@ export default function AdminEventoDetailPage() {
                     : "—"}
                 </span>
                 <span>
-                  <strong>Cupo:</strong> {ev.maxParticipants}
+                  <strong>Cupo:</strong>{" "}
+                  {ev.maxParticipants >= WEEKLY_EVENT_PARTICIPANTS_MAX
+                    ? "Ilimitado"
+                    : ev.maxParticipants}
                 </span>
                 <span>
                   <strong>Inscritos:</strong> {ev.participants?.length ?? 0}

@@ -26,6 +26,7 @@ import Chip from "@mui/material/Chip";
 import { alpha, type Theme } from "@mui/material/styles";
 import {
   ArrowBack,
+  ContentPaste,
   Delete,
   Edit,
   EventAvailable,
@@ -39,6 +40,10 @@ import {
   useDeleteAdminEvent,
   useUpdateAdminEvent,
 } from "@/hooks/useWeeklyEvents";
+import {
+  parsePastedEventFlyer,
+  WEEKLY_EVENT_PARTICIPANTS_MAX,
+} from "@/lib/parse-pasted-event-flyer";
 
 function toDatetimeLocalValue(iso: string) {
   const d = new Date(iso);
@@ -132,6 +137,10 @@ export default function AdminEventosPage() {
   const [form, setForm] = useState<FormState>(() => emptyForm());
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminWeeklyEvent | null>(null);
+
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+  const [pasteError, setPasteError] = useState<string | null>(null);
 
   const eventsSorted = useMemo(() => {
     const list = data?.events ?? [];
@@ -233,6 +242,30 @@ export default function AdminEventosPage() {
     }
   };
 
+  const openPasteEvent = () => {
+    setPasteError(null);
+    setPasteText("");
+    setPasteOpen(true);
+  };
+
+  const handlePasteGenerate = async () => {
+    setPasteError(null);
+    const parsed = parsePastedEventFlyer(pasteText);
+    if (!parsed.ok) {
+      setPasteError(parsed.error);
+      return;
+    }
+    try {
+      await createEv.mutateAsync(parsed.payload);
+      setPasteOpen(false);
+      setPasteText("");
+    } catch (e) {
+      setPasteError(
+        e instanceof Error ? e.message : "Error al crear el evento",
+      );
+    }
+  };
+
   const dialogError =
     formError ??
     (createEv.error instanceof Error
@@ -300,20 +333,45 @@ export default function AdminEventosPage() {
                 </Typography>
               </Box>
             </Stack>
-            <Button
-              variant="contained"
-              size="large"
-              onClick={openCreate}
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1}
+              useFlexGap
               sx={{
-                fontWeight: 700,
-                px: 2.5,
-                py: 1.25,
                 alignSelf: { xs: "stretch", lg: "flex-start" },
                 flexShrink: 0,
+                width: { xs: "100%", sm: "auto" },
               }}
             >
-              Nuevo evento
-            </Button>
+              <Button
+                variant="contained"
+                size="large"
+                onClick={openCreate}
+                sx={{
+                  fontWeight: 700,
+                  px: 2.5,
+                  py: 1.25,
+                  width: { xs: "100%", sm: "auto" },
+                }}
+              >
+                Nuevo evento
+              </Button>
+              <Button
+                variant="outlined"
+                size="large"
+                startIcon={<ContentPaste />}
+                onClick={openPasteEvent}
+                sx={{
+                  fontWeight: 700,
+                  px: 2.5,
+                  py: 1.25,
+                  width: { xs: "100%", sm: "auto" },
+                  borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.22),
+                }}
+              >
+                Pegar evento
+              </Button>
+            </Stack>
           </Stack>
         </Stack>
 
@@ -533,7 +591,9 @@ export default function AdminEventosPage() {
                               <Box component="span" sx={{ color: "text.primary", fontWeight: 600 }}>
                                 Cupo
                               </Box>{" "}
-                              {ev.maxParticipants}
+                              {ev.maxParticipants >= WEEKLY_EVENT_PARTICIPANTS_MAX
+                                ? "Ilimitado"
+                                : ev.maxParticipants}
                             </span>
                             <span>
                               <Box component="span" sx={{ color: "text.primary", fontWeight: 600 }}>
@@ -600,6 +660,63 @@ export default function AdminEventosPage() {
           </Stack>
         )}
       </Container>
+
+      <Dialog
+        open={pasteOpen}
+        onClose={() => setPasteOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        scroll="paper"
+        aria-labelledby="paste-event-dialog-title"
+      >
+        <DialogTitle id="paste-event-dialog-title">
+          <Stack spacing={0.5}>
+            <Typography component="span" variant="h6" fontWeight={800}>
+              Pegar evento
+            </Typography>
+            <Typography variant="body2" color="text.secondary" fontWeight={400}>
+              Pega el texto del cartel (título en la primera línea, fecha tipo «18 DE ABRIL 17:00», valor y
+              lugar). Si no indicas cupo en una línea aparte, el cupo queda al máximo (sin tope práctico).
+            </Typography>
+          </Stack>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ pt: 0.5 }}>
+            {pasteError ? <Alert severity="error">{pasteError}</Alert> : null}
+            <TextField
+              label="Texto del cartel"
+              value={pasteText}
+              onChange={(e) => {
+                setPasteText(e.target.value);
+                setPasteError(null);
+              }}
+              fullWidth
+              multiline
+              minRows={14}
+              placeholder={`Torneo ESTANDAR TCG Family
+SABADO 18 DE ABRIL 17:00
+Rondas BO3 según cantidad de participantes
+Valor $3.000
+1/2 Sobre al pozo de Equilibrio Perfecto por jugador inscrito.
+Sobre de Liga para el top 50% (máx 8)
+Lugar: Av. Valparaiso 1195, Local 3`}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2, bgcolor: (t) => alpha(t.palette.text.primary, 0.03) }}>
+          <Button onClick={() => setPasteOpen(false)}>Cancelar</Button>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={() => void handlePasteGenerate()}
+            disabled={createEv.isPending}
+            sx={{ fontWeight: 700, minWidth: 140 }}
+          >
+            Generar torneo
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={dialogOpen}
