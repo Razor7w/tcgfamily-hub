@@ -217,6 +217,35 @@ export async function PATCH(
       doc.roundNum = roundNum;
     }
 
+    if (body.dashboardRoundCap !== undefined) {
+      if (doc.kind !== "tournament") {
+        doc.dashboardRoundCap = 0;
+      } else {
+        const raw = body.dashboardRoundCap;
+        if (raw === null || raw === "") {
+          doc.dashboardRoundCap = 0;
+        } else {
+          const n =
+            typeof raw === "number" && Number.isFinite(raw)
+              ? Math.round(raw)
+              : typeof raw === "string" && raw.trim() !== ""
+                ? Number(raw.trim())
+                : NaN;
+          if (!Number.isFinite(n) || n < 0 || n > 99) {
+            return NextResponse.json(
+              { error: "Tope de ronda dashboard: número entre 0 y 99 (0 = sin tope)" },
+              { status: 400 },
+            );
+          }
+          doc.dashboardRoundCap = n;
+        }
+      }
+    }
+
+    if (doc.kind !== "tournament") {
+      doc.dashboardRoundCap = 0;
+    }
+
     await doc.save();
     return NextResponse.json({ event: doc.toObject() }, { status: 200 });
   } catch (error) {

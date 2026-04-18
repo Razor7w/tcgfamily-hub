@@ -17,6 +17,7 @@ import {
   parseParticipantMatchRoundsFromLean,
   type ParticipantMatchRoundDTO,
 } from "@/lib/participant-match-round";
+import { effectivePublicRoundNum } from "@/lib/dashboard-round-cap";
 
 type LeanEvent = {
   _id: unknown;
@@ -33,6 +34,7 @@ type LeanEvent = {
   prizesNotes?: string;
   location?: string;
   roundNum?: number;
+  dashboardRoundCap?: number;
   tournamentStandings?: import("@/lib/weekly-event-public").TournamentStandingLean[];
   createdByUserId?: unknown;
   participants?: {
@@ -103,10 +105,10 @@ export async function GET(
     );
     const myRegistration = mine?.displayName ?? null;
     const myAttendanceConfirmed = Boolean(mine?.confirmed);
-    const roundNum =
-      typeof doc.roundNum === "number" && Number.isFinite(doc.roundNum)
-        ? Math.max(0, Math.round(doc.roundNum))
-        : 0;
+    const roundNum = effectivePublicRoundNum(
+      doc.roundNum,
+      doc.dashboardRoundCap,
+    );
     const { myTable, myOpponentName } = pairingExtrasForUser(parts, uid);
     const tournamentOrigin: "official" | "custom" =
       doc.tournamentOrigin === "custom" ? "custom" : "official";

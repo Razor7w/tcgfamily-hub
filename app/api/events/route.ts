@@ -13,6 +13,7 @@ import {
   buildTournamentStandingsPublic,
   type TournamentStandingLean,
 } from "@/lib/weekly-event-public";
+import { effectivePublicRoundNum } from "@/lib/dashboard-round-cap";
 
 function toPublicEvent(
   doc: {
@@ -29,6 +30,7 @@ function toPublicEvent(
     prizesNotes: string;
     location: string;
     roundNum?: number;
+    dashboardRoundCap?: number;
     tournamentStandings?: TournamentStandingLean[] | undefined;
     participants: {
       _id: unknown;
@@ -48,10 +50,10 @@ function toPublicEvent(
   currentUserPopId?: string,
 ) {
   const startsAt = doc.startsAt;
-  const roundNum =
-    typeof doc.roundNum === "number" && Number.isFinite(doc.roundNum)
-      ? Math.max(0, Math.round(doc.roundNum))
-      : 0;
+  const roundNum = effectivePublicRoundNum(
+    doc.roundNum,
+    doc.dashboardRoundCap,
+  );
   const mine = currentUserId
     ? doc.participants.find(
         (p) => p.userId && String(p.userId) === currentUserId,
@@ -224,6 +226,7 @@ export async function GET(request: NextRequest) {
           location: d.location ?? "",
           state: d.state,
           roundNum: d.roundNum,
+          dashboardRoundCap: (d as { dashboardRoundCap?: number }).dashboardRoundCap,
           tournamentStandings: (d as { tournamentStandings?: TournamentStandingLean[] })
             .tournamentStandings,
           participants: (d.participants ?? []) as unknown as {

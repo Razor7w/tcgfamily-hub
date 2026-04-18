@@ -441,6 +441,10 @@ export interface AdminWeeklyEvent {
   location: string;
   /** Ronda actual del torneo; por defecto 0. */
   roundNum?: number;
+  /**
+   * Tope de ronda para el dashboard de jugadores (0 = sin tope). No afecta la ronda operativa en admin.
+   */
+  dashboardRoundCap?: number;
   /** Snapshots guardados al pulsar «Setear ronda» (persistidos en Mongo). */
   roundSnapshots?: { roundNum: number; syncedAt?: string }[];
   /** Clasificación final por categoría (0 Júnior, 1 Sénior, 2 Máster). */
@@ -745,6 +749,8 @@ export function useUpdateAdminEvent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-weekly-events"] });
       queryClient.invalidateQueries({ queryKey: ["weekly-events"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-event-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["event-current-round"] });
     },
   });
 }

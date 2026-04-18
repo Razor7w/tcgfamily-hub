@@ -104,6 +104,11 @@ export interface IWeeklyEvent extends Document {
   state: WeeklyEventState;
   /** Ronda actual del torneo (0 = sin iniciar / no aplica). */
   roundNum?: number;
+  /**
+   * Tope de ronda para el dashboard de jugadores (1–99). `0` o ausente = mostrar la ronda real.
+   * Útil si el staff sincroniza una ronda extra pero el conteo público debe quedar en una anterior.
+   */
+  dashboardRoundCap?: number;
   /** Historial por ronda: pairings y metadatos al pulsar «Setear ronda». */
   roundSnapshots?: IRoundSnapshot[];
   /** Clasificación final por categoría (finished + DNF) tras import o carga manual. */
@@ -264,6 +269,7 @@ const WeeklyEventSchema = new Schema<IWeeklyEvent>(
       default: "schedule",
     },
     roundNum: { type: Number, default: 0, min: 0 },
+    dashboardRoundCap: { type: Number, default: 0, min: 0, max: 99 },
     roundSnapshots: { type: [RoundSnapshotSchema], default: [] },
     tournamentStandings: {
       type: [TournamentCategoryStandingsSchema],

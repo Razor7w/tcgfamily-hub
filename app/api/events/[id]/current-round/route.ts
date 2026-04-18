@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import connectDB from "@/lib/mongodb";
 import WeeklyEvent from "@/models/WeeklyEvent";
 import type { IRoundPairingSnapshot, IRoundSnapshot } from "@/models/WeeklyEvent";
+import { effectivePublicRoundNum } from "@/lib/dashboard-round-cap";
 
 function clampWlt(n: unknown): number {
   return Math.max(0, Math.min(999, Math.round(Number(n) || 0)));
@@ -31,6 +32,7 @@ type LeanForRound = {
   _id: unknown;
   kind: string;
   roundNum?: number;
+  dashboardRoundCap?: number;
   participants?: { userId?: unknown }[];
   roundSnapshots?: IRoundSnapshot[];
 };
@@ -55,7 +57,7 @@ export async function GET(
     const uid = session.user.id;
 
     const doc = await WeeklyEvent.findById(id)
-      .select("kind roundNum participants.userId roundSnapshots")
+      .select("kind roundNum dashboardRoundCap participants.userId roundSnapshots")
       .lean<LeanForRound | null>();
 
     if (!doc) {
@@ -79,10 +81,10 @@ export async function GET(
       );
     }
 
-    const roundNum =
-      typeof doc.roundNum === "number" && Number.isFinite(doc.roundNum)
-        ? Math.max(0, Math.round(doc.roundNum))
-        : 0;
+    const roundNum = effectivePublicRoundNum(
+      doc.roundNum,
+      doc.dashboardRoundCap,
+    );
 
     const snapshots = doc.roundSnapshots ?? [];
     const snap = snapshots.find((s) => s.roundNum === roundNum);

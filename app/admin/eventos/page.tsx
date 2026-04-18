@@ -48,6 +48,38 @@ import {
 import WeekRangeNavigator from "@/components/events/WeekRangeNavigator";
 import { isEventInLocalWeek } from "@/components/events/weekUtils";
 
+function localDayBoundsYmd(ymd: string): { start: Date; end: Date } | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim());
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]) - 1;
+  const d = Number(m[3]);
+  if (!Number.isFinite(y) || mo < 0 || mo > 11 || d < 1 || d > 31) return null;
+  const start = new Date(y, mo, d, 0, 0, 0, 0);
+  const end = new Date(y, mo, d, 23, 59, 59, 999);
+  return { start, end };
+}
+
+function eventStartsInDateRange(
+  startsAtIso: string,
+  fromYmd: string,
+  toYmd: string,
+): boolean {
+  const t = new Date(startsAtIso).getTime();
+  if (Number.isNaN(t)) return false;
+  const fromTrim = fromYmd.trim();
+  if (fromTrim) {
+    const b = localDayBoundsYmd(fromTrim);
+    if (!b || t < b.start.getTime()) return false;
+  }
+  const toTrim = toYmd.trim();
+  if (toTrim) {
+    const b = localDayBoundsYmd(toTrim);
+    if (!b || t > b.end.getTime()) return false;
+  }
+  return true;
+}
+
 function toDatetimeLocalValue(iso: string) {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -146,6 +178,8 @@ export default function AdminEventosPage() {
   const [pasteError, setPasteError] = useState<string | null>(null);
 
   const [weekAnchor, setWeekAnchor] = useState(() => new Date());
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
 
   const eventsSorted = useMemo(() => {
     const list = data?.events ?? [];
@@ -155,9 +189,20 @@ export default function AdminEventosPage() {
     );
   }, [data?.events]);
 
+  const eventsAfterDateFilter = useMemo(() => {
+    if (!filterDateFrom.trim() && !filterDateTo.trim()) {
+      return eventsSorted;
+    }
+    return eventsSorted.filter((ev) =>
+      eventStartsInDateRange(ev.startsAt, filterDateFrom, filterDateTo),
+    );
+  }, [eventsSorted, filterDateFrom, filterDateTo]);
+
   const eventsInSelectedWeek = useMemo(() => {
-    return eventsSorted.filter((ev) => isEventInLocalWeek(ev.startsAt, weekAnchor));
-  }, [eventsSorted, weekAnchor]);
+    return eventsAfterDateFilter.filter((ev) =>
+      isEventInLocalWeek(ev.startsAt, weekAnchor),
+    );
+  }, [eventsAfterDateFilter, weekAnchor]);
 
   const openCreate = () => {
     setEditing(null);
@@ -414,6 +459,54 @@ export default function AdminEventosPage() {
             Solo se listan los eventos cuya fecha de inicio cae entre el lunes y el domingo de la semana
             seleccionada (hora local).
           </Typography>
+          <Divider sx={{ my: 0.5 }} />
+          <Typography
+            variant="subtitle2"
+            color="text.secondary"
+            sx={{ fontWeight: 700, letterSpacing: "0.04em" }}
+          >
+            Filtro por fecha de inicio
+          </Typography>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1.5}
+            alignItems={{ xs: "stretch", sm: "flex-end" }}
+            useFlexGap
+          >
+            <TextField
+              label="Desde"
+              type="date"
+              value={filterDateFrom}
+              onChange={(e) => setFilterDateFrom(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+              sx={{ flex: 1 }}
+            />
+            <TextField
+              label="Hasta"
+              type="date"
+              value={filterDateTo}
+              onChange={(e) => setFilterDateTo(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+              sx={{ flex: 1 }}
+            />
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setFilterDateFrom("");
+                setFilterDateTo("");
+              }}
+              disabled={!filterDateFrom && !filterDateTo}
+              sx={{ flexShrink: 0, fontWeight: 600 }}
+            >
+              Limpiar fechas
+            </Button>
+          </Stack>
+          <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.55 }}>
+            Opcional: acota el listado por día de inicio del evento (hora local). Se combina con la semana
+            seleccionada arriba: primero se aplica el rango de fechas, luego la semana.
+          </Typography>
         </Stack>
 
         {isPending ? (
@@ -475,7 +568,30 @@ export default function AdminEventosPage() {
           </Alert>
         ) : (
           <Stack spacing={0}>
-            {eventsSorted.length === 0 ? (
+            {eventsSorted.length > 0 &&
+            eventsAfterDateFilter.length === 0 &&
+            (filterDateFrom.trim() !== "" || filterDateTo.trim() !== "") ? (
+              <Paper
+                variant="outlined"
+                sx={{
+                  py: 5,
+                  px: 3,
+                  textAlign: "left",
+                  borderRadius: 4,
+                  borderStyle: "dashed",
+                  borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.14),
+                  bgcolor: (t: Theme) => alpha(t.palette.text.primary, 0.02),
+                }}
+              >
+                <Typography fontWeight={800} sx={{ letterSpacing: "-0.02em" }}>
+                  Ningún evento en ese rango de fechas
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1, maxWidth: 520 }}>
+                  Ajusta «Desde» / «Hasta» o pulsa Limpiar fechas. Hay {eventsSorted.length} evento
+                  {eventsSorted.length === 1 ? "" : "s"} sin filtrar por fecha.
+                </Typography>
+              </Paper>
+            ) : eventsSorted.length === 0 ? (
               <Paper
                 variant="outlined"
                 sx={{
@@ -536,7 +652,9 @@ export default function AdminEventosPage() {
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 1, maxWidth: 520 }}>
                   Cambia de semana con las flechas o crea un evento cuya fecha caiga en el rango mostrado.
-                  Hay {eventsSorted.length} evento{eventsSorted.length === 1 ? "" : "s"} en otras fechas.
+                  Hay {eventsAfterDateFilter.length} evento
+                  {eventsAfterDateFilter.length === 1 ? "" : "s"} en el rango actual
+                  {filterDateFrom || filterDateTo ? " (con filtro de fechas)" : ""} fuera de esta semana.
                 </Typography>
                 <Button variant="contained" onClick={openCreate} sx={{ mt: 2, fontWeight: 700 }}>
                   Nuevo evento
