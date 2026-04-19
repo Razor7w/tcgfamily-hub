@@ -1,6 +1,6 @@
 # Versionado
 
-La **versión canónica** del proyecto es la de `package.json` (`version`). Debe coincidir con la última entrada numerada de `CHANGELOG.md` cuando se publique un hito (actualmente **0.6.1**).
+La **versión canónica** del proyecto es la de `package.json` (`version`). Debe coincidir con la última entrada numerada de `CHANGELOG.md` cuando se publique un hito (actualmente **0.6.2**).
 
 ## Versión en la interfaz
 

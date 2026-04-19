@@ -101,31 +101,6 @@ export default function TorneoSemanaDetallePage() {
               ev.game === 'pokemon' ? (
                 <>
                   {ev.tournamentOrigin === 'custom' ? (
-                    <Stack
-                      direction={{ xs: 'column', sm: 'row' }}
-                      spacing={1.5}
-                      alignItems={{ xs: 'stretch', sm: 'center' }}
-                      justifyContent="space-between"
-                    >
-                      <Typography variant="body2" color="text.secondary">
-                        Torneo <strong>custom</strong>: no está vinculado al
-                        calendario de la tienda. Tu récord se calcula con las
-                        rondas que reportes.
-                      </Typography>
-                      {ev.canDeleteCustomTournament ? (
-                        <DeleteCustomTournamentButton
-                          eventId={eventId}
-                          tournamentTitle={ev.title}
-                          onDeleted={() =>
-                            router.push('/dashboard/torneos-semana')
-                          }
-                          size="small"
-                          variant="outlined"
-                        />
-                      ) : null}
-                    </Stack>
-                  ) : null}
-                  {ev.tournamentOrigin === 'custom' ? (
                     <CustomTournamentManualPlacementSection
                       eventId={eventId}
                       placement={ev.myTournamentPlacement ?? null}
@@ -311,6 +286,32 @@ export default function TorneoSemanaDetallePage() {
                       )}
                     </CardContent>
                   </Card>
+
+                  {ev.tournamentOrigin === 'custom' ? (
+                    <Stack
+                      direction={{ xs: 'column', sm: 'row' }}
+                      spacing={1.5}
+                      alignItems={{ xs: 'stretch', sm: 'center' }}
+                      justifyContent="space-between"
+                    >
+                      <Typography variant="body2" color="text.secondary">
+                        Torneo <strong>custom</strong>: no está vinculado al
+                        calendario de la tienda. Tu récord se calcula con las
+                        rondas que reportes.
+                      </Typography>
+                      {ev.canDeleteCustomTournament ? (
+                        <DeleteCustomTournamentButton
+                          eventId={eventId}
+                          tournamentTitle={ev.title}
+                          onDeleted={() =>
+                            router.push('/dashboard/torneos-semana')
+                          }
+                          size="small"
+                          variant="outlined"
+                        />
+                      ) : null}
+                    </Stack>
+                  ) : null}
 
                   <ReportDeckDialog
                     open={deckOpen}

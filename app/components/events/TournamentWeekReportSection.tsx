@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import CalendarTodayOutlined from '@mui/icons-material/CalendarTodayOutlined'
 import EmojiEvents from '@mui/icons-material/EmojiEvents'
 import FilterList from '@mui/icons-material/FilterList'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
@@ -8,7 +9,6 @@ import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined'
 import ViewList from '@mui/icons-material/ViewList'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
-import CardHeader from '@mui/material/CardHeader'
 import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
@@ -29,14 +29,18 @@ import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Box from '@mui/material/Box'
 import Link from 'next/link'
-import { alpha } from '@mui/material/styles'
+import { alpha, useTheme } from '@mui/material/styles'
+import useMediaQuery from '@mui/material/useMediaQuery'
 import DeleteCustomTournamentButton from '@/components/events/DeleteCustomTournamentButton'
 import {
   endOfWeekSunday,
   localDayKey,
   startOfWeekMonday
 } from '@/components/events/weekUtils'
-import { useMyTournamentsWeekReport } from '@/hooks/useWeeklyEvents'
+import {
+  useMyTournamentsAllReport,
+  useMyTournamentsWeekReport
+} from '@/hooks/useWeeklyEvents'
 import type { MyTournamentWeekItem } from '@/lib/my-tournament-week-types'
 import type { WeeklyEventState } from '@/models/WeeklyEvent'
 
@@ -146,7 +150,11 @@ function filterUnifiedList(
 
 type TournamentWeekReportSectionProps = {
   weekAnchor: Date
-  /** Abre el diálogo para registrar un torneo custom (se muestra en la pestaña correspondiente). */
+  /** Cuando es true, lista todos los torneos del usuario (sin filtro de semana). El padre suele ocultar el selector de semana. */
+  allTimeMode?: boolean
+  /** Activa o desactiva la vista «todos los torneos» (p. ej. desde «Ver todo» / «Vista por semana»). */
+  onAllTimeModeChange?: (allTime: boolean) => void
+  /** Abre el diálogo para registrar un torneo custom (se muestra en la pestaña correspondiente o en vista completa). */
   onOpenCreateCustomDialog?: () => void
 }
 
@@ -156,10 +164,18 @@ type TournamentWeekReportSectionProps = {
  */
 export default function TournamentWeekReportSection({
   weekAnchor,
+  allTimeMode = false,
+  onAllTimeModeChange,
   onOpenCreateCustomDialog
 }: TournamentWeekReportSectionProps) {
-  const { data, isPending, isError, error, refetch } =
-    useMyTournamentsWeekReport(weekAnchor)
+  const weekQuery = useMyTournamentsWeekReport(allTimeMode ? null : weekAnchor)
+  const allQuery = useMyTournamentsAllReport(allTimeMode)
+
+  const data = allTimeMode ? allQuery.data : weekQuery.data
+  const isPending = allTimeMode ? allQuery.isPending : weekQuery.isPending
+  const isError = allTimeMode ? allQuery.isError : weekQuery.isError
+  const error = allTimeMode ? allQuery.error : weekQuery.error
+  const refetch = () => (allTimeMode ? allQuery.refetch() : weekQuery.refetch())
 
   const list = useMemo(() => data?.tournaments ?? [], [data?.tournaments])
   const officialOnly = useMemo(() => list.filter(isOfficial), [list])
@@ -174,8 +190,27 @@ export default function TournamentWeekReportSection({
     }
   }, [weekAnchor])
 
+  const boundsForFilters = useMemo(() => {
+    if (!allTimeMode) return weekBounds
+    if (list.length === 0) {
+      const d = new Date()
+      const k = localDayKey(d)
+      return { from: k, to: k }
+    }
+    let minMs = Infinity
+    let maxMs = -Infinity
+    for (const t of list) {
+      const ms = new Date(t.startsAt).getTime()
+      if (ms < minMs) minMs = ms
+      if (ms > maxMs) maxMs = ms
+    }
+    return {
+      from: localDayKey(new Date(minMs)),
+      to: localDayKey(new Date(maxMs))
+    }
+  }, [allTimeMode, weekBounds, list])
+
   const [tab, setTab] = useState(0)
-  const [unifiedMode, setUnifiedMode] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
 
   const [filterOrigin, setFilterOrigin] = useState<OriginFilter>('all')
@@ -186,21 +221,21 @@ export default function TournamentWeekReportSection({
   const [draftFrom, setDraftFrom] = useState('')
   const [draftTo, setDraftTo] = useState('')
 
-  const effFrom = filterDateFrom ?? weekBounds.from
-  const effTo = filterDateTo ?? weekBounds.to
+  const effFrom = filterDateFrom ?? boundsForFilters.from
+  const effTo = filterDateTo ?? boundsForFilters.to
 
-  const unifiedSorted = useMemo(() => {
+  const allTimeSorted = useMemo(() => {
     return [...list].sort(
-      (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
+      (a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime()
     )
   }, [list])
 
-  const filteredUnified = useMemo(() => {
-    return filterUnifiedList(unifiedSorted, filterOrigin, effFrom, effTo)
-  }, [unifiedSorted, filterOrigin, effFrom, effTo])
+  const filteredAllTime = useMemo(() => {
+    return filterUnifiedList(allTimeSorted, filterOrigin, effFrom, effTo)
+  }, [allTimeSorted, filterOrigin, effFrom, effTo])
 
-  const displayed = unifiedMode
-    ? filteredUnified
+  const displayed = allTimeMode
+    ? filteredAllTime
     : tab === 0
       ? officialOnly
       : customOnly
@@ -212,8 +247,8 @@ export default function TournamentWeekReportSection({
 
   const openFiltersModal = () => {
     setDraftOrigin(filterOrigin)
-    setDraftFrom(filterDateFrom ?? weekBounds.from)
-    setDraftTo(filterDateTo ?? weekBounds.to)
+    setDraftFrom(filterDateFrom ?? boundsForFilters.from)
+    setDraftTo(filterDateTo ?? boundsForFilters.to)
     setFiltersOpen(true)
   }
 
@@ -237,7 +272,27 @@ export default function TournamentWeekReportSection({
     setFilterDateTo(null)
   }
 
-  const showReportar = onOpenCreateCustomDialog && (unifiedMode || tab === 1)
+  const showReportar = onOpenCreateCustomDialog && (allTimeMode || tab === 1)
+
+  const theme = useTheme()
+  const isNarrow = useMediaQuery(theme.breakpoints.down('sm'))
+
+  const cardTitle = allTimeMode ? 'Todos tus torneos' : 'Tu semana en torneos'
+  const subheaderLong = allTimeMode
+    ? 'Todos los torneos en los que participas (más recientes primero). Usa filtros para acotar por tipo o fecha.'
+    : 'Calendario de la tienda frente a torneos que registras tú. Elige una pestaña para ver cada lista.'
+  const subheaderShort = allTimeMode
+    ? 'Oficiales y custom; más recientes primero. Puedes filtrar por tipo o fechas.'
+    : 'Separa torneos del calendario de la tienda y los que registras tú.'
+
+  const actionBtnSx = {
+    textTransform: 'none' as const,
+    fontWeight: 700 as const,
+    minHeight: { xs: 44, sm: 36 },
+    py: { xs: 1, sm: 0.5 },
+    px: { xs: 1.5, sm: 1.25 },
+    fontSize: { xs: '0.875rem', sm: '0.8125rem' }
+  }
 
   return (
     <Card
@@ -247,63 +302,152 @@ export default function TournamentWeekReportSection({
         overflow: 'hidden'
       }}
     >
-      <CardHeader
-        avatar={<EmojiEvents color="primary" />}
-        title="Tu semana en torneos"
-        subheader={
-          unifiedMode
-            ? 'Lista unificada de la semana (oficiales y custom). Usa filtros para acotar por tipo o fecha.'
-            : 'Calendario de la tienda frente a torneos que registras tú. Elige una pestaña para ver cada lista.'
-        }
-        slotProps={{ title: { variant: 'h6' } }}
-        sx={{
-          pb: 1,
-          '& .MuiCardHeader-subheader': { lineHeight: 1.45 }
-        }}
-        action={
+      <Box
+        sx={t => ({
+          px: { xs: 1.5, sm: 2 },
+          pt: { xs: 2, sm: 2 },
+          pb: { xs: 1.5, sm: 1 },
+          borderBottom: allTimeMode ? `1px solid ${t.palette.divider}` : 'none',
+          bgcolor: alpha(t.palette.primary.main, 0.03)
+        })}
+      >
+        <Stack spacing={{ xs: 1.75, sm: 1.25 }}>
           <Stack
-            direction="row"
-            spacing={1}
-            flexWrap="wrap"
-            justifyContent="flex-end"
-            sx={{ maxWidth: { xs: '100%', sm: 360 } }}
+            direction={{ xs: 'column', lg: 'row' }}
+            spacing={{ xs: 1.5, lg: 2 }}
+            alignItems={{ xs: 'stretch', lg: 'flex-start' }}
+            justifyContent="space-between"
           >
-            {!unifiedMode ? (
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<ViewList />}
-                onClick={() => setUnifiedMode(true)}
-                sx={{ textTransform: 'none', fontWeight: 700 }}
+            <Stack
+              direction="row"
+              spacing={1.25}
+              alignItems="flex-start"
+              sx={{ minWidth: 0, flex: { xs: 'none', lg: 1 } }}
+            >
+              <Box
+                aria-hidden
+                sx={t => ({
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  width: { xs: 44, sm: 40 },
+                  height: { xs: 44, sm: 40 },
+                  borderRadius: 1.5,
+                  bgcolor: alpha(t.palette.primary.main, 0.1),
+                  color: 'primary.main'
+                })}
               >
-                Ver todo
-              </Button>
-            ) : (
-              <>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<FilterList />}
-                  onClick={openFiltersModal}
-                  sx={{ textTransform: 'none', fontWeight: 700 }}
+                <EmojiEvents sx={{ fontSize: { xs: 24, sm: 22 } }} />
+              </Box>
+              <Box sx={{ minWidth: 0, flex: 1, pt: { xs: 0, sm: 0.25 } }}>
+                <Typography
+                  id="tournaments-card-title"
+                  variant="h6"
+                  component="h2"
+                  fontWeight={700}
+                  sx={{
+                    lineHeight: 1.25,
+                    wordBreak: 'break-word'
+                  }}
                 >
-                  Filtros
-                </Button>
-                <Button
-                  variant="text"
-                  size="small"
-                  onClick={() => setUnifiedMode(false)}
-                  sx={{ textTransform: 'none', fontWeight: 600 }}
+                  {cardTitle}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{
+                    mt: 0.75,
+                    lineHeight: 1.5,
+                    display: { xs: 'none', sm: 'block' },
+                    maxWidth: 'min(56ch, 100%)'
+                  }}
                 >
-                  Vista por pestañas
-                </Button>
-              </>
-            )}
-          </Stack>
-        }
-      />
+                  {subheaderLong}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{
+                    mt: 0.75,
+                    lineHeight: 1.5,
+                    display: { xs: 'block', sm: 'none' },
+                    maxWidth: '100%'
+                  }}
+                >
+                  {subheaderShort}
+                </Typography>
+              </Box>
+            </Stack>
 
-      {!unifiedMode ? (
+            {onAllTimeModeChange ? (
+              <Stack
+                direction={{ xs: 'row', lg: 'row' }}
+                spacing={1}
+                useFlexGap
+                sx={{
+                  width: { xs: '100%', lg: 'auto' },
+                  flexShrink: 0,
+                  alignSelf: { xs: 'stretch', lg: 'flex-start' },
+                  ...(allTimeMode
+                    ? {
+                        display: 'grid',
+                        gridTemplateColumns: {
+                          xs: '1fr 1fr',
+                          sm: '1fr 1fr',
+                          lg: 'auto auto'
+                        },
+                        gap: 1,
+                        alignItems: 'stretch'
+                      }
+                    : {})
+                }}
+              >
+                {!allTimeMode ? (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    fullWidth={isNarrow}
+                    startIcon={<ViewList />}
+                    onClick={() => onAllTimeModeChange(true)}
+                    sx={actionBtnSx}
+                  >
+                    Ver todo
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      fullWidth={false}
+                      startIcon={<FilterList />}
+                      onClick={openFiltersModal}
+                      sx={actionBtnSx}
+                    >
+                      Filtros
+                    </Button>
+                    <Button
+                      variant="text"
+                      size="small"
+                      fullWidth={false}
+                      onClick={() => onAllTimeModeChange(false)}
+                      sx={{
+                        ...actionBtnSx,
+                        fontWeight: 600,
+                        px: { xs: 1, sm: 1.25 }
+                      }}
+                    >
+                      Vista por semana
+                    </Button>
+                  </>
+                )}
+              </Stack>
+            ) : null}
+          </Stack>
+        </Stack>
+      </Box>
+
+      {!allTimeMode ? (
         <Box
           sx={t => ({
             px: { xs: 1, sm: 2 },
@@ -318,25 +462,29 @@ export default function TournamentWeekReportSection({
             variant="fullWidth"
             aria-label="Tipo de torneo"
             sx={{
-              minHeight: 48,
+              minHeight: { xs: 56, sm: 48 },
               '& .MuiTab-root': {
-                minHeight: 48,
+                minHeight: { xs: 56, sm: 48 },
                 textTransform: 'none',
                 fontWeight: 600,
-                fontSize: '0.9375rem'
+                fontSize: { xs: '0.8125rem', sm: '0.9375rem' },
+                lineHeight: 1.2,
+                px: { xs: 0.5, sm: 1 }
               }
             }}
           >
             <Tab
-              icon={<StorefrontOutlinedIcon sx={{ fontSize: 20 }} />}
-              iconPosition="start"
+              icon={
+                <StorefrontOutlinedIcon sx={{ fontSize: isNarrow ? 18 : 20 }} />
+              }
+              iconPosition={isNarrow ? 'top' : 'start'}
               label={tabLabel('Oficiales', officialOnly.length, !isPending)}
               id="tournaments-tab-official"
               aria-controls="tournaments-panel"
             />
             <Tab
-              icon={<TuneOutlinedIcon sx={{ fontSize: 20 }} />}
-              iconPosition="start"
+              icon={<TuneOutlinedIcon sx={{ fontSize: isNarrow ? 18 : 20 }} />}
+              iconPosition={isNarrow ? 'top' : 'start'}
               label={tabLabel('Custom', customOnly.length, !isPending)}
               id="tournaments-tab-custom"
               aria-controls="tournaments-panel"
@@ -348,11 +496,13 @@ export default function TournamentWeekReportSection({
       {showReportar ? (
         <Box
           sx={{
-            px: 2,
-            pt: 2,
-            pb: 0,
+            px: { xs: 1.5, sm: 2 },
+            pt: { xs: 1.75, sm: 2 },
+            pb: { xs: 0.5, sm: 0 },
             display: 'flex',
-            justifyContent: { xs: 'stretch', sm: 'flex-end' }
+            justifyContent: { xs: 'stretch', sm: 'flex-end' },
+            position: 'relative',
+            zIndex: 1
           }}
         >
           <Button
@@ -362,7 +512,8 @@ export default function TournamentWeekReportSection({
             sx={{
               textTransform: 'none',
               fontWeight: 700,
-              py: 1.1,
+              py: { xs: 1.25, sm: 1.1 },
+              minHeight: { xs: 48, sm: 40 },
               width: { xs: '100%', sm: 'auto' }
             }}
           >
@@ -375,17 +526,21 @@ export default function TournamentWeekReportSection({
         id="tournaments-panel"
         role="tabpanel"
         aria-labelledby={
-          unifiedMode
-            ? 'tournaments-unified'
+          allTimeMode
+            ? 'tournaments-all-time'
             : tab === 0
               ? 'tournaments-tab-official'
               : 'tournaments-tab-custom'
         }
-        sx={{ pt: 2 }}
+        sx={{
+          pt: { xs: 1.75, sm: 2 },
+          px: { xs: 1.5, sm: 2 },
+          pb: { xs: 2.5, sm: 2 }
+        }}
       >
-        {unifiedMode ? (
+        {allTimeMode ? (
           <Typography
-            id="tournaments-unified"
+            id="tournaments-all-time"
             component="h3"
             sx={{
               position: 'absolute',
@@ -399,14 +554,14 @@ export default function TournamentWeekReportSection({
               border: 0
             }}
           >
-            Lista unificada de torneos de la semana
+            Lista completa de torneos
           </Typography>
         ) : null}
 
         {isPending ? (
           <Stack spacing={1.5}>
-            <Skeleton variant="rounded" height={72} sx={{ borderRadius: 2 }} />
-            <Skeleton variant="rounded" height={72} sx={{ borderRadius: 2 }} />
+            <Skeleton variant="rounded" height={112} sx={{ borderRadius: 2 }} />
+            <Skeleton variant="rounded" height={112} sx={{ borderRadius: 2 }} />
           </Stack>
         ) : isError ? (
           <Alert
@@ -423,16 +578,16 @@ export default function TournamentWeekReportSection({
           </Alert>
         ) : displayed.length === 0 ? (
           <Stack spacing={1.5} sx={{ py: 1 }}>
-            {unifiedMode ? (
+            {allTimeMode ? (
               list.length === 0 ? (
                 <Typography
                   variant="body2"
                   color="text.secondary"
                   sx={{ lineHeight: 1.6 }}
                 >
-                  No tienes torneos en esta semana (ni del calendario de la
-                  tienda ni custom). Preinscríbete en eventos o reporta un
-                  torneo personal.
+                  Aún no tienes torneos en los que figuras como participante.
+                  Preinscríbete en eventos de la tienda o reporta un torneo
+                  personal.
                 </Typography>
               ) : (
                 <Stack spacing={1.5}>
@@ -495,123 +650,165 @@ export default function TournamentWeekReportSection({
           <Stack spacing={2}>
             {displayed.map(t => {
               const origin = t.tournamentOrigin ?? 'official'
+              const btnSize = isNarrow ? 'medium' : 'small'
               return (
-                <Stack
+                <Box
                   key={t.eventId}
-                  spacing={0.75}
-                  sx={{
-                    p: 2,
+                  sx={theme => ({
+                    p: { xs: 1.75, sm: 2 },
                     borderRadius: 2,
                     border: '1px solid',
                     borderColor: 'divider',
-                    bgcolor: 'action.hover'
-                  }}
+                    bgcolor: alpha(theme.palette.background.paper, 0.72),
+                    transition: theme.transitions.create(
+                      ['border-color', 'box-shadow'],
+                      { duration: theme.transitions.duration.shorter }
+                    ),
+                    '@media (hover: hover)': {
+                      '&:hover': {
+                        borderColor: alpha(theme.palette.primary.main, 0.28),
+                        boxShadow: `0 2px 12px ${alpha(theme.palette.common.black, 0.06)}`
+                      }
+                    }
+                  })}
                 >
                   <Stack
                     direction={{ xs: 'column', sm: 'row' }}
-                    spacing={1.25}
+                    spacing={{ xs: 2, sm: 2 }}
+                    alignItems={{ xs: 'stretch', sm: 'flex-start' }}
                     justifyContent="space-between"
-                    alignItems={{ xs: 'stretch', sm: 'center' }}
                   >
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      alignItems="center"
-                      sx={{ minWidth: 0, flex: 1 }}
-                    >
-                      <Typography
-                        variant="subtitle1"
-                        fontWeight={700}
-                        sx={{ minWidth: 0 }}
-                      >
-                        {t.title}
-                      </Typography>
-                      {unifiedMode ? (
-                        <Chip
-                          size="small"
-                          label={origin === 'custom' ? 'Custom' : 'Oficial'}
-                          variant="outlined"
-                          sx={{ flexShrink: 0, fontWeight: 600 }}
-                        />
-                      ) : null}
-                    </Stack>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        flexDirection: 'row',
-                        flexWrap: 'wrap',
-                        alignItems: 'center',
-                        gap: 1,
-                        justifyContent: { xs: 'flex-start', sm: 'flex-end' },
-                        width: { xs: '100%', sm: 'auto' }
-                      }}
-                    >
-                      {origin !== 'custom' ? (
-                        <Chip
-                          size="small"
-                          label={stateLabel(t.state)}
-                          color={stateColor(t.state)}
-                          variant="outlined"
-                          sx={theme => ({
-                            flexShrink: 0,
-                            height: 26,
-                            fontWeight: 600,
-                            fontSize: '0.7rem',
-                            borderWidth: 1,
-                            bgcolor:
-                              t.state === 'close'
-                                ? alpha(theme.palette.success.main, 0.06)
-                                : undefined,
-                            borderColor:
-                              t.state === 'close'
-                                ? alpha(theme.palette.success.main, 0.35)
-                                : undefined,
-                            color:
-                              t.state === 'close'
-                                ? theme.palette.success.dark
-                                : undefined,
-                            maxWidth: '100%',
-                            '& .MuiChip-label': { px: 1, py: 0 }
-                          })}
-                        />
-                      ) : null}
+                    <Stack spacing={1.25} sx={{ minWidth: 0, flex: 1 }}>
                       <Stack
                         direction="row"
-                        spacing={1}
+                        flexWrap="wrap"
                         alignItems="center"
-                        sx={{
-                          flexShrink: 0,
-                          ml: { xs: 'auto', sm: 0 }
-                        }}
+                        columnGap={1}
+                        rowGap={0.75}
                       >
-                        <Button
-                          component={Link}
-                          href={`/dashboard/torneos-semana/${t.eventId}`}
-                          variant="outlined"
-                          size="small"
-                          sx={{ flexShrink: 0 }}
+                        <Typography
+                          variant="subtitle1"
+                          component="h3"
+                          fontWeight={700}
+                          sx={{
+                            minWidth: 0,
+                            lineHeight: 1.3,
+                            wordBreak: 'break-word'
+                          }}
                         >
-                          Ver detalle
-                        </Button>
-                        {origin === 'custom' ? (
-                          <DeleteCustomTournamentButton
-                            eventId={t.eventId}
-                            tournamentTitle={t.title}
+                          {t.title}
+                        </Typography>
+                        {allTimeMode ? (
+                          <Chip
                             size="small"
-                            variant="text"
-                            label="Eliminar"
+                            label={origin === 'custom' ? 'Custom' : 'Oficial'}
+                            variant="outlined"
+                            sx={{ flexShrink: 0, fontWeight: 600 }}
+                          />
+                        ) : null}
+                        {origin !== 'custom' ? (
+                          <Chip
+                            size="small"
+                            label={stateLabel(t.state)}
+                            color={stateColor(t.state)}
+                            variant="outlined"
+                            sx={theme => ({
+                              flexShrink: 0,
+                              height: 26,
+                              fontWeight: 600,
+                              fontSize: '0.7rem',
+                              borderWidth: 1,
+                              bgcolor:
+                                t.state === 'close'
+                                  ? alpha(theme.palette.success.main, 0.06)
+                                  : undefined,
+                              borderColor:
+                                t.state === 'close'
+                                  ? alpha(theme.palette.success.main, 0.35)
+                                  : undefined,
+                              color:
+                                t.state === 'close'
+                                  ? theme.palette.success.dark
+                                  : undefined,
+                              maxWidth: '100%',
+                              '& .MuiChip-label': { px: 1, py: 0 }
+                            })}
                           />
                         ) : null}
                       </Stack>
+
+                      <Stack
+                        direction="row"
+                        alignItems="center"
+                        spacing={0.75}
+                        sx={{ color: 'text.secondary' }}
+                      >
+                        <CalendarTodayOutlined
+                          sx={{
+                            fontSize: 17,
+                            opacity: 0.85,
+                            flexShrink: 0
+                          }}
+                          aria-hidden
+                        />
+                        <Typography variant="body2" component="p" sx={{ m: 0 }}>
+                          {formatWhen(t.startsAt)}
+                        </Typography>
+                      </Stack>
+
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ lineHeight: 1.55, m: 0 }}
+                      >
+                        {placementSummary(t)}
+                      </Typography>
+                    </Stack>
+
+                    <Box
+                      sx={{
+                        display: { xs: 'grid', sm: 'flex' },
+                        flexDirection: { sm: 'column' },
+                        gap: 1,
+                        width: { xs: '100%', sm: 'auto' },
+                        flexShrink: 0,
+                        alignSelf: { xs: 'stretch', sm: 'flex-start' },
+                        minWidth: { sm: 148 },
+                        gridTemplateColumns:
+                          origin === 'custom'
+                            ? { xs: 'repeat(2, minmax(0, 1fr))', sm: 'none' }
+                            : { xs: 'minmax(0, 1fr)', sm: 'none' }
+                      }}
+                    >
+                      <Button
+                        component={Link}
+                        href={`/dashboard/torneos-semana/${t.eventId}`}
+                        variant="outlined"
+                        color="primary"
+                        size={btnSize}
+                        fullWidth
+                        sx={{
+                          textTransform: 'none',
+                          fontWeight: 700
+                        }}
+                      >
+                        Ver detalle
+                      </Button>
+                      {origin === 'custom' ? (
+                        <Box sx={{ minWidth: 0, width: '100%' }}>
+                          <DeleteCustomTournamentButton
+                            eventId={t.eventId}
+                            tournamentTitle={t.title}
+                            size={btnSize}
+                            variant="outlined"
+                            label="Eliminar"
+                            fullWidth
+                          />
+                        </Box>
+                      ) : null}
                     </Box>
                   </Stack>
-                  <Typography variant="caption" color="text.secondary">
-                    {formatWhen(t.startsAt)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {placementSummary(t)}
-                  </Typography>
-                </Stack>
+                </Box>
               )
             })}
           </Stack>
@@ -663,8 +860,11 @@ export default function TournamentWeekReportSection({
                 display="block"
                 sx={{ mb: 1.5 }}
               >
-                Acota por día dentro de la semana seleccionada arriba (
-                {weekBounds.from} — {weekBounds.to}).
+                Acota por día entre {boundsForFilters.from} y{' '}
+                {boundsForFilters.to}
+                {allTimeMode
+                  ? ' (rango de los torneos cargados en esta vista).'
+                  : ' (semana seleccionada).'}
               </Typography>
               <Stack
                 direction={{ xs: 'column', sm: 'row' }}
@@ -680,8 +880,8 @@ export default function TournamentWeekReportSection({
                   onChange={e => setDraftFrom(e.target.value)}
                   InputLabelProps={{ shrink: true }}
                   inputProps={{
-                    min: weekBounds.from,
-                    max: weekBounds.to
+                    min: boundsForFilters.from,
+                    max: boundsForFilters.to
                   }}
                 />
                 <TextField
@@ -693,8 +893,8 @@ export default function TournamentWeekReportSection({
                   onChange={e => setDraftTo(e.target.value)}
                   InputLabelProps={{ shrink: true }}
                   inputProps={{
-                    min: weekBounds.from,
-                    max: weekBounds.to
+                    min: boundsForFilters.from,
+                    max: boundsForFilters.to
                   }}
                 />
               </Stack>
@@ -705,8 +905,8 @@ export default function TournamentWeekReportSection({
           <Button
             onClick={() => {
               setDraftOrigin('all')
-              setDraftFrom(weekBounds.from)
-              setDraftTo(weekBounds.to)
+              setDraftFrom(boundsForFilters.from)
+              setDraftTo(boundsForFilters.to)
             }}
             sx={{ textTransform: 'none' }}
           >

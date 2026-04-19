@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Button from '@mui/material/Button'
+import type { SxProps, Theme } from '@mui/material/styles'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
@@ -17,6 +18,8 @@ type DeleteCustomTournamentButtonProps = {
   size?: 'small' | 'medium' | 'large'
   variant?: 'text' | 'outlined' | 'contained'
   label?: string
+  fullWidth?: boolean
+  sx?: SxProps<Theme>
 }
 
 export default function DeleteCustomTournamentButton({
@@ -25,7 +28,9 @@ export default function DeleteCustomTournamentButton({
   onDeleted,
   size = 'medium',
   variant = 'outlined',
-  label = 'Eliminar torneo'
+  label = 'Eliminar torneo',
+  fullWidth,
+  sx
 }: DeleteCustomTournamentButtonProps) {
   const [open, setOpen] = useState(false)
   const del = useDeleteCustomTournament()
@@ -45,9 +50,13 @@ export default function DeleteCustomTournamentButton({
         color="error"
         variant={variant}
         size={size}
+        fullWidth={fullWidth}
         onClick={() => setOpen(true)}
         disabled={del.isPending}
-        sx={{ flexShrink: 0 }}
+        sx={[
+          { flexShrink: 0, textTransform: 'none', fontWeight: 700 },
+          ...(sx ? (Array.isArray(sx) ? sx : [sx]) : [])
+        ]}
       >
         {label}
       </Button>

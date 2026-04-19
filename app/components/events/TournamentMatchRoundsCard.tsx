@@ -21,6 +21,7 @@ import WavingHandOutlinedIcon from '@mui/icons-material/WavingHandOutlined'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import ButtonBase from '@mui/material/ButtonBase'
 import Card from '@mui/material/Card'
 import Chip from '@mui/material/Chip'
 import Collapse from '@mui/material/Collapse'
@@ -254,6 +255,100 @@ function LimitlessSpriteThumb({
         }}
       />
     </Box>
+  )
+}
+
+/** Sprites del perfil en el bloque de récord: pulsables para abrir el mismo flujo que «Elegir Pokémon». */
+function DeckProfileSpriteButton({
+  slug,
+  size,
+  circular = false,
+  onEditDeck,
+  readOnly
+}: {
+  slug: string
+  size: number
+  circular?: boolean
+  onEditDeck?: () => void
+  readOnly?: boolean
+}) {
+  const interactive = Boolean(onEditDeck && !readOnly)
+  if (!interactive) {
+    return <LimitlessSpriteThumb slug={slug} size={size} circular={circular} />
+  }
+  return (
+    <Tooltip title="Editar Pokémon del perfil">
+      <ButtonBase
+        focusRipple
+        aria-label={`Editar Pokémon del perfil: ${slug}`}
+        onClick={e => {
+          e.stopPropagation()
+          onEditDeck?.()
+        }}
+        sx={{
+          borderRadius: circular ? '50%' : 1,
+          p: 0.25,
+          color: 'inherit',
+          transition: t =>
+            t.transitions.create(['background-color', 'transform'], {
+              duration: t.transitions.duration.shorter
+            }),
+          '&:hover': {
+            bgcolor: 'action.hover'
+          },
+          '&:active': {
+            transform: 'scale(0.97)'
+          }
+        }}
+      >
+        <LimitlessSpriteThumb slug={slug} size={size} circular={circular} />
+      </ButtonBase>
+    </Tooltip>
+  )
+}
+
+function ShareTournamentSummaryButton({ onOpen }: { onOpen: () => void }) {
+  return (
+    <Tooltip title="Generar imagen para compartir tu récord">
+      <Button
+        variant="outlined"
+        color="primary"
+        size="small"
+        startIcon={<ShareIcon sx={{ fontSize: { xs: 18, sm: 19 } }} />}
+        onClick={onOpen}
+        aria-label="Compartir resumen del torneo"
+        sx={t => ({
+          flexShrink: 0,
+          alignSelf: 'flex-start',
+          mt: { xs: 0.25, md: -0.25 },
+          textTransform: 'none',
+          fontWeight: 700,
+          fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+          px: { xs: 1.25, sm: 1.75 },
+          py: 0.65,
+          minHeight: { xs: 40, sm: 36 },
+          borderRadius: 2,
+          borderWidth: 1.5,
+          borderColor: alpha(t.palette.primary.main, 0.55),
+          bgcolor: alpha(t.palette.primary.main, 0.06),
+          boxShadow: `0 1px 3px ${alpha(t.palette.primary.main, 0.12)}`,
+          '& .MuiButton-startIcon': {
+            mr: { xs: 0, sm: 0.75 },
+            ml: { xs: -0.25, sm: 0 }
+          },
+          '&:hover': {
+            borderWidth: 1.5,
+            borderColor: 'primary.main',
+            bgcolor: alpha(t.palette.primary.main, 0.12),
+            boxShadow: `0 2px 8px ${alpha(t.palette.primary.main, 0.2)}`
+          }
+        })}
+      >
+        <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+          Compartir
+        </Box>
+      </Button>
+    </Tooltip>
   )
 }
 
@@ -855,19 +950,30 @@ export default function TournamentMatchRoundsCard({
           }}
         >
           <Stack spacing={{ xs: 2, sm: 2.25 }}>
-            <Stack
-              direction={{ xs: 'column', md: 'row' }}
-              spacing={2}
-              justifyContent="space-between"
-              alignItems={{ xs: 'stretch', md: 'flex-start' }}
+            <Box
+              sx={{
+                display: { xs: 'flex', md: 'grid' },
+                flexDirection: { xs: 'column' },
+                gridTemplateColumns: {
+                  md: 'minmax(0, 1fr) minmax(260px, min(340px, 100%))'
+                },
+                columnGap: { md: 3 },
+                rowGap: { xs: 2, md: 0 },
+                alignItems: { xs: 'stretch', md: 'start' }
+              }}
             >
-              <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Stack spacing={2} sx={{ minWidth: 0 }}>
                 <Stack
                   direction="row"
                   alignItems="flex-start"
-                  justifyContent="space-between"
-                  spacing={1}
-                  sx={{ mb: 0.75 }}
+                  justifyContent={{ xs: 'space-between', md: 'flex-start' }}
+                  flexWrap={{ xs: 'nowrap', md: 'wrap' }}
+                  useFlexGap
+                  sx={{
+                    mb: 0.75,
+                    columnGap: { md: 1.5 },
+                    rowGap: { md: 1 }
+                  }}
                 >
                   <Stack
                     direction="row"
@@ -875,7 +981,11 @@ export default function TournamentMatchRoundsCard({
                     spacing={1}
                     flexWrap="wrap"
                     useFlexGap
-                    sx={{ flex: 1, minWidth: 0 }}
+                    sx={{
+                      minWidth: 0,
+                      flex: { xs: '1 1 auto', md: '0 1 auto' },
+                      pr: { xs: 0.5, md: 0 }
+                    }}
                   >
                     <Typography
                       variant="h5"
@@ -899,16 +1009,17 @@ export default function TournamentMatchRoundsCard({
                     ) : null}
                   </Stack>
                   {!readOnly ? (
-                    <Tooltip title="Compartir resumen">
-                      <IconButton
-                        size="small"
-                        onClick={() => setShareOpen(true)}
-                        aria-label="Compartir resumen"
-                        sx={{ flexShrink: 0, mt: -0.25 }}
-                      >
-                        <ShareIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                    <Box
+                      sx={{
+                        flexShrink: 0,
+                        alignSelf: { xs: 'center', md: 'flex-start' },
+                        mt: { md: 0.125 }
+                      }}
+                    >
+                      <ShareTournamentSummaryButton
+                        onOpen={() => setShareOpen(true)}
+                      />
+                    </Box>
                   ) : null}
                 </Stack>
                 <Typography
@@ -948,30 +1059,28 @@ export default function TournamentMatchRoundsCard({
                     variant="outlined"
                   />
                 </Stack>
-              </Box>
+              </Stack>
               <Stack
-                alignItems={{ xs: 'stretch', md: 'flex-end' }}
+                alignItems="stretch"
                 spacing={1.25}
                 sx={{
                   flexShrink: 0,
-                  width: { xs: '100%', md: 'auto' },
+                  width: { xs: '100%', md: '100%' },
                   p: { xs: 1.75, sm: 2 },
                   borderRadius: 2,
                   border: '1px solid',
                   borderColor: t => alpha(t.palette.primary.main, 0.2),
                   bgcolor: t => alpha(t.palette.primary.main, 0.05),
-                  minWidth: { md: 220 }
+                  minWidth: 0
                 }}
               >
                 <Stack
                   direction={{ xs: 'row', md: 'column' }}
                   spacing={{ xs: 2, md: 1.25 }}
-                  alignItems={{ xs: 'center', md: 'flex-end' }}
-                  justifyContent={{ xs: 'space-between', md: 'flex-end' }}
+                  alignItems={{ xs: 'center', md: 'flex-start' }}
+                  justifyContent={{ xs: 'space-between', md: 'flex-start' }}
                 >
-                  <Box
-                    sx={{ textAlign: { xs: 'left', md: 'right' }, minWidth: 0 }}
-                  >
+                  <Box sx={{ textAlign: 'left', minWidth: 0, width: '100%' }}>
                     <Typography
                       variant="overline"
                       color="text.secondary"
@@ -997,7 +1106,10 @@ export default function TournamentMatchRoundsCard({
                         fontSize: { xs: '1.65rem', sm: '2.125rem' },
                         display: 'flex',
                         alignItems: 'baseline',
-                        justifyContent: { xs: 'space-between', md: 'flex-end' },
+                        justifyContent: {
+                          xs: 'space-between',
+                          md: 'flex-start'
+                        },
                         gap: { xs: 2, md: 2.5 },
                         flexWrap: 'nowrap',
                         width: '100%'
@@ -1038,10 +1150,7 @@ export default function TournamentMatchRoundsCard({
                           </>
                         )
                       ) : (
-                        <Box
-                          component="span"
-                          sx={{ width: '100%', textAlign: { md: 'right' } }}
-                        >
+                        <Box component="span" sx={{ flexShrink: 0 }}>
                           {record.wins}-{record.losses}-{record.ties}
                         </Box>
                       )}
@@ -1053,7 +1162,7 @@ export default function TournamentMatchRoundsCard({
                         display: 'block',
                         mt: 0.25,
                         maxWidth: { xs: 'min(100%, 200px)', md: 'none' },
-                        textAlign: { xs: 'left', md: 'right' }
+                        textAlign: 'left'
                       }}
                     >
                       {showOfficialRecord
@@ -1069,29 +1178,34 @@ export default function TournamentMatchRoundsCard({
                     direction="row"
                     spacing={0.75}
                     sx={{ pt: { xs: 0, md: 0.5 }, flexShrink: 0 }}
-                    justifyContent="flex-end"
+                    justifyContent={{ xs: 'flex-end', md: 'flex-start' }}
                   >
                     {myDeckSlugs.length > 0 ? (
                       myDeckSlugs.map(slug => (
-                        <LimitlessSpriteThumb
+                        <DeckProfileSpriteButton
                           key={slug}
                           slug={slug}
                           size={40}
                           circular
+                          onEditDeck={onRequestChoosePokemon}
+                          readOnly={readOnly}
                         />
                       ))
                     ) : (
                       <Stack
                         direction="column"
-                        alignItems="flex-end"
+                        alignItems={{ xs: 'flex-end', md: 'flex-start' }}
                         spacing={0.75}
-                        sx={{ maxWidth: 160 }}
+                        sx={{ maxWidth: { xs: 160, md: '100%' } }}
                       >
                         <Typography
                           variant="caption"
                           color="text.secondary"
                           fontStyle="italic"
-                          sx={{ textAlign: 'right', width: '100%' }}
+                          sx={{
+                            textAlign: { xs: 'right', md: 'left' },
+                            width: '100%'
+                          }}
                         >
                           Sin Pokémon en perfil
                         </Typography>
@@ -1119,7 +1233,7 @@ export default function TournamentMatchRoundsCard({
                   </Stack>
                 </Stack>
               </Stack>
-            </Stack>
+            </Box>
 
             {eventState === 'close' &&
             !tournamentPlacement &&
@@ -1797,8 +1911,13 @@ export default function TournamentMatchRoundsCard({
           }}
           PaperProps={{
             sx: t => ({
-              width: { xs: '100%', sm: 440 },
-              maxWidth: { xs: '100%', sm: 440 },
+              width: {
+                xs: '100%',
+                sm: 'min(calc(520px * 2 / 3), calc(100vw * 2 / 3))',
+                md: 'min(calc(600px * 2 / 3), calc(100vw * 2 / 3))',
+                lg: 'min(calc(680px * 2 / 3), calc(100vw * 2 / 3))'
+              },
+              maxWidth: '100%',
               height: '100%',
               maxHeight: '100dvh',
               display: 'flex',
@@ -1821,24 +1940,29 @@ export default function TournamentMatchRoundsCard({
               component="header"
               sx={{
                 flexShrink: 0,
-                px: 2,
-                py: 1.75,
+                px: { xs: 2, sm: 2.5, md: 3 },
+                py: { xs: 1.75, sm: 2 },
                 borderBottom: '1px solid',
-                borderColor: 'divider'
+                borderColor: 'divider',
+                bgcolor: t => alpha(t.palette.primary.main, 0.03)
               }}
             >
               <Typography
                 id="share-tournament-drawer-title"
                 variant="h6"
                 component="h2"
-                sx={{ fontWeight: 800, fontSize: '1.125rem', lineHeight: 1.35 }}
+                sx={{
+                  fontWeight: 800,
+                  fontSize: { xs: '1.125rem', sm: '1.25rem' },
+                  lineHeight: 1.35
+                }}
               >
                 {title}
               </Typography>
               <Typography
                 variant="body2"
                 color="text.secondary"
-                sx={{ mt: 0.5, lineHeight: 1.4 }}
+                sx={{ mt: 0.75, lineHeight: 1.45 }}
               >
                 {dateDayMonthYear}
               </Typography>
@@ -1848,8 +1972,8 @@ export default function TournamentMatchRoundsCard({
                 flex: 1,
                 minHeight: 0,
                 overflow: 'auto',
-                px: 2,
-                py: 2,
+                px: { xs: 2, sm: 2.5, md: 3 },
+                py: { xs: 2, sm: 2.5 },
                 WebkitOverflowScrolling: 'touch'
               }}
             >
@@ -1864,20 +1988,19 @@ export default function TournamentMatchRoundsCard({
                     overflow: 'hidden'
                   }}
                 >
-                  <Box sx={{ p: 2 }}>
+                  <Box
+                    sx={{
+                      p: { xs: 2, sm: 2.25, md: 2.5 }
+                    }}
+                  >
                     <Stack
-                      direction={{ xs: 'row', sm: 'column' }}
-                      spacing={{ xs: 2, sm: 1.25 }}
-                      alignItems={{ xs: 'center', sm: 'flex-end' }}
-                      justifyContent={{ xs: 'space-between', sm: 'flex-end' }}
+                      direction="row"
+                      spacing={{ xs: 1.5, sm: 2.5 }}
+                      alignItems="center"
+                      justifyContent="space-between"
+                      sx={{ width: '100%' }}
                     >
-                      <Box
-                        sx={{
-                          textAlign: { xs: 'left', sm: 'right' },
-                          minWidth: 0,
-                          width: '100%'
-                        }}
-                      >
+                      <Box sx={{ textAlign: 'left', minWidth: 0, flex: 1 }}>
                         <Typography
                           variant="overline"
                           color="text.secondary"
@@ -1896,16 +2019,17 @@ export default function TournamentMatchRoundsCard({
                           sx={{
                             fontVariantNumeric: 'tabular-nums',
                             lineHeight: 1.15,
-                            fontSize: { xs: '1.5rem', sm: '1.75rem' },
+                            fontSize: {
+                              xs: '1.5rem',
+                              sm: '1.85rem',
+                              md: '2rem'
+                            },
                             display: 'flex',
                             alignItems: 'baseline',
-                            justifyContent: {
-                              xs: 'space-between',
-                              sm: 'flex-end'
-                            },
-                            gap: { xs: 2, sm: 2.5 },
-                            flexWrap: 'nowrap',
-                            width: '100%'
+                            justifyContent: 'flex-start',
+                            gap: { xs: 1.5, sm: 2 },
+                            flexWrap: 'wrap',
+                            mt: 0.25
                           }}
                         >
                           {eventState === 'close' && tournamentPlacement ? (
@@ -1943,28 +2067,47 @@ export default function TournamentMatchRoundsCard({
                               </>
                             )
                           ) : (
-                            <Box
-                              component="span"
-                              sx={{ width: '100%', textAlign: { sm: 'right' } }}
-                            >
+                            <Box component="span" sx={{ flexShrink: 0 }}>
                               {record.wins}-{record.losses}-{record.ties}
                             </Box>
                           )}
                         </Typography>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{
+                            display: 'block',
+                            mt: 0.75,
+                            lineHeight: 1.45,
+                            maxWidth: { md: '48ch' }
+                          }}
+                        >
+                          {showOfficialRecord
+                            ? tournamentPlacement && !tournamentPlacement.isDnf
+                              ? `${tournamentPlacement.categoryLabel} · W · L · T`
+                              : tournamentPlacement?.isDnf
+                                ? `Categoría ${tournamentPlacement.categoryLabel} · sin completar el torneo`
+                                : 'Victorias · Derrotas · Empates'
+                            : 'Victorias · Derrotas · Tablas (mesas que reportaste)'}
+                        </Typography>
                       </Box>
                       <Stack
                         direction="row"
-                        spacing={0.75}
+                        spacing={1}
                         justifyContent="flex-end"
                         flexShrink={0}
+                        alignItems="center"
+                        sx={{ pl: { xs: 0, sm: 1 } }}
                       >
                         {myDeckSlugs.length > 0
                           ? myDeckSlugs.map(slug => (
-                              <LimitlessSpriteThumb
+                              <DeckProfileSpriteButton
                                 key={slug}
                                 slug={slug}
-                                size={40}
+                                size={44}
                                 circular
+                                onEditDeck={onRequestChoosePokemon}
+                                readOnly={readOnly}
                               />
                             ))
                           : null}
@@ -2204,9 +2347,9 @@ export default function TournamentMatchRoundsCard({
               component="footer"
               sx={{
                 flexShrink: 0,
-                px: 2,
-                py: 2,
-                pt: 1.5,
+                px: { xs: 2, sm: 2.5, md: 3 },
+                py: { xs: 2, sm: 2 },
+                pt: { xs: 1.5, sm: 1.75 },
                 borderTop: '1px solid',
                 borderColor: 'divider',
                 bgcolor: 'background.paper'
@@ -2216,7 +2359,13 @@ export default function TournamentMatchRoundsCard({
                 fullWidth
                 onClick={() => setShareOpen(false)}
                 variant="contained"
-                sx={{ fontWeight: 700, textTransform: 'none', py: 1.25 }}
+                color="primary"
+                sx={{
+                  fontWeight: 700,
+                  textTransform: 'none',
+                  py: { xs: 1.25, sm: 1.15 },
+                  fontSize: { sm: '0.9375rem' }
+                }}
               >
                 Cerrar
               </Button>
