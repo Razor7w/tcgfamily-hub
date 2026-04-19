@@ -53,6 +53,7 @@ import {
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
 import { formatMailLogDateTime, getMailStatusChip } from '@/lib/mail-status'
 import { normalizeMailCodeForSearch } from '@/lib/mail-code-search'
+import { alpha } from '@mui/material/styles'
 
 function userLabel(u: User) {
   const name = u.name || 'Sin nombre'
@@ -475,11 +476,11 @@ export default function MailsPage() {
 
   return (
     <Box
-      sx={{
+      sx={t => ({
         minHeight: '100vh',
-        bgcolor: 'background.default',
+        background: `linear-gradient(165deg, ${alpha(t.palette.primary.main, 0.06)} 0%, ${t.palette.background.default} 38%, ${t.palette.background.default} 100%)`,
         py: { xs: 2, sm: 4 }
-      }}
+      })}
     >
       <Container maxWidth="lg">
         <Stack

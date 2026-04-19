@@ -176,8 +176,11 @@ export default function DashboardQuickActions({
         background: t =>
           t.palette.mode === 'dark'
             ? alpha(t.palette.background.paper, 0.55)
-            : alpha(t.palette.primary.main, 0.03),
-        boxShadow: t => `inset 0 1px 0 ${alpha(t.palette.common.white, 0.06)}`
+            : t.palette.background.paper,
+        boxShadow: t =>
+          t.palette.mode === 'dark'
+            ? `inset 0 1px 0 ${alpha(t.palette.common.white, 0.06)}`
+            : `inset 0 1px 0 ${alpha(t.palette.common.black, 0.04)}`
       }}
     >
       <Typography

@@ -263,7 +263,7 @@ function DashboardShortcutsEditor({
               borderRadius: 2,
               flexShrink: 0,
               color: 'primary.main',
-              bgcolor: (t: Theme) => alpha(t.palette.primary.main, 0.1),
+              // bgcolor: (t: Theme) => alpha(t.palette.primary.main, 0.1),
               border: '1px solid',
               borderColor: (t: Theme) => alpha(t.palette.primary.main, 0.2)
             }}
@@ -524,11 +524,11 @@ export default function AdminConfiguracionPage() {
 
   return (
     <Box
-      sx={{
+      sx={t => ({
         minHeight: '100dvh',
-        bgcolor: 'background.default',
+        background: `linear-gradient(165deg, ${alpha(t.palette.primary.main, 0.06)} 0%, ${t.palette.background.default} 38%, ${t.palette.background.default} 100%)`,
         py: { xs: 2, sm: 4 }
-      }}
+      })}
     >
       <Container maxWidth="lg">
         <Stack

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import {
   Alert,
+  alpha,
   Box,
   Button,
   Container,
@@ -67,11 +68,11 @@ export default function AdminPuntosPage() {
 
   return (
     <Box
-      sx={{
+      sx={t => ({
         minHeight: '100vh',
-        bgcolor: 'background.default',
+        background: `linear-gradient(165deg, ${alpha(t.palette.primary.main, 0.06)} 0%, ${t.palette.background.default} 38%, ${t.palette.background.default} 100%)`,
         py: 4
-      }}
+      })}
     >
       <Container maxWidth="sm">
         <Stack spacing={3}>
