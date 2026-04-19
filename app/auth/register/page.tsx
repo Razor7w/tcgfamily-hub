@@ -68,16 +68,22 @@ export default function RegisterPage() {
     [passwordRuleChecks, passwordsMatch]
   )
 
+  const emailNormalized = useMemo(() => normalizeEmail(email), [email])
+  const emailFieldError = useMemo(() => {
+    if (!email.trim()) return null
+    return validateEmailFormat(emailNormalized)
+  }, [email, emailNormalized])
+
   const canSubmit = useMemo(() => {
     if (loading) return false
     if (validateRegisterName(name) !== null) return false
-    if (validateEmailFormat(normalizeEmail(email)) !== null) return false
+    if (validateEmailFormat(emailNormalized) !== null) return false
     if (getRutFieldError(rut, true) !== null) return false
     if (validatePopidOptional(popid) !== null) return false
     if (!isPasswordStrengthSatisfied(password)) return false
     if (!passwordsMatch) return false
     return true
-  }, [loading, name, email, rut, popid, password, passwordsMatch])
+  }, [loading, name, emailNormalized, rut, popid, password, passwordsMatch])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -230,6 +236,13 @@ export default function RegisterPage() {
               disabled={loading}
               required
               fullWidth
+              error={Boolean(email.trim()) && emailFieldError !== null}
+              helperText={
+                emailFieldError ??
+                (!email.trim()
+                  ? 'Obligatorio. Formato usuario@dominio.com (con extensión, ej. .cl).'
+                  : undefined)
+              }
               inputProps={{ maxLength: 254 }}
             />
             <TextField
