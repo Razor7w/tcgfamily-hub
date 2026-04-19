@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import connectDB from "@/lib/mongodb";
+import "@/models/League";
 import WeeklyEvent from "@/models/WeeklyEvent";
 import type { WeeklyEventState } from "@/models/WeeklyEvent";
 import {
