@@ -441,6 +441,13 @@ export interface AdminWeeklyEvent {
   location: string;
   /** Ronda actual del torneo; por defecto 0. */
   roundNum?: number;
+  /**
+   * Tope de ronda para el dashboard de jugadores (0 = sin tope). No afecta la ronda operativa en admin.
+   */
+  dashboardRoundCap?: number;
+  /** Liga Play Pokémon / liga local (solo torneos oficiales). */
+  leagueId?: string | null;
+  league?: { name: string; slug: string } | null;
   /** Snapshots guardados al pulsar «Setear ronda» (persistidos en Mongo). */
   roundSnapshots?: { roundNum: number; syncedAt?: string }[];
   /** Clasificación final por categoría (0 Júnior, 1 Sénior, 2 Máster). */
@@ -586,6 +593,7 @@ export function useAdminUploadFullTournament() {
       queryClient.invalidateQueries({ queryKey: ["admin-weekly-events"] });
       queryClient.invalidateQueries({ queryKey: ["weekly-events"] });
       queryClient.invalidateQueries({ queryKey: ["event-current-round"] });
+      queryClient.invalidateQueries({ queryKey: ["league-public"] });
     },
   });
 }
@@ -625,6 +633,7 @@ export function useAdminUploadStandingsPod() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-weekly-events"] });
       queryClient.invalidateQueries({ queryKey: ["weekly-events"] });
+      queryClient.invalidateQueries({ queryKey: ["league-public"] });
     },
   });
 }
@@ -686,6 +695,7 @@ export function useAdminSyncEventRound() {
       queryClient.invalidateQueries({ queryKey: ["admin-weekly-events"] });
       queryClient.invalidateQueries({ queryKey: ["weekly-events"] });
       queryClient.invalidateQueries({ queryKey: ["event-current-round"] });
+      queryClient.invalidateQueries({ queryKey: ["league-public"] });
     },
   });
 }
@@ -745,6 +755,9 @@ export function useUpdateAdminEvent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-weekly-events"] });
       queryClient.invalidateQueries({ queryKey: ["weekly-events"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-event-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["event-current-round"] });
+      queryClient.invalidateQueries({ queryKey: ["league-public"] });
     },
   });
 }
@@ -767,6 +780,161 @@ export function useDeleteAdminEvent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-weekly-events"] });
       queryClient.invalidateQueries({ queryKey: ["weekly-events"] });
+      queryClient.invalidateQueries({ queryKey: ["league-public"] });
     },
+  });
+}
+
+export type AdminLeague = {
+  _id: string;
+  name: string;
+  slug: string;
+  description: string;
+  game: "pokemon";
+  isActive: boolean;
+  pointsByPlace: number[];
+  countBestEvents: number | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type LeagueStandingEventDetail = {
+  eventId: string;
+  title: string;
+  startsAt: string;
+  categoryIndex: number;
+  place: number;
+  points: number;
+};
+
+export type LeagueStandingRow = {
+  popId: string;
+  displayName: string;
+  totalPoints: number;
+  eventsPlayed: number;
+  events: LeagueStandingEventDetail[];
+};
+
+export type PublicLeagueCategoryBlock = {
+  categoryIndex: number;
+  standings: LeagueStandingRow[];
+  chartTop: { rank: number; name: string; points: number; popId: string }[];
+};
+
+export type PublicLeagueResponse = {
+  league: {
+    _id: string;
+    name: string;
+    slug: string;
+    description: string;
+    pointsByPlace: number[];
+    countBestEvents: number | null;
+  };
+  tournaments: {
+    _id: string;
+    title: string;
+    startsAt: string;
+    hasStandings: boolean;
+  }[];
+  standingsByCategory: PublicLeagueCategoryBlock[];
+};
+
+export function useAdminLeagues() {
+  return useQuery<{ leagues: AdminLeague[] }>({
+    queryKey: ["admin-leagues"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/leagues");
+      if (!res.ok) {
+        throw new Error("Error al cargar ligas");
+      }
+      return res.json();
+    },
+  });
+}
+
+export function useCreateAdminLeague() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      const res = await fetch("/api/admin/leagues", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === "string" ? data.error : "Error al crear liga",
+        );
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-leagues"] });
+    },
+  });
+}
+
+export function useUpdateAdminLeague() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { id: string; body: Record<string, unknown> }) => {
+      const res = await fetch(`/api/admin/leagues/${input.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input.body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === "string" ? data.error : "Error al guardar",
+        );
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-leagues"] });
+      queryClient.invalidateQueries({ queryKey: ["league-public"] });
+    },
+  });
+}
+
+export function useDeleteAdminLeague() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/admin/leagues/${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === "string" ? data.error : "Error al eliminar",
+        );
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-leagues"] });
+    },
+  });
+}
+
+export function usePublicLeague(slug: string | null) {
+  return useQuery<PublicLeagueResponse>({
+    queryKey: ["league-public", slug],
+    queryFn: async () => {
+      if (!slug?.trim()) throw new Error("Slug requerido");
+      const res = await fetch(
+        `/api/leagues/${encodeURIComponent(slug.trim())}`,
+        { cache: "no-store" },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === "string" ? data.error : "Error al cargar liga",
+        );
+      }
+      return data as PublicLeagueResponse;
+    },
+    enabled: Boolean(slug?.trim()),
   });
 }

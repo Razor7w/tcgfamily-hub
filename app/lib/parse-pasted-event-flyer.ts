@@ -108,21 +108,18 @@ function parseDateLine(line: string, now: Date): Date | null {
   const month = MONTHS[monthKey];
   if (month === undefined || day < 1 || day > 31) return null;
 
-  let year =
+  const year =
     m[3] !== undefined ? parseInt(m[3], 10) : now.getFullYear();
   const hh = m[4] !== undefined ? parseInt(m[4], 10) : 12;
   const mm = m[5] !== undefined ? parseInt(m[5], 10) : 0;
 
   if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
 
-  let d = new Date(year, month, day, hh, mm, 0, 0);
+  const d = new Date(year, month, day, hh, mm, 0, 0);
   if (Number.isNaN(d.getTime())) return null;
 
-  if (m[3] === undefined) {
-    if (d.getTime() < now.getTime()) {
-      d = new Date(year + 1, month, day, hh, mm, 0, 0);
-    }
-  }
+  // Sin año en el texto: solo se usa el año calendario actual (`now`), sin pasar al año siguiente
+  // aunque esa fecha ya haya pasado (el admin puede corregir la línea o editar en el formulario).
 
   return d;
 }

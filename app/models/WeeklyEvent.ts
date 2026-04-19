@@ -92,6 +92,8 @@ export interface IWeeklyEvent extends Document {
   tournamentOrigin?: TournamentOrigin;
   /** Dueño del torneo custom (solo aplica si `tournamentOrigin === "custom"`). */
   createdByUserId?: Types.ObjectId;
+  /** Liga local (solo torneos oficiales en tienda; opcional). */
+  leagueId?: Types.ObjectId | null;
   /** Solo aplica a torneos Pokémon. */
   pokemonSubtype?: PokemonTournamentSubtype;
   /** Precio en CLP; 0 = gratuito. Solo relevante para torneos en UI. */
@@ -104,6 +106,11 @@ export interface IWeeklyEvent extends Document {
   state: WeeklyEventState;
   /** Ronda actual del torneo (0 = sin iniciar / no aplica). */
   roundNum?: number;
+  /**
+   * Tope de ronda para el dashboard de jugadores (1–99). `0` o ausente = mostrar la ronda real.
+   * Útil si el staff sincroniza una ronda extra pero el conteo público debe quedar en una anterior.
+   */
+  dashboardRoundCap?: number;
   /** Historial por ronda: pairings y metadatos al pulsar «Setear ronda». */
   roundSnapshots?: IRoundSnapshot[];
   /** Clasificación final por categoría (finished + DNF) tras import o carga manual. */
@@ -238,6 +245,12 @@ const WeeklyEventSchema = new Schema<IWeeklyEvent>(
       required: false,
       index: true,
     },
+    leagueId: {
+      type: Schema.Types.ObjectId,
+      ref: "League",
+      required: false,
+      index: true,
+    },
     kind: {
       type: String,
       enum: ["tournament", "trade_day", "other"],
@@ -264,6 +277,7 @@ const WeeklyEventSchema = new Schema<IWeeklyEvent>(
       default: "schedule",
     },
     roundNum: { type: Number, default: 0, min: 0 },
+    dashboardRoundCap: { type: Number, default: 0, min: 0, max: 99 },
     roundSnapshots: { type: [RoundSnapshotSchema], default: [] },
     tournamentStandings: {
       type: [TournamentCategoryStandingsSchema],

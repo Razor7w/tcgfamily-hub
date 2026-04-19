@@ -18,6 +18,7 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
+import Badge from "@mui/material/Badge";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
@@ -26,16 +27,19 @@ import Chip from "@mui/material/Chip";
 import { alpha, type Theme } from "@mui/material/styles";
 import {
   ArrowBack,
+  Close,
   ContentPaste,
   Delete,
   Edit,
   EventAvailable,
+  FilterList,
 } from "@mui/icons-material";
 import Link from "next/link";
 import {
   AdminWeeklyEvent,
   type WeeklyEventState,
   useAdminEvents,
+  useAdminLeagues,
   useCreateAdminEvent,
   useDeleteAdminEvent,
   useUpdateAdminEvent,
@@ -46,7 +50,72 @@ import {
   WEEKLY_EVENT_PARTICIPANTS_MAX,
 } from "@/lib/parse-pasted-event-flyer";
 import WeekRangeNavigator from "@/components/events/WeekRangeNavigator";
-import { isEventInLocalWeek } from "@/components/events/weekUtils";
+import { isEventInLocalWeek, startOfWeekMonday } from "@/components/events/weekUtils";
+
+function localDayBoundsYmd(ymd: string): { start: Date; end: Date } | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim());
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]) - 1;
+  const d = Number(m[3]);
+  if (!Number.isFinite(y) || mo < 0 || mo > 11 || d < 1 || d > 31) return null;
+  const start = new Date(y, mo, d, 0, 0, 0, 0);
+  const end = new Date(y, mo, d, 23, 59, 59, 999);
+  return { start, end };
+}
+
+function eventStartsInDateRange(
+  startsAtIso: string,
+  fromYmd: string,
+  toYmd: string,
+): boolean {
+  const t = new Date(startsAtIso).getTime();
+  if (Number.isNaN(t)) return false;
+  const fromTrim = fromYmd.trim();
+  if (fromTrim) {
+    const b = localDayBoundsYmd(fromTrim);
+    if (!b || t < b.start.getTime()) return false;
+  }
+  const toTrim = toYmd.trim();
+  if (toTrim) {
+    const b = localDayBoundsYmd(toTrim);
+    if (!b || t > b.end.getTime()) return false;
+  }
+  return true;
+}
+
+function weekRangeLabel(anchor: Date): string {
+  const weekStart = startOfWeekMonday(anchor);
+  const end = new Date(weekStart);
+  end.setDate(weekStart.getDate() + 6);
+  const a = weekStart.toLocaleDateString("es-CL", {
+    day: "numeric",
+    month: "short",
+  });
+  const b = end.toLocaleDateString("es-CL", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  return `${a} — ${b}`;
+}
+
+function dateRangeSummaryLine(fromYmd: string, toYmd: string): string | null {
+  const f = fromYmd.trim();
+  const t = toYmd.trim();
+  if (!f && !t) return null;
+  const fmt = (ymd: string) => {
+    if (!ymd) return "…";
+    const b = localDayBoundsYmd(ymd);
+    return b
+      ? b.start.toLocaleDateString("es-CL", {
+          day: "numeric",
+          month: "short",
+        })
+      : ymd;
+  };
+  return `Inicio: ${fmt(f)} — ${fmt(t)}`;
+}
 
 function toDatetimeLocalValue(iso: string) {
   const d = new Date(iso);
@@ -68,6 +137,8 @@ type FormState = {
   prizesNotes: string;
   location: string;
   roundNum: string;
+  /** ID de liga Mongo o vacío. */
+  leagueId: string;
 };
 
 const emptyForm = (): FormState => ({
@@ -84,6 +155,7 @@ const emptyForm = (): FormState => ({
   prizesNotes: "",
   location: "Av. Valparaíso 1195, Local 3",
   roundNum: "0",
+  leagueId: "",
 });
 
 function kindLabelAdmin(k: AdminWeeklyEvent["kind"]) {
@@ -126,6 +198,7 @@ function formFromEvent(ev: AdminWeeklyEvent): FormState {
     prizesNotes: ev.prizesNotes ?? "",
     location: ev.location ?? "",
     roundNum: String(ev.roundNum ?? 0),
+    leagueId: ev.leagueId ?? "",
   };
 }
 
@@ -134,6 +207,7 @@ export default function AdminEventosPage() {
   const createEv = useCreateAdminEvent();
   const updateEv = useUpdateAdminEvent();
   const deleteEv = useDeleteAdminEvent();
+  const { data: leaguesData } = useAdminLeagues();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AdminWeeklyEvent | null>(null);
@@ -146,6 +220,9 @@ export default function AdminEventosPage() {
   const [pasteError, setPasteError] = useState<string | null>(null);
 
   const [weekAnchor, setWeekAnchor] = useState(() => new Date());
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
+  const [filtersModalOpen, setFiltersModalOpen] = useState(false);
 
   const eventsSorted = useMemo(() => {
     const list = data?.events ?? [];
@@ -155,9 +232,25 @@ export default function AdminEventosPage() {
     );
   }, [data?.events]);
 
+  const eventsAfterDateFilter = useMemo(() => {
+    if (!filterDateFrom.trim() && !filterDateTo.trim()) {
+      return eventsSorted;
+    }
+    return eventsSorted.filter((ev) =>
+      eventStartsInDateRange(ev.startsAt, filterDateFrom, filterDateTo),
+    );
+  }, [eventsSorted, filterDateFrom, filterDateTo]);
+
   const eventsInSelectedWeek = useMemo(() => {
-    return eventsSorted.filter((ev) => isEventInLocalWeek(ev.startsAt, weekAnchor));
-  }, [eventsSorted, weekAnchor]);
+    return eventsAfterDateFilter.filter((ev) =>
+      isEventInLocalWeek(ev.startsAt, weekAnchor),
+    );
+  }, [eventsAfterDateFilter, weekAnchor]);
+
+  const hasDateRangeFilter = Boolean(
+    filterDateFrom.trim() || filterDateTo.trim(),
+  );
+  const dateSummary = dateRangeSummaryLine(filterDateFrom, filterDateTo);
 
   const openCreate = () => {
     setEditing(null);
@@ -216,6 +309,11 @@ export default function AdminEventosPage() {
       payload.pokemonSubtype = form.pokemonSubtype;
     } else {
       payload.pokemonSubtype = null;
+    }
+    if (form.kind === "tournament") {
+      payload.leagueId = form.leagueId.trim() || null;
+    } else {
+      payload.leagueId = null;
     }
     return payload;
   };
@@ -390,31 +488,203 @@ export default function AdminEventosPage() {
           </Stack>
         </Stack>
 
-        <Stack
-          spacing={1.5}
+        <Paper
+          elevation={0}
           sx={{
-            mb: 3,
-            p: { xs: 2, sm: 2.5 },
-            borderRadius: { xs: 3, sm: 4 },
+            mb: 2.5,
+            px: { xs: 1.75, sm: 2.25 },
+            py: 1.5,
+            borderRadius: 3,
             border: "1px solid",
             borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.08),
             bgcolor: "background.paper",
-            boxShadow: "0 20px 40px -24px rgba(24, 24, 27, 0.12)",
+            boxShadow: "0 8px 24px -16px rgba(24, 24, 27, 0.12)",
           }}
         >
-          <Typography
-            variant="subtitle2"
-            color="text.secondary"
-            sx={{ fontWeight: 700, letterSpacing: "0.04em" }}
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1.5}
+            alignItems={{ xs: "stretch", sm: "center" }}
+            justifyContent="space-between"
           >
-            Vista por semana
-          </Typography>
-          <WeekRangeNavigator weekAnchor={weekAnchor} onWeekAnchorChange={setWeekAnchor} />
-          <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.55 }}>
-            Solo se listan los eventos cuya fecha de inicio cae entre el lunes y el domingo de la semana
-            seleccionada (hora local).
-          </Typography>
-        </Stack>
+            <Stack
+              direction="row"
+              spacing={1}
+              useFlexGap
+              flexWrap="wrap"
+              alignItems="center"
+              sx={{ minWidth: 0, flex: 1 }}
+            >
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{
+                  fontWeight: 800,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  width: { xs: "100%", sm: "auto" },
+                }}
+              >
+                Vista del listado
+              </Typography>
+              <Chip
+                size="small"
+                label={weekRangeLabel(weekAnchor)}
+                variant="outlined"
+                sx={{
+                  fontWeight: 600,
+                  maxWidth: "100%",
+                  "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" },
+                }}
+              />
+              {dateSummary ? (
+                <Chip
+                  size="small"
+                  label={dateSummary}
+                  color="primary"
+                  variant="outlined"
+                  sx={{
+                    fontWeight: 600,
+                    maxWidth: "100%",
+                    "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" },
+                  }}
+                />
+              ) : null}
+            </Stack>
+            <Badge
+              color="primary"
+              variant="dot"
+              invisible={!hasDateRangeFilter}
+              overlap="rectangular"
+              sx={{ alignSelf: { xs: "stretch", sm: "center" } }}
+            >
+              <Button
+                variant="outlined"
+                size="medium"
+                startIcon={<FilterList />}
+                onClick={() => setFiltersModalOpen(true)}
+                sx={{
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                  borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.2),
+                  px: 2,
+                }}
+              >
+                Filtros
+              </Button>
+            </Badge>
+          </Stack>
+        </Paper>
+
+        <Dialog
+          open={filtersModalOpen}
+          onClose={() => setFiltersModalOpen(false)}
+          fullWidth
+          maxWidth="sm"
+          scroll="paper"
+          aria-labelledby="admin-eventos-filters-title"
+        >
+          <DialogTitle
+            component="div"
+            id="admin-eventos-filters-title"
+            sx={{
+              pr: 1,
+              pb: 1,
+            }}
+          >
+            <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1}>
+              <Box sx={{ minWidth: 0, pt: 0.5 }}>
+                <Typography variant="h6" component="span" fontWeight={800} sx={{ letterSpacing: "-0.02em" }}>
+                  Filtros del listado
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, lineHeight: 1.5 }}>
+                  Elige la semana y, si quieres, un rango por día de inicio. Primero se aplica el rango de
+                  fechas; después solo se muestran eventos de la semana seleccionada (hora local).
+                </Typography>
+              </Box>
+              <IconButton
+                aria-label="Cerrar"
+                onClick={() => setFiltersModalOpen(false)}
+                size="small"
+                sx={{ color: "text.secondary", mt: -0.25 }}
+              >
+                <Close />
+              </IconButton>
+            </Stack>
+          </DialogTitle>
+          <DialogContent dividers sx={{ pt: 2, pb: 1 }}>
+            <Stack spacing={3}>
+              <Box>
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  flexWrap="wrap"
+                  gap={1}
+                  sx={{ mb: 1.25 }}
+                >
+                  <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 800 }}>
+                    Semana
+                  </Typography>
+                  <Button
+                    size="small"
+                    onClick={() => setWeekAnchor(new Date())}
+                    sx={{ fontWeight: 600, textTransform: "none" }}
+                  >
+                    Esta semana
+                  </Button>
+                </Stack>
+                <WeekRangeNavigator weekAnchor={weekAnchor} onWeekAnchorChange={setWeekAnchor} />
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1, lineHeight: 1.5 }}>
+                  Solo cuentan los eventos cuya fecha y hora de inicio caen entre el lunes y el domingo de
+                  esta semana.
+                </Typography>
+              </Box>
+
+              <Divider />
+
+              <Box>
+                <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 800, display: "block", mb: 1.25 }}>
+                  Rango por día de inicio
+                </Typography>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "flex-start" }}>
+                  <TextField
+                    label="Desde"
+                    type="date"
+                    value={filterDateFrom}
+                    onChange={(e) => setFilterDateFrom(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    fullWidth
+                  />
+                  <TextField
+                    label="Hasta"
+                    type="date"
+                    value={filterDateTo}
+                    onChange={(e) => setFilterDateTo(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    fullWidth
+                  />
+                </Stack>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setFilterDateFrom("");
+                    setFilterDateTo("");
+                  }}
+                  disabled={!filterDateFrom && !filterDateTo}
+                  sx={{ mt: 1.5, fontWeight: 600, textTransform: "none" }}
+                >
+                  Limpiar rango de fechas
+                </Button>
+              </Box>
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, py: 2, bgcolor: (t) => alpha(t.palette.text.primary, 0.03) }}>
+            <Button onClick={() => setFiltersModalOpen(false)} color="inherit" sx={{ fontWeight: 600 }}>
+              Cerrar
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {isPending ? (
           <Stack spacing={1.5}>
@@ -475,7 +745,31 @@ export default function AdminEventosPage() {
           </Alert>
         ) : (
           <Stack spacing={0}>
-            {eventsSorted.length === 0 ? (
+            {eventsSorted.length > 0 &&
+            eventsAfterDateFilter.length === 0 &&
+            (filterDateFrom.trim() !== "" || filterDateTo.trim() !== "") ? (
+              <Paper
+                variant="outlined"
+                sx={{
+                  py: 5,
+                  px: 3,
+                  textAlign: "left",
+                  borderRadius: 4,
+                  borderStyle: "dashed",
+                  borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.14),
+                  bgcolor: (t: Theme) => alpha(t.palette.text.primary, 0.02),
+                }}
+              >
+                <Typography fontWeight={800} sx={{ letterSpacing: "-0.02em" }}>
+                  Ningún evento en ese rango de fechas
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1, maxWidth: 520 }}>
+                  Abre Filtros y ajusta el rango por día de inicio, o pulsa «Limpiar rango de fechas» dentro del
+                  modal. Hay {eventsSorted.length} evento{eventsSorted.length === 1 ? "" : "s"} sin filtrar por
+                  fecha.
+                </Typography>
+              </Paper>
+            ) : eventsSorted.length === 0 ? (
               <Paper
                 variant="outlined"
                 sx={{
@@ -535,8 +829,11 @@ export default function AdminEventosPage() {
                   No hay eventos en esta semana
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 1, maxWidth: 520 }}>
-                  Cambia de semana con las flechas o crea un evento cuya fecha caiga en el rango mostrado.
-                  Hay {eventsSorted.length} evento{eventsSorted.length === 1 ? "" : "s"} en otras fechas.
+                  Abre Filtros para cambiar de semana o ajustar el rango por día de inicio, o crea un evento
+                  cuya fecha caiga en la semana mostrada. Hay {eventsAfterDateFilter.length} evento
+                  {eventsAfterDateFilter.length === 1 ? "" : "s"} en el rango actual
+                  {filterDateFrom || filterDateTo ? " (con filtro de fechas activo)" : ""} fuera de esta
+                  semana.
                 </Typography>
                 <Button variant="contained" onClick={openCreate} sx={{ mt: 2, fontWeight: 700 }}>
                   Nuevo evento
@@ -631,6 +928,17 @@ export default function AdminEventosPage() {
                             <Chip size="small" label={gameLabelAdmin(ev.game)} variant="outlined" />
                             {ev.kind === "tournament" && ev.game === "pokemon" && ev.pokemonSubtype ? (
                               <Chip size="small" label={ev.pokemonSubtype} color="primary" variant="outlined" />
+                            ) : null}
+                            {ev.kind === "tournament" && ev.league ? (
+                              <Chip
+                                size="small"
+                                component={Link}
+                                href={`/ligas/${encodeURIComponent(ev.league.slug)}`}
+                                clickable
+                                label={ev.league.name}
+                                color="secondary"
+                                variant="outlined"
+                              />
                             ) : null}
                           </Stack>
                           <Stack
@@ -870,6 +1178,7 @@ export default function AdminEventosPage() {
                   setForm((f) => ({
                     ...f,
                     kind,
+                    leagueId: kind === "tournament" ? f.leagueId : "",
                     pokemonSubtype:
                       kind === "tournament" && f.game === "pokemon"
                         ? f.pokemonSubtype || "casual"
@@ -922,6 +1231,28 @@ export default function AdminEventosPage() {
                   <MenuItem value="casual">Casual</MenuItem>
                   <MenuItem value="cup">Cup</MenuItem>
                   <MenuItem value="challenge">Challenge</MenuItem>
+                </Select>
+              </FormControl>
+            ) : null}
+            {form.kind === "tournament" ? (
+              <FormControl fullWidth>
+                <InputLabel id="league-label">Liga (opcional)</InputLabel>
+                <Select
+                  labelId="league-label"
+                  label="Liga (opcional)"
+                  value={form.leagueId}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, leagueId: e.target.value }))
+                  }
+                >
+                  <MenuItem value="">Sin liga</MenuItem>
+                  {(leaguesData?.leagues ?? [])
+                    .filter((l) => l.isActive)
+                    .map((l) => (
+                      <MenuItem key={l._id} value={l._id}>
+                        {l.name}
+                      </MenuItem>
+                    ))}
                 </Select>
               </FormControl>
             ) : null}

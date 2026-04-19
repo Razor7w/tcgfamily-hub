@@ -52,6 +52,7 @@ import {
 } from '@/hooks/useUsers'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
 import { formatMailLogDateTime, getMailStatusChip } from '@/lib/mail-status'
+import { normalizeMailCodeForSearch } from '@/lib/mail-code-search'
 
 function userLabel(u: User) {
   const name = u.name || 'Sin nombre'
@@ -180,12 +181,13 @@ export default function MailsPage() {
 
   const mails = useMemo(() => {
     let list = allMails
-    const q = searchId.trim().toLowerCase()
-    if (q) {
+    const qCode = normalizeMailCodeForSearch(searchId)
+    const qId = searchId.trim().toLowerCase()
+    if (qCode) {
       list = list.filter(
         m =>
-          (m.code ?? '').toLowerCase().includes(q) ||
-          m._id.toLowerCase().includes(q)
+          normalizeMailCodeForSearch(m.code ?? '').includes(qCode) ||
+          m._id.toLowerCase().includes(qId)
       )
     }
     if (filterStage === 'retired') {

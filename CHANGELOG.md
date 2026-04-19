@@ -10,6 +10,30 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [0.5.1] - 2026-04-18
+
+### Cambiado
+
+- **Ligas** (`/ligas/[slug]`): clasificación **por división de edad** (Júnior, Sénior, Máster); la API pública `GET /api/leagues/[slug]` devuelve `standingsByCategory` (tabla y gráfico por pestaña). Textos informativos alineados con el manual de Ligas de Play! Pokémon (TOM, archivo .tdf, Play! Tools; independiente de los Puntos de Campeonato oficiales). Agregación en [`aggregateLeagueStandingsByCategory`](./app/lib/league-aggregate.ts) y copy en [`app/lib/league-public-copy.ts`](./app/lib/league-public-copy.ts).
+
+### Corregido
+
+- **Admin y dashboard — Correos**: la búsqueda por código trata como equivalentes los separadores que envían algunos lectores de código de barras (p. ej. apóstrofos) y los guiones del código almacenado (`19'04'2026'001` vs `19-04-2026-001`) mediante [`normalizeMailCodeForSearch`](./app/lib/mail-code-search.ts).
+
+## [0.5.0] - 2026-04-18
+
+### Añadido
+
+- **Ligas** (torneos oficiales): modelo `League`, campo opcional `WeeklyEvent.leagueId`, CRUD en **`/admin/ligas`** y entrada en el menú admin. Tabla configurable de **puntos por posición** y regla opcional de **mejores N torneos** por jugador.
+- **API** `GET/POST /api/admin/leagues`, `GET/PATCH/DELETE /api/admin/leagues/[id]` y **`GET /api/leagues/[slug]`** (pública, solo ligas activas) con agregación desde `tournamentStandings` de eventos cerrados ([`aggregateLeagueStandings`](./app/lib/league-aggregate.ts)).
+- **Página pública** **`/ligas/[slug]`**: clasificación, resumen de torneos, gráfico de barras (**Recharts**) y detalle por jugador. Dependencias **`recharts`** y **`react-is`**.
+- **Admin — Eventos** (`/admin/eventos`): filtros de semana y rango de fechas en **modal**; chip de liga y selector **Liga (opcional)** al crear/editar evento.
+- **Admin — Detalle de evento** (`/admin/eventos/[id]`): botón **Ajustes** para asignar o quitar liga; bloque **Dashboard de jugadores** con **tope de ronda** (`dashboardRoundCap`) para limitar qué ronda ven los jugadores en el panel público.
+
+### Cambiado
+
+- Hooks de admin/eventos invalidan la query **`league-public`** cuando afectan datos relevantes para la clasificación de ligas.
+
 ## [0.4.6] - 2026-04-23
 
 ### Añadido
@@ -127,4 +151,4 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 Línea base anterior en `package.json` antes de este changelog; el detalle de cambios queda en el historial de git.
 
-Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.4.6…HEAD`, `[0.4.6]: …/compare/v0.4.5…v0.4.6`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
+Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.5.1…HEAD`, `[0.5.1]: …/compare/v0.5.0…v0.5.1`, `[0.5.0]: …/compare/v0.4.6…v0.5.0`, `[0.4.6]: …/compare/v0.4.5…v0.4.6`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
