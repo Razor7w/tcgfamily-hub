@@ -6,5 +6,5 @@ export function normalizeMailCodeForSearch(s: string): string {
   return s
     .trim()
     .toLowerCase()
-    .replace(/[''`´]/g, "-");
+    .replace(/[''`´]/g, '-')
 }

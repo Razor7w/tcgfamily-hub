@@ -1,17 +1,17 @@
-import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
-import { SessionProvider } from "next-auth/react";
-import { auth } from "@/auth";
-import ThemeRegistry from "@/components/ThemeRegistry";
-import ProfileCompletionGate from "@/components/auth/ProfileCompletionGate";
-import { QueryProvider } from "@/lib/query-client";
-import { outfit } from "@/fonts";
+import { AppRouterCacheProvider } from '@mui/material-nextjs/v16-appRouter'
+import { SessionProvider } from 'next-auth/react'
+import { auth } from '@/auth'
+import ThemeRegistry from '@/components/ThemeRegistry'
+import ProfileCompletionGate from '@/components/auth/ProfileCompletionGate'
+import { QueryProvider } from '@/lib/query-client'
+import { outfit } from '@/fonts'
 
 export default async function RootLayout({
-  children,
+  children
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
-  const session = await auth();
+  const session = await auth()
 
   return (
     <html lang="es" className={outfit.variable}>
@@ -28,5 +28,5 @@ export default async function RootLayout({
         </AppRouterCacheProvider>
       </body>
     </html>
-  );
+  )
 }

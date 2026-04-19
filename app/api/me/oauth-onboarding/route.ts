@@ -40,7 +40,10 @@ export async function POST(request: NextRequest) {
       '+passwordHash rut popid'
     )
     if (!user) {
-      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+      return NextResponse.json(
+        { error: 'Usuario no encontrado' },
+        { status: 404 }
+      )
     }
 
     const rutErr = getRutFieldError(rutStr, true)

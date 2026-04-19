@@ -102,7 +102,10 @@ export async function POST(request: NextRequest) {
     }
 
     /** Una fila pendiente por usuario (_id); gana la última fila del CSV. */
-    const pending = new Map<string, { id: mongoose.Types.ObjectId; row: PointsCsvRow }>()
+    const pending = new Map<
+      string,
+      { id: mongoose.Types.ObjectId; row: PointsCsvRow }
+    >()
     let skipped = 0
     let noIdentifierInCsv = 0
     let noUserMatch = 0

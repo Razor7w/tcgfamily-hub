@@ -1,110 +1,121 @@
-"use client";
+'use client'
 
-import { useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
-import CardHeader from "@mui/material/CardHeader";
-import CircularProgress from "@mui/material/CircularProgress";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
-import IconButton from "@mui/material/IconButton";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import { alpha } from "@mui/material/styles";
-import { Divider } from "@mui/material";
-import { InfoOutlined, MarkunreadMailbox, Storefront } from "@mui/icons-material";
-import Link from "next/link";
-import MyTournamentsHomeSection from "@/components/dashboard/MyTournamentsHomeSection";
-import WeeklyEventsSection from "@/components/events/WeeklyEventsSection";
-import ReportCustomTournamentDialog from "@/components/events/ReportCustomTournamentDialog";
-import CardMails from "@/components/dashboard/CardMails";
-import MailFlowExplainer from "@/components/mails/MailFlowExplainer";
-import RegisterMailDialog from "@/components/mails/RegisterMailDialog";
-import DashboardQuickActions from "@/components/dashboard/DashboardQuickActions";
-import { useStoreCredit } from "@/hooks/useStoreCredit";
-import { useDashboardModulesFromLayout } from "@/contexts/DashboardModulesContext";
-import type { DashboardModuleId } from "@/lib/dashboard-module-config";
+import { useState, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import Card from '@mui/material/Card'
+import CardContent from '@mui/material/CardContent'
+import CardHeader from '@mui/material/CardHeader'
+import CircularProgress from '@mui/material/CircularProgress'
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
+import IconButton from '@mui/material/IconButton'
+import Stack from '@mui/material/Stack'
+import Typography from '@mui/material/Typography'
+import { alpha } from '@mui/material/styles'
+import { Divider } from '@mui/material'
+import {
+  InfoOutlined,
+  MarkunreadMailbox,
+  Storefront
+} from '@mui/icons-material'
+import Link from 'next/link'
+import MyTournamentsHomeSection from '@/components/dashboard/MyTournamentsHomeSection'
+import WeeklyEventsSection from '@/components/events/WeeklyEventsSection'
+import ReportCustomTournamentDialog from '@/components/events/ReportCustomTournamentDialog'
+import CardMails from '@/components/dashboard/CardMails'
+import MailFlowExplainer from '@/components/mails/MailFlowExplainer'
+import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
+import DashboardQuickActions from '@/components/dashboard/DashboardQuickActions'
+import { useStoreCredit } from '@/hooks/useStoreCredit'
+import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
+import type { DashboardModuleId } from '@/lib/dashboard-module-config'
 
 export default function DashboardHomeContent() {
-  const router = useRouter();
-  const { visibility, order, shortcuts } = useDashboardModulesFromLayout();
+  const router = useRouter()
+  const { visibility, order, shortcuts } = useDashboardModulesFromLayout()
 
   const {
     data: credit,
     isPending: creditLoading,
     isError: creditQueryError,
     refetch: refetchCredit,
-    isFetching: creditFetching,
-  } = useStoreCredit();
+    isFetching: creditFetching
+  } = useStoreCredit()
 
   const creditError = creditQueryError
-    ? "No se pudieron cargar los puntos"
-    : null;
+    ? 'No se pudieron cargar los puntos'
+    : null
 
   const pointsCurrency =
     credit != null
-      ? new Intl.NumberFormat("es-CL", {
-          style: "currency",
-          currency: "CLP",
-          maximumFractionDigits: 0,
+      ? new Intl.NumberFormat('es-CL', {
+          style: 'currency',
+          currency: 'CLP',
+          maximumFractionDigits: 0
         }).format(credit.storePoints)
-      : "";
+      : ''
 
-  const [storePointsInfoOpen, setStorePointsInfoOpen] = useState(false);
-  const [registerMailOpen, setRegisterMailOpen] = useState(false);
-  const [weekAnchor] = useState(() => new Date());
-  const [customTournamentOpen, setCustomTournamentOpen] = useState(false);
+  const [storePointsInfoOpen, setStorePointsInfoOpen] = useState(false)
+  const [registerMailOpen, setRegisterMailOpen] = useState(false)
+  const [weekAnchor] = useState(() => new Date())
+  const [customTournamentOpen, setCustomTournamentOpen] = useState(false)
 
   const expiryLabel =
     credit?.storePointsExpiryDate &&
-    new Date(credit.storePointsExpiryDate).toLocaleDateString("es-CL", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
+    new Date(credit.storePointsExpiryDate).toLocaleDateString('es-CL', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    })
 
   const weeklyEventsBlock = visibility.weeklyEvents ? (
     <WeeklyEventsSection />
-  ) : null;
+  ) : null
 
   const myTournamentsBlock = visibility.myTournaments ? (
     <MyTournamentsHomeSection showPageHeading={false} />
-  ) : null;
+  ) : null
 
   const mailBlock = visibility.mail ? (
     <Card variant="outlined" sx={{ borderRadius: 2 }}>
       <Box sx={{ px: 2, pt: 2 }}>
         <Stack spacing={2}>
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
-            <MarkunreadMailbox color="primary" sx={{ mt: 0.25, flexShrink: 0 }} />
+            <MarkunreadMailbox
+              color="primary"
+              sx={{ mt: 0.25, flexShrink: 0 }}
+            />
             <Box sx={{ minWidth: 0, flex: 1, pr: { xs: 0, sm: 1 } }}>
               <Typography variant="h5" component="h2">
                 Últimos correos
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.5 }}
+              >
                 Registro reciente y acceso al código en tienda
               </Typography>
             </Box>
           </Stack>
           <Stack
-            direction={{ xs: "column", sm: "row" }}
+            direction={{ xs: 'column', sm: 'row' }}
             spacing={1}
             useFlexGap
             sx={{
-              width: "100%",
-              alignItems: { xs: "stretch", sm: "center" },
+              width: '100%',
+              alignItems: { xs: 'stretch', sm: 'center' }
             }}
           >
             <Button
               variant="contained"
               size="small"
               onClick={() => setRegisterMailOpen(true)}
-              sx={{ width: { xs: "100%", sm: "auto" } }}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Registrar correo
             </Button>
@@ -113,7 +124,7 @@ export default function DashboardHomeContent() {
               href="/dashboard/mail"
               size="small"
               variant="outlined"
-              sx={{ width: { xs: "100%", sm: "auto" } }}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Ver todos
             </Button>
@@ -125,7 +136,7 @@ export default function DashboardHomeContent() {
         <CardMails />
       </CardContent>
     </Card>
-  ) : null;
+  ) : null
 
   const storePointsBlock = visibility.storePoints ? (
     <Card variant="outlined" sx={{ borderRadius: 2 }}>
@@ -133,7 +144,7 @@ export default function DashboardHomeContent() {
         avatar={<Storefront color="primary" />}
         title="Crédito de tienda"
         subheader="TCG Family puntos (1 punto ≈ $1 en canje)"
-        slotProps={{ title: { variant: "h6" } }}
+        slotProps={{ title: { variant: 'h6' } }}
         action={
           <IconButton
             aria-label="Información sobre los puntos de tienda"
@@ -147,7 +158,7 @@ export default function DashboardHomeContent() {
       />
       <CardContent sx={{ pt: 0 }}>
         {creditLoading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
             <CircularProgress size={28} />
           </Box>
         ) : creditError ? (
@@ -159,7 +170,7 @@ export default function DashboardHomeContent() {
               onClick={() => refetchCredit()}
               disabled={creditFetching}
             >
-              {creditFetching ? "Cargando…" : "Reintentar"}
+              {creditFetching ? 'Cargando…' : 'Reintentar'}
             </Button>
           </Stack>
         ) : credit ? (
@@ -168,19 +179,19 @@ export default function DashboardHomeContent() {
               sx={{
                 p: 2.5,
                 borderRadius: 2,
-                bgcolor: (theme) =>
+                bgcolor: theme =>
                   alpha(
                     theme.palette.primary.main,
-                    theme.palette.mode === "dark" ? 0.12 : 0.08,
+                    theme.palette.mode === 'dark' ? 0.12 : 0.08
                   ),
-                border: "1px solid",
-                borderColor: "divider",
+                border: '1px solid',
+                borderColor: 'divider'
               }}
             >
               <Typography
                 variant="overline"
                 color="text.secondary"
-                sx={{ letterSpacing: 0.5, display: "block", mb: 0.5 }}
+                sx={{ letterSpacing: 0.5, display: 'block', mb: 0.5 }}
               >
                 Saldo actual
               </Typography>
@@ -189,12 +200,12 @@ export default function DashboardHomeContent() {
                 component="p"
                 sx={{
                   fontWeight: 800,
-                  fontVariantNumeric: "tabular-nums",
+                  fontVariantNumeric: 'tabular-nums',
                   lineHeight: 1.15,
-                  mb: 0.5,
+                  mb: 0.5
                 }}
               >
-                {credit.storePoints.toLocaleString("es-CL")}
+                {credit.storePoints.toLocaleString('es-CL')}
                 <Typography
                   component="span"
                   variant="h5"
@@ -217,41 +228,43 @@ export default function DashboardHomeContent() {
                     Próximos a vencer
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {credit.storePointsExpiringNext.toLocaleString("es-CL")}{" "}
+                    {credit.storePointsExpiringNext.toLocaleString('es-CL')}{' '}
                     puntos
-                    {expiryLabel ? ` · fecha de vencimiento: ${expiryLabel}` : ""}
+                    {expiryLabel
+                      ? ` · fecha de vencimiento: ${expiryLabel}`
+                      : ''}
                   </Typography>
                 </Box>
               </>
             )}
             {credit.storePointsExpiringNext === 0 && credit.storePoints > 0 && (
               <Typography variant="body2" color="text.secondary">
-                No hay puntos próximos a vencer con fecha informada en el sistema.
+                No hay puntos próximos a vencer con fecha informada en el
+                sistema.
               </Typography>
             )}
             {credit.storePoints === 0 && (
               <Typography variant="body2" color="text.secondary">
-                Tu saldo es 0. Los puntos se actualizan cuando el administrador importa
-                el reporte de la tienda.
+                Tu saldo es 0. Los puntos se actualizan cuando el administrador
+                importa el reporte de la tienda.
               </Typography>
             )}
           </Stack>
         ) : null}
       </CardContent>
     </Card>
-  ) : null;
+  ) : null
 
   const blocks: Record<DashboardModuleId, ReactNode> = {
     weeklyEvents: weeklyEventsBlock,
     myTournaments: myTournamentsBlock,
     mail: mailBlock,
-    storePoints: storePointsBlock,
-  };
+    storePoints: storePointsBlock
+  }
 
-  const visibleOrdered = order.filter((id) => visibility[id]);
+  const visibleOrdered = order.filter(id => visibility[id])
 
-  const showQuickActions =
-    shortcuts.createMail || shortcuts.createTournament;
+  const showQuickActions = shortcuts.createMail || shortcuts.createTournament
 
   const quickActionsBlock = (
     <DashboardQuickActions
@@ -259,7 +272,7 @@ export default function DashboardHomeContent() {
       onRegisterMail={() => setRegisterMailOpen(true)}
       onCreateCustomTournament={() => setCustomTournamentOpen(true)}
     />
-  );
+  )
 
   if (visibleOrdered.length === 0 && !showQuickActions) {
     return (
@@ -267,23 +280,23 @@ export default function DashboardHomeContent() {
         variant="outlined"
         sx={{
           borderRadius: 3,
-          borderColor: (t) => alpha(t.palette.text.primary, 0.1),
-          p: 3,
+          borderColor: t => alpha(t.palette.text.primary, 0.1),
+          p: 3
         }}
       >
         <Typography variant="body1" color="text.secondary">
-          No hay bloques activos en tu inicio. Si esto es un error, contacta a la
-          tienda.
+          No hay bloques activos en tu inicio. Si esto es un error, contacta a
+          la tienda.
         </Typography>
       </Card>
-    );
+    )
   }
 
   return (
     <>
       <Stack spacing={3}>
         {quickActionsBlock}
-        {visibleOrdered.map((id) => (
+        {visibleOrdered.map(id => (
           <Box key={id}>{blocks[id]}</Box>
         ))}
       </Stack>
@@ -295,25 +308,31 @@ export default function DashboardHomeContent() {
         fullWidth
         aria-labelledby="store-points-info-title"
       >
-        <DialogTitle id="store-points-info-title">TCG Family puntos</DialogTitle>
+        <DialogTitle id="store-points-info-title">
+          TCG Family puntos
+        </DialogTitle>
         <DialogContent>
           <Typography variant="body2" component="p" sx={{ mb: 2 }}>
-            Los TCG Family puntos, tienen equivalencia de $1 cada uno, se obtienen al
-            realizar compras por la web (1% del monto de la compra), al
-            &quot;sacrificar&quot; cartas en la tienda (solo en días de intercambio que
-            son informados previamente) y otros métodos informados por los canales de
-            la comunidad.
+            Los TCG Family puntos, tienen equivalencia de $1 cada uno, se
+            obtienen al realizar compras por la web (1% del monto de la compra),
+            al &quot;sacrificar&quot; cartas en la tienda (solo en días de
+            intercambio que son informados previamente) y otros métodos
+            informados por los canales de la comunidad.
           </Typography>
           <Typography variant="body2" component="p" sx={{ mb: 2 }}>
-            Se debe tener un mínimo de 5000 puntos para poder canjearlos y debe hacerse
-            de forma presencial o coordinándolo por mensaje de Instagram.
+            Se debe tener un mínimo de 5000 puntos para poder canjearlos y debe
+            hacerse de forma presencial o coordinándolo por mensaje de
+            Instagram.
           </Typography>
           <Typography variant="body2" component="p">
             Tienen vigencia de 1 año desde su generación.
           </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setStorePointsInfoOpen(false)} variant="contained">
+          <Button
+            onClick={() => setStorePointsInfoOpen(false)}
+            variant="contained"
+          >
             Cerrar
           </Button>
         </DialogActions>
@@ -328,11 +347,11 @@ export default function DashboardHomeContent() {
         open={customTournamentOpen}
         onClose={() => setCustomTournamentOpen(false)}
         weekAnchor={weekAnchor}
-        onCreated={(eventId) => {
-          setCustomTournamentOpen(false);
-          router.push(`/dashboard/torneos-semana/${eventId}`);
+        onCreated={eventId => {
+          setCustomTournamentOpen(false)
+          router.push(`/dashboard/torneos-semana/${eventId}`)
         }}
       />
     </>
-  );
+  )
 }

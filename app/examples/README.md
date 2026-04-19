@@ -5,21 +5,27 @@ Este directorio contiene ejemplos prácticos de cómo usar **TanStack Query** y 
 ## 📚 Archivos de Ejemplo
 
 ### 1. `TanStackQueryExample.tsx`
+
 Ejemplos de uso de TanStack Query:
+
 - ✅ **useQuery básico**: Obtener datos con caché automático
 - ✅ **useMutation**: Crear/actualizar/eliminar datos
 - ✅ **Optimistic Updates**: Actualizaciones optimistas para mejor UX
 - ✅ **Invalidación de caché**: Refetch automático después de mutaciones
 
 ### 2. `ZustandExample.tsx`
+
 Ejemplos de uso de Zustand:
+
 - ✅ **Estado UI simple**: Sidebar, tema, etc.
 - ✅ **Filtros globales**: Estado compartido entre componentes
 - ✅ **Sistema de notificaciones**: Notificaciones globales
 - ✅ **Selectores para performance**: Optimización de re-renders
 
 ### 3. `page-refactored.tsx` (en `/Admin/Users/`)
+
 Versión refactorizada de `UsersPage` que muestra:
+
 - ✅ Cómo migrar de `useState` + `fetch` a TanStack Query
 - ✅ Uso combinado de TanStack Query + Zustand
 - ✅ Manejo de loading states automático
@@ -32,8 +38,8 @@ Versión refactorizada de `UsersPage` que muestra:
 1. Importa los componentes de ejemplo en cualquier página:
 
 ```tsx
-import TanStackQueryExample from "@/examples/TanStackQueryExample";
-import ZustandExample from "@/examples/ZustandExample";
+import TanStackQueryExample from '@/examples/TanStackQueryExample'
+import ZustandExample from '@/examples/ZustandExample'
 
 export default function ExamplePage() {
   return (
@@ -41,64 +47,65 @@ export default function ExamplePage() {
       <TanStackQueryExample />
       <ZustandExample />
     </Box>
-  );
+  )
 }
 ```
 
 ### Usar TanStack Query en tus componentes
 
 ```tsx
-import { useUsers, useCreateUser } from "@/hooks/useUsers";
+import { useUsers, useCreateUser } from '@/hooks/useUsers'
 
 function MyComponent() {
   // Obtener datos (con caché automático)
-  const { data: users, isLoading, error } = useUsers();
+  const { data: users, isLoading, error } = useUsers()
 
   // Crear usuario (con invalidación automática)
-  const createUser = useCreateUser();
+  const createUser = useCreateUser()
 
   const handleCreate = async () => {
     try {
       await createUser.mutateAsync({
-        name: "Juan",
-        email: "juan@example.com",
-      });
+        name: 'Juan',
+        email: 'juan@example.com'
+      })
       // El caché se invalida automáticamente
     } catch (error) {
-      console.error(error);
+      console.error(error)
     }
-  };
+  }
 
-  if (isLoading) return <div>Cargando...</div>;
-  if (error) return <div>Error: {error.message}</div>;
+  if (isLoading) return <div>Cargando...</div>
+  if (error) return <div>Error: {error.message}</div>
 
-  return <div>{/* Tu UI */}</div>;
+  return <div>{/* Tu UI */}</div>
 }
 ```
 
 ### Usar Zustand para estado global
 
 ```tsx
-import { useAppStore } from "@/store/useAppStore";
+import { useAppStore } from '@/store/useAppStore'
 
 function MyComponent() {
   // Obtener estado
-  const sidebarOpen = useAppStore((state) => state.sidebarOpen);
-  
+  const sidebarOpen = useAppStore(state => state.sidebarOpen)
+
   // Obtener acción
-  const toggleSidebar = useAppStore((state) => state.toggleSidebar);
+  const toggleSidebar = useAppStore(state => state.toggleSidebar)
 
   return (
     <button onClick={toggleSidebar}>
-      Sidebar: {sidebarOpen ? "Abierto" : "Cerrado"}
+      Sidebar: {sidebarOpen ? 'Abierto' : 'Cerrado'}
     </button>
-  );
+  )
 }
 ```
 
 ## 📖 Conceptos Clave
 
 ### TanStack Query
+
 - **Query**: Para obtener datos (GET)
 - **Mutation**: Para modificar datos (POST, PUT, DELETE)
 - **Caché automático**: Los datos se cachean y reutilizan
@@ -106,6 +113,7 @@ function MyComponent() {
 - **Loading states**: `isLoading`, `isFetching`, `isPending`
 
 ### Zustand
+
 - **Store**: Un solo store para todo el estado global
 - **Selectores**: Para obtener solo el estado que necesitas
 - **Acciones**: Funciones que modifican el estado
@@ -115,23 +123,25 @@ function MyComponent() {
 ## 🔄 Migración desde useState + fetch
 
 ### Antes (useState + fetch)
+
 ```tsx
-const [users, setUsers] = useState([]);
-const [loading, setLoading] = useState(true);
+const [users, setUsers] = useState([])
+const [loading, setLoading] = useState(true)
 
 useEffect(() => {
-  fetch("/api/users")
+  fetch('/api/users')
     .then(res => res.json())
     .then(data => {
-      setUsers(data);
-      setLoading(false);
-    });
-}, []);
+      setUsers(data)
+      setLoading(false)
+    })
+}, [])
 ```
 
 ### Después (TanStack Query)
+
 ```tsx
-const { data: users, isLoading } = useUsers();
+const { data: users, isLoading } = useUsers()
 // ¡Eso es todo! Caché, refetch, y loading automático
 ```
 
@@ -146,6 +156,7 @@ const { data: users, isLoading } = useUsers();
 ## 📝 Hooks Disponibles
 
 ### Users
+
 - `useUsers()` - Obtener todos los usuarios
 - `useUser(id)` - Obtener un usuario por ID
 - `useCreateUser()` - Crear usuario
@@ -154,6 +165,7 @@ const { data: users, isLoading } = useUsers();
 - `useBulkUploadUsers()` - Carga masiva desde CSV
 
 ### Mails
+
 - `useMails()` - Obtener todos los mails
 - `useCreateMail()` - Crear mail
 

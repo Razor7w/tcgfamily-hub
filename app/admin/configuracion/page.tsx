@@ -1,114 +1,114 @@
-"use client";
+'use client'
 
-import { useMemo, useState } from "react";
-import ArrowDownward from "@mui/icons-material/ArrowDownward";
-import ArrowUpward from "@mui/icons-material/ArrowUpward";
-import MarkEmailReadOutlined from "@mui/icons-material/MarkEmailReadOutlined";
-import SportsEsports from "@mui/icons-material/SportsEsports";
-import MarkunreadMailbox from "@mui/icons-material/MarkunreadMailbox";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
-import Checkbox from "@mui/material/Checkbox";
-import Container from "@mui/material/Container";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import IconButton from "@mui/material/IconButton";
-import Link from "@mui/material/Link";
-import Paper from "@mui/material/Paper";
-import Stack from "@mui/material/Stack";
-import Switch from "@mui/material/Switch";
-import Typography from "@mui/material/Typography";
-import Alert from "@mui/material/Alert";
-import CircularProgress from "@mui/material/CircularProgress";
-import Divider from "@mui/material/Divider";
-import { alpha, type Theme } from "@mui/material/styles";
-import NextLink from "next/link";
+import { useMemo, useState } from 'react'
+import ArrowDownward from '@mui/icons-material/ArrowDownward'
+import ArrowUpward from '@mui/icons-material/ArrowUpward'
+import MarkEmailReadOutlined from '@mui/icons-material/MarkEmailReadOutlined'
+import SportsEsports from '@mui/icons-material/SportsEsports'
+import MarkunreadMailbox from '@mui/icons-material/MarkunreadMailbox'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import Card from '@mui/material/Card'
+import CardContent from '@mui/material/CardContent'
+import Checkbox from '@mui/material/Checkbox'
+import Container from '@mui/material/Container'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import IconButton from '@mui/material/IconButton'
+import Link from '@mui/material/Link'
+import Paper from '@mui/material/Paper'
+import Stack from '@mui/material/Stack'
+import Switch from '@mui/material/Switch'
+import Typography from '@mui/material/Typography'
+import Alert from '@mui/material/Alert'
+import CircularProgress from '@mui/material/CircularProgress'
+import Divider from '@mui/material/Divider'
+import { alpha, type Theme } from '@mui/material/styles'
+import NextLink from 'next/link'
 import {
   useAdminConfiguracion,
   useUpdateDashboardModuleSettings,
   useUpdateDashboardShortcuts,
-  useUpdateResendPickupNotifySettings,
-} from "@/hooks/useDashboardModules";
+  useUpdateResendPickupNotifySettings
+} from '@/hooks/useDashboardModules'
 import {
   DASHBOARD_MODULE_IDS,
   mergeDashboardSettings,
   type DashboardModuleId,
   type DashboardModuleSettingsDTO,
-  type DashboardShortcutsVisibility,
-} from "@/lib/dashboard-module-config";
+  type DashboardShortcutsVisibility
+} from '@/lib/dashboard-module-config'
 
 const LABELS: Record<DashboardModuleId, string> = {
-  weeklyEvents: "Eventos de la semana (calendario y preinscripción)",
+  weeklyEvents: 'Eventos de la semana (calendario y preinscripción)',
   myTournaments:
-    "Mis torneos (resumen de participaciones, rondas y torneos custom)",
-  mail: "Correo (últimos correos y registro)",
-  storePoints: "Crédito de tienda (puntos)",
-};
+    'Mis torneos (resumen de participaciones, rondas y torneos custom)',
+  mail: 'Correo (últimos correos y registro)',
+  storePoints: 'Crédito de tienda (puntos)'
+}
 
 function moveOrder(
   order: DashboardModuleId[],
   index: number,
-  dir: -1 | 1,
+  dir: -1 | 1
 ): DashboardModuleId[] {
-  const j = index + dir;
-  if (j < 0 || j >= order.length) return order;
-  const next = [...order];
-  [next[index], next[j]] = [next[j], next[index]];
-  return next;
+  const j = index + dir
+  if (j < 0 || j >= order.length) return order
+  const next = [...order]
+  ;[next[index], next[j]] = [next[j], next[index]]
+  return next
 }
 
 function DashboardModulesEditor({
-  initial,
+  initial
 }: {
-  initial: DashboardModuleSettingsDTO;
+  initial: DashboardModuleSettingsDTO
 }) {
-  const update = useUpdateDashboardModuleSettings();
-  const [visibility, setVisibility] = useState(initial.visibility);
-  const [order, setOrder] = useState<DashboardModuleId[]>(initial.order);
+  const update = useUpdateDashboardModuleSettings()
+  const [visibility, setVisibility] = useState(initial.visibility)
+  const [order, setOrder] = useState<DashboardModuleId[]>(initial.order)
 
   const dirty = useMemo(
     () =>
       JSON.stringify(visibility) !== JSON.stringify(initial.visibility) ||
       JSON.stringify(order) !== JSON.stringify(initial.order),
-    [initial, visibility, order],
-  );
+    [initial, visibility, order]
+  )
 
   const handleSave = () => {
     const payload: DashboardModuleSettingsDTO = {
       visibility,
       order,
-      shortcuts: initial.shortcuts,
-    };
-    update.mutate(payload);
-  };
+      shortcuts: initial.shortcuts
+    }
+    update.mutate(payload)
+  }
 
   return (
     <Card
       elevation={0}
       sx={{
         borderRadius: 4,
-        border: "1px solid",
-        borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.08),
+        border: '1px solid',
+        borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.08)
       }}
     >
       <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
         <Typography
           variant="overline"
           color="text.secondary"
-          sx={{ fontWeight: 800, letterSpacing: "0.12em" }}
+          sx={{ fontWeight: 800, letterSpacing: '0.12em' }}
         >
           Visibilidad
         </Typography>
         <Stack sx={{ mt: 1.5, mb: 3 }} spacing={0.5}>
-          {DASHBOARD_MODULE_IDS.map((id) => (
+          {DASHBOARD_MODULE_IDS.map(id => (
             <FormControlLabel
               key={id}
               control={
                 <Checkbox
                   checked={visibility[id]}
-                  onChange={(e) =>
-                    setVisibility((v) => ({ ...v, [id]: e.target.checked }))
+                  onChange={e =>
+                    setVisibility(v => ({ ...v, [id]: e.target.checked }))
                   }
                 />
               }
@@ -120,11 +120,15 @@ function DashboardModulesEditor({
         <Typography
           variant="overline"
           color="text.secondary"
-          sx={{ fontWeight: 800, letterSpacing: "0.12em" }}
+          sx={{ fontWeight: 800, letterSpacing: '0.12em' }}
         >
           Orden en la página
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 1.5 }}>
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ mt: 0.5, mb: 1.5 }}
+        >
           El primero de la lista queda arriba del todo en el dashboard.
         </Typography>
 
@@ -132,8 +136,8 @@ function DashboardModulesEditor({
           variant="outlined"
           sx={{
             borderRadius: 2,
-            overflow: "hidden",
-            borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.1),
+            overflow: 'hidden',
+            borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.1)
           }}
         >
           <Stack divider={<Divider flexItem />}>
@@ -146,7 +150,7 @@ function DashboardModulesEditor({
                 sx={{
                   px: 2,
                   py: 1.5,
-                  bgcolor: (t: Theme) => alpha(t.palette.text.primary, 0.02),
+                  bgcolor: (t: Theme) => alpha(t.palette.text.primary, 0.02)
                 }}
               >
                 <Typography variant="body2" sx={{ flex: 1, fontWeight: 600 }}>
@@ -156,7 +160,7 @@ function DashboardModulesEditor({
                   size="small"
                   aria-label="Subir"
                   disabled={index === 0}
-                  onClick={() => setOrder((o) => moveOrder(o, index, -1))}
+                  onClick={() => setOrder(o => moveOrder(o, index, -1))}
                 >
                   <ArrowUpward fontSize="small" />
                 </IconButton>
@@ -164,7 +168,7 @@ function DashboardModulesEditor({
                   size="small"
                   aria-label="Bajar"
                   disabled={index === order.length - 1}
-                  onClick={() => setOrder((o) => moveOrder(o, index, 1))}
+                  onClick={() => setOrder(o => moveOrder(o, index, 1))}
                 >
                   <ArrowDownward fontSize="small" />
                 </IconButton>
@@ -177,16 +181,21 @@ function DashboardModulesEditor({
           <Alert severity="error" sx={{ mt: 2 }}>
             {update.error instanceof Error
               ? update.error.message
-              : "Error al guardar"}
+              : 'Error al guardar'}
           </Alert>
         ) : null}
 
-        <Stack direction="row" spacing={2} sx={{ mt: 3 }} justifyContent="flex-end">
+        <Stack
+          direction="row"
+          spacing={2}
+          sx={{ mt: 3 }}
+          justifyContent="flex-end"
+        >
           <Button
             variant="outlined"
             onClick={() => {
-              setVisibility(initial.visibility);
-              setOrder(initial.order);
+              setVisibility(initial.visibility)
+              setOrder(initial.order)
             }}
             disabled={!dirty || update.isPending}
           >
@@ -198,60 +207,65 @@ function DashboardModulesEditor({
             disabled={!dirty || update.isPending}
             sx={{ fontWeight: 700, minWidth: 120 }}
           >
-            {update.isPending ? "Guardando…" : "Guardar"}
+            {update.isPending ? 'Guardando…' : 'Guardar'}
           </Button>
         </Stack>
       </CardContent>
     </Card>
-  );
+  )
 }
 
 function DashboardShortcutsEditor({
-  initial,
+  initial
 }: {
-  initial: DashboardShortcutsVisibility;
+  initial: DashboardShortcutsVisibility
 }) {
-  const update = useUpdateDashboardShortcuts();
-  const [createMail, setCreateMail] = useState(initial.createMail);
+  const update = useUpdateDashboardShortcuts()
+  const [createMail, setCreateMail] = useState(initial.createMail)
   const [createTournament, setCreateTournament] = useState(
-    initial.createTournament,
-  );
+    initial.createTournament
+  )
 
   const dirty = useMemo(
     () =>
       createMail !== initial.createMail ||
       createTournament !== initial.createTournament,
-    [initial, createMail, createTournament],
-  );
+    [initial, createMail, createTournament]
+  )
 
   const handleSave = () => {
-    update.mutate({ createMail, createTournament });
-  };
+    update.mutate({ createMail, createTournament })
+  }
 
   return (
     <Card
       elevation={0}
       sx={{
         borderRadius: 4,
-        border: "1px solid",
-        borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.08),
+        border: '1px solid',
+        borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.08)
       }}
     >
       <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-        <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 2 }}>
+        <Stack
+          direction="row"
+          spacing={1.5}
+          alignItems="flex-start"
+          sx={{ mb: 2 }}
+        >
           <Box
             sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               width: 44,
               height: 44,
               borderRadius: 2,
               flexShrink: 0,
-              color: "primary.main",
+              color: 'primary.main',
               bgcolor: (t: Theme) => alpha(t.palette.primary.main, 0.1),
-              border: "1px solid",
-              borderColor: (t: Theme) => alpha(t.palette.primary.main, 0.2),
+              border: '1px solid',
+              borderColor: (t: Theme) => alpha(t.palette.primary.main, 0.2)
             }}
           >
             <SportsEsports aria-hidden />
@@ -260,17 +274,22 @@ function DashboardShortcutsEditor({
             <Typography
               variant="h6"
               component="h2"
-              sx={{ fontWeight: 800, letterSpacing: "-0.02em" }}
+              sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}
             >
               Accesos rápidos en el inicio
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, lineHeight: 1.6 }}>
-              Botones en la parte superior de{" "}
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 0.75, lineHeight: 1.6 }}
+            >
+              Botones en la parte superior de{' '}
               <Link href="/dashboard" component={NextLink} fontWeight={600}>
                 /dashboard
-              </Link>{" "}
-              para registrar un correo o crear un torneo custom. Puedes ocultar cada uno sin
-              desactivar el bloque completo de correo o «Mis torneos».
+              </Link>{' '}
+              para registrar un correo o crear un torneo custom. Puedes ocultar
+              cada uno sin desactivar el bloque completo de correo o «Mis
+              torneos».
             </Typography>
           </Box>
         </Stack>
@@ -291,13 +310,18 @@ function DashboardShortcutsEditor({
                   <Typography variant="body2" fontWeight={600}>
                     Acceso «Registrar correo»
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    Abre el mismo diálogo que el botón dentro del bloque de correos.
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    display="block"
+                  >
+                    Abre el mismo diálogo que el botón dentro del bloque de
+                    correos.
                   </Typography>
                 </Box>
               </Stack>
             }
-            sx={{ alignItems: "flex-start", ml: 0, gap: 1.5 }}
+            sx={{ alignItems: 'flex-start', ml: 0, gap: 1.5 }}
           />
           <FormControlLabel
             control={
@@ -314,13 +338,18 @@ function DashboardShortcutsEditor({
                   <Typography variant="body2" fontWeight={600}>
                     Acceso «Crear torneo custom»
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    Abre el formulario de torneo personal (no ligado al calendario de la tienda).
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    display="block"
+                  >
+                    Abre el formulario de torneo personal (no ligado al
+                    calendario de la tienda).
                   </Typography>
                 </Box>
               </Stack>
             }
-            sx={{ alignItems: "flex-start", ml: 0, gap: 1.5 }}
+            sx={{ alignItems: 'flex-start', ml: 0, gap: 1.5 }}
           />
         </Stack>
 
@@ -328,16 +357,21 @@ function DashboardShortcutsEditor({
           <Alert severity="error" sx={{ mt: 2 }}>
             {update.error instanceof Error
               ? update.error.message
-              : "Error al guardar"}
+              : 'Error al guardar'}
           </Alert>
         ) : null}
 
-        <Stack direction="row" spacing={2} sx={{ mt: 3 }} justifyContent="flex-end">
+        <Stack
+          direction="row"
+          spacing={2}
+          sx={{ mt: 3 }}
+          justifyContent="flex-end"
+        >
           <Button
             variant="outlined"
             onClick={() => {
-              setCreateMail(initial.createMail);
-              setCreateTournament(initial.createTournament);
+              setCreateMail(initial.createMail)
+              setCreateTournament(initial.createTournament)
             }}
             disabled={!dirty || update.isPending}
           >
@@ -349,57 +383,76 @@ function DashboardShortcutsEditor({
             disabled={!dirty || update.isPending}
             sx={{ fontWeight: 700, minWidth: 120 }}
           >
-            {update.isPending ? "Guardando…" : "Guardar"}
+            {update.isPending ? 'Guardando…' : 'Guardar'}
           </Button>
         </Stack>
       </CardContent>
     </Card>
-  );
+  )
 }
 
-function ResendPickupEmailCard({ initialEnabled }: { initialEnabled: boolean }) {
-  const update = useUpdateResendPickupNotifySettings();
-  const [enabled, setEnabled] = useState(initialEnabled);
+function ResendPickupEmailCard({
+  initialEnabled
+}: {
+  initialEnabled: boolean
+}) {
+  const update = useUpdateResendPickupNotifySettings()
+  const [enabled, setEnabled] = useState(initialEnabled)
 
-  const dirty = enabled !== initialEnabled;
+  const dirty = enabled !== initialEnabled
 
   return (
     <Card
       elevation={0}
       sx={{
         borderRadius: 4,
-        border: "1px solid",
-        borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.08),
+        border: '1px solid',
+        borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.08)
       }}
     >
       <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-        <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 2 }}>
+        <Stack
+          direction="row"
+          spacing={1.5}
+          alignItems="flex-start"
+          sx={{ mb: 2 }}
+        >
           <Box
             sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               width: 44,
               height: 44,
               borderRadius: 2,
               flexShrink: 0,
-              color: "primary.main",
+              color: 'primary.main',
               bgcolor: (t: Theme) => alpha(t.palette.primary.main, 0.1),
-              border: "1px solid",
-              borderColor: (t: Theme) => alpha(t.palette.primary.main, 0.2),
+              border: '1px solid',
+              borderColor: (t: Theme) => alpha(t.palette.primary.main, 0.2)
             }}
           >
             <MarkEmailReadOutlined aria-hidden />
           </Box>
           <Box sx={{ minWidth: 0 }}>
-            <Typography variant="h6" component="h2" sx={{ fontWeight: 800, letterSpacing: "-0.02em" }}>
+            <Typography
+              variant="h6"
+              component="h2"
+              sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}
+            >
               Correo (Resend)
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, lineHeight: 1.6 }}>
-              Cuando marcas un envío como <strong>recepcionado en tienda</strong>, el sistema puede enviar
-              un correo al usuario con el código de retiro. Requiere{" "}
-              <code style={{ fontSize: "0.9em" }}>RESEND_API_KEY</code> y remitente verificado (ver{" "}
-              <code style={{ fontSize: "0.9em" }}>.env.example</code>).
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 0.75, lineHeight: 1.6 }}
+            >
+              Cuando marcas un envío como{' '}
+              <strong>recepcionado en tienda</strong>, el sistema puede enviar
+              un correo al usuario con el código de retiro. Requiere{' '}
+              <code style={{ fontSize: '0.9em' }}>RESEND_API_KEY</code> y
+              remitente verificado (ver{' '}
+              <code style={{ fontSize: '0.9em' }}>.env.example</code>).
             </Typography>
           </Box>
         </Stack>
@@ -417,23 +470,33 @@ function ResendPickupEmailCard({ initialEnabled }: { initialEnabled: boolean }) 
               <Typography variant="body2" fontWeight={600}>
                 Enviar correo al recepcionar en tienda
               </Typography>
-              <Typography variant="caption" color="text.secondary" display="block">
-                Si está desactivado, el registro en base de datos sigue igual; solo se omite Resend.
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                display="block"
+              >
+                Si está desactivado, el registro en base de datos sigue igual;
+                solo se omite Resend.
               </Typography>
             </Box>
           }
-          sx={{ alignItems: "flex-start", ml: 0, gap: 1.5 }}
+          sx={{ alignItems: 'flex-start', ml: 0, gap: 1.5 }}
         />
 
         {update.isError ? (
           <Alert severity="error" sx={{ mt: 2 }}>
             {update.error instanceof Error
               ? update.error.message
-              : "Error al guardar"}
+              : 'Error al guardar'}
           </Alert>
         ) : null}
 
-        <Stack direction="row" spacing={2} sx={{ mt: 3 }} justifyContent="flex-end">
+        <Stack
+          direction="row"
+          spacing={2}
+          sx={{ mt: 3 }}
+          justifyContent="flex-end"
+        >
           <Button
             variant="outlined"
             onClick={() => setEnabled(initialEnabled)}
@@ -447,23 +510,24 @@ function ResendPickupEmailCard({ initialEnabled }: { initialEnabled: boolean }) 
             disabled={!dirty || update.isPending}
             sx={{ fontWeight: 700, minWidth: 120 }}
           >
-            {update.isPending ? "Guardando…" : "Guardar"}
+            {update.isPending ? 'Guardando…' : 'Guardar'}
           </Button>
         </Stack>
       </CardContent>
     </Card>
-  );
+  )
 }
 
 export default function AdminConfiguracionPage() {
-  const { data, dataUpdatedAt, isPending, isError, error, refetch } = useAdminConfiguracion();
+  const { data, dataUpdatedAt, isPending, isError, error, refetch } =
+    useAdminConfiguracion()
 
   return (
     <Box
       sx={{
-        minHeight: "100dvh",
-        bgcolor: "background.default",
-        py: { xs: 2, sm: 4 },
+        minHeight: '100dvh',
+        bgcolor: 'background.default',
+        py: { xs: 2, sm: 4 }
       }}
     >
       <Container maxWidth="lg">
@@ -473,17 +537,21 @@ export default function AdminConfiguracionPage() {
             mb: 3,
             p: { xs: 2, sm: 2.5 },
             borderRadius: { xs: 3, sm: 4 },
-            border: "1px solid",
+            border: '1px solid',
             borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.08),
-            bgcolor: "background.paper",
-            boxShadow: "0 20px 40px -24px rgba(24, 24, 27, 0.12)",
+            bgcolor: 'background.paper',
+            boxShadow: '0 20px 40px -24px rgba(24, 24, 27, 0.12)'
           }}
         >
           <Box>
             <Typography
               variant="h4"
               component="h1"
-              sx={{ fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.15 }}
+              sx={{
+                fontWeight: 800,
+                letterSpacing: '-0.03em',
+                lineHeight: 1.15
+              }}
             >
               Configuración
             </Typography>
@@ -492,17 +560,18 @@ export default function AdminConfiguracionPage() {
               color="text.secondary"
               sx={{ mt: 1, maxWidth: 620, lineHeight: 1.6 }}
             >
-              Bloques del panel de jugadores en{" "}
+              Bloques del panel de jugadores en{' '}
               <Link href="/dashboard" component={NextLink} fontWeight={600}>
                 /dashboard
-              </Link>{" "}
-              y avisos por correo (Resend) cuando un envío queda listo para retiro en tienda.
+              </Link>{' '}
+              y avisos por correo (Resend) cuando un envío queda listo para
+              retiro en tienda.
             </Typography>
           </Box>
         </Stack>
 
         {isPending ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
             <CircularProgress />
           </Box>
         ) : isError ? (
@@ -514,7 +583,7 @@ export default function AdminConfiguracionPage() {
               </Button>
             }
           >
-            {error instanceof Error ? error.message : "Error al cargar"}
+            {error instanceof Error ? error.message : 'Error al cargar'}
           </Alert>
         ) : data ? (
           <Stack spacing={3}>
@@ -533,7 +602,10 @@ export default function AdminConfiguracionPage() {
           </Stack>
         ) : (
           <Stack spacing={3}>
-            <DashboardModulesEditor key="defaults" initial={mergeDashboardSettings(null)} />
+            <DashboardModulesEditor
+              key="defaults"
+              initial={mergeDashboardSettings(null)}
+            />
             <DashboardShortcutsEditor
               key="shortcuts-defaults"
               initial={mergeDashboardSettings(null).shortcuts}
@@ -543,5 +615,5 @@ export default function AdminConfiguracionPage() {
         )}
       </Container>
     </Box>
-  );
+  )
 }

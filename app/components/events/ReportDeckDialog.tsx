@@ -1,4 +1,4 @@
-"use client";
+'use client'
 
 import {
   useCallback,
@@ -6,63 +6,63 @@ import {
   useMemo,
   useState,
   type HTMLAttributes,
-  type Key,
-} from "react";
-import CloseIcon from "@mui/icons-material/Close";
-import Autocomplete from "@mui/material/Autocomplete";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Chip from "@mui/material/Chip";
-import CircularProgress from "@mui/material/CircularProgress";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
-import IconButton from "@mui/material/IconButton";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
+  type Key
+} from 'react'
+import CloseIcon from '@mui/icons-material/Close'
+import Autocomplete from '@mui/material/Autocomplete'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
+import CircularProgress from '@mui/material/CircularProgress'
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
+import IconButton from '@mui/material/IconButton'
+import Stack from '@mui/material/Stack'
+import TextField from '@mui/material/TextField'
+import Typography from '@mui/material/Typography'
 import {
   filterPokemonAutocompleteOptions,
   POKEMON_AUTOCOMPLETE_HINT_EMPTY,
   POKEMON_AUTOCOMPLETE_NO_MATCH,
   type PokemonSpeciesOption,
-  usePokemonSpeciesOptions,
-} from "@/hooks/usePokemonSpeciesOptions";
+  usePokemonSpeciesOptions
+} from '@/hooks/usePokemonSpeciesOptions'
 import {
   getLimitlessPokemonSpriteUrl,
-  limitlessSpriteDimensions,
-} from "@/lib/limitless-pokemon-sprite";
-import { useSaveMyDeck } from "@/hooks/useWeeklyEvents";
+  limitlessSpriteDimensions
+} from '@/lib/limitless-pokemon-sprite'
+import { useSaveMyDeck } from '@/hooks/useWeeklyEvents'
 
-type AutocompleteLiProps = HTMLAttributes<HTMLLIElement> & { key?: Key };
+type AutocompleteLiProps = HTMLAttributes<HTMLLIElement> & { key?: Key }
 
 function renderPokemonOption(
   props: AutocompleteLiProps,
-  option: PokemonSpeciesOption,
+  option: PokemonSpeciesOption
 ) {
-  const { key, children, ...rest } = props;
-  void children;
+  const { key, children, ...rest } = props
+  void children
   return (
     <li key={key ?? option.slug} {...rest}>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <SpriteThumb slug={option.slug} />
         <Typography variant="body2">{option.label}</Typography>
       </Box>
     </li>
-  );
+  )
 }
 
 type ReportDeckDialogProps = {
-  open: boolean;
-  onClose: () => void;
-  eventId: string;
-  eventTitle: string;
-  initialSlugs: string[];
-};
+  open: boolean
+  onClose: () => void
+  eventId: string
+  eventTitle: string
+  initialSlugs: string[]
+}
 
 function SpriteThumb({ slug, size = 28 }: { slug: string; size?: number }) {
-  const { width: w, height: h } = limitlessSpriteDimensions(size);
+  const { width: w, height: h } = limitlessSpriteDimensions(size)
   return (
     <Box
       component="img"
@@ -76,13 +76,13 @@ function SpriteThumb({ slug, size = 28 }: { slug: string; size?: number }) {
         height: `${h}px`,
         minWidth: `${w}px`,
         minHeight: `${h}px`,
-        display: "block",
-        imageRendering: "pixelated",
-        objectFit: "contain",
-        flexShrink: 0,
+        display: 'block',
+        imageRendering: 'pixelated',
+        objectFit: 'contain',
+        flexShrink: 0
       }}
     />
-  );
+  )
 }
 
 /**
@@ -93,58 +93,62 @@ export default function ReportDeckDialog({
   onClose,
   eventId,
   eventTitle,
-  initialSlugs,
+  initialSlugs
 }: ReportDeckDialogProps) {
   const { data: allOptions = [], isPending: optionsLoading } =
-    usePokemonSpeciesOptions();
-  const saveDeck = useSaveMyDeck(eventId);
+    usePokemonSpeciesOptions()
+  const saveDeck = useSaveMyDeck(eventId)
 
-  const [slot1, setSlot1] = useState<PokemonSpeciesOption | null>(null);
-  const [slot2, setSlot2] = useState<PokemonSpeciesOption | null>(null);
-  const [slot1Open, setSlot1Open] = useState(false);
-  const [slot2Open, setSlot2Open] = useState(false);
-  const [slot1Query, setSlot1Query] = useState("");
-  const [slot2Query, setSlot2Query] = useState("");
+  const [slot1, setSlot1] = useState<PokemonSpeciesOption | null>(null)
+  const [slot2, setSlot2] = useState<PokemonSpeciesOption | null>(null)
+  const [slot1Open, setSlot1Open] = useState(false)
+  const [slot2Open, setSlot2Open] = useState(false)
+  const [slot1Query, setSlot1Query] = useState('')
+  const [slot2Query, setSlot2Query] = useState('')
 
   const optionBySlug = useMemo(() => {
-    const m = new Map<string, PokemonSpeciesOption>();
+    const m = new Map<string, PokemonSpeciesOption>()
     for (const o of allOptions) {
-      m.set(o.slug, o);
+      m.set(o.slug, o)
     }
-    return m;
-  }, [allOptions]);
+    return m
+  }, [allOptions])
 
   useEffect(() => {
-    if (!open || optionsLoading || allOptions.length === 0) return;
-    const a = initialSlugs[0] ? optionBySlug.get(initialSlugs[0]) ?? null : null;
-    const b = initialSlugs[1] ? optionBySlug.get(initialSlugs[1]) ?? null : null;
+    if (!open || optionsLoading || allOptions.length === 0) return
+    const a = initialSlugs[0]
+      ? (optionBySlug.get(initialSlugs[0]) ?? null)
+      : null
+    const b = initialSlugs[1]
+      ? (optionBySlug.get(initialSlugs[1]) ?? null)
+      : null
     /* Sincronizar selección inicial del modal con slugs ya guardados (datos async). */
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSlot1(a);
-    setSlot2(b);
-  }, [open, optionsLoading, allOptions.length, optionBySlug, initialSlugs]);
+    setSlot1(a)
+    setSlot2(b)
+  }, [open, optionsLoading, allOptions.length, optionBySlug, initialSlugs])
 
   const optionsForSlot1 = useMemo(
-    () => allOptions.filter((o) => o.slug !== slot2?.slug),
-    [allOptions, slot2?.slug],
-  );
+    () => allOptions.filter(o => o.slug !== slot2?.slug),
+    [allOptions, slot2?.slug]
+  )
   const optionsForSlot2 = useMemo(
-    () => allOptions.filter((o) => o.slug !== slot1?.slug),
-    [allOptions, slot1?.slug],
-  );
+    () => allOptions.filter(o => o.slug !== slot1?.slug),
+    [allOptions, slot1?.slug]
+  )
 
   const handleClose = useCallback(() => {
-    if (!saveDeck.isPending) onClose();
-  }, [onClose, saveDeck.isPending]);
+    if (!saveDeck.isPending) onClose()
+  }, [onClose, saveDeck.isPending])
 
   const handleSave = () => {
     const pokemon = [slot1?.slug, slot2?.slug].filter(
-      (s): s is string => typeof s === "string" && s.length > 0,
-    );
-    saveDeck.mutate(pokemon, { onSuccess: () => onClose() });
-  };
+      (s): s is string => typeof s === 'string' && s.length > 0
+    )
+    saveDeck.mutate(pokemon, { onSuccess: () => onClose() })
+  }
 
-  const showChips = Boolean(slot1 || slot2);
+  const showChips = Boolean(slot1 || slot2)
 
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
@@ -153,7 +157,7 @@ export default function ReportDeckDialog({
         <IconButton
           aria-label="Cerrar"
           onClick={handleClose}
-          sx={{ position: "absolute", right: 8, top: 8 }}
+          sx={{ position: 'absolute', right: 8, top: 8 }}
           disabled={saveDeck.isPending}
         >
           <CloseIcon />
@@ -170,7 +174,7 @@ export default function ReportDeckDialog({
         ) : (
           <Stack spacing={2}>
             <Stack
-              direction={{ xs: "column", sm: "row" }}
+              direction={{ xs: 'column', sm: 'row' }}
               spacing={2}
               useFlexGap
             >
@@ -180,20 +184,20 @@ export default function ReportDeckDialog({
                 loading={optionsLoading}
                 value={slot1}
                 onChange={(_e, v) => setSlot1(v)}
-                inputValue={slot1Open ? slot1Query : (slot1?.label ?? "")}
+                inputValue={slot1Open ? slot1Query : (slot1?.label ?? '')}
                 onInputChange={(_e, v) => {
-                  if (slot1Open) setSlot1Query(v);
+                  if (slot1Open) setSlot1Query(v)
                 }}
                 onOpen={() => {
-                  setSlot1Open(true);
-                  setSlot1Query("");
+                  setSlot1Open(true)
+                  setSlot1Query('')
                 }}
                 onClose={(_e, reason) => {
-                  setSlot1Open(false);
-                  if (reason !== "selectOption") setSlot1Query("");
+                  setSlot1Open(false)
+                  if (reason !== 'selectOption') setSlot1Query('')
                 }}
                 filterOptions={filterPokemonAutocompleteOptions}
-                getOptionLabel={(o) => o.label}
+                getOptionLabel={o => o.label}
                 isOptionEqualToValue={(a, b) => a.slug === b.slug}
                 noOptionsText={
                   !slot1Query.trim()
@@ -203,7 +207,7 @@ export default function ReportDeckDialog({
                 renderOption={(props, option) =>
                   renderPokemonOption(props as AutocompleteLiProps, option)
                 }
-                renderInput={(params) => (
+                renderInput={params => (
                   <TextField
                     {...params}
                     label="Pokémon"
@@ -217,20 +221,20 @@ export default function ReportDeckDialog({
                 loading={optionsLoading}
                 value={slot2}
                 onChange={(_e, v) => setSlot2(v)}
-                inputValue={slot2Open ? slot2Query : (slot2?.label ?? "")}
+                inputValue={slot2Open ? slot2Query : (slot2?.label ?? '')}
                 onInputChange={(_e, v) => {
-                  if (slot2Open) setSlot2Query(v);
+                  if (slot2Open) setSlot2Query(v)
                 }}
                 onOpen={() => {
-                  setSlot2Open(true);
-                  setSlot2Query("");
+                  setSlot2Open(true)
+                  setSlot2Query('')
                 }}
                 onClose={(_e, reason) => {
-                  setSlot2Open(false);
-                  if (reason !== "selectOption") setSlot2Query("");
+                  setSlot2Open(false)
+                  if (reason !== 'selectOption') setSlot2Query('')
                 }}
                 filterOptions={filterPokemonAutocompleteOptions}
-                getOptionLabel={(o) => o.label}
+                getOptionLabel={o => o.label}
                 isOptionEqualToValue={(a, b) => a.slug === b.slug}
                 noOptionsText={
                   !slot2Query.trim()
@@ -240,7 +244,7 @@ export default function ReportDeckDialog({
                 renderOption={(props, option) =>
                   renderPokemonOption(props as AutocompleteLiProps, option)
                 }
-                renderInput={(params) => (
+                renderInput={params => (
                   <TextField
                     {...params}
                     label="Pokémon"
@@ -287,7 +291,7 @@ export default function ReportDeckDialog({
               <Typography color="error" variant="body2">
                 {saveDeck.error instanceof Error
                   ? saveDeck.error.message
-                  : "Error al guardar"}
+                  : 'Error al guardar'}
               </Typography>
             ) : null}
           </Stack>
@@ -302,9 +306,9 @@ export default function ReportDeckDialog({
           onClick={handleSave}
           disabled={optionsLoading || saveDeck.isPending}
         >
-          {saveDeck.isPending ? "Guardando…" : "Guardar"}
+          {saveDeck.isPending ? 'Guardando…' : 'Guardar'}
         </Button>
       </DialogActions>
     </Dialog>
-  );
+  )
 }

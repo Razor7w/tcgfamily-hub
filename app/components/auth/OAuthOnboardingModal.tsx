@@ -11,11 +11,7 @@ import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import { validatePopidOptional } from '@/lib/rut-chile'
-import {
-  formatRutOnBlur,
-  getRutFieldError,
-  onlyDigits
-} from '@/lib/rut-input'
+import { formatRutOnBlur, getRutFieldError, onlyDigits } from '@/lib/rut-input'
 
 type Props = {
   open: boolean
@@ -93,51 +89,63 @@ export default function OAuthOnboardingModal({
       <Box component="form" onSubmit={handleSubmit}>
         <DialogTitle>Completa tu perfil</DialogTitle>
         <DialogContent>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Iniciaste sesión con Google. Para continuar necesitamos tu RUT
-          (obligatorio) y, si quieres, tu Pop ID.
-        </Typography>
-        {error ? (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-            {error}
-          </Alert>
-        ) : null}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 0.5 }}>
-          <TextField
-            label="RUT"
-            name="rut"
-            autoComplete="off"
-            value={rut}
-            onChange={e => setRut(e.target.value)}
-            onBlur={() => setRut(formatRutOnBlur(rut))}
-            disabled={loading}
-            required
-            fullWidth
-            placeholder="12.345.678-9"
-            error={Boolean(rut.trim()) && getRutFieldError(rut, true) !== null}
-            helperText={
-              getRutFieldError(rut, true) ??
-              (!rut.trim()
-                ? 'Obligatorio. Formato chileno con dígito verificador.'
-                : undefined)
-            }
-            inputProps={{ maxLength: 20 }}
-          />
-          <TextField
-            label="Pop ID"
-            name="popid"
-            autoComplete="off"
-            value={popid}
-            onChange={e => setPopid(onlyDigits(e.target.value, 64))}
-            disabled={loading}
-            fullWidth
-            helperText="Opcional. Solo números."
-            error={
-              Boolean(popid.trim()) && validatePopidOptional(popid) !== null
-            }
-            inputProps={{ maxLength: 64, inputMode: 'numeric', pattern: '[0-9]*' }}
-          />
-        </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Iniciaste sesión con Google. Para continuar necesitamos tu RUT
+            (obligatorio) y, si quieres, tu Pop ID.
+          </Typography>
+          {error ? (
+            <Alert
+              severity="error"
+              sx={{ mb: 2 }}
+              onClose={() => setError(null)}
+            >
+              {error}
+            </Alert>
+          ) : null}
+          <Box
+            sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 0.5 }}
+          >
+            <TextField
+              label="RUT"
+              name="rut"
+              autoComplete="off"
+              value={rut}
+              onChange={e => setRut(e.target.value)}
+              onBlur={() => setRut(formatRutOnBlur(rut))}
+              disabled={loading}
+              required
+              fullWidth
+              placeholder="12.345.678-9"
+              error={
+                Boolean(rut.trim()) && getRutFieldError(rut, true) !== null
+              }
+              helperText={
+                getRutFieldError(rut, true) ??
+                (!rut.trim()
+                  ? 'Obligatorio. Formato chileno con dígito verificador.'
+                  : undefined)
+              }
+              inputProps={{ maxLength: 20 }}
+            />
+            <TextField
+              label="Pop ID"
+              name="popid"
+              autoComplete="off"
+              value={popid}
+              onChange={e => setPopid(onlyDigits(e.target.value, 64))}
+              disabled={loading}
+              fullWidth
+              helperText="Opcional. Solo números."
+              error={
+                Boolean(popid.trim()) && validatePopidOptional(popid) !== null
+              }
+              inputProps={{
+                maxLength: 64,
+                inputMode: 'numeric',
+                pattern: '[0-9]*'
+              }}
+            />
+          </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button

@@ -77,7 +77,9 @@ function parseBoolean(s: string | undefined | null): boolean {
 /**
  * Devuelve jugadores y emparejamientos (pairings) desde el XML pegado.
  */
-export function parseTournamentXml(xmlString: string): ParseTournamentXmlResult {
+export function parseTournamentXml(
+  xmlString: string
+): ParseTournamentXmlResult {
   const trimmed = xmlString.trim()
   if (!trimmed) {
     return { meta: null, players: [], matches: [], standings: [] }
@@ -230,7 +232,9 @@ export function parseTournamentXml(xmlString: string): ParseTournamentXmlResult 
 }
 
 /** Agrupa partidas por número de ronda (orden ascendente). */
-export function groupMatchesByRound(matches: ParsedMatch[]): Map<number, ParsedMatch[]> {
+export function groupMatchesByRound(
+  matches: ParsedMatch[]
+): Map<number, ParsedMatch[]> {
   const map = new Map<number, ParsedMatch[]>()
   for (const m of matches) {
     const list = map.get(m.roundNumber) ?? []
@@ -252,7 +256,7 @@ export type TournamentStandingsCategoryPayload = {
  * `type="dnf"` en el TDF = did not finish.
  */
 export function foldStandingsByCategory(
-  standings: ParsedStandingsPod[],
+  standings: ParsedStandingsPod[]
 ): TournamentStandingsCategoryPayload[] {
   const agg = new Map<
     number,
@@ -280,18 +284,20 @@ export function foldStandingsByCategory(
     slot.finished.sort((a, b) => a.place - b.place)
     out.push({
       categoryIndex: c,
-      finished: slot.finished.map((p) => ({
+      finished: slot.finished.map(p => ({
         popId: p.popId.trim(),
-        place: p.place,
+        place: p.place
       })),
-      dnf: [...slot.dnf].map((popId) => ({ popId })),
+      dnf: [...slot.dnf].map(popId => ({ popId }))
     })
   }
   return out
 }
 
 /** Mapa POP ID → nombre para mostrar en pairings. */
-export function buildPlayerNameLookup(players: ParsedPlayer[]): Map<string, string> {
+export function buildPlayerNameLookup(
+  players: ParsedPlayer[]
+): Map<string, string> {
   const map = new Map<string, string>()
   for (const p of players) {
     const full = [p.firstName, p.lastName].filter(Boolean).join(' ').trim()
@@ -310,7 +316,9 @@ export type MatchRecord = {
  * Acumula victorias / derrotas / empates por POP a partir de `outcome` en cada partida.
  * - `1` → gana jugador 1, `2` → gana jugador 2, `3` → empate (ambos), bye (un solo jugador) → victoria para ese jugador.
  */
-export function buildMatchRecordsFromMatches(matches: ParsedMatch[]): Map<string, MatchRecord> {
+export function buildMatchRecordsFromMatches(
+  matches: ParsedMatch[]
+): Map<string, MatchRecord> {
   const map = new Map<string, MatchRecord>()
   const bump = (id: string) => {
     if (!id) return
@@ -355,11 +363,9 @@ export function buildMatchRecordsFromMatches(matches: ParsedMatch[]): Map<string
  */
 export function buildMatchRecordsThroughRound(
   matches: ParsedMatch[],
-  maxRoundNumberInclusive: number,
+  maxRoundNumberInclusive: number
 ): Map<string, MatchRecord> {
-  const filtered = matches.filter(
-    (m) => m.roundNumber <= maxRoundNumberInclusive,
-  )
+  const filtered = matches.filter(m => m.roundNumber <= maxRoundNumberInclusive)
   return buildMatchRecordsFromMatches(filtered)
 }
 
@@ -370,19 +376,19 @@ export function buildMatchRecordsThroughRound(
 export function buildParticipantRecordsForSyncRound(
   matches: ParsedMatch[],
   players: ParsedPlayer[],
-  roundNum: number,
+  roundNum: number
 ): { popId: string; wins: number; losses: number; ties: number }[] {
   const prefix = buildMatchRecordsThroughRound(
     matches,
-    Math.max(0, roundNum - 1),
+    Math.max(0, roundNum - 1)
   )
-  return players.map((p) => {
+  return players.map(p => {
     const r = prefix.get(p.popId)
     return {
       popId: p.popId,
       wins: r?.wins ?? 0,
       losses: r?.losses ?? 0,
-      ties: r?.ties ?? 0,
+      ties: r?.ties ?? 0
     }
   })
 }
@@ -401,10 +407,9 @@ export type MatchRecordsBeforeRow = {
  * Para cada partida, récord W/L/T de cada jugador **antes** de aplicar esa partida,
  * procesando en orden de `roundNumber` (y orden de aparición en el XML dentro de la misma ronda).
  */
-export function buildRecordsBeforeEachMatch(matches: ParsedMatch[]): (
-  | MatchRecordsBeforeRow
-  | undefined
-)[] {
+export function buildRecordsBeforeEachMatch(
+  matches: ParsedMatch[]
+): (MatchRecordsBeforeRow | undefined)[] {
   const n = matches.length
   const snapshots: (MatchRecordsBeforeRow | undefined)[] = new Array(n)
   const running = new Map<string, MatchRecord>()
@@ -422,12 +427,14 @@ export function buildRecordsBeforeEachMatch(matches: ParsedMatch[]): (
     ties: r.ties
   })
 
-  const indices = matches.map((_, i) => i).sort((a, b) => {
-    const ra = matches[a].roundNumber
-    const rb = matches[b].roundNumber
-    if (ra !== rb) return ra - rb
-    return a - b
-  })
+  const indices = matches
+    .map((_, i) => i)
+    .sort((a, b) => {
+      const ra = matches[a].roundNumber
+      const rb = matches[b].roundNumber
+      if (ra !== rb) return ra - rb
+      return a - b
+    })
 
   for (const idx of indices) {
     const m = matches[idx]

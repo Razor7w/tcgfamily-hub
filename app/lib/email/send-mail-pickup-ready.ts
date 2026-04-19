@@ -1,21 +1,21 @@
-import { Resend } from "resend";
+import { Resend } from 'resend'
 
 function getAppOrigin(): string {
-  const auth = process.env.AUTH_URL?.trim();
-  if (auth) return auth.replace(/\/$/, "");
-  const pub = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  if (pub) return pub.replace(/\/$/, "");
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
+  const auth = process.env.AUTH_URL?.trim()
+  if (auth) return auth.replace(/\/$/, '')
+  const pub = process.env.NEXT_PUBLIC_APP_URL?.trim()
+  if (pub) return pub.replace(/\/$/, '')
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
+  return 'http://localhost:3000'
 }
 
 function isLocalhostOrigin(origin: string): boolean {
   try {
-    const u = new URL(origin);
-    const h = u.hostname.toLowerCase();
-    return h === "localhost" || h === "127.0.0.1" || h === "::1";
+    const u = new URL(origin)
+    const h = u.hostname.toLowerCase()
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1'
   } catch {
-    return false;
+    return false
   }
 }
 
@@ -25,40 +25,40 @@ function isLocalhostOrigin(origin: string): boolean {
  */
 function shouldSkipResendForLocalEnvironment(): boolean {
   const force =
-    process.env.RESEND_SEND_IN_DEV === "1" ||
-    process.env.RESEND_SEND_IN_DEV === "true";
-  if (force) return false;
-  if (process.env.NODE_ENV === "development") return true;
-  return isLocalhostOrigin(getAppOrigin());
+    process.env.RESEND_SEND_IN_DEV === '1' ||
+    process.env.RESEND_SEND_IN_DEV === 'true'
+  if (force) return false
+  if (process.env.NODE_ENV === 'development') return true
+  return isLocalhostOrigin(getAppOrigin())
 }
 
 function escapeHtml(s: string): string {
   return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
 }
 
 /** Remitente por defecto para avisos de retiro (dominio verificado en Resend). */
-const DEFAULT_PICKUP_FROM = "TCG Family <notificaciones@hub.tcgfamily.cl>";
+const DEFAULT_PICKUP_FROM = 'TCG Family <notificaciones@hub.tcgfamily.cl>'
 
 function formatResendFromHeader(raw: string): string {
-  const t = raw.trim();
-  if (!t) return DEFAULT_PICKUP_FROM;
-  if (t.includes("<") && t.includes(">")) return t;
-  return `TCG Family <${t}>`;
+  const t = raw.trim()
+  if (!t) return DEFAULT_PICKUP_FROM
+  if (t.includes('<') && t.includes('>')) return t
+  return `TCG Family <${t}>`
 }
 
 /**
  * Orden: RESEND_FROM_MAIL_PICKUP (solo este tipo de correo) → RESEND_FROM (fallback general) → predeterminado.
  */
 function buildPickupReadyFromHeader(): string {
-  const specific = process.env.RESEND_FROM_MAIL_PICKUP?.trim();
-  if (specific) return formatResendFromHeader(specific);
-  const general = process.env.RESEND_FROM?.trim();
-  if (general) return formatResendFromHeader(general);
-  return DEFAULT_PICKUP_FROM;
+  const specific = process.env.RESEND_FROM_MAIL_PICKUP?.trim()
+  if (specific) return formatResendFromHeader(specific)
+  const general = process.env.RESEND_FROM?.trim()
+  if (general) return formatResendFromHeader(general)
+  return DEFAULT_PICKUP_FROM
 }
 
 /**
@@ -66,38 +66,38 @@ function buildPickupReadyFromHeader(): string {
  * Sin RESEND_API_KEY solo registra un warning y no lanza (el flujo de negocio en BD ya quedó guardado).
  */
 export async function sendMailPickupReadyEmail(input: {
-  to: string;
-  recipientName?: string | null;
-  mailCode: string;
+  to: string
+  recipientName?: string | null
+  mailCode: string
 }): Promise<{ sent: boolean; skippedReason?: string }> {
   if (shouldSkipResendForLocalEnvironment()) {
     console.info(
-      "[email] Entorno local: no se envía correo por Resend. Define RESEND_SEND_IN_DEV=true para probar envíos reales.",
-    );
-    return { sent: false, skippedReason: "local_dev" };
+      '[email] Entorno local: no se envía correo por Resend. Define RESEND_SEND_IN_DEV=true para probar envíos reales.'
+    )
+    return { sent: false, skippedReason: 'local_dev' }
   }
 
-  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const apiKey = process.env.RESEND_API_KEY?.trim()
   if (!apiKey) {
     console.warn(
-      "[email] RESEND_API_KEY no configurada: omitiendo aviso de retiro en tienda.",
-    );
-    return { sent: false, skippedReason: "no_api_key" };
+      '[email] RESEND_API_KEY no configurada: omitiendo aviso de retiro en tienda.'
+    )
+    return { sent: false, skippedReason: 'no_api_key' }
   }
 
-  const to = input.to.trim();
+  const to = input.to.trim()
   if (!to) {
-    return { sent: false, skippedReason: "empty_email" };
+    return { sent: false, skippedReason: 'empty_email' }
   }
 
-  const origin = getAppOrigin();
-  const dashboardMailUrl = `${origin}/dashboard/mail`;
-  const code = input.mailCode.trim();
+  const origin = getAppOrigin()
+  const dashboardMailUrl = `${origin}/dashboard/mail`
+  const code = input.mailCode.trim()
   const greeting = input.recipientName?.trim()
     ? `Hola ${input.recipientName.trim()},`
-    : "Hola,";
+    : 'Hola,'
 
-  const subject = "Tu correo ya está en tienda — puedes retirarlo";
+  const subject = 'Tu correo ya está en tienda — puedes retirarlo'
   const text = `${greeting}
 
 La tienda recepcionó tu envío. Ya puedes pasar a retirarlo con el código: ${code}
@@ -105,14 +105,14 @@ La tienda recepcionó tu envío. Ya puedes pasar a retirarlo con el código: ${c
 Más detalle en tu panel:
 ${dashboardMailUrl}
 
-— TCG Family`;
+— TCG Family`
 
   const safeGreeting = escapeHtml(
     input.recipientName?.trim()
       ? `Hola ${input.recipientName.trim()},`
-      : "Hola,",
-  );
-  const safeCode = escapeHtml(code);
+      : 'Hola,'
+  )
+  const safeCode = escapeHtml(code)
 
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -129,28 +129,28 @@ ${dashboardMailUrl}
     </td></tr>
   </table>
 </body>
-</html>`;
+</html>`
 
-  const resend = new Resend(apiKey);
+  const resend = new Resend(apiKey)
   const { error } = await resend.emails.send({
     from: buildPickupReadyFromHeader(),
     to: [to],
     subject,
     text,
-    html,
-  });
+    html
+  })
 
   if (error) {
-    console.error("[email] Resend error:", error);
+    console.error('[email] Resend error:', error)
     const msg =
       error &&
-      typeof error === "object" &&
-      "message" in error &&
-      typeof (error as { message: unknown }).message === "string"
+      typeof error === 'object' &&
+      'message' in error &&
+      typeof (error as { message: unknown }).message === 'string'
         ? (error as { message: string }).message
-        : "Error al enviar email";
-    throw new Error(msg);
+        : 'Error al enviar email'
+    throw new Error(msg)
   }
 
-  return { sent: true };
+  return { sent: true }
 }

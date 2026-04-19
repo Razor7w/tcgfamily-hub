@@ -71,7 +71,11 @@ export function validateEmailFormat(email: string): string | null {
   if (local.includes('..')) {
     return 'La parte antes de @ no puede tener puntos seguidos.'
   }
-  if (domain.startsWith('.') || domain.endsWith('.') || domain.startsWith('-')) {
+  if (
+    domain.startsWith('.') ||
+    domain.endsWith('.') ||
+    domain.startsWith('-')
+  ) {
     return 'El dominio del correo no es válido.'
   }
   if (domain.includes('..')) {
@@ -98,8 +102,10 @@ export function validateEmailFormat(email: string): string | null {
 
 export function validateRegisterName(name: string): string | null {
   const t = name.trim()
-  if (t.length < NAME_MIN) return `El nombre debe tener al menos ${NAME_MIN} caracteres.`
-  if (t.length > NAME_MAX) return `El nombre no puede superar ${NAME_MAX} caracteres.`
+  if (t.length < NAME_MIN)
+    return `El nombre debe tener al menos ${NAME_MIN} caracteres.`
+  if (t.length > NAME_MAX)
+    return `El nombre no puede superar ${NAME_MAX} caracteres.`
   return null
 }
 

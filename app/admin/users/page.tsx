@@ -56,17 +56,16 @@ import {
   type CreateUserData
 } from '@/hooks/useUsers'
 import { useAppStore } from '@/store/useAppStore'
-import {
-  formatRutOnBlur,
-  getRutFieldError,
-  onlyDigits
-} from '@/lib/rut-input'
+import { formatRutOnBlur, getRutFieldError, onlyDigits } from '@/lib/rut-input'
 import { validatePopidOptional } from '@/lib/rut-chile'
 import { format } from 'rut.js'
 
 const PAGE_SIZE = 10
 
-function matchesRutQuery(userRut: string | undefined, queryRaw: string): boolean {
+function matchesRutQuery(
+  userRut: string | undefined,
+  queryRaw: string
+): boolean {
   const q = queryRaw.trim().toLowerCase()
   if (!q) return true
   const rut = (userRut ?? '').toLowerCase()
@@ -362,13 +361,13 @@ export default function UsersPageRefactored() {
 
   return (
     <Box
-      sx={{
+      sx={t => ({
         width: '100%',
         maxWidth: '100%',
         overflowX: 'hidden',
         minHeight: '100vh',
-        bgcolor: 'background.default'
-      }}
+        background: `linear-gradient(165deg, ${alpha(t.palette.primary.main, 0.06)} 0%, ${t.palette.background.default} 38%, ${t.palette.background.default} 100%)`
+      })}
     >
       <Container
         maxWidth="lg"
@@ -376,7 +375,12 @@ export default function UsersPageRefactored() {
         sx={{ py: { xs: 2, sm: 4 }, px: { xs: 1.5, sm: 2, md: 3 } }}
       >
         <Stack spacing={2} sx={{ mb: 3 }}>
-          <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+          <Stack
+            direction="row"
+            spacing={1.5}
+            alignItems="center"
+            flexWrap="wrap"
+          >
             <PeopleOutlined color="primary" sx={{ fontSize: 40 }} />
             <Box sx={{ minWidth: 0 }}>
               <Typography
@@ -386,19 +390,35 @@ export default function UsersPageRefactored() {
               >
                 Gestión de usuarios
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Alta, edición, importación CSV y consulta de puntos de tienda por usuario.
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.5 }}
+              >
+                Alta, edición, importación CSV y consulta de puntos de tienda
+                por usuario.
               </Typography>
             </Box>
           </Stack>
 
-          <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: 2 }}>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
+          <Paper
+            variant="outlined"
+            sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: 2 }}
+          >
+            <Typography
+              variant="subtitle2"
+              color="text.secondary"
+              sx={{ mb: 1.5 }}
+            >
               Filtros y acciones
             </Typography>
             <Stack spacing={2}>
               <Box>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: 'block', mb: 0.75 }}
+                >
                   Rol
                 </Typography>
                 <ToggleButtonGroup
@@ -525,14 +545,21 @@ export default function UsersPageRefactored() {
         </Stack>
 
         {filteredUsers.length === 0 ? (
-          <Paper variant="outlined" sx={{ py: 6, px: 2, textAlign: 'center', borderRadius: 2 }}>
+          <Paper
+            variant="outlined"
+            sx={{ py: 6, px: 2, textAlign: 'center', borderRadius: 2 }}
+          >
             <Typography color="text.secondary" variant="body1" gutterBottom>
               No hay usuarios que coincidan
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               Ajusta el rol, el nombre o el RUT, o restablece los filtros.
             </Typography>
-            <Button size="small" variant="outlined" onClick={handleClearFilters}>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={handleClearFilters}
+            >
               Restablecer filtros
             </Button>
           </Paper>
@@ -550,7 +577,11 @@ export default function UsersPageRefactored() {
                   <Card
                     key={user.id}
                     variant="outlined"
-                    sx={{ display: 'flex', flexDirection: 'column', borderRadius: 2 }}
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      borderRadius: 2
+                    }}
                   >
                     <CardContent sx={{ flex: 1, pb: 1 }}>
                       <Box
@@ -580,13 +611,22 @@ export default function UsersPageRefactored() {
                             gap={1}
                             sx={{ mb: 0.5 }}
                           >
-                            <Typography variant="subtitle1" fontWeight={600} noWrap title={user.name || ''}>
+                            <Typography
+                              variant="subtitle1"
+                              fontWeight={600}
+                              noWrap
+                              title={user.name || ''}
+                            >
                               {user.name || 'Sin nombre'}
                             </Typography>
                             <Chip
-                              label={user.role === 'admin' ? 'Admin' : 'Usuario'}
+                              label={
+                                user.role === 'admin' ? 'Admin' : 'Usuario'
+                              }
                               size="small"
-                              color={user.role === 'admin' ? 'secondary' : 'default'}
+                              color={
+                                user.role === 'admin' ? 'secondary' : 'default'
+                              }
                               variant="outlined"
                               sx={{ fontWeight: 600, flexShrink: 0 }}
                             />
@@ -680,212 +720,235 @@ export default function UsersPageRefactored() {
           </>
         )}
 
-      {/* Diálogo para crear/editar */}
-      <Dialog
-        open={openDialog}
-        onClose={handleCloseDialog}
-        maxWidth="sm"
-        fullWidth
-        scroll="paper"
-        aria-labelledby="admin-user-dialog-title"
-      >
-        <DialogTitle id="admin-user-dialog-title">
-          {editingUser ? 'Editar usuario' : 'Nuevo usuario'}
-        </DialogTitle>
-        <DialogContent dividers>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-            <TextField
-              label="Nombre"
-              fullWidth
-              value={formData.name}
-              onChange={e => setFormData({ ...formData, name: e.target.value })}
-            />
-            <TextField
-              label="Email"
-              type="email"
-              fullWidth
-              value={formData.email}
-              onChange={e =>
-                setFormData({ ...formData, email: e.target.value })
-              }
-              disabled={!!editingUser}
-            />
-            <TextField
-              label="Teléfono"
-              fullWidth
-              value={formData.phone}
-              onChange={e =>
-                setFormData({ ...formData, phone: e.target.value })
-              }
-            />
-            <TextField
-              label="RUT"
-              fullWidth
-              value={formData.rut ?? ''}
-              onChange={e => setFormData({ ...formData, rut: e.target.value })}
-              onBlur={() =>
-                setFormData(prev => ({
-                  ...prev,
-                  rut: formatRutOnBlur(prev.rut ?? '')
-                }))
-              }
-              placeholder="12.345.678-9"
-              error={
-                Boolean((formData.rut ?? '').trim()) &&
-                getRutFieldError(formData.rut ?? '', false) !== null
-              }
-              helperText={
-                getRutFieldError(formData.rut ?? '', false) ??
-                (!(formData.rut ?? '').trim() ? 'Opcional.' : undefined)
-              }
-              inputProps={{ maxLength: 20 }}
-            />
-            <TextField
-              label="PopID"
-              fullWidth
-              value={formData.popid ?? ''}
-              onChange={e =>
-                setFormData({
-                  ...formData,
-                  popid: onlyDigits(e.target.value, 64)
-                })
-              }
-              helperText="Opcional. Solo números."
-              error={
-                Boolean((formData.popid ?? '').trim()) &&
-                validatePopidOptional(formData.popid ?? '') !== null
-              }
-              inputProps={{ maxLength: 64, inputMode: 'numeric', pattern: '[0-9]*' }}
-            />
-            <FormControl fullWidth>
-              <InputLabel>Rol</InputLabel>
-              <Select
-                value={formData.role}
-                label="Rol"
+        {/* Diálogo para crear/editar */}
+        <Dialog
+          open={openDialog}
+          onClose={handleCloseDialog}
+          maxWidth="sm"
+          fullWidth
+          scroll="paper"
+          aria-labelledby="admin-user-dialog-title"
+        >
+          <DialogTitle id="admin-user-dialog-title">
+            {editingUser ? 'Editar usuario' : 'Nuevo usuario'}
+          </DialogTitle>
+          <DialogContent dividers>
+            <Box
+              sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}
+            >
+              <TextField
+                label="Nombre"
+                fullWidth
+                value={formData.name}
+                onChange={e =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+              />
+              <TextField
+                label="Email"
+                type="email"
+                fullWidth
+                value={formData.email}
+                onChange={e =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                disabled={!!editingUser}
+              />
+              <TextField
+                label="Teléfono"
+                fullWidth
+                value={formData.phone}
+                onChange={e =>
+                  setFormData({ ...formData, phone: e.target.value })
+                }
+              />
+              <TextField
+                label="RUT"
+                fullWidth
+                value={formData.rut ?? ''}
+                onChange={e =>
+                  setFormData({ ...formData, rut: e.target.value })
+                }
+                onBlur={() =>
+                  setFormData(prev => ({
+                    ...prev,
+                    rut: formatRutOnBlur(prev.rut ?? '')
+                  }))
+                }
+                placeholder="12.345.678-9"
+                error={
+                  Boolean((formData.rut ?? '').trim()) &&
+                  getRutFieldError(formData.rut ?? '', false) !== null
+                }
+                helperText={
+                  getRutFieldError(formData.rut ?? '', false) ??
+                  (!(formData.rut ?? '').trim() ? 'Opcional.' : undefined)
+                }
+                inputProps={{ maxLength: 20 }}
+              />
+              <TextField
+                label="PopID"
+                fullWidth
+                value={formData.popid ?? ''}
                 onChange={e =>
                   setFormData({
                     ...formData,
-                    role: e.target.value as 'user' | 'admin'
+                    popid: onlyDigits(e.target.value, 64)
                   })
                 }
-                MenuProps={SELECT_MENU_PROPS}
-              >
-                <MenuItem value="user">Usuario</MenuItem>
-                <MenuItem value="admin">Admin</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={handleCloseDialog}>Cancelar</Button>
-          <Button
-            onClick={handleSave}
-            variant="contained"
-            disabled={createUser.isPending || updateUser.isPending}
-          >
-            {createUser.isPending || updateUser.isPending
-              ? 'Guardando…'
-              : 'Guardar'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog
-        open={!!pointsModalUser}
-        onClose={() => setPointsModalUser(null)}
-        maxWidth="sm"
-        fullWidth
-        scroll="paper"
-        aria-labelledby="admin-points-dialog-title"
-      >
-        <DialogTitle id="admin-points-dialog-title">
-          Crédito de tienda
-          {pointsModalUser
-            ? ` — ${pointsModalUser.name || pointsModalUser.email || pointsModalUser.id}`
-            : ''}
-        </DialogTitle>
-        <DialogContent dividers>
-          {pointsModalUser && (
-            <Stack spacing={2} sx={{ pt: 1 }}>
-              <Box
-                sx={{
-                  p: 2.5,
-                  borderRadius: 2,
-                  bgcolor: theme =>
-                    alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.14 : 0.08),
-                  border: '1px solid',
-                  borderColor: 'divider'
+                helperText="Opcional. Solo números."
+                error={
+                  Boolean((formData.popid ?? '').trim()) &&
+                  validatePopidOptional(formData.popid ?? '') !== null
+                }
+                inputProps={{
+                  maxLength: 64,
+                  inputMode: 'numeric',
+                  pattern: '[0-9]*'
                 }}
-              >
-                <Typography
-                  variant="overline"
-                  color="text.secondary"
-                  sx={{ letterSpacing: 0.5, display: 'block', mb: 0.5 }}
+              />
+              <FormControl fullWidth>
+                <InputLabel>Rol</InputLabel>
+                <Select
+                  value={formData.role}
+                  label="Rol"
+                  onChange={e =>
+                    setFormData({
+                      ...formData,
+                      role: e.target.value as 'user' | 'admin'
+                    })
+                  }
+                  MenuProps={SELECT_MENU_PROPS}
                 >
-                  Saldo actual (puntos)
-                </Typography>
-                <Typography variant="h4" sx={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>
-                  {(pointsModalUser.storePoints ?? 0).toLocaleString('es-CL')}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                  Equivalente aprox.:{' '}
-                  {new Intl.NumberFormat('es-CL', {
-                    style: 'currency',
-                    currency: 'CLP',
-                    maximumFractionDigits: 0
-                  }).format(pointsModalUser.storePoints ?? 0)}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" color="text.secondary">
-                  Próximos puntos a vencer
-                </Typography>
-                <Typography variant="body1">
-                  {(pointsModalUser.storePointsExpiringNext ?? 0).toLocaleString(
-                    'es-CL'
-                  )}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" color="text.secondary">
-                  Fecha de vencimiento
-                </Typography>
-                <Typography variant="body1">
-                  {pointsModalUser.storePointsExpiryDate
-                    ? new Date(
-                        pointsModalUser.storePointsExpiryDate
-                      ).toLocaleDateString('es-CL', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
-                      })
-                    : '—'}
-                </Typography>
-              </Box>
-            </Stack>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button variant="contained" onClick={() => setPointsModalUser(null)}>
-            Cerrar
-          </Button>
-        </DialogActions>
-      </Dialog>
+                  <MenuItem value="user">Usuario</MenuItem>
+                  <MenuItem value="admin">Admin</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button onClick={handleCloseDialog}>Cancelar</Button>
+            <Button
+              onClick={handleSave}
+              variant="contained"
+              disabled={createUser.isPending || updateUser.isPending}
+            >
+              {createUser.isPending || updateUser.isPending
+                ? 'Guardando…'
+                : 'Guardar'}
+            </Button>
+          </DialogActions>
+        </Dialog>
 
-      {/* Snackbar para notificaciones */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
+        <Dialog
+          open={!!pointsModalUser}
+          onClose={() => setPointsModalUser(null)}
+          maxWidth="sm"
+          fullWidth
+          scroll="paper"
+          aria-labelledby="admin-points-dialog-title"
         >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+          <DialogTitle id="admin-points-dialog-title">
+            Crédito de tienda
+            {pointsModalUser
+              ? ` — ${pointsModalUser.name || pointsModalUser.email || pointsModalUser.id}`
+              : ''}
+          </DialogTitle>
+          <DialogContent dividers>
+            {pointsModalUser && (
+              <Stack spacing={2} sx={{ pt: 1 }}>
+                <Box
+                  sx={{
+                    p: 2.5,
+                    borderRadius: 2,
+                    bgcolor: theme =>
+                      alpha(
+                        theme.palette.primary.main,
+                        theme.palette.mode === 'dark' ? 0.14 : 0.08
+                      ),
+                    border: '1px solid',
+                    borderColor: 'divider'
+                  }}
+                >
+                  <Typography
+                    variant="overline"
+                    color="text.secondary"
+                    sx={{ letterSpacing: 0.5, display: 'block', mb: 0.5 }}
+                  >
+                    Saldo actual (puntos)
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    sx={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}
+                  >
+                    {(pointsModalUser.storePoints ?? 0).toLocaleString('es-CL')}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 0.5 }}
+                  >
+                    Equivalente aprox.:{' '}
+                    {new Intl.NumberFormat('es-CL', {
+                      style: 'currency',
+                      currency: 'CLP',
+                      maximumFractionDigits: 0
+                    }).format(pointsModalUser.storePoints ?? 0)}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Próximos puntos a vencer
+                  </Typography>
+                  <Typography variant="body1">
+                    {(
+                      pointsModalUser.storePointsExpiringNext ?? 0
+                    ).toLocaleString('es-CL')}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Fecha de vencimiento
+                  </Typography>
+                  <Typography variant="body1">
+                    {pointsModalUser.storePointsExpiryDate
+                      ? new Date(
+                          pointsModalUser.storePointsExpiryDate
+                        ).toLocaleDateString('es-CL', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
+                        })
+                      : '—'}
+                  </Typography>
+                </Box>
+              </Stack>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button
+              variant="contained"
+              onClick={() => setPointsModalUser(null)}
+            >
+              Cerrar
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Snackbar para notificaciones */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+        >
+          <Alert
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Container>
     </Box>
   )

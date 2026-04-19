@@ -22,7 +22,10 @@ export async function GET() {
       .lean()
 
     if (!user) {
-      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+      return NextResponse.json(
+        { error: 'Usuario no encontrado' },
+        { status: 404 }
+      )
     }
 
     const u = user as {
@@ -75,18 +78,16 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
     }
 
-    const {
-      name,
-      popid,
-      currentPassword,
-      newPassword,
-      confirmNewPassword
-    } = body as Record<string, unknown>
+    const { name, popid, currentPassword, newPassword, confirmNewPassword } =
+      body as Record<string, unknown>
 
     await connectDB()
     const user = await User.findById(session.user.id).select('+passwordHash')
     if (!user) {
-      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+      return NextResponse.json(
+        { error: 'Usuario no encontrado' },
+        { status: 404 }
+      )
     }
 
     const wantsPasswordChange =
@@ -111,8 +112,7 @@ export async function PATCH(request: NextRequest) {
           { status: 400 }
         )
       }
-      const cur =
-        typeof currentPassword === 'string' ? currentPassword : ''
+      const cur = typeof currentPassword === 'string' ? currentPassword : ''
       const conf =
         typeof confirmNewPassword === 'string' ? confirmNewPassword : ''
       if (!cur) {

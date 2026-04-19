@@ -1,8 +1,8 @@
-"use client";
+'use client'
 
 /**
  * EJEMPLO DE USO DE ZUSTAND
- * 
+ *
  * Este componente muestra diferentes patrones de uso de Zustand:
  * - Estado global compartido
  * - Selectores para performance
@@ -10,17 +10,17 @@
  * - Acciones y actualizaciones
  */
 
-import { useAppStore, useSidebar, useAppThemeMode } from "@/store/useAppStore";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Typography from "@mui/material/Typography";
-import TextField from "@mui/material/TextField";
-import Switch from "@mui/material/Switch";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Paper from "@mui/material/Paper";
-import Chip from "@mui/material/Chip";
-import IconButton from "@mui/material/IconButton";
-import CloseIcon from "@mui/icons-material/Close";
+import { useAppStore, useSidebar, useAppThemeMode } from '@/store/useAppStore'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import Typography from '@mui/material/Typography'
+import TextField from '@mui/material/TextField'
+import Switch from '@mui/material/Switch'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import Paper from '@mui/material/Paper'
+import Chip from '@mui/material/Chip'
+import IconButton from '@mui/material/IconButton'
+import CloseIcon from '@mui/icons-material/Close'
 
 export default function ZustandExample() {
   return (
@@ -41,74 +41,66 @@ export default function ZustandExample() {
       {/* Ejemplo 4: Selectores para performance */}
       <Example4Selectors />
     </Box>
-  );
+  )
 }
 
 // ============================================
 // Ejemplo 1: Estado UI simple
 // ============================================
 function Example1UISate() {
-  const sidebarOpen = useAppStore((state) => state.sidebarOpen);
-  const toggleSidebar = useAppStore((state) => state.toggleSidebar);
-  const setSidebarOpen = useAppStore((state) => state.setSidebarOpen);
+  const sidebarOpen = useAppStore(state => state.sidebarOpen)
+  const toggleSidebar = useAppStore(state => state.toggleSidebar)
+  const setSidebarOpen = useAppStore(state => state.setSidebarOpen)
 
   return (
     <Paper sx={{ p: 2, mb: 3 }}>
       <Typography variant="h6" gutterBottom>
         1. Estado UI - Sidebar
       </Typography>
-      <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-        <Typography>Sidebar: {sidebarOpen ? "Abierto" : "Cerrado"}</Typography>
+      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+        <Typography>Sidebar: {sidebarOpen ? 'Abierto' : 'Cerrado'}</Typography>
         <Button variant="outlined" onClick={toggleSidebar}>
           Toggle
         </Button>
-        <Button
-          variant="outlined"
-          onClick={() => setSidebarOpen(true)}
-        >
+        <Button variant="outlined" onClick={() => setSidebarOpen(true)}>
           Abrir
         </Button>
-        <Button
-          variant="outlined"
-          onClick={() => setSidebarOpen(false)}
-        >
+        <Button variant="outlined" onClick={() => setSidebarOpen(false)}>
           Cerrar
         </Button>
       </Box>
     </Paper>
-  );
+  )
 }
 
 // ============================================
 // Ejemplo 2: Filtros globales
 // ============================================
 function Example2GlobalFilters() {
-  const userFilter = useAppStore((state) => state.userFilter);
-  const setUserFilter = useAppStore((state) => state.setUserFilter);
-  const clearUserFilter = useAppStore((state) => state.clearUserFilter);
+  const userFilter = useAppStore(state => state.userFilter)
+  const setUserFilter = useAppStore(state => state.setUserFilter)
+  const clearUserFilter = useAppStore(state => state.clearUserFilter)
 
   return (
     <Paper sx={{ p: 2, mb: 3 }}>
       <Typography variant="h6" gutterBottom>
         2. Filtros Globales - Compartidos entre componentes
       </Typography>
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <TextField
           label="Buscar"
-          value={userFilter.search || ""}
-          onChange={(e) =>
-            setUserFilter({ search: e.target.value || undefined })
-          }
+          value={userFilter.search || ''}
+          onChange={e => setUserFilter({ search: e.target.value || undefined })}
           placeholder="Buscar por nombre, email o RUT"
         />
-        <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           <FormControlLabel
             control={
               <Switch
-                checked={userFilter.role === "admin"}
-                onChange={(e) =>
+                checked={userFilter.role === 'admin'}
+                onChange={e =>
                   setUserFilter({
-                    role: e.target.checked ? "admin" : undefined,
+                    role: e.target.checked ? 'admin' : undefined
                   })
                 }
               />
@@ -145,36 +137,38 @@ function Example2GlobalFilters() {
         </Box>
       </Box>
     </Paper>
-  );
+  )
 }
 
 // ============================================
 // Ejemplo 3: Notificaciones
 // ============================================
 function Example3Notifications() {
-  const notifications = useAppStore((state) => state.notifications);
-  const addNotification = useAppStore((state) => state.addNotification);
-  const removeNotification = useAppStore((state) => state.removeNotification);
-  const clearNotifications = useAppStore((state) => state.clearNotifications);
+  const notifications = useAppStore(state => state.notifications)
+  const addNotification = useAppStore(state => state.addNotification)
+  const removeNotification = useAppStore(state => state.removeNotification)
+  const clearNotifications = useAppStore(state => state.clearNotifications)
 
-  const handleAddNotification = (type: "success" | "error" | "info" | "warning") => {
+  const handleAddNotification = (
+    type: 'success' | 'error' | 'info' | 'warning'
+  ) => {
     addNotification({
       message: `Notificación de tipo ${type} - ${new Date().toLocaleTimeString()}`,
-      type,
-    });
-  };
+      type
+    })
+  }
 
   return (
     <Paper sx={{ p: 2, mb: 3 }}>
       <Typography variant="h6" gutterBottom>
         3. Sistema de Notificaciones Global
       </Typography>
-      <Box sx={{ display: "flex", gap: 1, mb: 2, flexWrap: "wrap" }}>
+      <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
         <Button
           size="small"
           variant="contained"
           color="success"
-          onClick={() => handleAddNotification("success")}
+          onClick={() => handleAddNotification('success')}
         >
           Success
         </Button>
@@ -182,7 +176,7 @@ function Example3Notifications() {
           size="small"
           variant="contained"
           color="error"
-          onClick={() => handleAddNotification("error")}
+          onClick={() => handleAddNotification('error')}
         >
           Error
         </Button>
@@ -190,7 +184,7 @@ function Example3Notifications() {
           size="small"
           variant="contained"
           color="info"
-          onClick={() => handleAddNotification("info")}
+          onClick={() => handleAddNotification('info')}
         >
           Info
         </Button>
@@ -198,7 +192,7 @@ function Example3Notifications() {
           size="small"
           variant="contained"
           color="warning"
-          onClick={() => handleAddNotification("warning")}
+          onClick={() => handleAddNotification('warning')}
         >
           Warning
         </Button>
@@ -206,22 +200,22 @@ function Example3Notifications() {
           Limpiar Todas
         </Button>
       </Box>
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         {notifications.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
             No hay notificaciones
           </Typography>
         ) : (
-          notifications.map((notification) => (
+          notifications.map(notification => (
             <Box
               key={notification.id}
               sx={{
                 p: 1,
-                bgcolor: "#f5f5f5",
+                bgcolor: '#f5f5f5',
                 borderRadius: 1,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
               }}
             >
               <Box>
@@ -244,7 +238,7 @@ function Example3Notifications() {
         )}
       </Box>
     </Paper>
-  );
+  )
 }
 
 // ============================================
@@ -252,11 +246,11 @@ function Example3Notifications() {
 // ============================================
 function Example4Selectors() {
   // Usando selectores personalizados (más eficiente)
-  const sidebarOpen = useSidebar();
-  const theme = useAppThemeMode();
+  const sidebarOpen = useSidebar()
+  const theme = useAppThemeMode()
 
   // O usando directamente (también funciona, pero menos eficiente si hay muchos componentes)
-  const setTheme = useAppStore((state) => state.setTheme);
+  const setTheme = useAppStore(state => state.setTheme)
 
   return (
     <Paper sx={{ p: 2 }}>
@@ -268,26 +262,26 @@ function Example4Selectors() {
         re-renderizan cuando cambia ese valor específico, mejorando el
         performance.
       </Typography>
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <Box>
           <Typography variant="body2">
-            Sidebar: {sidebarOpen ? "Abierto" : "Cerrado"}
+            Sidebar: {sidebarOpen ? 'Abierto' : 'Cerrado'}
           </Typography>
           <Typography variant="body2">Tema: {theme}</Typography>
         </Box>
-        <Box sx={{ display: "flex", gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1 }}>
           <Button
             size="small"
-            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
           >
             Cambiar Tema
           </Button>
         </Box>
         <Typography variant="caption" color="text.secondary">
-          Nota: El tema se persiste en localStorage gracias a la
-          configuración de persist en el store.
+          Nota: El tema se persiste en localStorage gracias a la configuración
+          de persist en el store.
         </Typography>
       </Box>
     </Paper>
-  );
+  )
 }

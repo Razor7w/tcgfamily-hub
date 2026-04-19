@@ -1,5 +1,5 @@
-import DashboardUserNav from "@/components/navigation/DashboardUserNav";
+import DashboardUserNav from '@/components/navigation/DashboardUserNav'
 
 export default function DashboardSidebar({ isAdmin }: { isAdmin: boolean }) {
-  return <DashboardUserNav isAdmin={isAdmin} />;
+  return <DashboardUserNav isAdmin={isAdmin} />
 }

@@ -33,7 +33,10 @@ function normalizeRutForApi(input: string) {
   }
 }
 
-export default function RegisterMailDialog({ open, onClose }: RegisterMailDialogProps) {
+export default function RegisterMailDialog({
+  open,
+  onClose
+}: RegisterMailDialogProps) {
   const registerMail = useRegisterMail()
   const [rut, setRut] = useState('')
   const [observations, setObservations] = useState('')
@@ -77,9 +80,10 @@ export default function RegisterMailDialog({ open, onClose }: RegisterMailDialog
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1 }}>
           <Typography variant="body2" color="text.secondary">
             Ingresa el RUT del receptor. El correo quedará como{' '}
-            <strong>pendiente de ingreso en tienda</strong> hasta que la tienda lo confirme.
-            Se generará un <strong>código único</strong>: úsalo para identificar el envío en tienda y,
-            una vez ingresado el paquete, para <strong>solicitar o retirar</strong> con el mismo código.
+            <strong>pendiente de ingreso en tienda</strong> hasta que la tienda
+            lo confirme. Se generará un <strong>código único</strong>: úsalo
+            para identificar el envío en tienda y, una vez ingresado el paquete,
+            para <strong>solicitar o retirar</strong> con el mismo código.
           </Typography>
 
           <TextField

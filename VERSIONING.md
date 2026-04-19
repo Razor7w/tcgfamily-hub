@@ -12,11 +12,11 @@ Para el proceso completo al subir versión (changelog, tag, deploy), ver [`docs/
 
 Mientras la versión mayor sea **0**, la API pública del paquete no está estabilizada. Aun así seguimos SemVer de forma práctica:
 
-| Cambio | Bump | Ejemplo |
-|--------|------|---------|
-| Correcciones internas, sin comportamiento nuevo relevante | **PATCH** `0.3.0` → `0.3.1` | Bugfix de UI o API interna |
-| Funcionalidad nueva compatible (nuevas rutas, flags, emails) | **MINOR** `0.2.1` → `0.3.0` | Nuevo flujo, módulo opcional o conjunto de features (p. ej. torneos custom + módulo «Mis torneos») |
-| Cambio que rompe integración o datos esperados | **MINOR** en 0.x (o subir a **1.0.0** cuando el producto sea estable) | Migración de esquema obligatoria, eliminación de endpoint usado en producción |
+| Cambio                                                       | Bump                                                                  | Ejemplo                                                                                            |
+| ------------------------------------------------------------ | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Correcciones internas, sin comportamiento nuevo relevante    | **PATCH** `0.3.0` → `0.3.1`                                           | Bugfix de UI o API interna                                                                         |
+| Funcionalidad nueva compatible (nuevas rutas, flags, emails) | **MINOR** `0.2.1` → `0.3.0`                                           | Nuevo flujo, módulo opcional o conjunto de features (p. ej. torneos custom + módulo «Mis torneos») |
+| Cambio que rompe integración o datos esperados               | **MINOR** en 0.x (o subir a **1.0.0** cuando el producto sea estable) | Migración de esquema obligatoria, eliminación de endpoint usado en producción                      |
 
 Cuando el producto esté listo para compromisos de compatibilidad, se puede pasar a **1.0.0** y aplicar SemVer clásico en MAJOR/MINOR/PATCH.
 

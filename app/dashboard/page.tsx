@@ -1,20 +1,20 @@
-"use client";
+'use client'
 
-import Box from "@mui/material/Box";
-import Container from "@mui/material/Container";
-import Typography from "@mui/material/Typography";
-import { useSession } from "next-auth/react";
-import DashboardHomeContent from "@/components/dashboard/DashboardHomeContent";
+import Box from '@mui/material/Box'
+import Container from '@mui/material/Container'
+import Typography from '@mui/material/Typography'
+import { useSession } from 'next-auth/react'
+import DashboardHomeContent from '@/components/dashboard/DashboardHomeContent'
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
+  const { data: session } = useSession()
 
   return (
     <Box
       sx={{
-        minHeight: "100dvh",
-        bgcolor: "background.default",
-        py: 4,
+        minHeight: '100dvh',
+        bgcolor: 'background.default',
+        py: 4
       }}
     >
       <Container maxWidth="lg">
@@ -25,5 +25,5 @@ export default function DashboardPage() {
         <DashboardHomeContent />
       </Container>
     </Box>
-  );
+  )
 }

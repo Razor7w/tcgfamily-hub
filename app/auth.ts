@@ -75,7 +75,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         await connectDB()
         const user = await User.findOne({ email })
           .collation({ locale: 'en', strength: 2 })
-          .select('+passwordHash credentialFailedAttempts credentialLockedUntil')
+          .select(
+            '+passwordHash credentialFailedAttempts credentialLockedUntil'
+          )
 
         const now = new Date()
 
@@ -135,7 +137,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (typeof s.picture === 'string') token.picture = s.picture
         if (typeof s.rut === 'string') token.rut = s.rut
         if (typeof s.popid === 'string') token.popid = s.popid
-        if (typeof s.hasPassword === 'boolean') token.hasPassword = s.hasPassword
+        if (typeof s.hasPassword === 'boolean')
+          token.hasPassword = s.hasPassword
         return token
       }
 

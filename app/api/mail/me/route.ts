@@ -3,7 +3,11 @@ import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import Mail from '@/models/Mails'
 import mongoose from 'mongoose'
-import { clean as cleanRut, format as formatRut, validate as validateRut } from 'rut.js'
+import {
+  clean as cleanRut,
+  format as formatRut,
+  validate as validateRut
+} from 'rut.js'
 
 // GET - mails donde el usuario actual es emisor (from) o receptor (to)
 // Query: ?limit=3 para traer solo los 3 más recientes
@@ -16,7 +20,9 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url)
     const limitParam = searchParams.get('limit')
-    const limit = limitParam ? Math.min(Math.max(1, parseInt(limitParam, 10)), 100) : undefined
+    const limit = limitParam
+      ? Math.min(Math.max(1, parseInt(limitParam, 10)), 100)
+      : undefined
     const pendingOnly =
       searchParams.get('pending') === '1' ||
       searchParams.get('pending') === 'true'
@@ -36,7 +42,8 @@ export async function GET(request: Request) {
       )
     }
 
-    const sessionRut = typeof session.user.rut === 'string' ? session.user.rut.trim() : ''
+    const sessionRut =
+      typeof session.user.rut === 'string' ? session.user.rut.trim() : ''
     const rutVariants: string[] = []
     if (sessionRut && validateRut(sessionRut)) {
       const cleaned = cleanRut(sessionRut)
