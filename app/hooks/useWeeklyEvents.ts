@@ -58,6 +58,8 @@ export interface PublicWeeklyEvent {
     place: number | null;
     isDnf: boolean;
   } | null;
+  /** Liga local asignada (solo torneos oficiales con liga activa). */
+  league?: { name: string; slug: string } | null;
 }
 
 export function useWeekEvents(weekAnchor: Date | null) {

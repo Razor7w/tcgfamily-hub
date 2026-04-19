@@ -10,6 +10,19 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [0.5.2] - 2026-04-18
+
+### Añadido
+
+- **Dashboard — Eventos de la semana** (`WeeklyEventsSection`): chip con el **nombre de la liga** en la card «Detalle del evento» cuando el torneo tiene liga activa asignada; enlace a **`/ligas/[slug]`** (estilo secundario, icono `Leaderboard`, accesible).
+- **`GET /api/events`** (lista semanal): `populate` de `leagueId` y campo **`league`** `{ name, slug }` en cada evento (solo ligas activas con datos válidos).
+
+### Cambiado
+
+- **Ligas** (`/ligas/[slug]`): la clasificación suma puntos por **récord W/L/T** por torneo (victoria 3, empate 1, derrota 0) a partir de los datos del participante; **sin** tabla por posición final ni separación por categoría de edad. API `GET /api/leagues/[slug]` devuelve `standings`, `chartTop` y `league.scoring`. Agregación en [`app/lib/league-aggregate.ts`](./app/lib/league-aggregate.ts); textos en [`app/lib/league-public-copy.ts`](./app/lib/league-public-copy.ts).
+- **Tope de ronda** (`dashboardRoundCap`): si está configurado en el evento, la liga usa el **snapshot** de emparejamientos de la última ronda guardada con `roundNum ≤ tope` (no cuenta rondas posteriores). Detalle opcional `leagueRoundBasis` en la respuesta pública.
+- **Admin — Ligas** (`/admin/ligas`): formulario sin «puntos por posición»; aviso de puntuación fija 3/0/1 y textos de ayuda actualizados.
+
 ## [0.5.1] - 2026-04-18
 
 ### Cambiado
@@ -151,4 +164,4 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 Línea base anterior en `package.json` antes de este changelog; el detalle de cambios queda en el historial de git.
 
-Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.5.1…HEAD`, `[0.5.1]: …/compare/v0.5.0…v0.5.1`, `[0.5.0]: …/compare/v0.4.6…v0.5.0`, `[0.4.6]: …/compare/v0.4.5…v0.4.6`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
+Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.5.2…HEAD`, `[0.5.2]: …/compare/v0.5.1…v0.5.2`, `[0.5.1]: …/compare/v0.5.0…v0.5.1`, `[0.5.0]: …/compare/v0.4.6…v0.5.0`, `[0.4.6]: …/compare/v0.4.5…v0.4.6`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
