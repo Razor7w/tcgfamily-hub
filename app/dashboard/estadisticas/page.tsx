@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import BarChartIcon from '@mui/icons-material/BarChart'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import SportsEsportsIcon from '@mui/icons-material/SportsEsports'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
@@ -29,6 +30,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import { alpha, useTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import DashboardModuleRouteGate from '@/components/dashboard/DashboardModuleRouteGate'
+import ReportCustomTournamentDialog from '@/components/events/ReportCustomTournamentDialog'
 import {
   useMyMatchupStats,
   type TournamentOriginFilter
@@ -75,6 +77,8 @@ function EstadisticasTorneosContent() {
   const [origin, setOrigin] = useState<TournamentOriginFilter>('all')
   const [sortKey, setSortKey] = useState<SortKey>('lastPlayed')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const [weekAnchor] = useState(() => new Date())
+  const [customTournamentOpen, setCustomTournamentOpen] = useState(false)
 
   const { data, isPending, isError, error } = useMyMatchupStats(
     origin,
@@ -282,11 +286,21 @@ function EstadisticasTorneosContent() {
                 variant="outlined"
                 sx={{ p: 4, borderRadius: 2, textAlign: 'center' }}
               >
-                <Typography color="text.secondary">
-                  {isDetail
-                    ? 'No hay mesas con este mazo y rivales reportados para este filtro.'
-                    : 'Aún no hay mesas con un deck en perfil. Elige Pokémon en «Mis torneos» y reporta rondas.'}
-                </Typography>
+                <Stack spacing={2} alignItems="center">
+                  <Typography color="text.secondary">
+                    {isDetail
+                      ? 'No hay mesas con este mazo y rivales reportados para este filtro.'
+                      : 'Aún no hay mesas con un deck en perfil. Elige Pokémon en «Mis torneos» y reporta rondas.'}
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    startIcon={<SportsEsportsIcon />}
+                    onClick={() => setCustomTournamentOpen(true)}
+                    sx={{ textTransform: 'none', fontWeight: 600 }}
+                  >
+                    Añadir torneo
+                  </Button>
+                </Stack>
               </Paper>
             ) : narrow ? (
               <Stack spacing={1.5}>
@@ -487,6 +501,16 @@ function EstadisticasTorneosContent() {
             )}
           </Stack>
         </Container>
+
+        <ReportCustomTournamentDialog
+          open={customTournamentOpen}
+          onClose={() => setCustomTournamentOpen(false)}
+          weekAnchor={weekAnchor}
+          onCreated={eventId => {
+            setCustomTournamentOpen(false)
+            router.push(`/dashboard/torneos-semana/${eventId}`)
+          }}
+        />
       </Box>
     </DashboardModuleRouteGate>
   )
