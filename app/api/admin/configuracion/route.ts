@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
-import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
+import { requireAdminSession } from '@/lib/api-auth'
 import {
   mergeDashboardSettings,
   normalizeDashboardOrder,
@@ -19,10 +19,8 @@ function readPickupNotifyEnabled(
 
 export async function GET() {
   try {
-    const session = await auth()
-    if (!session?.user?.id || session.user.role !== 'admin') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireAdminSession()
+    if (!gate.ok) return gate.response
 
     await connectDB()
     const doc = await DashboardModuleSettings.findOne().lean()
@@ -59,10 +57,8 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id || session.user.role !== 'admin') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireAdminSession()
+    if (!gate.ok) return gate.response
 
     const body = await request.json()
     const vis = body?.visibility

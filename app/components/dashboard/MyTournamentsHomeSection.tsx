@@ -67,7 +67,7 @@ export default function MyTournamentsHomeSection({
                   letterSpacing: { xs: '-0.02em', sm: 'inherit' }
                 }}
               >
-                {allTimeMode ? 'Todos tus torneos' : 'Tus torneos de la semana'}
+                Mis torneos
               </Typography>
               {allTimeMode ? (
                 <>

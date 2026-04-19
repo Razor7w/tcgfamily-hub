@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
+import { requireAdminSession } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import Mail from '@/models/Mails'
 import User from '@/models/User'
@@ -70,10 +71,8 @@ async function findUserByRut(input: string) {
 // GET - listar mails
 export async function GET() {
   try {
-    const session = await auth()
-    if (!session || session.user.role !== 'admin') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireAdminSession()
+    if (!gate.ok) return gate.response
     await connectDB()
 
     const mails = await Mail.find({})

@@ -1,9 +1,11 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Paper from '@mui/material/Paper'
+import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
@@ -15,19 +17,31 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Button from '@mui/material/Button'
 import { alpha, useTheme, type Theme } from '@mui/material/styles'
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip as RechartsTooltip,
-  XAxis,
-  YAxis
-} from 'recharts'
 import { useParams } from 'next/navigation'
 import Header from '@/components/Header'
 import { usePublicLeague } from '@/hooks/useWeeklyEvents'
 import { LEAGUE_PUBLIC_INFO_ALERT_PARAGRAPHS } from '@/lib/league-public-copy'
+
+const LeagueTopPlayersBarChart = dynamic(
+  () => import('@/components/leagues/LeagueTopPlayersBarChart'),
+  {
+    ssr: false,
+    loading: () => (
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 2, sm: 2.5 },
+          borderRadius: 3,
+          border: '1px solid',
+          borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.08)
+        }}
+      >
+        <Skeleton variant="text" width="55%" height={28} sx={{ mb: 2 }} />
+        <Skeleton variant="rounded" height={320} sx={{ borderRadius: 2 }} />
+      </Paper>
+    )
+  }
+)
 
 function shortName(s: string, max = 18) {
   const t = s.trim()
@@ -164,53 +178,10 @@ export default function LigaPublicPage() {
               </Paper>
 
               {chartData.length > 0 ? (
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: { xs: 2, sm: 2.5 },
-                    borderRadius: 3,
-                    border: '1px solid',
-                    borderColor: (t: Theme) =>
-                      alpha(t.palette.text.primary, 0.08)
-                  }}
-                >
-                  <Typography variant="h6" sx={{ fontWeight: 800, mb: 2 }}>
-                    Top jugadores (puntos de liga)
-                  </Typography>
-                  <Box sx={{ width: '100%', height: 320 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={chartData}
-                        margin={{ top: 8, right: 8, left: 0, bottom: 32 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
-                        <XAxis
-                          dataKey="name"
-                          tick={{ fontSize: 11 }}
-                          interval={0}
-                          angle={-25}
-                          textAnchor="end"
-                          height={60}
-                        />
-                        <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
-                        <RechartsTooltip
-                          formatter={value => [value ?? 0, 'Puntos']}
-                          labelFormatter={(_, payload) => {
-                            const p = payload?.[0]?.payload as
-                              | { fullName?: string }
-                              | undefined
-                            return p?.fullName ?? ''
-                          }}
-                        />
-                        <Bar
-                          dataKey="puntos"
-                          fill={theme.palette.primary.main}
-                          radius={[4, 4, 0, 0]}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </Box>
-                </Paper>
+                <LeagueTopPlayersBarChart
+                  chartData={chartData}
+                  barColor={theme.palette.primary.main}
+                />
               ) : null}
 
               <Paper

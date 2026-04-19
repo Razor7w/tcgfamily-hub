@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -24,7 +25,7 @@ import {
 } from '@mui/icons-material'
 import Link from 'next/link'
 import MyTournamentsHomeSection from '@/components/dashboard/MyTournamentsHomeSection'
-import WeeklyEventsSection from '@/components/events/WeeklyEventsSection'
+import WeeklyEventsSectionSkeleton from '@/components/events/WeeklyEventsSectionSkeleton'
 import ReportCustomTournamentDialog from '@/components/events/ReportCustomTournamentDialog'
 import CardMails from '@/components/dashboard/CardMails'
 import MailFlowExplainer from '@/components/mails/MailFlowExplainer'
@@ -34,6 +35,11 @@ import DashboardStatisticsCard from '@/components/dashboard/DashboardStatisticsC
 import { useStoreCredit } from '@/hooks/useStoreCredit'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
 import type { DashboardModuleId } from '@/lib/dashboard-module-config'
+
+const WeeklyEventsSection = dynamic(
+  () => import('@/components/events/WeeklyEventsSection'),
+  { loading: () => <WeeklyEventsSectionSkeleton /> }
+)
 
 export default function DashboardHomeContent() {
   const router = useRouter()

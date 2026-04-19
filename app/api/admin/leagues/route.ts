@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
+import { requireAdminSession } from '@/lib/api-auth'
 import { DEFAULT_LEAGUE_POINTS_BY_PLACE } from '@/lib/league-constants'
 import League from '@/models/League'
 
@@ -55,10 +55,8 @@ function serializeLeague(doc: Record<string, unknown>) {
 
 export async function GET() {
   try {
-    const session = await auth()
-    if (!session || session.user.role !== 'admin') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireAdminSession()
+    if (!gate.ok) return gate.response
 
     await connectDB()
     const raw = await League.find().sort({ name: 1 }).lean()
@@ -75,10 +73,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session || session.user.role !== 'admin') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireAdminSession()
+    if (!gate.ok) return gate.response
 
     const body = parseBody(await request.json().catch(() => null))
     if (!body) {
