@@ -7,10 +7,8 @@ import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 import Stack from '@mui/material/Stack'
 import Button from '@mui/material/Button'
-import TextField from '@mui/material/TextField'
 import Chip from '@mui/material/Chip'
 import Alert from '@mui/material/Alert'
-import Skeleton from '@mui/material/Skeleton'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
@@ -26,8 +24,6 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import CircularProgress from '@mui/material/CircularProgress'
-import Tab from '@mui/material/Tab'
-import Tabs from '@mui/material/Tabs'
 import { alpha, useTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import {
@@ -61,301 +57,27 @@ import {
   sameLocalDay,
   startOfWeekMonday
 } from '@/components/events/weekUtils'
-import { registrationClosesAt } from '@/lib/weekly-events'
-import { WEEKLY_EVENT_PARTICIPANTS_MAX } from '@/lib/parse-pasted-event-flyer'
-
-const WEEKDAY_SHORT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
-
-function isUnlimitedWeeklyCapacity(maxParticipants: number): boolean {
-  return maxParticipants >= WEEKLY_EVENT_PARTICIPANTS_MAX
-}
-
-function gameLabel(g: PublicWeeklyEvent['game']) {
-  if (g === 'pokemon') return 'Pokémon'
-  if (g === 'magic') return 'Magic'
-  return 'Otro TCG'
-}
-
-function kindLabel(k: PublicWeeklyEvent['kind']) {
-  if (k === 'tournament') return 'Torneo'
-  if (k === 'trade_day') return 'Intercambio'
-  return 'Evento'
-}
-
-function pokemonSubtypeLabel(
-  s: NonNullable<PublicWeeklyEvent['pokemonSubtype']>
-) {
-  if (s === 'casual') return 'Casual'
-  if (s === 'cup') return 'Cup'
-  return 'Challenge'
-}
-
-function formatPrice(ev: PublicWeeklyEvent) {
-  if (ev.kind !== 'tournament') return '—'
-  if (ev.priceClp <= 0) return 'Gratis'
-  return `${ev.priceClp.toLocaleString('es-CL')} CLP`
-}
-
-function formatWhen(iso: string) {
-  const d = new Date(iso)
-  const dayLong = d.toLocaleDateString('es-CL', { weekday: 'long' })
-  const dayCap = dayLong.charAt(0).toUpperCase() + dayLong.slice(1)
-  const datePart = d.toLocaleDateString('es-CL', {
-    day: 'numeric',
-    month: 'long'
-  })
-  const timePart = d.toLocaleTimeString('es-CL', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  })
-  return `${dayCap} ${datePart} · ${timePart}`
-}
-
-function formatCloseNote(iso: string) {
-  const t = registrationClosesAt(new Date(iso))
-  return t.toLocaleTimeString('es-CL', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  })
-}
-
-function formatWlt(r: { wins: number; losses: number; ties: number }) {
-  return `${r.wins} / ${r.losses} / ${r.ties}`
-}
-
-function standingsTabLabel(categoryIndex: number): string {
-  if (categoryIndex === 0) return 'Júnior'
-  if (categoryIndex === 1) return 'Sénior'
-  return 'Máster'
-}
-
-/** Orden visual: Máster (2) → Sénior (1) → Júnior (0), de izquierda a derecha. */
-function categoryTabSortKey(categoryIndex: number): number {
-  if (categoryIndex === 2) return 0
-  if (categoryIndex === 1) return 1
-  if (categoryIndex === 0) return 2
-  return 9
-}
-
-function sortStandingsCategoriesForTabs(
-  categories: NonNullable<PublicWeeklyEvent['standingsTopByCategory']>
-): NonNullable<PublicWeeklyEvent['standingsTopByCategory']> {
-  return [...categories].sort(
-    (a, b) =>
-      categoryTabSortKey(a.categoryIndex) - categoryTabSortKey(b.categoryIndex)
-  )
-}
-
-function TournamentFinishedStandingsTabs({
-  categories,
-  /** En modal: una sola barra de scroll (tabla); en tarjeta: altura acotada como antes. */
-  variant = 'inline'
-}: {
-  categories: NonNullable<PublicWeeklyEvent['standingsTopByCategory']>
-  variant?: 'inline' | 'dialog'
-}) {
-  const ordered = useMemo(
-    () => sortStandingsCategoriesForTabs(categories),
-    [categories]
-  )
-  const [tabIndex, setTabIndex] = useState(0)
-  const safeIndex = Math.min(tabIndex, Math.max(0, ordered.length - 1))
-  const rows = ordered[safeIndex]?.rows ?? []
-
-  return (
-    <Stack
-      spacing={2}
-      sx={
-        variant === 'dialog'
-          ? {
-              flex: 1,
-              minHeight: 0,
-              maxHeight: '100%',
-              overflow: 'hidden'
-            }
-          : undefined
-      }
-    >
-      <Tabs
-        value={safeIndex}
-        onChange={(_, v) => setTabIndex(v)}
-        variant={ordered.length <= 4 ? 'fullWidth' : 'scrollable'}
-        scrollButtons={ordered.length <= 4 ? false : 'auto'}
-        sx={{
-          minHeight: 44,
-          borderRadius: 2,
-          bgcolor: t => alpha(t.palette.text.primary, 0.03),
-          px: 0.5,
-          '& .MuiTab-root': {
-            minHeight: 44,
-            py: 1,
-            fontWeight: 700,
-            textTransform: 'none',
-            borderRadius: 1.5
-          },
-          '& .MuiTabs-indicator': {
-            height: 3,
-            borderRadius: 1
-          }
-        }}
-      >
-        {ordered.map(c => (
-          <Tab
-            key={c.categoryIndex}
-            label={standingsTabLabel(c.categoryIndex)}
-          />
-        ))}
-      </Tabs>
-      <TableContainer
-        component={Paper}
-        variant="outlined"
-        sx={{
-          borderRadius: 2.5,
-          borderColor: t => alpha(t.palette.text.primary, 0.1),
-          ...(variant === 'dialog'
-            ? {
-                flex: 1,
-                minHeight: 0,
-                maxHeight: { xs: 'min(58vh, 520px)', sm: 'min(62vh, 560px)' },
-                overflow: 'auto'
-              }
-            : {
-                maxHeight: { xs: 'min(70vh, 520px)', sm: 520 }
-              })
-        }}
-      >
-        <Table size="small" stickyHeader>
-          <TableHead>
-            <TableRow>
-              <TableCell width={72}>Puesto</TableCell>
-              <TableCell>Jugador</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((row, i) => (
-              <TableRow key={`${row.place}-${i}`}>
-                <TableCell sx={{ fontWeight: 700 }}>{row.place}º</TableCell>
-                <TableCell>{row.displayName}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Stack>
-  )
-}
+import LinearCapacity from '@/components/events/LinearCapacity'
+import TournamentFinishedStandingsTabs from '@/components/events/TournamentFinishedStandingsTabs'
+import WeeklyEventPreRegisterForm from '@/components/events/WeeklyEventPreRegisterForm'
+import {
+  WEEKDAY_SHORT,
+  formatCloseNote,
+  formatPrice,
+  formatWhen,
+  formatWlt,
+  gameLabel,
+  isUnlimitedWeeklyCapacity,
+  kindLabel,
+  pokemonSubtypeLabel
+} from '@/components/events/weeklyEventsSectionUtils'
+import WeeklyEventsSectionSkeleton from '@/components/events/WeeklyEventsSectionSkeleton'
 
 type WeeklyEventsSectionProps = {
   showSeeAllLink?: boolean
   /** Semana controlada por el padre (p. ej. dashboard + reporte de torneos). */
   weekAnchor?: Date
   onWeekAnchorChange?: (next: Date) => void
-}
-
-function WeeklyEventPreRegisterForm({
-  selectedEvent,
-  defaultName,
-  popId,
-  regReason,
-  register
-}: {
-  selectedEvent: PublicWeeklyEvent
-  defaultName: string
-  popId: string
-  regReason: string | null
-  register: ReturnType<typeof useRegisterWeeklyEvent>
-}) {
-  const [nameInput, setNameInput] = useState(defaultName)
-  const canSubmit =
-    !regReason &&
-    nameInput.trim().length > 0 &&
-    !register.isPending &&
-    !!selectedEvent
-
-  return (
-    <Stack spacing={2} component="form" noValidate>
-      <TextField
-        label="Nombre en la lista"
-        placeholder="Ej. Ana o tu apodo"
-        value={nameInput}
-        onChange={e => setNameInput(e.target.value)}
-        fullWidth
-        size="medium"
-        disabled={!selectedEvent.canPreRegister}
-        helperText={
-          !selectedEvent.canPreRegister
-            ? 'Preinscripción cerrada para este horario'
-            : undefined
-        }
-      />
-      <Button
-        type="button"
-        variant="contained"
-        size="large"
-        fullWidth
-        disabled={!canSubmit}
-        onClick={async () => {
-          if (!selectedEvent) return
-          try {
-            await register.mutateAsync({
-              eventId: selectedEvent._id,
-              displayName: nameInput.trim(),
-              popId: popId.trim(),
-              table: '',
-              opponentId: ''
-            })
-          } catch {
-            /* error en estado */
-          }
-        }}
-      >
-        {register.isPending ? 'Enviando…' : 'Preinscribirme'}
-      </Button>
-      {register.isError ? (
-        <Alert severity="error" variant="outlined">
-          {register.error instanceof Error ? register.error.message : 'Error'}
-        </Alert>
-      ) : null}
-    </Stack>
-  )
-}
-
-function SectionLoading() {
-  return (
-    <Stack spacing={2.5} sx={{ py: 0.5 }}>
-      <Skeleton
-        variant="rounded"
-        height={48}
-        sx={{ borderRadius: 2, maxWidth: 360 }}
-      />
-      <Skeleton variant="rounded" height={44} sx={{ borderRadius: 2 }} />
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-        <Skeleton
-          variant="rounded"
-          height={280}
-          sx={{
-            flex: 1,
-            borderRadius: 3,
-            border: '1px solid',
-            borderColor: 'divider'
-          }}
-        />
-        <Skeleton
-          variant="rounded"
-          height={280}
-          sx={{
-            flex: 1,
-            borderRadius: 3,
-            border: '1px solid',
-            borderColor: 'divider'
-          }}
-        />
-      </Stack>
-    </Stack>
-  )
 }
 
 export default function WeeklyEventsSection({
@@ -747,7 +469,7 @@ export default function WeeklyEventsSection({
         </Box>
 
         {isPending ? (
-          <SectionLoading />
+          <WeeklyEventsSectionSkeleton />
         ) : isError ? (
           <Alert
             severity="error"
@@ -2014,57 +1736,5 @@ export default function WeeklyEventsSection({
         )}
       </CardContent>
     </Card>
-  )
-}
-
-function LinearCapacity({ value }: { value: number }) {
-  return (
-    <Box sx={{ mt: 0.5 }}>
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        sx={{ mb: 0.5 }}
-      >
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          fontWeight={700}
-          letterSpacing="0.04em"
-        >
-          Cupo
-        </Typography>
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}
-        >
-          {value}%
-        </Typography>
-      </Stack>
-      <Box
-        sx={{
-          height: 7,
-          borderRadius: 99,
-          bgcolor: t => alpha(t.palette.text.primary, 0.07),
-          overflow: 'hidden',
-          border: '1px solid',
-          borderColor: t => alpha(t.palette.text.primary, 0.06)
-        }}
-      >
-        <Box
-          sx={{
-            height: '100%',
-            width: `${value}%`,
-            borderRadius: 99,
-            bgcolor: t =>
-              value >= 90 ? t.palette.warning.main : t.palette.primary.main,
-            transition: 'width 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
-            boxShadow: t =>
-              `inset 0 -1px 0 ${alpha(t.palette.common.black, 0.08)}`
-          }}
-        />
-      </Box>
-    </Box>
   )
 }

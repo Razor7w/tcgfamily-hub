@@ -1,11 +1,17 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 
 import DashboardModuleRouteGate from '@/components/dashboard/DashboardModuleRouteGate'
-import WeeklyEventsSection from '@/components/events/WeeklyEventsSection'
+import WeeklyEventsSectionSkeleton from '@/components/events/WeeklyEventsSectionSkeleton'
 import { alpha } from '@mui/material'
+
+const WeeklyEventsSection = dynamic(
+  () => import('@/components/events/WeeklyEventsSection'),
+  { loading: () => <WeeklyEventsSectionSkeleton /> }
+)
 
 export default function EventosSemanaPage() {
   return (

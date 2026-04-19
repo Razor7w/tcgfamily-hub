@@ -1,10 +1,33 @@
 // app/api/health/route.ts
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import mongoose from 'mongoose'
+import { createSlidingWindowLimiter } from '@/lib/auth-rate-limit'
 
-export async function GET() {
+const healthIpLimiter = createSlidingWindowLimiter({
+  max: 120,
+  windowMs: 60 * 1000
+})
+
+function clientIp(request: NextRequest): string {
+  const xf = request.headers.get('x-forwarded-for')
+  if (xf) {
+    const first = xf.split(',')[0]?.trim()
+    if (first) return first
+  }
+  return request.headers.get('x-real-ip') || 'unknown'
+}
+
+export async function GET(request: NextRequest) {
   try {
+    const ip = clientIp(request)
+    if (healthIpLimiter(`health:${ip}`)) {
+      return NextResponse.json(
+        { error: 'Demasiadas solicitudes. Prueba más tarde.' },
+        { status: 429 }
+      )
+    }
+
     await connectDB()
 
     const connectionState = mongoose.connection.readyState

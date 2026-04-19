@@ -1,40 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TCGFamily HUB
 
-## Versionado
+Aplicación web (**Next.js** + **React** + **MUI**) para el ecosistema TCG Family: panel de jugadores, eventos semanales, torneos custom, correo, ligas públicas y administración de eventos en tienda.
 
-La versión del producto está en `package.json` y se muestra en la web (login, registro y menú lateral del panel). Cambios documentados: [`CHANGELOG.md`](./CHANGELOG.md). Criterio SemVer en fase 0.x: [`VERSIONING.md`](./VERSIONING.md). **Cómo publicar releases:** [`docs/RELEASES.md`](./docs/RELEASES.md).
+## Requisitos
 
-## Getting Started
+- **Node.js** 20+ (recomendado: la versión que indique el equipo o CI).
+- **MongoDB** accesible con URI (local o Atlas).
+- Cuenta **Google Cloud** (OAuth) y proyecto **Resend** si usas las funciones de correo en producción.
 
-First, run the development server:
+## Puesta en marcha
+
+1. Clona el repositorio e instala dependencias:
+
+   ```bash
+   yarn install
+   ```
+
+2. Variables de entorno: copia [`.env.example`](./.env.example) a `.env.local` y completa al menos `MONGODB_URI`, `AUTH_SECRET`, `AUTH_URL`, y las claves de Google OAuth. El detalle de cada variable está comentado en `.env.example`.
+
+3. Arranca el servidor de desarrollo:
+
+   ```bash
+   yarn dev
+   ```
+
+4. Abre [http://localhost:3000](http://localhost:3000).
+
+Build de producción local:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+yarn build
+yarn start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Scripts
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Script            | Descripción                          |
+| ----------------- | ------------------------------------ |
+| `yarn dev`        | Servidor de desarrollo Next.js       |
+| `yarn build`      | Compilación de producción            |
+| `yarn start`      | Sirve el build (tras `yarn build`)   |
+| `yarn lint`       | ESLint                               |
+| `yarn format`     | Prettier (escribir)                |
+| `yarn format:check` | Prettier (solo comprobar)        |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Documentación del proyecto
 
-## Learn More
+- **Versionado y changelog:** [`CHANGELOG.md`](./CHANGELOG.md), [`VERSIONING.md`](./VERSIONING.md).
+- **Publicar releases:** [`docs/RELEASES.md`](./docs/RELEASES.md).
+- **Autenticación en APIs (admin, health, etc.):** [`docs/API-AUTH.md`](./docs/API-AUTH.md).
 
-To learn more about Next.js, take a look at the following resources:
+La **versión visible** en login, registro y barra lateral del panel coincide con el campo `"version"` de [`package.json`](./package.json) (valor del último build).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Stack principal
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Next.js** (App Router), **TypeScript**, **Tailwind** (PostCSS), **MUI** + Emotion.
+- **MongoDB** con **Mongoose**; **NextAuth** (Auth.js v5) para sesiones y OAuth.
+- **TanStack Query** en el cliente; **Resend** para correo transaccional donde aplique.
 
-## Deploy on Vercel
+## Más sobre Next.js
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+La documentación oficial de Next.js está en [https://nextjs.org/docs](https://nextjs.org/docs). El despliegue en **Vercel** es el flujo habitual para este tipo de proyecto; variables de entorno se configuran en el panel del proyecto o con `vercel env`.
