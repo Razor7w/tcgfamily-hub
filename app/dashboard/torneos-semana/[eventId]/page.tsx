@@ -21,8 +21,13 @@ import DeleteCustomTournamentButton from "@/components/events/DeleteCustomTourna
 import ReportDeckDialog from "@/components/events/ReportDeckDialog";
 import TournamentMatchRoundsCard from "@/components/events/TournamentMatchRoundsCard";
 import { useDashboardEventDetail } from "@/hooks/useWeeklyEvents";
-import { getLimitlessPokemonSpriteUrl } from "@/lib/limitless-pokemon-sprite";
+import {
+  getLimitlessPokemonSpriteUrl,
+  limitlessSpriteDimensions,
+} from "@/lib/limitless-pokemon-sprite";
 import Link from "next/link";
+
+const CHIP_DECK_SPRITE_BOX = limitlessSpriteDimensions(24);
 
 export default function TorneoSemanaDetallePage() {
   const params = useParams();
@@ -210,8 +215,8 @@ export default function TorneoSemanaDetallePage() {
                                 <Stack direction="row" alignItems="center" spacing={0.75}>
                                   <Box
                                     sx={{
-                                      width: 24,
-                                      height: 24,
+                                      width: CHIP_DECK_SPRITE_BOX.width,
+                                      height: CHIP_DECK_SPRITE_BOX.height,
                                       borderRadius: 0.75,
                                       overflow: "hidden",
                                       display: "flex",
@@ -223,6 +228,7 @@ export default function TorneoSemanaDetallePage() {
                                   >
                                     <Box
                                       component="img"
+                                      className="pokemon"
                                       src={getLimitlessPokemonSpriteUrl(slug)}
                                       alt=""
                                       sx={{

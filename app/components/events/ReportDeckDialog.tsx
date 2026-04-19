@@ -29,7 +29,10 @@ import {
   type PokemonSpeciesOption,
   usePokemonSpeciesOptions,
 } from "@/hooks/usePokemonSpeciesOptions";
-import { getLimitlessPokemonSpriteUrl } from "@/lib/limitless-pokemon-sprite";
+import {
+  getLimitlessPokemonSpriteUrl,
+  limitlessSpriteDimensions,
+} from "@/lib/limitless-pokemon-sprite";
 import { useSaveMyDeck } from "@/hooks/useWeeklyEvents";
 
 type AutocompleteLiProps = HTMLAttributes<HTMLLIElement> & { key?: Key };
@@ -59,13 +62,15 @@ type ReportDeckDialogProps = {
 };
 
 function SpriteThumb({ slug, size = 28 }: { slug: string; size?: number }) {
+  const { width, height } = limitlessSpriteDimensions(size);
   return (
     <Box
       component="img"
+      className="pokemon"
       src={getLimitlessPokemonSpriteUrl(slug)}
       alt=""
-      width={size}
-      height={size}
+      width={width}
+      height={height}
       sx={{
         imageRendering: "pixelated",
         objectFit: "contain",

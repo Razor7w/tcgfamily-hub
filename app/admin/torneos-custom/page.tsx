@@ -33,7 +33,12 @@ import {
   type AdminCustomTournament,
   useAdminCustomTournaments,
 } from "@/hooks/useWeeklyEvents";
-import { getLimitlessPokemonSpriteUrl } from "@/lib/limitless-pokemon-sprite";
+import {
+  getLimitlessPokemonSpriteUrl,
+  limitlessSpriteDimensions,
+} from "@/lib/limitless-pokemon-sprite";
+
+const ADMIN_TABLE_SPRITE_BOX = limitlessSpriteDimensions(28);
 
 const CATEGORY_LABELS = ["Júnior", "Sénior", "Máster"] as const;
 
@@ -97,11 +102,12 @@ function DeckSprites({ slugs }: { slugs: string[] }) {
         <Tooltip key={slug} title={slug}>
           <Box
             component="img"
+            className="pokemon"
             src={getLimitlessPokemonSpriteUrl(slug)}
             alt=""
             sx={{
-              width: 28,
-              height: 28,
+              width: ADMIN_TABLE_SPRITE_BOX.width,
+              height: ADMIN_TABLE_SPRITE_BOX.height,
               objectFit: "contain",
               imageRendering: "pixelated",
               borderRadius: 0.5,

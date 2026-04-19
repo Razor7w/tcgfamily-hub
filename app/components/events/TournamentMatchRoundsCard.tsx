@@ -50,7 +50,10 @@ import {
   type SpecialRoundOutcome,
   type TurnOrder,
 } from "@/lib/participant-match-round";
-import { getLimitlessPokemonSpriteUrl } from "@/lib/limitless-pokemon-sprite";
+import {
+  getLimitlessPokemonSpriteUrl,
+  limitlessSpriteDimensions,
+} from "@/lib/limitless-pokemon-sprite";
 import {
   filterPokemonAutocompleteOptions,
   POKEMON_AUTOCOMPLETE_HINT_EMPTY,
@@ -205,15 +208,17 @@ function LimitlessSpriteThumb({
   size,
   circular = false,
 }: {
+  /** Ancho en px; alto proporcional Limitless (~36×30). */
   slug: string;
   size: number;
   circular?: boolean;
 }) {
+  const { width, height } = limitlessSpriteDimensions(size);
   return (
     <Box
       sx={{
-        width: size,
-        height: size,
+        width,
+        height,
         flexShrink: 0,
         borderRadius: circular ? "50%" : 1,
         overflow: "hidden",
@@ -227,6 +232,7 @@ function LimitlessSpriteThumb({
     >
       <Box
         component="img"
+        className="pokemon"
         src={getLimitlessPokemonSpriteUrl(slug)}
         alt=""
         sx={{
@@ -1047,7 +1053,9 @@ export default function TournamentMatchRoundsCard({
             </Stack>
           </Stack>
 
-          {eventState === "close" && !tournamentPlacement ? (
+          {eventState === "close" &&
+          !tournamentPlacement &&
+          !isCustomTournament ? (
             <Typography
               variant="caption"
               color="text.secondary"

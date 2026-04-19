@@ -18,7 +18,13 @@ import { alpha } from "@mui/material/styles";
 import Link from "next/link";
 import { useMyRecentTournaments } from "@/hooks/useWeeklyEvents";
 import type { MyTournamentWeekItem } from "@/lib/my-tournament-week-types";
-import { getLimitlessPokemonSpriteUrl } from "@/lib/limitless-pokemon-sprite";
+import {
+  getLimitlessPokemonSpriteUrl,
+  limitlessSpriteDimensions,
+} from "@/lib/limitless-pokemon-sprite";
+
+/** Mismo aspecto Limitless que en tablas (~44×37). */
+const DECK_SUMMARY_SPRITE_BOX = limitlessSpriteDimensions(44);
 
 function formatWhen(iso: string) {
   const d = new Date(iso);
@@ -281,8 +287,8 @@ export default function MyTournamentsDashboardSummary({
                                 >
                                   <Box
                                     sx={{
-                                      width: 44,
-                                      height: 44,
+                                      width: DECK_SUMMARY_SPRITE_BOX.width,
+                                      height: DECK_SUMMARY_SPRITE_BOX.height,
                                       borderRadius: 1.5,
                                       overflow: "hidden",
                                       bgcolor: "background.paper",
@@ -292,6 +298,7 @@ export default function MyTournamentsDashboardSummary({
                                   >
                                     <Box
                                       component="img"
+                                      className="pokemon"
                                       src={getLimitlessPokemonSpriteUrl(slug)}
                                       alt=""
                                       sx={{
