@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import ArrowDownward from "@mui/icons-material/ArrowDownward";
 import ArrowUpward from "@mui/icons-material/ArrowUpward";
 import MarkEmailReadOutlined from "@mui/icons-material/MarkEmailReadOutlined";
+import SportsEsports from "@mui/icons-material/SportsEsports";
+import MarkunreadMailbox from "@mui/icons-material/MarkunreadMailbox";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -25,6 +27,7 @@ import NextLink from "next/link";
 import {
   useAdminConfiguracion,
   useUpdateDashboardModuleSettings,
+  useUpdateDashboardShortcuts,
   useUpdateResendPickupNotifySettings,
 } from "@/hooks/useDashboardModules";
 import {
@@ -32,6 +35,7 @@ import {
   mergeDashboardSettings,
   type DashboardModuleId,
   type DashboardModuleSettingsDTO,
+  type DashboardShortcutsVisibility,
 } from "@/lib/dashboard-module-config";
 
 const LABELS: Record<DashboardModuleId, string> = {
@@ -71,7 +75,11 @@ function DashboardModulesEditor({
   );
 
   const handleSave = () => {
-    const payload: DashboardModuleSettingsDTO = { visibility, order };
+    const payload: DashboardModuleSettingsDTO = {
+      visibility,
+      order,
+      shortcuts: initial.shortcuts,
+    };
     update.mutate(payload);
   };
 
@@ -179,6 +187,157 @@ function DashboardModulesEditor({
             onClick={() => {
               setVisibility(initial.visibility);
               setOrder(initial.order);
+            }}
+            disabled={!dirty || update.isPending}
+          >
+            Deshacer
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => handleSave()}
+            disabled={!dirty || update.isPending}
+            sx={{ fontWeight: 700, minWidth: 120 }}
+          >
+            {update.isPending ? "Guardando…" : "Guardar"}
+          </Button>
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DashboardShortcutsEditor({
+  initial,
+}: {
+  initial: DashboardShortcutsVisibility;
+}) {
+  const update = useUpdateDashboardShortcuts();
+  const [createMail, setCreateMail] = useState(initial.createMail);
+  const [createTournament, setCreateTournament] = useState(
+    initial.createTournament,
+  );
+
+  const dirty = useMemo(
+    () =>
+      createMail !== initial.createMail ||
+      createTournament !== initial.createTournament,
+    [initial, createMail, createTournament],
+  );
+
+  const handleSave = () => {
+    update.mutate({ createMail, createTournament });
+  };
+
+  return (
+    <Card
+      elevation={0}
+      sx={{
+        borderRadius: 4,
+        border: "1px solid",
+        borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.08),
+      }}
+    >
+      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+        <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 44,
+              height: 44,
+              borderRadius: 2,
+              flexShrink: 0,
+              color: "primary.main",
+              bgcolor: (t: Theme) => alpha(t.palette.primary.main, 0.1),
+              border: "1px solid",
+              borderColor: (t: Theme) => alpha(t.palette.primary.main, 0.2),
+            }}
+          >
+            <SportsEsports aria-hidden />
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography
+              variant="h6"
+              component="h2"
+              sx={{ fontWeight: 800, letterSpacing: "-0.02em" }}
+            >
+              Accesos rápidos en el inicio
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, lineHeight: 1.6 }}>
+              Botones en la parte superior de{" "}
+              <Link href="/dashboard" component={NextLink} fontWeight={600}>
+                /dashboard
+              </Link>{" "}
+              para registrar un correo o crear un torneo custom. Puedes ocultar cada uno sin
+              desactivar el bloque completo de correo o «Mis torneos».
+            </Typography>
+          </Box>
+        </Stack>
+
+        <Stack spacing={1.5}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={createMail}
+                onChange={(_, v) => setCreateMail(v)}
+                color="primary"
+              />
+            }
+            label={
+              <Stack direction="row" spacing={1} alignItems="center">
+                <MarkunreadMailbox fontSize="small" color="action" />
+                <Box>
+                  <Typography variant="body2" fontWeight={600}>
+                    Acceso «Registrar correo»
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    Abre el mismo diálogo que el botón dentro del bloque de correos.
+                  </Typography>
+                </Box>
+              </Stack>
+            }
+            sx={{ alignItems: "flex-start", ml: 0, gap: 1.5 }}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={createTournament}
+                onChange={(_, v) => setCreateTournament(v)}
+                color="primary"
+              />
+            }
+            label={
+              <Stack direction="row" spacing={1} alignItems="center">
+                <SportsEsports fontSize="small" color="action" />
+                <Box>
+                  <Typography variant="body2" fontWeight={600}>
+                    Acceso «Crear torneo custom»
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    Abre el formulario de torneo personal (no ligado al calendario de la tienda).
+                  </Typography>
+                </Box>
+              </Stack>
+            }
+            sx={{ alignItems: "flex-start", ml: 0, gap: 1.5 }}
+          />
+        </Stack>
+
+        {update.isError ? (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {update.error instanceof Error
+              ? update.error.message
+              : "Error al guardar"}
+          </Alert>
+        ) : null}
+
+        <Stack direction="row" spacing={2} sx={{ mt: 3 }} justifyContent="flex-end">
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setCreateMail(initial.createMail);
+              setCreateTournament(initial.createTournament);
             }}
             disabled={!dirty || update.isPending}
           >
@@ -363,6 +522,10 @@ export default function AdminConfiguracionPage() {
               key={`dash-${dataUpdatedAt}`}
               initial={mergeDashboardSettings(data.settings)}
             />
+            <DashboardShortcutsEditor
+              key={`shortcuts-${dataUpdatedAt}`}
+              initial={mergeDashboardSettings(data.settings).shortcuts}
+            />
             <ResendPickupEmailCard
               key={`email-${dataUpdatedAt}`}
               initialEnabled={data.resendNotifyPickupInStoreEnabled}
@@ -371,6 +534,10 @@ export default function AdminConfiguracionPage() {
         ) : (
           <Stack spacing={3}>
             <DashboardModulesEditor key="defaults" initial={mergeDashboardSettings(null)} />
+            <DashboardShortcutsEditor
+              key="shortcuts-defaults"
+              initial={mergeDashboardSettings(null).shortcuts}
+            />
             <ResendPickupEmailCard key="email-defaults" initialEnabled />
           </Stack>
         )}

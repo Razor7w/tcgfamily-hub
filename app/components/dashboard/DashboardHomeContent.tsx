@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -20,15 +21,18 @@ import { InfoOutlined, MarkunreadMailbox, Storefront } from "@mui/icons-material
 import Link from "next/link";
 import MyTournamentsHomeSection from "@/components/dashboard/MyTournamentsHomeSection";
 import WeeklyEventsSection from "@/components/events/WeeklyEventsSection";
+import ReportCustomTournamentDialog from "@/components/events/ReportCustomTournamentDialog";
 import CardMails from "@/components/dashboard/CardMails";
 import MailFlowExplainer from "@/components/mails/MailFlowExplainer";
 import RegisterMailDialog from "@/components/mails/RegisterMailDialog";
+import DashboardQuickActions from "@/components/dashboard/DashboardQuickActions";
 import { useStoreCredit } from "@/hooks/useStoreCredit";
 import { useDashboardModulesFromLayout } from "@/contexts/DashboardModulesContext";
 import type { DashboardModuleId } from "@/lib/dashboard-module-config";
 
 export default function DashboardHomeContent() {
-  const { visibility, order } = useDashboardModulesFromLayout();
+  const router = useRouter();
+  const { visibility, order, shortcuts } = useDashboardModulesFromLayout();
 
   const {
     data: credit,
@@ -53,6 +57,8 @@ export default function DashboardHomeContent() {
 
   const [storePointsInfoOpen, setStorePointsInfoOpen] = useState(false);
   const [registerMailOpen, setRegisterMailOpen] = useState(false);
+  const [weekAnchor] = useState(() => new Date());
+  const [customTournamentOpen, setCustomTournamentOpen] = useState(false);
 
   const expiryLabel =
     credit?.storePointsExpiryDate &&
@@ -244,7 +250,18 @@ export default function DashboardHomeContent() {
 
   const visibleOrdered = order.filter((id) => visibility[id]);
 
-  if (visibleOrdered.length === 0) {
+  const showQuickActions =
+    shortcuts.createMail || shortcuts.createTournament;
+
+  const quickActionsBlock = (
+    <DashboardQuickActions
+      shortcuts={shortcuts}
+      onRegisterMail={() => setRegisterMailOpen(true)}
+      onCreateCustomTournament={() => setCustomTournamentOpen(true)}
+    />
+  );
+
+  if (visibleOrdered.length === 0 && !showQuickActions) {
     return (
       <Card
         variant="outlined"
@@ -265,6 +282,7 @@ export default function DashboardHomeContent() {
   return (
     <>
       <Stack spacing={3}>
+        {quickActionsBlock}
         {visibleOrdered.map((id) => (
           <Box key={id}>{blocks[id]}</Box>
         ))}
@@ -304,6 +322,16 @@ export default function DashboardHomeContent() {
       <RegisterMailDialog
         open={registerMailOpen}
         onClose={() => setRegisterMailOpen(false)}
+      />
+
+      <ReportCustomTournamentDialog
+        open={customTournamentOpen}
+        onClose={() => setCustomTournamentOpen(false)}
+        weekAnchor={weekAnchor}
+        onCreated={(eventId) => {
+          setCustomTournamentOpen(false);
+          router.push(`/dashboard/torneos-semana/${eventId}`);
+        }}
       />
     </>
   );

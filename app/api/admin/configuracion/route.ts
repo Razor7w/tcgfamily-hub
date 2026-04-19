@@ -27,12 +27,14 @@ export async function GET() {
     const d = doc as {
       visibility?: DashboardModuleSettingsDTO["visibility"];
       order?: DashboardModuleSettingsDTO["order"];
+      shortcuts?: DashboardModuleSettingsDTO["shortcuts"];
       resendNotifyPickupInStoreEnabled?: boolean;
     } | null;
     const raw: Partial<DashboardModuleSettingsDTO> | null = d
       ? {
           visibility: d.visibility,
           order: d.order,
+          shortcuts: d.shortcuts,
         }
       : null;
 
@@ -64,6 +66,7 @@ export async function PUT(request: NextRequest) {
     const vis = body?.visibility;
     const orderRaw = body?.order;
     const emailFlag = body?.resendNotifyPickupInStoreEnabled;
+    const shortcutsBody = body?.shortcuts;
 
     const updatingDashboard =
       vis &&
@@ -71,12 +74,17 @@ export async function PUT(request: NextRequest) {
       orderRaw !== undefined &&
       orderRaw !== null;
     const updatingEmail = typeof emailFlag === "boolean";
+    const updatingShortcuts =
+      shortcutsBody &&
+      typeof shortcutsBody === "object" &&
+      typeof shortcutsBody.createMail === "boolean" &&
+      typeof shortcutsBody.createTournament === "boolean";
 
-    if (!updatingDashboard && !updatingEmail) {
+    if (!updatingDashboard && !updatingEmail && !updatingShortcuts) {
       return NextResponse.json(
         {
           error:
-            "Envía visibility+order (bloques del dashboard) y/o resendNotifyPickupInStoreEnabled (boolean)",
+            "Envía visibility+order, shortcuts (createMail, createTournament) y/o resendNotifyPickupInStoreEnabled (boolean)",
         },
         { status: 400 },
       );
@@ -129,11 +137,22 @@ export async function PUT(request: NextRequest) {
       doc.resendNotifyPickupInStoreEnabled = emailFlag;
     }
 
+    if (updatingShortcuts) {
+      doc.set("shortcuts", {
+        createMail: shortcutsBody.createMail,
+        createTournament: shortcutsBody.createTournament,
+      });
+    }
+
     await doc.save();
 
+    const dShortcuts = doc.shortcuts as
+      | DashboardModuleSettingsDTO["shortcuts"]
+      | undefined;
     const settings = mergeDashboardSettings({
       visibility: doc.visibility,
       order: doc.order as DashboardModuleSettingsDTO["order"],
+      shortcuts: dShortcuts,
     });
 
     revalidatePath("/dashboard", "layout");

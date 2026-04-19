@@ -7,6 +7,7 @@ import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
+import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
@@ -117,36 +118,61 @@ export default function MailFlowExplainer({ variant }: MailFlowExplainerProps) {
           severity="info"
           sx={{
             mb: 2,
+            py: { xs: 1.25, sm: 'inherit' },
             '& .MuiAlert-message': { width: '100%' }
           }}
         >
           <Typography variant="subtitle2" fontWeight={600} gutterBottom>
             ¿Cómo funciona un correo?
           </Typography>
-          <Typography variant="body2" color="text.secondary" component="div">
-            El <strong>emisor</strong> lo registra aquí y obtiene un <strong>código</strong>{' '}
-            (también en código de barras / QR). Llevas el <strong>envío a la tienda</strong>;
-            cuando ellos confirman el ingreso, el estado pasa a <strong>En tienda</strong>.
-            Para <strong>solicitar o retirar</strong> el paquete en tienda se usa{' '}
-            <strong>el mismo código</strong>. Al cerrarse el retiro verás <strong>Retirado</strong>.{' '}
-            <Link
-              component="button"
-              type="button"
-              variant="body2"
-              onClick={() => setFlowDialogOpen(true)}
-              underline="hover"
-              sx={{
-                cursor: 'pointer',
-                fontSize: 'inherit',
-                fontWeight: 'inherit',
-                letterSpacing: 'inherit',
-                lineHeight: 'inherit',
-                verticalAlign: 'baseline'
-              }}
+
+          <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+            <Typography variant="body2" color="text.secondary" component="div">
+              El <strong>emisor</strong> lo registra aquí y obtiene un <strong>código</strong>{' '}
+              (también en código de barras). Llevas el <strong>envío a la tienda</strong>;
+              cuando ellos confirman el ingreso, el estado pasa a <strong>En tienda</strong>.
+              Para <strong>solicitar o retirar</strong> el paquete en tienda se usa{' '}
+              <strong>el mismo código</strong>. Al cerrarse el retiro verás <strong>Retirado</strong>.{' '}
+              <Link
+                component="button"
+                type="button"
+                variant="body2"
+                onClick={() => setFlowDialogOpen(true)}
+                underline="hover"
+                sx={{
+                  cursor: 'pointer',
+                  fontSize: 'inherit',
+                  fontWeight: 'inherit',
+                  letterSpacing: 'inherit',
+                  lineHeight: 'inherit',
+                  verticalAlign: 'baseline'
+                }}
+              >
+                Ver paso a paso.
+              </Link>
+            </Typography>
+          </Box>
+
+          <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              component="p"
+              sx={{ mb: 1.25, lineHeight: 1.45 }}
             >
-              Ver paso a paso.
-            </Link>
-          </Typography>
+              Código único, envío a tienda y retiro con el mismo código. El detalle completo va en
+              un toque.
+            </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              fullWidth
+              onClick={() => setFlowDialogOpen(true)}
+              sx={{ textTransform: 'none', fontWeight: 600 }}
+            >
+              Ver paso a paso
+            </Button>
+          </Box>
         </Alert>
 
         <Dialog

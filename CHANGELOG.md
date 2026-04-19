@@ -10,6 +10,23 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [0.5.5] - 2026-04-18
+
+### Añadido
+
+- **Admin — Torneos custom** (`/admin/torneos-custom`): listado de torneos Pokémon con `tournamentOrigin: custom` (creador, fechas, récord, deck, enlace a la vista del jugador). API `GET /api/admin/custom-tournaments`.
+- **Dashboard — Accesos rápidos**: atajos para **registrar correo** y **crear torneo custom** (mismo flujo que el resto del panel). Configuración en **`/admin/configuracion`** (`shortcuts` en `DashboardModuleSettings`) para mostrar u ocultar cada acceso por separado.
+
+### Cambiado
+
+- **Dashboard** (`DashboardQuickActions`): UI de accesos rápidos en tarjetas uniformes; versión **compacta en móvil** (dos columnas, sin párrafo introductorio, subtítulos ocultos en `xs`).
+- **Correo** (`MailFlowExplainer` compact): en móvil, caja informativa reducida con botón «Ver paso a paso» en lugar del texto largo.
+- **`ReportCustomTournamentDialog`**: formulario montado solo con el diálogo abierto (sin `useEffect` de reset al abrir); evita advertencias de React sobre `setState` en efectos.
+
+### Corregido
+
+- **`TournamentWeekReportSection`**: `list` derivado de `data?.tournaments` con `useMemo` para dependencias estables en los filtros memoizados.
+
 ## [0.5.4] - 2026-04-18
 
 ### Cambiado
@@ -146,7 +163,7 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 ### Cambiado
 
 - Listados y APIs de «mis torneos» reutilizan la construcción unificada de ítems (incluye migración de orden antiguo de 3 módulos a 4 en `mergeDashboardSettings`).
-- Flujo de **Reportar torneo custom**: diálogo ampliado (posición opcional); invalidación de caché `my-recent-tournaments` al guardar deck, rondas o al crear/borrar custom.
+- Flujo de **Reportar torneo**: diálogo ampliado (posición opcional); invalidación de caché `my-recent-tournaments` al guardar deck, rondas o al crear/borrar custom.
 
 ## [0.2.1] - 2026-04-17
 
@@ -176,4 +193,4 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 Línea base anterior en `package.json` antes de este changelog; el detalle de cambios queda en el historial de git.
 
-Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.5.4…HEAD`, `[0.5.4]: …/compare/v0.5.3…v0.5.4`, `[0.5.3]: …/compare/v0.5.2…v0.5.3`, `[0.5.2]: …/compare/v0.5.1…v0.5.2`, `[0.5.1]: …/compare/v0.5.0…v0.5.1`, `[0.5.0]: …/compare/v0.4.6…v0.5.0`, `[0.4.6]: …/compare/v0.4.5…v0.4.6`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
+Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.5.5…HEAD`, `[0.5.5]: …/compare/v0.5.4…v0.5.5`, `[0.5.4]: …/compare/v0.5.3…v0.5.4`, `[0.5.3]: …/compare/v0.5.2…v0.5.3`, `[0.5.2]: …/compare/v0.5.1…v0.5.2`, `[0.5.1]: …/compare/v0.5.0…v0.5.1`, `[0.5.0]: …/compare/v0.4.6…v0.5.0`, `[0.4.6]: …/compare/v0.4.5…v0.4.6`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).

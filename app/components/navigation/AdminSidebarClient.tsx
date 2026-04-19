@@ -8,7 +8,8 @@ import {
   ExpandMore,
   MilitaryTech,
   People,
-  Settings
+  Settings,
+  SportsEsports
 } from '@mui/icons-material'
 import {
   Collapse,
@@ -49,6 +50,14 @@ export default function AdminSidebarClient() {
               <CalendarMonth />
             </ListItemIcon>
             <ListItemText primary="Eventos" />
+          </ListItemButton>
+        </List>
+        <List component="div" disablePadding>
+          <ListItemButton sx={{ pl: 4 }} href="/admin/torneos-custom">
+            <ListItemIcon>
+              <SportsEsports />
+            </ListItemIcon>
+            <ListItemText primary="Torneos custom" />
           </ListItemButton>
         </List>
         <List component="div" disablePadding>
