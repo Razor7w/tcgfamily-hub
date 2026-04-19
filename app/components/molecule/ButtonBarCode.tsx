@@ -16,20 +16,51 @@ import Barcode from 'react-barcode'
 
 interface ButtonBarCodeProps {
   id: string
+  /** Icono compacto (por defecto) o botón con texto (mejor en listas tipo card). */
+  trigger?: 'icon' | 'button'
+  /** Solo aplica cuando trigger es "button". */
+  fullWidth?: boolean
 }
 
-export default function ButtonBarCode({ id }: ButtonBarCodeProps) {
+export default function ButtonBarCode({
+  id,
+  trigger = 'icon',
+  fullWidth = false
+}: ButtonBarCodeProps) {
   const [barcodeMailId, setBarcodeMailId] = useState<string | null>(null)
+  const open = () => setBarcodeMailId(id)
   return (
     <>
-      <IconButton
-        size="small"
-        color="primary"
-        onClick={() => setBarcodeMailId(id)}
-        title="Generar código por ID"
-      >
-        <QrCode2 fontSize="small" />
-      </IconButton>
+      {trigger === 'button' ? (
+        <Button
+          variant="outlined"
+          color="primary"
+          size="medium"
+          fullWidth={fullWidth}
+          startIcon={<QrCode2 />}
+          onClick={open}
+          aria-label="Ver código de barras del correo"
+          sx={{
+            py: 1,
+            fontWeight: 700,
+            textTransform: 'none',
+            borderWidth: 2,
+            '&:hover': { borderWidth: 2 }
+          }}
+        >
+          Ver código de barras
+        </Button>
+      ) : (
+        <IconButton
+          size="small"
+          color="primary"
+          onClick={open}
+          title="Generar código por ID"
+          sx={{ p: 1 }}
+        >
+          <QrCode2 fontSize="small" />
+        </IconButton>
+      )}
       <Dialog
         open={!!barcodeMailId}
         onClose={() => setBarcodeMailId(null)}

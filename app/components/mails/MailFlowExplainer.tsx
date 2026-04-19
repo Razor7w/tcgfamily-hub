@@ -8,17 +8,20 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Box from '@mui/material/Box'
+import Paper from '@mui/material/Paper'
 import Link from '@mui/material/Link'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 import Typography from '@mui/material/Typography'
+import { alpha } from '@mui/material/styles'
 import EditNoteOutlined from '@mui/icons-material/EditNoteOutlined'
 import LocalShippingOutlined from '@mui/icons-material/LocalShippingOutlined'
 import QrCode2Outlined from '@mui/icons-material/QrCode2Outlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import HowToRegOutlined from '@mui/icons-material/HowToRegOutlined'
+import InfoOutlined from '@mui/icons-material/InfoOutlined'
 
 const FLOW_TITLE = 'Flujo del correo: emisor → tienda → retiro'
 
@@ -126,20 +129,62 @@ function MailFlowDetailContent({ omitTitle }: MailFlowDetailContentProps) {
 
 type MailFlowExplainerProps = {
   variant: 'compact' | 'detailed'
+  /**
+   * En `compact`, en vista muy estrecha (xs) muestra una sola fila con icono + texto breve + enlace al diálogo,
+   * en lugar del bloque Alert alto. Útil en páginas como Mis correos.
+   */
+  denseMobileToolbar?: boolean
 }
 
-export default function MailFlowExplainer({ variant }: MailFlowExplainerProps) {
+export default function MailFlowExplainer({
+  variant,
+  denseMobileToolbar = false
+}: MailFlowExplainerProps) {
   const [flowDialogOpen, setFlowDialogOpen] = useState(false)
 
   if (variant === 'compact') {
     return (
       <>
+        {denseMobileToolbar ? (
+          <Paper
+            variant="outlined"
+            sx={{
+              display: { xs: 'flex', sm: 'none' },
+              mb: 2,
+              px: 1.5,
+              py: 1.25,
+              alignItems: 'center',
+              gap: 1.25,
+              borderRadius: 2,
+              bgcolor: t => alpha(t.palette.info.main, 0.1)
+            }}
+          >
+            <InfoOutlined color="info" fontSize="small" aria-hidden />
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ flex: 1, minWidth: 0, lineHeight: 1.35 }}
+            >
+              Código único y estados en la lista.
+            </Typography>
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => setFlowDialogOpen(true)}
+              sx={{ flexShrink: 0, fontWeight: 700, textTransform: 'none' }}
+            >
+              Cómo funciona
+            </Button>
+          </Paper>
+        ) : null}
+
         <Alert
           severity="info"
           sx={{
             mb: 2,
             py: { xs: 1.25, sm: 'inherit' },
-            '& .MuiAlert-message': { width: '100%' }
+            '& .MuiAlert-message': { width: '100%' },
+            display: denseMobileToolbar ? { xs: 'none', sm: 'flex' } : undefined
           }}
         >
           <Typography variant="subtitle2" fontWeight={600} gutterBottom>
