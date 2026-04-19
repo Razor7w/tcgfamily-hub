@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
-import { aggregateLeagueStandings } from "@/lib/league-aggregate";
+import {
+  aggregateLeagueStandings,
+  leagueEventHasContributingRecord,
+} from "@/lib/league-aggregate";
 import {
   LEAGUE_SCORE_LOSS,
   LEAGUE_SCORE_TIE,
@@ -8,20 +11,6 @@ import {
 } from "@/lib/league-constants";
 import League from "@/models/League";
 import WeeklyEvent from "@/models/WeeklyEvent";
-
-function participantHasWLTSum(p: {
-  wins?: number;
-  losses?: number;
-  ties?: number;
-}): boolean {
-  const w = Number(p.wins);
-  const l = Number(p.losses);
-  const t = Number(p.ties);
-  const ws = Number.isFinite(w) && w > 0 ? Math.floor(w) : 0;
-  const ls = Number.isFinite(l) && l > 0 ? Math.floor(l) : 0;
-  const ts = Number.isFinite(t) && t > 0 ? Math.floor(t) : 0;
-  return ws + ls + ts > 0;
-}
 
 /**
  * Clasificación pública de una liga (torneos cerrados; puntos por récord W/L/T del participante).
@@ -69,7 +58,7 @@ export async function GET(
       state: "close",
     })
       .select(
-        "title startsAt participants.displayName participants.popId participants.wins participants.losses participants.ties",
+        "title startsAt dashboardRoundCap roundSnapshots participants.displayName participants.popId participants.wins participants.losses participants.ties",
       )
       .sort({ startsAt: 1 })
       .lean();
@@ -86,7 +75,9 @@ export async function GET(
         ev.startsAt instanceof Date
           ? ev.startsAt.toISOString()
           : new Date(ev.startsAt as unknown as string).toISOString(),
-      hasRecord: (ev.participants ?? []).some((p) => participantHasWLTSum(p)),
+      hasRecord: leagueEventHasContributingRecord(
+        ev as Parameters<typeof leagueEventHasContributingRecord>[0],
+      ),
     }));
 
     const chartTop = standings.slice(0, 12).map((r, i) => ({

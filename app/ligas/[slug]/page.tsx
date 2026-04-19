@@ -278,7 +278,11 @@ export default function LigaPublicPage() {
                                   month: "short",
                                   year: "numeric",
                                 })}{" "}
-                                · {ev.title} · {ev.wins}-{ev.losses}-{ev.ties} ({ev.points} pts)
+                                · {ev.title}
+                                {ev.leagueRoundBasis != null
+                                  ? ` · récord hasta ronda ${ev.leagueRoundBasis}`
+                                  : ""}{" "}
+                                · {ev.wins}-{ev.losses}-{ev.ties} ({ev.points} pts)
                               </Typography>
                             ))}
                           </Stack>

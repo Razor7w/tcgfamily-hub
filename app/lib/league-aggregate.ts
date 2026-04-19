@@ -1,4 +1,5 @@
 import { popidForStorage } from "@/lib/rut-chile";
+import { normalizeStoredDashboardRoundCap } from "@/lib/dashboard-round-cap";
 import {
   LEAGUE_SCORE_LOSS,
   LEAGUE_SCORE_TIE,
@@ -32,6 +33,8 @@ export type LeagueStandingEventDetail = {
   losses: number;
   ties: number;
   points: number;
+  /** Si hay tope de ronda y snapshot, ronda hasta la que cuenta el récord (emparejamiento guardado). */
+  leagueRoundBasis?: number;
 };
 
 export type LeagueStandingRow = {
@@ -50,15 +53,109 @@ type LeanParticipant = {
   ties?: number;
 };
 
-type LeanEventForLeague = {
+type LeanRoundSnapshot = {
+  roundNum: number;
+  pairings: {
+    player1PopId?: string;
+    player2PopId?: string;
+    player1Name?: string;
+    player2Name?: string;
+    player1Record?: { wins?: number; losses?: number; ties?: number };
+    player2Record?: { wins?: number; losses?: number; ties?: number };
+    isBye?: boolean;
+  }[];
+};
+
+export type LeanEventForLeague = {
   _id: unknown;
   title: string;
   startsAt: Date;
+  dashboardRoundCap?: number;
+  roundSnapshots?: LeanRoundSnapshot[];
   participants: LeanParticipant[];
 };
 
 /**
- * Agrupa por POP dentro de un evento por si hubiera filas duplicadas.
+ * Entre los snapshots con roundNum ≤ cap, usa el de **mayor** roundNum
+ * (récord acumulado al cerrar esa ronda, sin contar rondas posteriores).
+ */
+export function pickRoundSnapshotAtOrUnderCap(
+  snapshots: LeanRoundSnapshot[] | undefined,
+  cap: number,
+): LeanRoundSnapshot | null {
+  if (!snapshots?.length) return null;
+  let best: LeanRoundSnapshot | null = null;
+  let bestNum = -1;
+  for (const s of snapshots) {
+    const r = Math.round(Number(s.roundNum));
+    if (!Number.isFinite(r) || r < 1 || r > cap) continue;
+    if (r > bestNum) {
+      bestNum = r;
+      best = s;
+    }
+  }
+  return best;
+}
+
+function participantNameByPop(ev: LeanEventForLeague): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const p of ev.participants ?? []) {
+    const k = popidForStorage(typeof p.popId === "string" ? p.popId : "");
+    if (!k) continue;
+    const n = p.displayName || "—";
+    if (!m.has(k) || m.get(k) === "—") m.set(k, n);
+  }
+  return m;
+}
+
+function wlMapFromRoundSnapshot(
+  snapshot: LeanRoundSnapshot,
+  nameByPop: Map<string, string>,
+): Map<string, { displayName: string; w: number; l: number; t: number }> {
+  const out = new Map<
+    string,
+    { displayName: string; w: number; l: number; t: number }
+  >();
+
+  for (const row of snapshot.pairings ?? []) {
+    const p1 = popidForStorage(
+      typeof row.player1PopId === "string" ? row.player1PopId : "",
+    );
+    if (p1) {
+      const rawName =
+        typeof row.player1Name === "string" ? row.player1Name.trim() : "";
+      const name = rawName || nameByPop.get(p1) || "—";
+      out.set(p1, {
+        displayName: name,
+        w: nonNegativeInt(row.player1Record?.wins),
+        l: nonNegativeInt(row.player1Record?.losses),
+        t: nonNegativeInt(row.player1Record?.ties),
+      });
+    }
+
+    if (!row.isBye) {
+      const p2 = popidForStorage(
+        typeof row.player2PopId === "string" ? row.player2PopId : "",
+      );
+      if (p2) {
+        const rawName =
+          typeof row.player2Name === "string" ? row.player2Name.trim() : "";
+        const name = rawName || nameByPop.get(p2) || "—";
+        out.set(p2, {
+          displayName: name,
+          w: nonNegativeInt(row.player2Record?.wins),
+          l: nonNegativeInt(row.player2Record?.losses),
+          t: nonNegativeInt(row.player2Record?.ties),
+        });
+      }
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Agrupa por POP dentro de un evento por si hubiera filas duplicadas (totales en participantes).
  */
 function mergeParticipantsByPop(ev: LeanEventForLeague): Map<
   string,
@@ -89,6 +186,46 @@ function mergeParticipantsByPop(ev: LeanEventForLeague): Map<
   return byPop;
 }
 
+/**
+ * Récord W/L/T usado para la liga en un torneo: respeta `dashboardRoundCap`
+ * tomando el snapshot de la última ronda ≤ tope; si no hay snapshots guardados,
+ * usa los totales del participante (comportamiento previo).
+ */
+export function leagueMergeSource(ev: LeanEventForLeague): {
+  byPop: Map<string, { displayName: string; w: number; l: number; t: number }>;
+  snapshotRound?: number;
+} {
+  const cap = normalizeStoredDashboardRoundCap(ev.dashboardRoundCap);
+  const nameByPop = participantNameByPop(ev);
+
+  if (cap === undefined) {
+    return { byPop: mergeParticipantsByPop(ev) };
+  }
+
+  const chosen = pickRoundSnapshotAtOrUnderCap(ev.roundSnapshots ?? [], cap);
+  if (chosen) {
+    return {
+      byPop: wlMapFromRoundSnapshot(chosen, nameByPop),
+      snapshotRound: Math.round(Number(chosen.roundNum)),
+    };
+  }
+
+  if ((ev.roundSnapshots ?? []).length > 0) {
+    return { byPop: new Map() };
+  }
+
+  return { byPop: mergeParticipantsByPop(ev) };
+}
+
+/** ¿Algún jugador tiene récord no nulo tras aplicar la misma lógica que la liga? */
+export function leagueEventHasContributingRecord(ev: LeanEventForLeague): boolean {
+  const { byPop } = leagueMergeSource(ev);
+  for (const rec of byPop.values()) {
+    if (rec.w + rec.l + rec.t > 0) return true;
+  }
+  return false;
+}
+
 function collectPlayerDetailsFromRecords(
   events: LeanEventForLeague[],
 ): {
@@ -105,9 +242,9 @@ function collectPlayerDetailsFromRecords(
         ? ev.startsAt.toISOString()
         : new Date(ev.startsAt as unknown as string).toISOString();
 
-    const merged = mergeParticipantsByPop(ev);
+    const { byPop, snapshotRound } = leagueMergeSource(ev);
 
-    for (const [k, rec] of merged) {
+    for (const [k, rec] of byPop) {
       if (rec.w + rec.l + rec.t === 0) continue;
 
       if (!popToName.has(k)) popToName.set(k, rec.displayName);
@@ -123,6 +260,7 @@ function collectPlayerDetailsFromRecords(
         losses: rec.l,
         ties: rec.t,
         points: pts,
+        leagueRoundBasis: snapshotRound,
       };
       const list = playerDetails.get(k) ?? [];
       list.push(detail);
@@ -197,8 +335,9 @@ function finalizeStandings(
 }
 
 /**
- * Suma puntos de liga por récord W/L/T en cada torneo cerrado (datos del participante en el evento).
- * No usa la tabla de posición final ni separa por categoría de edad.
+ * Suma puntos de liga por récord W/L/T en cada torneo cerrado.
+ * Con **tope de ronda** (`dashboardRoundCap`), solo cuenta el récord del snapshot
+ * de la última ronda guardada que no supere ese tope (no suma rondas posteriores).
  */
 export function aggregateLeagueStandings(
   events: LeanEventForLeague[],

@@ -806,6 +806,8 @@ export type LeagueStandingEventDetail = {
   losses: number;
   ties: number;
   points: number;
+  /** Ronda hasta la que cuenta el récord si hay tope de dashboard. */
+  leagueRoundBasis?: number;
 };
 
 export type LeagueStandingRow = {
