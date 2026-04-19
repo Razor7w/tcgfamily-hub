@@ -28,6 +28,10 @@ import {
   useUpdateAdminLeague,
 } from "@/hooks/useWeeklyEvents";
 import { DEFAULT_LEAGUE_POINTS_BY_PLACE } from "@/lib/league-constants";
+import {
+  LEAGUE_ADMIN_COUNT_BEST_HELPER,
+  LEAGUE_ADMIN_INTRO,
+} from "@/lib/league-public-copy";
 
 const SLUG_HINT =
   "Solo minúsculas, números y guiones (ej. liga-primavera-2026). Se usa en la URL pública.";
@@ -217,9 +221,7 @@ export default function AdminLigasPage() {
                 Ligas (torneos oficiales)
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1, maxWidth: 640, lineHeight: 1.6 }}>
-                Cada liga tiene una tabla de puntos por posición final (clasificación TDF importada). Asigna la
-                liga al crear o editar un torneo oficial; la página pública acumula puntos cuando el torneo está
-                cerrado y tiene standings.
+                {LEAGUE_ADMIN_INTRO}
               </Typography>
             </Box>
             <Button variant="contained" size="large" onClick={openCreate} sx={{ fontWeight: 700 }}>
@@ -359,7 +361,7 @@ export default function AdminLigasPage() {
               onChange={(e) => setForm((f) => ({ ...f, countBestStr: e.target.value }))}
               fullWidth
               placeholder="Vacío = sumar todos"
-              helperText="Inspirado en Play Pokémon: a veces solo cuentan las mejores N actuaciones. Vacío = sumar todos los torneos cerrados de la liga."
+              helperText={LEAGUE_ADMIN_COUNT_BEST_HELPER}
             />
             <FormControlLabel
               control={

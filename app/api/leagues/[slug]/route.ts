@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
-import { aggregateLeagueStandings } from "@/lib/league-aggregate";
+import { aggregateLeagueStandingsByCategory } from "@/lib/league-aggregate";
 import League from "@/models/League";
 import WeeklyEvent from "@/models/WeeklyEvent";
 
@@ -51,8 +51,8 @@ export async function GET(
       .sort({ startsAt: 1 })
       .lean();
 
-    const standings = aggregateLeagueStandings(
-      events as Parameters<typeof aggregateLeagueStandings>[0],
+    const standingsByCategory = aggregateLeagueStandingsByCategory(
+      events as Parameters<typeof aggregateLeagueStandingsByCategory>[0],
       league.pointsByPlace,
       league.countBestEvents,
     );
@@ -71,19 +71,22 @@ export async function GET(
       ),
     }));
 
-    const chartTop = standings.slice(0, 12).map((r, i) => ({
-      rank: i + 1,
-      name: r.displayName,
-      points: r.totalPoints,
-      popId: r.popId,
+    const standingsByCategoryPayload = standingsByCategory.map((block) => ({
+      categoryIndex: block.categoryIndex,
+      standings: block.standings,
+      chartTop: block.standings.slice(0, 12).map((r, i) => ({
+        rank: i + 1,
+        name: r.displayName,
+        points: r.totalPoints,
+        popId: r.popId,
+      })),
     }));
 
     return NextResponse.json(
       {
         league,
         tournaments: tournamentSummaries,
-        standings,
-        chartTop,
+        standingsByCategory: standingsByCategoryPayload,
       },
       { status: 200 },
     );

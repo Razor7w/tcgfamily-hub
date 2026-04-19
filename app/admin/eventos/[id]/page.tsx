@@ -570,7 +570,7 @@ export default function AdminEventoDetailPage() {
                 <DialogContent dividers>
                   <Stack spacing={2} sx={{ pt: 0.5 }}>
                     <Alert severity="info" variant="outlined">
-                      Asigna una liga para que este torneo sume puntos en la tabla pública cuando quede
+                      Asigna una liga para que este torneo sume puntos en la tabla pública por división de edad cuando quede
                       cerrado y tenga standings importados.
                     </Alert>
                     <FormControl fullWidth>

@@ -815,6 +815,12 @@ export type LeagueStandingRow = {
   events: LeagueStandingEventDetail[];
 };
 
+export type PublicLeagueCategoryBlock = {
+  categoryIndex: number;
+  standings: LeagueStandingRow[];
+  chartTop: { rank: number; name: string; points: number; popId: string }[];
+};
+
 export type PublicLeagueResponse = {
   league: {
     _id: string;
@@ -830,8 +836,7 @@ export type PublicLeagueResponse = {
     startsAt: string;
     hasStandings: boolean;
   }[];
-  standings: LeagueStandingRow[];
-  chartTop: { rank: number; name: string; points: number; popId: string }[];
+  standingsByCategory: PublicLeagueCategoryBlock[];
 };
 
 export function useAdminLeagues() {

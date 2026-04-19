@@ -37,16 +37,18 @@ type LeanEventForLeague = {
 };
 
 /**
- * Suma puntos por posición final (TDF) en torneos cerrados de la liga.
- * `countBestEvents`: si es >= 1, solo suman los N torneos con más puntos por jugador.
+ * `onlyCategory`: null = todas las categorías (mezcla división de edad; no recomendado para podio);
+ * 0–2 = solo esa división (Júnior, Sénior, Máster).
  */
-export function aggregateLeagueStandings(
+function collectPlayerDetails(
   events: LeanEventForLeague[],
   pointsByPlace: number[],
-  countBestEvents: number | null | undefined,
-): LeagueStandingRow[] {
+  onlyCategory: number | null,
+): {
+  popToName: Map<string, string>;
+  playerDetails: Map<string, LeagueStandingEventDetail[]>;
+} {
   const popToName = new Map<string, string>();
-  /** popId -> lista de detalles por fila de standing */
   const playerDetails = new Map<string, LeagueStandingEventDetail[]>();
 
   for (const ev of events) {
@@ -71,6 +73,8 @@ export function aggregateLeagueStandings(
         typeof cat.categoryIndex === "number" && Number.isFinite(cat.categoryIndex)
           ? Math.max(0, Math.min(2, Math.round(cat.categoryIndex)))
           : 0;
+      if (onlyCategory !== null && ci !== onlyCategory) continue;
+
       for (const row of cat.finished ?? []) {
         const popRaw = typeof row.popId === "string" ? row.popId : "";
         const k = popidForStorage(popRaw);
@@ -95,6 +99,18 @@ export function aggregateLeagueStandings(
     }
   }
 
+  return { popToName, playerDetails };
+}
+
+/**
+ * `countBestEvents`: si es >= 1, solo suman los N torneos con más puntos por jugador
+ * (dentro del conjunto de detalles ya filtrado, p. ej. por categoría).
+ */
+function finalizeStandings(
+  popToName: Map<string, string>,
+  playerDetails: Map<string, LeagueStandingEventDetail[]>,
+  countBestEvents: number | null | undefined,
+): LeagueStandingRow[] {
   const cap =
     countBestEvents != null &&
     typeof countBestEvents === "number" &&
@@ -148,4 +164,53 @@ export function aggregateLeagueStandings(
       a.displayName.localeCompare(b.displayName, "es"),
   );
   return rows;
+}
+
+/**
+ * Suma puntos por posición final (TDF) en torneos cerrados de la liga, mezclando todas las categorías.
+ * Preferir `aggregateLeagueStandingsByCategory` en la vista pública para no mezclar divisiones de edad.
+ */
+export function aggregateLeagueStandings(
+  events: LeanEventForLeague[],
+  pointsByPlace: number[],
+  countBestEvents: number | null | undefined,
+): LeagueStandingRow[] {
+  const { popToName, playerDetails } = collectPlayerDetails(
+    events,
+    pointsByPlace,
+    null,
+  );
+  return finalizeStandings(popToName, playerDetails, countBestEvents);
+}
+
+export type LeagueCategoryStandingsBlock = {
+  categoryIndex: number;
+  standings: LeagueStandingRow[];
+};
+
+/**
+ * Una tabla por división de edad (índice TOM 0–2), evitando un único ranking global con varios «primeros lugares».
+ */
+export function aggregateLeagueStandingsByCategory(
+  events: LeanEventForLeague[],
+  pointsByPlace: number[],
+  countBestEvents: number | null | undefined,
+): LeagueCategoryStandingsBlock[] {
+  const out: LeagueCategoryStandingsBlock[] = [];
+  for (let categoryIndex = 0; categoryIndex <= 2; categoryIndex++) {
+    const { popToName, playerDetails } = collectPlayerDetails(
+      events,
+      pointsByPlace,
+      categoryIndex,
+    );
+    out.push({
+      categoryIndex,
+      standings: finalizeStandings(
+        popToName,
+        playerDetails,
+        countBestEvents,
+      ),
+    });
+  }
+  return out;
 }

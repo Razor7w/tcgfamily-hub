@@ -11,8 +11,9 @@ export interface ILeague extends Document {
   isActive: boolean;
   pointsByPlace: number[];
   /**
-   * Si es un entero >= 1, solo cuentan los N mejores torneos por jugador (similar a «mejores N resultados» en CP).
-   * `null` o ausente = sumar todos los torneos de la liga.
+   * Si es un entero >= 1, solo cuentan los N mejores torneos por jugador **por división de edad** (Júnior, Sénior, Máster).
+   * `null` o ausente = sumar todos los torneos de la liga en esa categoría.
+   * Independiente de los Puntos de Campeonato oficiales en Play! Tools.
    */
   countBestEvents: number | null;
 }
