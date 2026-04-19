@@ -843,6 +843,46 @@ export type PublicLeagueResponse = {
   chartTop: { rank: number; name: string; points: number; popId: string }[];
 };
 
+export type AdminCustomTournament = {
+  _id: string;
+  title: string;
+  startsAt: string;
+  createdAt: string;
+  updatedAt: string;
+  creator: {
+    _id: string;
+    name: string | null;
+    email: string | null;
+  } | null;
+  participantCount: number;
+  creatorParticipant: {
+    displayName: string;
+    matchRoundsReported: number;
+    deckPokemonSlugs: string[];
+    wins: number;
+    losses: number;
+    ties: number;
+    manualPlacement: {
+      categoryIndex: number;
+      place: number | null;
+      isDnf: boolean;
+    } | null;
+  } | null;
+};
+
+export function useAdminCustomTournaments() {
+  return useQuery<{ tournaments: AdminCustomTournament[] }>({
+    queryKey: ["admin-custom-tournaments"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/custom-tournaments");
+      if (!res.ok) {
+        throw new Error("Error al cargar torneos custom");
+      }
+      return res.json();
+    },
+  });
+}
+
 export function useAdminLeagues() {
   return useQuery<{ leagues: AdminLeague[] }>({
     queryKey: ["admin-leagues"],
