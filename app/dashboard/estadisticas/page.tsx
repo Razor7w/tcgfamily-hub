@@ -83,14 +83,13 @@ function EstadisticasTorneosContent() {
 
   const isDetail = Boolean(myDeckKey)
 
-  const detailTitle = useMemo(() => {
-    if (!myDeckKey) return ''
-    if (data?.myDeckSlugs && data.myDeckSlugs.length > 0) {
-      return data.myDeckSlugs.map(slugToTitle).join(' / ')
-    }
-    if (myDeckKey === '__empty__') return 'Sin deck en perfil'
-    return myDeckKey.split('|').map(slugToTitle).join(' / ')
-  }, [myDeckKey, data?.myDeckSlugs])
+  const detailTitle = !myDeckKey
+    ? ''
+    : data?.myDeckSlugs && data.myDeckSlugs.length > 0
+      ? data.myDeckSlugs.map(slugToTitle).join(' / ')
+      : myDeckKey === '__empty__'
+        ? 'Sin deck en perfil'
+        : myDeckKey.split('|').map(slugToTitle).join(' / ')
 
   const sortedMyDecks = useMemo(() => {
     const rows = data?.myDecks ?? []

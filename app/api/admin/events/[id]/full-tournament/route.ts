@@ -292,7 +292,7 @@ export async function POST(
       const err = validatePopidOptional(pop)
       if (err) continue
 
-      let sub = byPop.get(pop)
+      const sub = byPop.get(pop)
       if (sub) {
         sub.displayName = row.displayName
         sub.wins = row.wins

@@ -10,7 +10,7 @@
  * - Invalidación de caché
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -184,7 +184,7 @@ function Example3OptimisticUpdates() {
 
   // Ejemplo de actualización optimista
   const optimisticUpdate = useMutation({
-    mutationFn: async (mailId: string) => {
+    mutationFn: async () => {
       // Simular llamada API
       await new Promise(resolve => setTimeout(resolve, 1000))
       return { success: true }

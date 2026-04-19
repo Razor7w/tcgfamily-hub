@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import Box from '@mui/material/Box'
@@ -94,17 +94,23 @@ export default function AdminEventoDetailPage() {
   const [dashboardCapInput, setDashboardCapInput] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [leagueIdInput, setLeagueIdInput] = useState('')
+  const [settingsSyncKey, setSettingsSyncKey] = useState<string | null>(null)
 
-  useEffect(() => {
+  const evSettingsKey = ev
+    ? `${ev._id}|${ev.dashboardRoundCap ?? ''}|${ev.leagueId ?? ''}`
+    : `none:${id}`
+
+  if (evSettingsKey !== settingsSyncKey) {
+    setSettingsSyncKey(evSettingsKey)
     if (!ev) {
       setDashboardCapInput('')
       setLeagueIdInput('')
-      return
+    } else {
+      const c = ev.dashboardRoundCap ?? 0
+      setDashboardCapInput(c > 0 ? String(c) : '')
+      setLeagueIdInput(ev.leagueId ?? '')
     }
-    const c = ev.dashboardRoundCap ?? 0
-    setDashboardCapInput(c > 0 ? String(c) : '')
-    setLeagueIdInput(ev.leagueId ?? '')
-  }, [ev?._id, ev?.dashboardRoundCap, ev?.leagueId])
+  }
 
   const saveDashboardRoundCap = async () => {
     if (!ev || ev.kind !== 'tournament') return

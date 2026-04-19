@@ -187,7 +187,7 @@ export function parseTournamentXml(
       const p1 = matchEl.getElementsByTagName('player1')[0]
       const p2 = matchEl.getElementsByTagName('player2')[0]
       let uid1 = p1?.getAttribute('userid')?.trim() ?? ''
-      let uid2 = p2?.getAttribute('userid')?.trim() ?? ''
+      const uid2 = p2?.getAttribute('userid')?.trim() ?? ''
       if (!uid1 && !uid2) {
         const lone = matchEl.getElementsByTagName('player')[0]
         const u = lone?.getAttribute('userid')?.trim() ?? ''
@@ -332,8 +332,8 @@ export function buildMatchRecordsFromMatches(
 
   for (const m of matches) {
     const o = m.outcome.trim()
-    let u1 = m.player1UserId.trim()
-    let u2 = m.player2UserId.trim()
+    const u1 = m.player1UserId.trim()
+    const u2 = m.player2UserId.trim()
     if (u1 && !u2) {
       const rec = bump(u1)
       if (rec) rec.wins++

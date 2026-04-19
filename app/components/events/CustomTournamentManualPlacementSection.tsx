@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import EmojiEventsOutlined from '@mui/icons-material/EmojiEventsOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -55,24 +55,19 @@ export default function CustomTournamentManualPlacementSection({
   const [placeStr, setPlaceStr] = useState('')
   const [placementDnf, setPlacementDnf] = useState(false)
 
-  useEffect(() => {
-    if (!open) return
-    if (placement) {
+  const seedFormFromPlacement = (p: Placement | null | undefined) => {
+    if (p) {
       setIncludePlacement(true)
-      setCategoryIndex(placement.categoryIndex)
-      setPlacementDnf(placement.isDnf)
-      setPlaceStr(
-        !placement.isDnf && placement.place != null
-          ? String(placement.place)
-          : ''
-      )
+      setCategoryIndex(p.categoryIndex)
+      setPlacementDnf(p.isDnf)
+      setPlaceStr(!p.isDnf && p.place != null ? String(p.place) : '')
     } else {
       setIncludePlacement(false)
       setCategoryIndex(2)
       setPlacementDnf(false)
       setPlaceStr('')
     }
-  }, [open, placement])
+  }
 
   const placeInvalid =
     includePlacement &&
@@ -168,7 +163,10 @@ export default function CustomTournamentManualPlacementSection({
         <Button
           size="small"
           variant="outlined"
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            seedFormFromPlacement(placement)
+            setOpen(true)
+          }}
           sx={{
             flexShrink: 0,
             alignSelf: { xs: 'stretch', sm: 'center' },
