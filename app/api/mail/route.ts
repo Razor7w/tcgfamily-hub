@@ -9,6 +9,10 @@ import {
   format as formatRut,
   validate as validateRut
 } from 'rut.js'
+import {
+  countMailsRegisteredTodayBySender,
+  getMailRegisterDailyLimit
+} from '@/lib/mail-register-daily'
 
 function pad3(n: number) {
   return String(n).padStart(3, '0')
@@ -207,6 +211,21 @@ export async function POST(request: NextRequest) {
     }
     if (!resolvedToRut) {
       return NextResponse.json({ error: 'toRut es requerido' }, { status: 400 })
+    }
+
+    if (!adminFullCreate) {
+      const usedToday = await countMailsRegisteredTodayBySender(
+        session.user.id as string
+      )
+      const dailyLimit = await getMailRegisterDailyLimit()
+      if (usedToday >= dailyLimit) {
+        return NextResponse.json(
+          {
+            error: `Límite diario alcanzado: máximo ${dailyLimit} correo${dailyLimit === 1 ? '' : 's'} por día (hora Chile).`
+          },
+          { status: 429 }
+        )
+      }
     }
 
     // Crear el mail (con ID público correlativo por día)

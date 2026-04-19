@@ -3,6 +3,10 @@ import { revalidatePath } from 'next/cache'
 import connectDB from '@/lib/mongodb'
 import { requireAdminSession } from '@/lib/api-auth'
 import {
+  MAIL_REGISTER_DAILY_LIMIT,
+  MAIL_REGISTER_DAILY_LIMIT_ADMIN_MAX
+} from '@/lib/mail-register-constants'
+import {
   mergeDashboardSettings,
   normalizeDashboardOrder,
   type DashboardModuleSettingsDTO
@@ -17,6 +21,14 @@ function readPickupNotifyEnabled(
   return doc?.resendNotifyPickupInStoreEnabled !== false
 }
 
+function normalizeMailRegisterDailyLimit(raw: unknown): number {
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+    return MAIL_REGISTER_DAILY_LIMIT
+  }
+  const r = Math.round(raw)
+  return Math.min(MAIL_REGISTER_DAILY_LIMIT_ADMIN_MAX, Math.max(1, r))
+}
+
 export async function GET() {
   try {
     const gate = await requireAdminSession()
@@ -29,6 +41,7 @@ export async function GET() {
       order?: DashboardModuleSettingsDTO['order']
       shortcuts?: DashboardModuleSettingsDTO['shortcuts']
       resendNotifyPickupInStoreEnabled?: boolean
+      mailRegisterDailyLimit?: number
     } | null
     const raw: Partial<DashboardModuleSettingsDTO> | null = d
       ? {
@@ -42,7 +55,10 @@ export async function GET() {
     return NextResponse.json(
       {
         settings,
-        resendNotifyPickupInStoreEnabled: readPickupNotifyEnabled(d)
+        resendNotifyPickupInStoreEnabled: readPickupNotifyEnabled(d),
+        mailRegisterDailyLimit: normalizeMailRegisterDailyLimit(
+          d?.mailRegisterDailyLimit
+        )
       },
       { status: 200 }
     )
@@ -65,6 +81,7 @@ export async function PUT(request: NextRequest) {
     const orderRaw = body?.order
     const emailFlag = body?.resendNotifyPickupInStoreEnabled
     const shortcutsBody = body?.shortcuts
+    const mailLimitRaw = body?.mailRegisterDailyLimit
 
     const updatingDashboard =
       vis &&
@@ -77,12 +94,19 @@ export async function PUT(request: NextRequest) {
       typeof shortcutsBody === 'object' &&
       typeof shortcutsBody.createMail === 'boolean' &&
       typeof shortcutsBody.createTournament === 'boolean'
+    const updatingMailRegisterLimit =
+      typeof mailLimitRaw === 'number' && Number.isFinite(mailLimitRaw)
 
-    if (!updatingDashboard && !updatingEmail && !updatingShortcuts) {
+    if (
+      !updatingDashboard &&
+      !updatingEmail &&
+      !updatingShortcuts &&
+      !updatingMailRegisterLimit
+    ) {
       return NextResponse.json(
         {
           error:
-            'Envía visibility+order, shortcuts (createMail, createTournament) y/o resendNotifyPickupInStoreEnabled (boolean)'
+            'Envía visibility+order, shortcuts (createMail, createTournament), resendNotifyPickupInStoreEnabled (boolean) y/o mailRegisterDailyLimit (número)'
         },
         { status: 400 }
       )
@@ -144,6 +168,10 @@ export async function PUT(request: NextRequest) {
       })
     }
 
+    if (updatingMailRegisterLimit) {
+      doc.mailRegisterDailyLimit = normalizeMailRegisterDailyLimit(mailLimitRaw)
+    }
+
     await doc.save()
 
     const dShortcuts = doc.shortcuts as
@@ -159,12 +187,16 @@ export async function PUT(request: NextRequest) {
     revalidatePath('/dashboard/eventos')
     revalidatePath('/dashboard/torneos-semana')
     revalidatePath('/dashboard/mail')
+    revalidatePath('/dashboard/mail/registrar-multiples')
     revalidatePath('/dashboard/estadisticas')
 
     return NextResponse.json(
       {
         settings,
-        resendNotifyPickupInStoreEnabled: readPickupNotifyEnabled(doc)
+        resendNotifyPickupInStoreEnabled: readPickupNotifyEnabled(doc),
+        mailRegisterDailyLimit: normalizeMailRegisterDailyLimit(
+          doc.mailRegisterDailyLimit
+        )
       },
       { status: 200 }
     )

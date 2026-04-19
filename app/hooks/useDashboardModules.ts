@@ -3,10 +3,12 @@ import type {
   DashboardModuleSettingsDTO,
   DashboardShortcutsVisibility
 } from '@/lib/dashboard-module-config'
+import { MAIL_REGISTER_DAILY_LIMIT } from '@/lib/mail-register-constants'
 
 export type AdminConfiguracionData = {
   settings: DashboardModuleSettingsDTO
   resendNotifyPickupInStoreEnabled: boolean
+  mailRegisterDailyLimit: number
 }
 
 /** Configuración admin: bloques del dashboard + correo Resend (requiere rol admin). */
@@ -21,6 +23,7 @@ export function useAdminConfiguracion() {
       const data = (await response.json()) as {
         settings?: DashboardModuleSettingsDTO
         resendNotifyPickupInStoreEnabled?: boolean
+        mailRegisterDailyLimit?: number
       }
       if (!data.settings) {
         throw new Error('Respuesta inválida')
@@ -28,7 +31,11 @@ export function useAdminConfiguracion() {
       return {
         settings: data.settings,
         resendNotifyPickupInStoreEnabled:
-          data.resendNotifyPickupInStoreEnabled !== false
+          data.resendNotifyPickupInStoreEnabled !== false,
+        mailRegisterDailyLimit:
+          typeof data.mailRegisterDailyLimit === 'number'
+            ? data.mailRegisterDailyLimit
+            : MAIL_REGISTER_DAILY_LIMIT
       }
     },
     staleTime: 60_000
@@ -105,6 +112,31 @@ export function useUpdateResendPickupNotifySettings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'configuracion'] })
+    }
+  })
+}
+
+export function useUpdateMailRegisterDailyLimit() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (mailRegisterDailyLimit: number) => {
+      const response = await fetch('/api/admin/configuracion', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mailRegisterDailyLimit })
+      })
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}))
+        throw new Error(
+          typeof err.error === 'string' ? err.error : 'Error al guardar'
+        )
+      }
+      return response.json() as Promise<AdminConfiguracionData>
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'configuracion'] })
+      queryClient.invalidateQueries({ queryKey: ['mail-register-quota'] })
     }
   })
 }

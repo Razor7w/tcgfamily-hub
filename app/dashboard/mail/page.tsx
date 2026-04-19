@@ -34,6 +34,10 @@ import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import DeleteIcon from '@mui/icons-material/Delete'
 import Snackbar from '@mui/material/Snackbar'
+import Dialog from '@mui/material/Dialog'
+import DialogTitle from '@mui/material/DialogTitle'
+import DialogContent from '@mui/material/DialogContent'
+import DialogActions from '@mui/material/DialogActions'
 import { useDeleteMail } from '@/hooks/useMails'
 import DashboardModuleRouteGate from '@/components/dashboard/DashboardModuleRouteGate'
 
@@ -72,6 +76,7 @@ function DashboardMailPageContent() {
   const currentUserId = session?.user?.id ?? ''
   const [registerMailOpen, setRegisterMailOpen] = useState(false)
   const deleteMail = useDeleteMail()
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [snackbar, setSnackbar] = useState<{
     open: boolean
     message: string
@@ -136,10 +141,18 @@ function DashboardMailPageContent() {
     return list
   }, [allMails, searchId, filterStatus, filterFromUser, filterToUser])
 
-  const handleDelete = async (mailId: string) => {
-    if (!confirm('¿Eliminar este correo?')) return
+  const deleteTargetMail = useMemo(
+    () =>
+      deleteTargetId ? allMails.find(m => m._id === deleteTargetId) : undefined,
+    [allMails, deleteTargetId]
+  )
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetId) return
+    const id = deleteTargetId
     try {
-      await deleteMail.mutateAsync(mailId)
+      await deleteMail.mutateAsync(id)
+      setDeleteTargetId(null)
       setSnackbar({
         open: true,
         message: 'Correo eliminado',
@@ -221,6 +234,14 @@ function DashboardMailPageContent() {
               onClick={() => setRegisterMailOpen(true)}
             >
               Registrar correo
+            </Button>
+            <Button
+              component={Link}
+              href="/dashboard/mail/registrar-multiples"
+              variant="outlined"
+              size="small"
+            >
+              Varios a la vez
             </Button>
           </Stack>
 
@@ -535,7 +556,7 @@ function DashboardMailPageContent() {
                               <IconButton
                                 size="small"
                                 color="error"
-                                onClick={() => handleDelete(mail._id)}
+                                onClick={() => setDeleteTargetId(mail._id)}
                                 disabled={deleteMail.isPending}
                               >
                                 <DeleteIcon fontSize="small" />
@@ -558,6 +579,45 @@ function DashboardMailPageContent() {
           open={registerMailOpen}
           onClose={() => setRegisterMailOpen(false)}
         />
+
+        <Dialog
+          open={deleteTargetId !== null}
+          onClose={() => !deleteMail.isPending && setDeleteTargetId(null)}
+          aria-labelledby="delete-mail-dialog-title"
+          maxWidth="xs"
+          fullWidth
+        >
+          <DialogTitle id="delete-mail-dialog-title">
+            ¿Eliminar este correo?
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary">
+              Esta acción no se puede deshacer. Solo puedes eliminar envíos que
+              aún no han sido recepcionados en tienda.
+            </Typography>
+            {deleteTargetMail?.code ? (
+              <Typography variant="body2" sx={{ mt: 1.5 }} fontWeight={600}>
+                Código: {deleteTargetMail.code}
+              </Typography>
+            ) : null}
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button
+              onClick={() => setDeleteTargetId(null)}
+              disabled={deleteMail.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              color="error"
+              variant="contained"
+              onClick={() => void handleConfirmDelete()}
+              disabled={deleteMail.isPending}
+            >
+              {deleteMail.isPending ? 'Eliminando…' : 'Eliminar'}
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         <Snackbar
           open={snackbar.open}

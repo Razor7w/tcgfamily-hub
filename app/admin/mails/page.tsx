@@ -119,6 +119,7 @@ export default function MailsPage() {
   const [filterFromUser, setFilterFromUser] = useState<User | null>(null)
   const [filterToUser, setFilterToUser] = useState<User | null>(null)
   const [page, setPage] = useState(1)
+  const [mailToDelete, setMailToDelete] = useState<Mail | null>(null)
 
   const { data: mailsRes, isLoading, error } = useMails()
   const { data: users = [], isLoading: usersLoading } = useUsers()
@@ -395,10 +396,12 @@ export default function MailsPage() {
     }
   }
 
-  const handleDelete = async (mail: Mail) => {
-    if (!confirm('¿Eliminar este correo?')) return
+  const handleConfirmDeleteMail = async () => {
+    if (!mailToDelete) return
+    const id = mailToDelete._id
     try {
-      await deleteMail.mutateAsync(mail._id)
+      await deleteMail.mutateAsync(id)
+      setMailToDelete(null)
       setSnackbar({
         open: true,
         message: 'Correo eliminado correctamente',
@@ -881,7 +884,7 @@ export default function MailsPage() {
                       <IconButton
                         color="error"
                         size="small"
-                        onClick={() => handleDelete(mail)}
+                        onClick={() => setMailToDelete(mail)}
                         disabled={deleteMail.isPending}
                         aria-label="Eliminar"
                       >
@@ -919,6 +922,44 @@ export default function MailsPage() {
             </Box>
           </>
         )}
+
+        <Dialog
+          open={mailToDelete !== null}
+          onClose={() => !deleteMail.isPending && setMailToDelete(null)}
+          maxWidth="xs"
+          fullWidth
+          aria-labelledby="admin-delete-mail-title"
+        >
+          <DialogTitle id="admin-delete-mail-title">
+            ¿Eliminar este correo?
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary">
+              Se eliminará de forma permanente del sistema.
+            </Typography>
+            {mailToDelete?.code ? (
+              <Typography variant="body2" sx={{ mt: 1.5 }} fontWeight={600}>
+                Código: {mailToDelete.code}
+              </Typography>
+            ) : null}
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button
+              onClick={() => setMailToDelete(null)}
+              disabled={deleteMail.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              color="error"
+              variant="contained"
+              onClick={() => void handleConfirmDeleteMail()}
+              disabled={deleteMail.isPending}
+            >
+              {deleteMail.isPending ? 'Eliminando…' : 'Eliminar'}
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         <Dialog
           open={openDialog}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import {
   Alert,
   Box,
@@ -14,7 +15,8 @@ import {
 } from '@mui/material'
 import { clean } from 'rut.js'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
-import { useRegisterMail } from '@/hooks/useMails'
+import { useMailRegisterQuota, useRegisterMail } from '@/hooks/useMails'
+import { MAIL_REGISTER_DAILY_LIMIT } from '@/lib/mail-register-constants'
 
 const OBS_MAX = 2000
 
@@ -38,25 +40,38 @@ export default function RegisterMailDialog({
   onClose
 }: RegisterMailDialogProps) {
   const registerMail = useRegisterMail()
+  const {
+    data: quota,
+    isLoading: quotaLoading,
+    isError: quotaError
+  } = useMailRegisterQuota()
+  const remaining = quota?.remaining ?? 0
+  const limit = quota?.limit ?? MAIL_REGISTER_DAILY_LIMIT
+  const usedToday = quota?.usedToday ?? 0
+  const quotaBlocked = !quotaLoading && remaining <= 0
+
   const [rut, setRut] = useState('')
   const [observations, setObservations] = useState('')
-  const [touched, setTouched] = useState(false)
+  const [submitAttempted, setSubmitAttempted] = useState(false)
 
   const handleClose = () => {
     setRut('')
     setObservations('')
-    setTouched(false)
+    setSubmitAttempted(false)
     registerMail.reset()
     onClose()
   }
 
   const rutError = useMemo(() => {
-    if (!touched) return null
-    return getRutFieldError(rut, true)
-  }, [rut, touched])
+    const t = rut.trim()
+    if (!t) {
+      return submitAttempted ? getRutFieldError(rut, true) : null
+    }
+    return getRutFieldError(rut, false)
+  }, [rut, submitAttempted])
 
   const handleSubmit = async () => {
-    setTouched(true)
+    setSubmitAttempted(true)
     if (getRutFieldError(rut, true)) return
     await registerMail.mutateAsync({
       toRut: normalizeRutForApi(rut),
@@ -94,13 +109,22 @@ export default function RegisterMailDialog({
               setRut(e.target.value)
             }}
             onBlur={() => {
-              setTouched(true)
-              setRut(formatRutOnBlur(rut))
+              setRut(prev => formatRutOnBlur(prev))
             }}
             error={!!rutError}
-            helperText={rutError ?? undefined}
+            helperText={
+              rutError ??
+              (quotaError
+                ? 'No se pudo verificar tu cupo. Recarga e inténtalo de nuevo.'
+                : quotaBlocked
+                  ? `Límite diario alcanzado (${limit} correos/día, hora Chile).`
+                  : !quotaLoading
+                    ? `Cupo hoy: ${usedToday}/${limit} — te quedan ${remaining}.`
+                    : undefined)
+            }
             size="small"
             autoComplete="off"
+            disabled={quotaBlocked || quotaLoading}
             inputProps={{ maxLength: 20, inputMode: 'text' }}
           />
 
@@ -113,6 +137,7 @@ export default function RegisterMailDialog({
             minRows={3}
             size="small"
             fullWidth
+            disabled={quotaBlocked || quotaLoading}
             helperText={`${observations.length}/${OBS_MAX}`}
             inputProps={{ maxLength: OBS_MAX }}
           />
@@ -126,17 +151,51 @@ export default function RegisterMailDialog({
           )}
         </Box>
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={handleClose} disabled={registerMail.isPending}>
-          Cancelar
-        </Button>
+      <DialogActions
+        sx={{
+          px: 3,
+          py: 2,
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 1
+        }}
+      >
         <Button
-          onClick={handleSubmit}
-          variant="contained"
-          disabled={registerMail.isPending}
+          component={Link}
+          href="/dashboard/mail/registrar-multiples"
+          onClick={handleClose}
+          color="primary"
+          disabled={registerMail.isPending || quotaLoading}
         >
-          {registerMail.isPending ? 'Registrando…' : 'Registrar'}
+          Cargar múltiples
         </Button>
+        <Box
+          sx={{
+            display: 'flex',
+            gap: 1,
+            flexWrap: 'wrap',
+            ml: { xs: 0, sm: 'auto' }
+          }}
+        >
+          <Button
+            onClick={handleClose}
+            disabled={registerMail.isPending || quotaLoading}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            disabled={
+              registerMail.isPending ||
+              quotaLoading ||
+              quotaError ||
+              quotaBlocked
+            }
+          >
+            {registerMail.isPending ? 'Registrando…' : 'Registrar'}
+          </Button>
+        </Box>
       </DialogActions>
     </Dialog>
   )
