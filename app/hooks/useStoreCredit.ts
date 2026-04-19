@@ -18,6 +18,6 @@ export function useStoreCredit() {
         throw new Error('No se pudieron cargar los puntos')
       }
       return res.json()
-    },
+    }
   })
 }

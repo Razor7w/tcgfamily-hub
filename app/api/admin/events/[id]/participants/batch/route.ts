@@ -1,169 +1,173 @@
-import { NextRequest, NextResponse } from "next/server";
-import mongoose from "mongoose";
-import { auth } from "@/auth";
-import { adminWeeklyEventForbiddenResponse } from "@/lib/admin-weekly-event-access";
-import connectDB from "@/lib/mongodb";
-import User from "@/models/User";
-import WeeklyEvent from "@/models/WeeklyEvent";
-import { canPreRegisterNow, normalizeDisplayName } from "@/lib/weekly-events";
-import { popidForStorage, validatePopidOptional } from "@/lib/rut-chile";
+import { NextRequest, NextResponse } from 'next/server'
+import mongoose from 'mongoose'
+import { auth } from '@/auth'
+import { adminWeeklyEventForbiddenResponse } from '@/lib/admin-weekly-event-access'
+import connectDB from '@/lib/mongodb'
+import User from '@/models/User'
+import WeeklyEvent from '@/models/WeeklyEvent'
+import { canPreRegisterNow, normalizeDisplayName } from '@/lib/weekly-events'
+import { popidForStorage, validatePopidOptional } from '@/lib/rut-chile'
 
-type Part = { userId?: mongoose.Types.ObjectId; popId?: string };
+type Part = { userId?: mongoose.Types.ObjectId; popId?: string }
 
 /**
  * POST — Preinscribir en lote (TDF): ignora duplicados en archivo y ya inscritos; respeta cupo.
  */
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> },
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session || session.user.role !== "admin") {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    const session = await auth()
+    if (!session || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    const { id: eventId } = await context.params;
+    const { id: eventId } = await context.params
     if (!eventId?.trim()) {
-      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+      return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
     }
 
-    let body: unknown;
+    let body: unknown
     try {
-      body = await request.json();
+      body = await request.json()
     } catch {
-      return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
+      return NextResponse.json({ error: 'JSON inválido' }, { status: 400 })
     }
 
     const rec =
-      typeof body === "object" && body !== null
+      typeof body === 'object' && body !== null
         ? (body as Record<string, unknown>)
-        : {};
-    const rawPlayers = rec.players;
+        : {}
+    const rawPlayers = rec.players
     if (!Array.isArray(rawPlayers) || rawPlayers.length === 0) {
       return NextResponse.json(
-        { error: "Se requiere un array players no vacío" },
-        { status: 400 },
-      );
+        { error: 'Se requiere un array players no vacío' },
+        { status: 400 }
+      )
     }
 
-    await connectDB();
-    const now = new Date();
+    await connectDB()
+    const now = new Date()
 
-    const existing = await WeeklyEvent.findById(eventId.trim());
+    const existing = await WeeklyEvent.findById(eventId.trim())
     if (!existing) {
-      return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+      return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     }
-    const forbidden = adminWeeklyEventForbiddenResponse(existing);
-    if (forbidden) return forbidden;
+    const forbidden = adminWeeklyEventForbiddenResponse(existing)
+    if (forbidden) return forbidden
 
     if (!canPreRegisterNow(existing.startsAt, now)) {
       return NextResponse.json(
-        { error: "La preinscripción ya cerró para este evento" },
-        { status: 400 },
-      );
+        { error: 'La preinscripción ya cerró para este evento' },
+        { status: 400 }
+      )
     }
 
-    const parts = existing.participants as Part[];
-    const eventPopSet = new Set<string>();
-    const eventUserSet = new Set<string>();
+    const parts = existing.participants as Part[]
+    const eventPopSet = new Set<string>()
+    const eventUserSet = new Set<string>()
     for (const p of parts) {
-      const ep = popidForStorage(typeof p.popId === "string" ? p.popId : "");
-      if (ep) eventPopSet.add(ep);
-      if (p.userId) eventUserSet.add(String(p.userId));
+      const ep = popidForStorage(typeof p.popId === 'string' ? p.popId : '')
+      if (ep) eventPopSet.add(ep)
+      if (p.userId) eventUserSet.add(String(p.userId))
     }
 
-    const seenInBatch = new Set<string>();
-    type Prelim = { displayName: string; popNorm: string };
-    const prelim: Prelim[] = [];
+    const seenInBatch = new Set<string>()
+    type Prelim = { displayName: string; popNorm: string }
+    const prelim: Prelim[] = []
 
-    let skippedDuplicateInFile = 0;
-    let skippedInvalidPop = 0;
-    let skippedAlreadyRegistered = 0;
+    let skippedDuplicateInFile = 0
+    let skippedInvalidPop = 0
+    let skippedAlreadyRegistered = 0
 
     for (const row of rawPlayers) {
-      if (typeof row !== "object" || row === null) {
-        skippedInvalidPop++;
-        continue;
+      if (typeof row !== 'object' || row === null) {
+        skippedInvalidPop++
+        continue
       }
-      const r = row as Record<string, unknown>;
-      const displayName = normalizeDisplayName(r.displayName);
-      const popIdRaw = typeof r.popId === "string" ? r.popId : "";
-      const popNorm = popidForStorage(popIdRaw);
+      const r = row as Record<string, unknown>
+      const displayName = normalizeDisplayName(r.displayName)
+      const popIdRaw = typeof r.popId === 'string' ? r.popId : ''
+      const popNorm = popidForStorage(popIdRaw)
 
       if (!displayName) {
-        skippedInvalidPop++;
-        continue;
+        skippedInvalidPop++
+        continue
       }
       if (!popNorm) {
-        skippedInvalidPop++;
-        continue;
+        skippedInvalidPop++
+        continue
       }
 
-      const popErr = validatePopidOptional(popNorm);
+      const popErr = validatePopidOptional(popNorm)
       if (popErr) {
-        skippedInvalidPop++;
-        continue;
+        skippedInvalidPop++
+        continue
       }
 
       if (seenInBatch.has(popNorm)) {
-        skippedDuplicateInFile++;
-        continue;
+        skippedDuplicateInFile++
+        continue
       }
-      seenInBatch.add(popNorm);
+      seenInBatch.add(popNorm)
 
       if (eventPopSet.has(popNorm)) {
-        skippedAlreadyRegistered++;
-        continue;
+        skippedAlreadyRegistered++
+        continue
       }
 
-      prelim.push({ displayName, popNorm });
+      prelim.push({ displayName, popNorm })
     }
 
-    const uniquePops = [...new Set(prelim.map((p) => p.popNorm))];
+    const uniquePops = [...new Set(prelim.map(p => p.popNorm))]
     const userDocs =
       uniquePops.length > 0
         ? await User.find({ popid: { $in: uniquePops } })
-            .select("_id popid")
+            .select('_id popid')
             .lean()
-        : [];
-    const popToUserId = new Map<string, mongoose.Types.ObjectId>();
+        : []
+    const popToUserId = new Map<string, mongoose.Types.ObjectId>()
     for (const u of userDocs) {
-      const pid = popidForStorage(typeof u.popid === "string" ? u.popid : "");
+      const pid = popidForStorage(typeof u.popid === 'string' ? u.popid : '')
       if (pid && u._id) {
-        popToUserId.set(pid, u._id as mongoose.Types.ObjectId);
+        popToUserId.set(pid, u._id as mongoose.Types.ObjectId)
       }
     }
 
-    type Row = { displayName: string; popNorm: string; userId?: mongoose.Types.ObjectId };
-    const candidates: Row[] = [];
+    type Row = {
+      displayName: string
+      popNorm: string
+      userId?: mongoose.Types.ObjectId
+    }
+    const candidates: Row[] = []
 
     for (const row of prelim) {
-      const uid = popToUserId.get(row.popNorm);
+      const uid = popToUserId.get(row.popNorm)
       if (uid && eventUserSet.has(String(uid))) {
-        skippedAlreadyRegistered++;
-        continue;
+        skippedAlreadyRegistered++
+        continue
       }
       candidates.push({
         displayName: row.displayName,
         popNorm: row.popNorm,
-        userId: uid,
-      });
+        userId: uid
+      })
     }
 
-    const capacityLeft = existing.maxParticipants - parts.length;
+    const capacityLeft = existing.maxParticipants - parts.length
     if (capacityLeft <= 0 && candidates.length > 0) {
       return NextResponse.json(
-        { error: "Se alcanzó el cupo máximo del evento" },
-        { status: 400 },
-      );
+        { error: 'Se alcanzó el cupo máximo del evento' },
+        { status: 400 }
+      )
     }
 
-    let skippedCapacity = 0;
-    let rowsToAdd = candidates;
+    let skippedCapacity = 0
+    let rowsToAdd = candidates
     if (candidates.length > capacityLeft) {
-      skippedCapacity = candidates.length - capacityLeft;
-      rowsToAdd = candidates.slice(0, capacityLeft);
+      skippedCapacity = candidates.length - capacityLeft
+      rowsToAdd = candidates.slice(0, capacityLeft)
     }
 
     for (const row of rowsToAdd) {
@@ -172,13 +176,13 @@ export async function POST(
         userId: row.userId,
         createdAt: now,
         popId: row.popNorm,
-        table: "",
-        opponentId: "",
-      });
+        table: '',
+        opponentId: ''
+      })
     }
 
     if (rowsToAdd.length > 0) {
-      await existing.save();
+      await existing.save()
     }
 
     return NextResponse.json(
@@ -189,15 +193,15 @@ export async function POST(
         skippedInvalidPop,
         skippedAlreadyRegistered,
         skippedCapacity,
-        participantCount: existing.participants.length,
+        participantCount: existing.participants.length
       },
-      { status: 200 },
-    );
+      { status: 200 }
+    )
   } catch (error) {
-    console.error("POST /api/admin/events/[id]/participants/batch:", error);
+    console.error('POST /api/admin/events/[id]/participants/batch:', error)
     return NextResponse.json(
-      { error: "Error al preinscribir en lote" },
-      { status: 500 },
-    );
+      { error: 'Error al preinscribir en lote' },
+      { status: 500 }
+    )
   }
 }

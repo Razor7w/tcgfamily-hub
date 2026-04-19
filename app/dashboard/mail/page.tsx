@@ -22,7 +22,7 @@ import Chip from '@mui/material/Chip'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import MarkunreadMailboxOutlined from '@mui/icons-material/MarkunreadMailboxOutlined'
 import { useMyMails } from '@/hooks/useMails'
-import { Divider, Stack } from '@mui/material'
+import { alpha, Divider, Stack } from '@mui/material'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import ButtonBarCode from '@/components/molecule/ButtonBarCode'
@@ -171,7 +171,9 @@ function DashboardMailPageContent() {
     return (
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: 4 }}>
         <Container maxWidth="lg">
-          <Alert severity="error">Error al cargar correos: {error.message}</Alert>
+          <Alert severity="error">
+            Error al cargar correos: {error.message}
+          </Alert>
         </Container>
       </Box>
     )
@@ -187,10 +189,23 @@ function DashboardMailPageContent() {
           : 'Retirado'
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: { xs: 2, sm: 4 } }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: t =>
+          `linear-gradient(165deg, ${alpha(t.palette.primary.main, 0.06)} 0%, ${t.palette.background.default} 38%, ${t.palette.background.default} 100%)`,
+        py: { xs: 2, sm: 4 }
+      }}
+    >
       <Container maxWidth="lg">
         <Stack spacing={2.5} sx={{ mb: 3 }}>
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
+          <Stack
+            direction="row"
+            spacing={1}
+            flexWrap="wrap"
+            useFlexGap
+            alignItems="center"
+          >
             <Button
               component={Link}
               href="/dashboard"
@@ -209,15 +224,24 @@ function DashboardMailPageContent() {
             </Button>
           </Stack>
 
-          <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+          <Stack
+            direction="row"
+            spacing={1.5}
+            alignItems="center"
+            flexWrap="wrap"
+          >
             <MarkunreadMailboxOutlined color="primary" sx={{ fontSize: 36 }} />
             <Box>
-              <Typography variant="h4" component="h1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+              <Typography
+                variant="h4"
+                component="h1"
+                sx={{ fontWeight: 700, lineHeight: 1.2 }}
+              >
                 Mis correos
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Envíos registrados a tu nombre o que enviaste como emisor. Filtra por estado o por
-                persona.
+                Envíos registrados a tu nombre o que enviaste como emisor.
+                Filtra por estado o por persona.
               </Typography>
             </Box>
           </Stack>
@@ -233,7 +257,11 @@ function DashboardMailPageContent() {
             borderRadius: 2
           }}
         >
-          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
+          <Typography
+            variant="subtitle2"
+            color="text.secondary"
+            sx={{ mb: 1.5 }}
+          >
             Filtros
           </Typography>
           <Stack spacing={2}>
@@ -250,7 +278,10 @@ function DashboardMailPageContent() {
                 placeholder="Ej: 16-04-2026-001"
                 value={searchId}
                 onChange={e => setSearchId(e.target.value)}
-                sx={{ minWidth: { xs: '100%', sm: 220 }, flex: { md: '0 0 auto' } }}
+                sx={{
+                  minWidth: { xs: '100%', sm: 220 },
+                  flex: { md: '0 0 auto' }
+                }}
               />
               <Autocomplete<FilterUser>
                 size="small"
@@ -259,7 +290,10 @@ function DashboardMailPageContent() {
                 onChange={(_, v) => setFilterFromUser(v)}
                 getOptionLabel={filterUserLabel}
                 isOptionEqualToValue={(a, b) => a.id === b.id}
-                sx={{ minWidth: { xs: '100%', sm: 260 }, flex: { md: '1 1 200px' } }}
+                sx={{
+                  minWidth: { xs: '100%', sm: 260 },
+                  flex: { md: '1 1 200px' }
+                }}
                 renderInput={params => (
                   <TextField
                     {...params}
@@ -288,7 +322,10 @@ function DashboardMailPageContent() {
                 onChange={(_, v) => setFilterToUser(v)}
                 getOptionLabel={filterUserLabel}
                 isOptionEqualToValue={(a, b) => a.id === b.id}
-                sx={{ minWidth: { xs: '100%', sm: 260 }, flex: { md: '1 1 200px' } }}
+                sx={{
+                  minWidth: { xs: '100%', sm: 260 },
+                  flex: { md: '1 1 200px' }
+                }}
                 renderInput={params => (
                   <TextField
                     {...params}
@@ -313,7 +350,11 @@ function DashboardMailPageContent() {
             </Stack>
 
             <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: 'block', mb: 0.75 }}
+              >
                 Estado del envío
               </Typography>
               <ToggleButtonGroup
@@ -360,7 +401,10 @@ function DashboardMailPageContent() {
               ? 'Sin resultados con los filtros actuales'
               : `${mails.length} ${mails.length === 1 ? 'correo' : 'correos'} · ${statusFilterLabel}`}
           </Typography>
-          {(searchId || filterFromUser || filterToUser || filterStatus !== 'all') && (
+          {(searchId ||
+            filterFromUser ||
+            filterToUser ||
+            filterStatus !== 'all') && (
             <Button
               size="small"
               onClick={() => {
@@ -381,137 +425,153 @@ function DashboardMailPageContent() {
           sx={{ borderRadius: 2, overflow: 'auto' }}
         >
           <Table size="small" sx={{ minWidth: 720 }}>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ width: 110 }}>Tipo</TableCell>
-              <TableCell>De</TableCell>
-              <TableCell>Para</TableCell>
-              <TableCell>Estado</TableCell>
-              <TableCell>Tiempo</TableCell>
-              <TableCell align="center">Código</TableCell>
-              <TableCell align="right">Acciones</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {mails.length === 0 ? (
+            <TableHead>
               <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    No hay correos que coincidan.
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
-                    Prueba otra búsqueda o restablece los filtros.
-                  </Typography>
-                  <Divider sx={{ my: 2 }} />
-                  <Button size="small" variant="outlined" onClick={() => setRegisterMailOpen(true)}>
-                    Registrar un correo
-                  </Button>
-                </TableCell>
+                <TableCell sx={{ width: 110 }}>Tipo</TableCell>
+                <TableCell>De</TableCell>
+                <TableCell>Para</TableCell>
+                <TableCell>Estado</TableCell>
+                <TableCell>Tiempo</TableCell>
+                <TableCell align="center">Código</TableCell>
+                <TableCell align="right">Acciones</TableCell>
               </TableRow>
-            ) : (
-              mails.map(mail => {
-                const from =
-                  typeof mail.fromUserId === 'object' ? mail.fromUserId : null
-                const to =
-                  typeof mail.toUserId === 'object' ? mail.toUserId : null
-                const isEmisor =
-                  currentUserId && mailUserId(mail.fromUserId) === currentUserId
-                const canDelete = isEmisor && !mail.isRecivedInStore
-                return (
-                  <TableRow key={mail._id}>
-                    <TableCell>
-                      <Chip
-                        label={isEmisor ? 'Emisor' : 'Receptor'}
-                        size="small"
-                        color={isEmisor ? 'primary' : 'default'}
-                        variant="outlined"
-                        sx={{ fontWeight: 500 }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {from ? `${from.name ?? '-'} (${from.rut ?? '-'})` : '-'}
-                    </TableCell>
-                    <TableCell>
-                      {to
-                        ? `${to.name ?? '-'} (${to.rut ?? '-'})`
-                        : mail.toRut
-                          ? `RUT: ${mail.toRut}`
+            </TableHead>
+            <TableBody>
+              {mails.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      No hay correos que coincidan.
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      display="block"
+                      sx={{ mb: 2 }}
+                    >
+                      Prueba otra búsqueda o restablece los filtros.
+                    </Typography>
+                    <Divider sx={{ my: 2 }} />
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => setRegisterMailOpen(true)}
+                    >
+                      Registrar un correo
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                mails.map(mail => {
+                  const from =
+                    typeof mail.fromUserId === 'object' ? mail.fromUserId : null
+                  const to =
+                    typeof mail.toUserId === 'object' ? mail.toUserId : null
+                  const isEmisor =
+                    currentUserId &&
+                    mailUserId(mail.fromUserId) === currentUserId
+                  const canDelete = isEmisor && !mail.isRecivedInStore
+                  return (
+                    <TableRow key={mail._id}>
+                      <TableCell>
+                        <Chip
+                          label={isEmisor ? 'Emisor' : 'Receptor'}
+                          size="small"
+                          color={isEmisor ? 'primary' : 'default'}
+                          variant="outlined"
+                          sx={{ fontWeight: 500 }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {from
+                          ? `${from.name ?? '-'} (${from.rut ?? '-'})`
                           : '-'}
-                    </TableCell>
-                    <TableCell>
-                      {(() => {
-                        const { label, color } = getMailStatusChip(mail)
-                        return (
-                          <Chip
-                            label={label}
-                            color={color}
-                            size="small"
-                            sx={{ fontWeight: 600 }}
-                          />
-                        )
-                      })()}
-                    </TableCell>
-                    <TableCell>
-                      {(() => {
-                        const days = getElapsedDays(mail.createdAt)
-                        const { label, color } = getElapsedBadge(days)
-                        return (
-                          <Chip
-                            label={label}
-                            color={color}
-                            size="small"
-                            sx={{ fontWeight: 500 }}
-                          />
-                        )
-                      })()}
-                    </TableCell>
-                    <TableCell align="center">
-                      <ButtonBarCode id={mail.code ?? mail._id} />
-                    </TableCell>
-                    <TableCell align="right">
-                      {canDelete ? (
-                        <Tooltip title="Eliminar (solo antes de recibir en tienda)">
-                          <span>
-                            <IconButton
+                      </TableCell>
+                      <TableCell>
+                        {to
+                          ? `${to.name ?? '-'} (${to.rut ?? '-'})`
+                          : mail.toRut
+                            ? `RUT: ${mail.toRut}`
+                            : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const { label, color } = getMailStatusChip(mail)
+                          return (
+                            <Chip
+                              label={label}
+                              color={color}
                               size="small"
-                              color="error"
-                              onClick={() => handleDelete(mail._id)}
-                              disabled={deleteMail.isPending}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </span>
-                        </Tooltip>
-                      ) : (
-                        '-'
-                      )}
-                    </TableCell>
-                  </TableRow>
-                )
-              })
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                              sx={{ fontWeight: 600 }}
+                            />
+                          )
+                        })()}
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const days = getElapsedDays(mail.createdAt)
+                          const { label, color } = getElapsedBadge(days)
+                          return (
+                            <Chip
+                              label={label}
+                              color={color}
+                              size="small"
+                              sx={{ fontWeight: 500 }}
+                            />
+                          )
+                        })()}
+                      </TableCell>
+                      <TableCell align="center">
+                        <ButtonBarCode id={mail.code ?? mail._id} />
+                      </TableCell>
+                      <TableCell align="right">
+                        {canDelete ? (
+                          <Tooltip title="Eliminar (solo antes de recibir en tienda)">
+                            <span>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => handleDelete(mail._id)}
+                                disabled={deleteMail.isPending}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                        ) : (
+                          '-'
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
 
-      <RegisterMailDialog
-        open={registerMailOpen}
-        onClose={() => setRegisterMailOpen(false)}
-      />
+        <RegisterMailDialog
+          open={registerMailOpen}
+          onClose={() => setRegisterMailOpen(false)}
+        />
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar(s => ({ ...s, open: false }))}
-      >
-        <Alert
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
           onClose={() => setSnackbar(s => ({ ...s, open: false }))}
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
         >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+          <Alert
+            onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Container>
     </Box>
   )

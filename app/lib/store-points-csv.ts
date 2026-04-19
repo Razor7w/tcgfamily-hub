@@ -60,7 +60,10 @@ export function normalizeEmailForPoints(value: string): string {
 
 /** RUT chileno canónico `12345678-9` (sin puntos). */
 export function canonicalRut(raw: string): string {
-  const inner = unwrapExcelText(raw).replace(/\./g, '').replace(/-/g, '').toUpperCase()
+  const inner = unwrapExcelText(raw)
+    .replace(/\./g, '')
+    .replace(/-/g, '')
+    .toUpperCase()
   if (inner.length < 2) return ''
   const body = inner.slice(0, -1)
   const dv = inner.slice(-1)
@@ -168,5 +171,7 @@ export function rowToPointsData(
 }
 
 export function displayName(row: PointsCsvRow): string {
-  return [row.firstName, row.lastName].filter(Boolean).join(' ').trim() || 'Cliente'
+  return (
+    [row.firstName, row.lastName].filter(Boolean).join(' ').trim() || 'Cliente'
+  )
 }

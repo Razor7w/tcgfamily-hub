@@ -1,6 +1,13 @@
-"use client";
+'use client'
 
-import { Email, EmojiEvents, Event, Home, Person } from "@mui/icons-material";
+import {
+  BarChart,
+  Email,
+  EmojiEvents,
+  Event,
+  Home,
+  Person
+} from '@mui/icons-material'
 import {
   Box,
   Divider,
@@ -9,18 +16,19 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Stack,
-} from "@mui/material";
-import AppVersion from "@/components/AppVersion";
-import SignOutList from "@/components/auth/SignOutList";
-import AdminSidebarClient from "@/components/navigation/AdminSidebarClient";
-import { useDashboardModulesFromLayout } from "@/contexts/DashboardModulesContext";
+  Stack
+} from '@mui/material'
+import AppVersion from '@/components/AppVersion'
+import SignOutList from '@/components/auth/SignOutList'
+import AdminSidebarClient from '@/components/navigation/AdminSidebarClient'
+import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
 
 export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
-  const { visibility } = useDashboardModulesFromLayout();
-  const showEvents = visibility.weeklyEvents;
-  const showMyTournaments = visibility.myTournaments;
-  const showMail = visibility.mail;
+  const { visibility } = useDashboardModulesFromLayout()
+  const showEvents = visibility.weeklyEvents
+  const showMyTournaments = visibility.myTournaments
+  const showStatistics = visibility.statistics
+  const showMail = visibility.mail
 
   return (
     <Stack>
@@ -52,6 +60,16 @@ export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
                   <EmojiEvents />
                 </ListItemIcon>
                 <ListItemText primary="Mis torneos" />
+              </ListItemButton>
+            </ListItem>
+          ) : null}
+          {showStatistics ? (
+            <ListItem disablePadding>
+              <ListItemButton href="/dashboard/estadisticas">
+                <ListItemIcon>
+                  <BarChart />
+                </ListItemIcon>
+                <ListItemText primary="Estadísticas" />
               </ListItemButton>
             </ListItem>
           ) : null}
@@ -88,5 +106,5 @@ export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
         <AppVersion align="left" />
       </Box>
     </Stack>
-  );
+  )
 }

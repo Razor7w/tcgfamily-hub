@@ -13,7 +13,7 @@ Guía práctica para subir de versión el **TCGFamily HUB** de forma ordenada. L
 
 2. **Actualizar `CHANGELOG.md`**
    - Si había entradas bajo `[Unreleased]`, muévelas a una sección nueva `## [X.Y.Z] - AAAA-MM-DD`.
-   - Si no usabas `[Unreleased]`, añade la sección `[X.Y.Z]` con los puntos bajo *Añadido / Cambiado / Corregido*.
+   - Si no usabas `[Unreleased]`, añade la sección `[X.Y.Z]` con los puntos bajo _Añadido / Cambiado / Corregido_.
 
 3. **Subir la versión en `package.json`**
    - Edita `"version": "X.Y.Z"` para que sea **la misma** que en el changelog.
@@ -26,10 +26,12 @@ Guía práctica para subir de versión el **TCGFamily HUB** de forma ordenada. L
    - Mensaje sugerido: `chore: release X.Y.Z` o `release: X.Y.Z`.
 
 6. **Tag en git (opcional pero útil)**
+
    ```bash
    git tag vX.Y.Z
    git push origin vX.Y.Z
    ```
+
    Así puedes enlazar comparativas en GitHub y en el pie del [`CHANGELOG.md`](../CHANGELOG.md).
 
 7. **Desplegar**
@@ -42,10 +44,10 @@ Guía práctica para subir de versión el **TCGFamily HUB** de forma ordenada. L
 
 ## Dónde se muestra la versión en la app
 
-| Ubicación | Archivo / componente |
-|-----------|----------------------|
-| Pie de login | [`app/page.tsx`](../app/page.tsx) |
-| Pie de registro | [`app/auth/register/page.tsx`](../app/auth/register/page.tsx) |
+| Ubicación                                   | Archivo / componente                                                                                                       |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Pie de login                                | [`app/page.tsx`](../app/page.tsx)                                                                                          |
+| Pie de registro                             | [`app/auth/register/page.tsx`](../app/auth/register/page.tsx)                                                              |
 | Debajo del menú lateral (dashboard y admin) | [`DashboardUserNav`](../app/components/navigation/DashboardUserNav.tsx) → [`AppVersion`](../app/components/AppVersion.tsx) |
 
 Para añadir otro sitio, importa `AppVersion` y pásale `align="left"` o `align="center"` según el diseño.

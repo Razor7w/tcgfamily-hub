@@ -1,21 +1,21 @@
-import mongoose, { Schema, Document } from "mongoose";
-import { DEFAULT_LEAGUE_POINTS_BY_PLACE } from "@/lib/league-constants";
+import mongoose, { Schema, Document } from 'mongoose'
+import { DEFAULT_LEAGUE_POINTS_BY_PLACE } from '@/lib/league-constants'
 
 export interface ILeague extends Document {
-  name: string;
+  name: string
   /** URL única: solo minúsculas, números y guiones. */
-  slug: string;
-  description: string;
+  slug: string
+  description: string
   /** Solo torneos Pokémon en tienda suelen usar ligas; reservado por si amplías. */
-  game: "pokemon";
-  isActive: boolean;
+  game: 'pokemon'
+  isActive: boolean
   /** Legado en BD; el cálculo de la liga usa récord W/L/T (3/0/1), no esta tabla. */
-  pointsByPlace: number[];
+  pointsByPlace: number[]
   /**
    * Si es un entero >= 1, solo cuentan los N mejores torneos por jugador (por puntos de liga en cada torneo).
    * `null` o ausente = sumar todos los torneos cerrados de la liga con récord W/L/T.
    */
-  countBestEvents: number | null;
+  countBestEvents: number | null
 }
 
 const LeagueSchema = new Schema<ILeague>(
@@ -29,13 +29,13 @@ const LeagueSchema = new Schema<ILeague>(
       maxlength: 80,
       match: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
       index: true,
-      unique: true,
+      unique: true
     },
-    description: { type: String, default: "", maxlength: 4000 },
+    description: { type: String, default: '', maxlength: 4000 },
     game: {
       type: String,
-      enum: ["pokemon"],
-      default: "pokemon",
+      enum: ['pokemon'],
+      default: 'pokemon'
     },
     isActive: { type: Boolean, default: true, index: true },
     pointsByPlace: {
@@ -47,25 +47,23 @@ const LeagueSchema = new Schema<ILeague>(
             Array.isArray(v) &&
             v.length >= 1 &&
             v.length <= 32 &&
-            v.every(
-              (n) => typeof n === "number" && Number.isFinite(n) && n >= 0,
-            )
-          );
+            v.every(n => typeof n === 'number' && Number.isFinite(n) && n >= 0)
+          )
         },
-        message: "pointsByPlace debe ser un array de 1–32 números >= 0",
-      },
+        message: 'pointsByPlace debe ser un array de 1–32 números >= 0'
+      }
     },
     countBestEvents: {
       type: Number,
       required: false,
-      default: undefined,
-    },
+      default: undefined
+    }
   },
-  { timestamps: true, strict: true },
-);
+  { timestamps: true, strict: true }
+)
 
 if (mongoose.models.League) {
-  delete mongoose.models.League;
+  delete mongoose.models.League
 }
 
-export default mongoose.model<ILeague>("League", LeagueSchema);
+export default mongoose.model<ILeague>('League', LeagueSchema)

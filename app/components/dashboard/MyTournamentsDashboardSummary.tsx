@@ -1,92 +1,98 @@
-"use client";
+'use client'
 
-import EmojiEvents from "@mui/icons-material/EmojiEvents";
-import ChevronRight from "@mui/icons-material/ChevronRight";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
-import CardHeader from "@mui/material/CardHeader";
-import Chip from "@mui/material/Chip";
-import Divider from "@mui/material/Divider";
-import Paper from "@mui/material/Paper";
-import Skeleton from "@mui/material/Skeleton";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import Alert from "@mui/material/Alert";
-import { alpha } from "@mui/material/styles";
-import Link from "next/link";
-import { useMyRecentTournaments } from "@/hooks/useWeeklyEvents";
-import type { MyTournamentWeekItem } from "@/lib/my-tournament-week-types";
-import { getLimitlessPokemonSpriteUrl } from "@/lib/limitless-pokemon-sprite";
+import EmojiEvents from '@mui/icons-material/EmojiEvents'
+import ChevronRight from '@mui/icons-material/ChevronRight'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import Card from '@mui/material/Card'
+import CardContent from '@mui/material/CardContent'
+import CardHeader from '@mui/material/CardHeader'
+import Chip from '@mui/material/Chip'
+import Divider from '@mui/material/Divider'
+import Paper from '@mui/material/Paper'
+import Skeleton from '@mui/material/Skeleton'
+import Stack from '@mui/material/Stack'
+import Typography from '@mui/material/Typography'
+import Alert from '@mui/material/Alert'
+import { alpha } from '@mui/material/styles'
+import Link from 'next/link'
+import { useMyRecentTournaments } from '@/hooks/useWeeklyEvents'
+import type { MyTournamentWeekItem } from '@/lib/my-tournament-week-types'
+import {
+  getLimitlessPokemonSpriteUrl,
+  limitlessSpriteDimensions
+} from '@/lib/limitless-pokemon-sprite'
+
+/** Mismo aspecto Limitless que en tablas (~44×37). */
+const DECK_SUMMARY_SPRITE_BOX = limitlessSpriteDimensions(44)
 
 function formatWhen(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleString("es-CL", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  const d = new Date(iso)
+  return d.toLocaleString('es-CL', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  })
 }
 
 function wltSummary(
-  r: { wins: number; losses: number; ties: number } | null,
+  r: { wins: number; losses: number; ties: number } | null
 ): string | null {
-  if (!r) return null;
-  const sum = r.wins + r.losses + r.ties;
-  if (sum === 0) return null;
-  return `${r.wins}-${r.losses}-${r.ties}`;
+  if (!r) return null
+  const sum = r.wins + r.losses + r.ties
+  if (sum === 0) return null
+  return `${r.wins}-${r.losses}-${r.ties}`
 }
 
 function placementSummary(t: MyTournamentWeekItem): string | null {
-  if (!t.placement) return null;
-  if (t.placement.isDnf) return `${t.placement.categoryLabel} · DNF`;
+  if (!t.placement) return null
+  if (t.placement.isDnf) return `${t.placement.categoryLabel} · DNF`
   if (t.placement.place != null && t.placement.place > 0) {
-    return `${t.placement.categoryLabel} · ${t.placement.place}º lugar`;
+    return `${t.placement.categoryLabel} · ${t.placement.place}º lugar`
   }
-  return t.placement.categoryLabel;
+  return t.placement.categoryLabel
 }
 
 function hasReportedDetails(t: MyTournamentWeekItem): boolean {
-  const wlt = wltSummary(t.myMatchRecord);
-  const place = placementSummary(t);
-  const deck = t.deckPokemonSlugs && t.deckPokemonSlugs.length > 0;
-  return Boolean(wlt || place || deck);
+  const wlt = wltSummary(t.myMatchRecord)
+  const place = placementSummary(t)
+  const deck = t.deckPokemonSlugs && t.deckPokemonSlugs.length > 0
+  return Boolean(wlt || place || deck)
 }
 
 type MyTournamentsDashboardSummaryProps = {
-  onCreateCustom?: () => void;
-};
+  onCreateCustom?: () => void
+}
 
 export default function MyTournamentsDashboardSummary({
-  onCreateCustom,
+  onCreateCustom
 }: MyTournamentsDashboardSummaryProps) {
-  const { data, isPending, isError, error, refetch } = useMyRecentTournaments(2);
-  const list = data?.tournaments ?? [];
+  const { data, isPending, isError, error, refetch } = useMyRecentTournaments(2)
+  const list = data?.tournaments ?? []
 
   return (
     <Card
       variant="outlined"
       sx={{
         borderRadius: 2,
-        overflow: "hidden",
+        overflow: 'hidden'
       }}
     >
       <CardHeader
         avatar={
           <Box
             sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               width: 40,
               height: 40,
               borderRadius: 2,
-              bgcolor: (t) => alpha(t.palette.primary.main, 0.1),
-              color: "primary.main",
+              bgcolor: t => alpha(t.palette.primary.main, 0.1),
+              color: 'primary.main'
             }}
           >
             <EmojiEvents sx={{ fontSize: 22 }} />
@@ -104,15 +110,19 @@ export default function MyTournamentsDashboardSummary({
             href="/dashboard/torneos-semana"
             size="small"
             endIcon={<ChevronRight sx={{ fontSize: 18 }} />}
-            sx={{ textTransform: "none", fontWeight: 700, mr: -0.5 }}
+            sx={{ textTransform: 'none', fontWeight: 700, mr: -0.5 }}
           >
             Ver todo
           </Button>
         }
         slotProps={{
-          subheader: { variant: "body2", color: "text.secondary", sx: { mt: 0.25 } },
+          subheader: {
+            variant: 'body2',
+            color: 'text.secondary',
+            sx: { mt: 0.25 }
+          }
         }}
-        sx={{ pb: 1, "& .MuiCardHeader-action": { alignSelf: "center" } }}
+        sx={{ pb: 1, '& .MuiCardHeader-action': { alignSelf: 'center' } }}
       />
       <CardContent sx={{ pt: 0 }}>
         {isPending ? (
@@ -129,21 +139,29 @@ export default function MyTournamentsDashboardSummary({
               </Button>
             }
           >
-            {error instanceof Error ? error.message : "No se pudo cargar"}
+            {error instanceof Error ? error.message : 'No se pudo cargar'}
           </Alert>
         ) : list.length === 0 ? (
           <Stack spacing={2} alignItems="flex-start">
-            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-              Aún no tienes torneos en tu historial. Preinscríbete en eventos de la semana o
-              registra un torneo custom.
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ lineHeight: 1.6 }}
+            >
+              Aún no tienes torneos en tu historial. Preinscríbete en eventos de
+              la semana o registra un torneo custom.
             </Typography>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              useFlexGap
+            >
               <Button
                 component={Link}
                 href="/dashboard/eventos"
                 variant="outlined"
                 size="small"
-                sx={{ textTransform: "none", fontWeight: 600 }}
+                sx={{ textTransform: 'none', fontWeight: 600 }}
               >
                 Ver eventos
               </Button>
@@ -152,7 +170,7 @@ export default function MyTournamentsDashboardSummary({
                   variant="contained"
                   size="small"
                   onClick={onCreateCustom}
-                  sx={{ textTransform: "none", fontWeight: 700 }}
+                  sx={{ textTransform: 'none', fontWeight: 700 }}
                 >
                   Registrar torneo custom
                 </Button>
@@ -161,12 +179,12 @@ export default function MyTournamentsDashboardSummary({
           </Stack>
         ) : (
           <Stack spacing={1.5}>
-            {list.map((t) => {
-              const origin = t.tournamentOrigin ?? "official";
-              const wlt = wltSummary(t.myMatchRecord);
-              const place = placementSummary(t);
-              const deckSlugs = t.deckPokemonSlugs ?? [];
-              const reported = hasReportedDetails(t);
+            {list.map(t => {
+              const origin = t.tournamentOrigin ?? 'official'
+              const wlt = wltSummary(t.myMatchRecord)
+              const place = placementSummary(t)
+              const deckSlugs = t.deckPokemonSlugs ?? []
+              const reported = hasReportedDetails(t)
 
               return (
                 <Paper
@@ -174,19 +192,20 @@ export default function MyTournamentsDashboardSummary({
                   component={Link}
                   href={`/dashboard/torneos-semana/${t.eventId}`}
                   variant="outlined"
-                  sx={(theme) => ({
-                    display: "block",
+                  sx={theme => ({
+                    display: 'block',
                     p: 2,
                     borderRadius: 2,
-                    textDecoration: "none",
-                    color: "inherit",
+                    textDecoration: 'none',
+                    color: 'inherit',
                     borderColor: alpha(theme.palette.text.primary, 0.1),
                     bgcolor: alpha(theme.palette.text.primary, 0.02),
-                    transition: "background-color 0.15s ease, border-color 0.15s ease",
-                    "&:hover": {
+                    transition:
+                      'background-color 0.15s ease, border-color 0.15s ease',
+                    '&:hover': {
                       bgcolor: alpha(theme.palette.primary.main, 0.05),
-                      borderColor: alpha(theme.palette.primary.main, 0.25),
-                    },
+                      borderColor: alpha(theme.palette.primary.main, 0.25)
+                    }
                   })}
                 >
                   <Stack spacing={1.25}>
@@ -196,15 +215,19 @@ export default function MyTournamentsDashboardSummary({
                       justifyContent="space-between"
                       gap={1}
                     >
-                      <Typography variant="subtitle1" fontWeight={800} sx={{ lineHeight: 1.3 }}>
+                      <Typography
+                        variant="subtitle1"
+                        fontWeight={800}
+                        sx={{ lineHeight: 1.3 }}
+                      >
                         {t.title}
                       </Typography>
                       <Chip
                         size="small"
-                        label={origin === "custom" ? "Custom" : "Oficial"}
-                        color={origin === "custom" ? "secondary" : "default"}
+                        label={origin === 'custom' ? 'Custom' : 'Oficial'}
+                        color={origin === 'custom' ? 'secondary' : 'default'}
                         variant="outlined"
-                        sx={{ flexShrink: 0, height: 24, fontSize: "0.7rem" }}
+                        sx={{ flexShrink: 0, height: 24, fontSize: '0.7rem' }}
                       />
                     </Stack>
                     <Typography variant="caption" color="text.secondary">
@@ -213,18 +236,21 @@ export default function MyTournamentsDashboardSummary({
 
                     {reported ? (
                       <>
-                        <Divider sx={{ borderStyle: "dashed" }} />
+                        <Divider sx={{ borderStyle: 'dashed' }} />
                         <Stack
-                          direction={{ xs: "column", sm: "row" }}
+                          direction={{ xs: 'column', sm: 'row' }}
                           spacing={2}
-                          alignItems={{ xs: "stretch", sm: "flex-start" }}
+                          alignItems={{ xs: 'stretch', sm: 'flex-start' }}
                         >
                           {wlt ? (
                             <Box sx={{ minWidth: 0 }}>
                               <Typography
                                 variant="overline"
                                 color="text.secondary"
-                                sx={{ fontSize: "0.65rem", letterSpacing: "0.08em" }}
+                                sx={{
+                                  fontSize: '0.65rem',
+                                  letterSpacing: '0.08em'
+                                }}
                               >
                                 Récord
                               </Typography>
@@ -233,9 +259,9 @@ export default function MyTournamentsDashboardSummary({
                                 component="p"
                                 sx={{
                                   fontWeight: 800,
-                                  fontVariantNumeric: "tabular-nums",
+                                  fontVariantNumeric: 'tabular-nums',
                                   lineHeight: 1.2,
-                                  mt: 0.25,
+                                  mt: 0.25
                                 }}
                               >
                                 {wlt}
@@ -247,13 +273,20 @@ export default function MyTournamentsDashboardSummary({
                               <Typography
                                 variant="overline"
                                 color="text.secondary"
-                                sx={{ fontSize: "0.65rem", letterSpacing: "0.08em" }}
+                                sx={{
+                                  fontSize: '0.65rem',
+                                  letterSpacing: '0.08em'
+                                }}
                               >
                                 Posición
                               </Typography>
                               <Typography
                                 variant="body2"
-                                sx={{ fontWeight: 600, mt: 0.25, lineHeight: 1.4 }}
+                                sx={{
+                                  fontWeight: 600,
+                                  mt: 0.25,
+                                  lineHeight: 1.4
+                                }}
                               >
                                 {place}
                               </Typography>
@@ -265,40 +298,41 @@ export default function MyTournamentsDashboardSummary({
                               spacing={1}
                               alignItems="center"
                               sx={{
-                                flexWrap: "wrap",
-                                ml: { sm: "auto" },
+                                flexWrap: 'wrap',
+                                ml: { sm: 'auto' }
                               }}
                             >
-                              {deckSlugs.slice(0, 2).map((slug) => (
+                              {deckSlugs.slice(0, 2).map(slug => (
                                 <Box
                                   key={slug}
                                   sx={{
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    alignItems: "center",
-                                    gap: 0.5,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    gap: 0.5
                                   }}
                                 >
                                   <Box
                                     sx={{
-                                      width: 44,
-                                      height: 44,
+                                      width: DECK_SUMMARY_SPRITE_BOX.width,
+                                      height: DECK_SUMMARY_SPRITE_BOX.height,
                                       borderRadius: 1.5,
-                                      overflow: "hidden",
-                                      bgcolor: "background.paper",
-                                      border: "1px solid",
-                                      borderColor: "divider",
+                                      overflow: 'hidden',
+                                      bgcolor: 'background.paper',
+                                      border: '1px solid',
+                                      borderColor: 'divider'
                                     }}
                                   >
                                     <Box
                                       component="img"
+                                      className="pokemon"
                                       src={getLimitlessPokemonSpriteUrl(slug)}
                                       alt=""
                                       sx={{
-                                        width: "100%",
-                                        height: "100%",
-                                        objectFit: "contain",
-                                        imageRendering: "pixelated",
+                                        width: '100%',
+                                        height: '100%',
+                                        objectFit: 'contain',
+                                        imageRendering: 'pixelated'
                                       }}
                                     />
                                   </Box>
@@ -306,11 +340,11 @@ export default function MyTournamentsDashboardSummary({
                                     variant="caption"
                                     color="text.secondary"
                                     sx={{
-                                      fontSize: "0.65rem",
+                                      fontSize: '0.65rem',
                                       maxWidth: 72,
-                                      textAlign: "center",
+                                      textAlign: 'center',
                                       lineHeight: 1.2,
-                                      wordBreak: "break-word",
+                                      wordBreak: 'break-word'
                                     }}
                                   >
                                     {slug}
@@ -322,24 +356,38 @@ export default function MyTournamentsDashboardSummary({
                         </Stack>
                       </>
                     ) : (
-                      <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic" }}>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ fontStyle: 'italic' }}
+                      >
                         Abre el detalle para reportar deck y rondas.
                       </Typography>
                     )}
                   </Stack>
                 </Paper>
-              );
+              )
             })}
           </Stack>
         )}
 
         {!isPending && !isError && list.length > 0 && onCreateCustom ? (
-          <Box sx={{ mt: 2, display: "flex", justifyContent: { xs: "stretch", sm: "flex-end" } }}>
+          <Box
+            sx={{
+              mt: 2,
+              display: 'flex',
+              justifyContent: { xs: 'stretch', sm: 'flex-end' }
+            }}
+          >
             <Button
               variant="outlined"
               size="small"
               onClick={onCreateCustom}
-              sx={{ width: { xs: "100%", sm: "auto" }, textTransform: "none", fontWeight: 700 }}
+              sx={{
+                width: { xs: '100%', sm: 'auto' },
+                textTransform: 'none',
+                fontWeight: 700
+              }}
             >
               Registrar torneo custom
             </Button>
@@ -347,5 +395,5 @@ export default function MyTournamentsDashboardSummary({
         ) : null}
       </CardContent>
     </Card>
-  );
+  )
 }

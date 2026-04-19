@@ -52,8 +52,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
     }
 
-    const { name, email: emailField, password, confirmPassword, rut, popid } =
-      body as Record<string, unknown>
+    const {
+      name,
+      email: emailField,
+      password,
+      confirmPassword,
+      rut,
+      popid
+    } = body as Record<string, unknown>
 
     const nameStr = typeof name === 'string' ? name : ''
     const emailStr = typeof emailField === 'string' ? emailField : ''

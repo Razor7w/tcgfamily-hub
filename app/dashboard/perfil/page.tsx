@@ -84,13 +84,18 @@ export default function PerfilPage() {
     }
   }, [])
 
-  const newPwChecks = useMemo(() => getPasswordRuleChecks(newPassword), [newPassword])
+  const newPwChecks = useMemo(
+    () => getPasswordRuleChecks(newPassword),
+    [newPassword]
+  )
   const newPwOk = useMemo(
     () => isPasswordStrengthSatisfied(newPassword),
     [newPassword]
   )
   const confirmPwOk =
-    newPassword.length > 0 && confirmNew.length > 0 && newPassword === confirmNew
+    newPassword.length > 0 &&
+    confirmNew.length > 0 &&
+    newPassword === confirmNew
 
   const canSaveProfile = useMemo(() => {
     if (!me || savingProfile) return false
@@ -230,12 +235,20 @@ export default function PerfilPage() {
           Datos personales
         </Typography>
         {profileMsg ? (
-          <Alert severity="success" sx={{ mb: 2 }} onClose={() => setProfileMsg(null)}>
+          <Alert
+            severity="success"
+            sx={{ mb: 2 }}
+            onClose={() => setProfileMsg(null)}
+          >
             {profileMsg}
           </Alert>
         ) : null}
         {profileErr ? (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setProfileErr(null)}>
+          <Alert
+            severity="error"
+            sx={{ mb: 2 }}
+            onClose={() => setProfileErr(null)}
+          >
             {profileErr}
           </Alert>
         ) : null}
@@ -275,7 +288,11 @@ export default function PerfilPage() {
             error={
               Boolean(popid.trim()) && validatePopidOptional(popid) !== null
             }
-            inputProps={{ maxLength: 64, inputMode: 'numeric', pattern: '[0-9]*' }}
+            inputProps={{
+              maxLength: 64,
+              inputMode: 'numeric',
+              pattern: '[0-9]*'
+            }}
           />
           <Button
             type="submit"
@@ -301,12 +318,20 @@ export default function PerfilPage() {
         ) : (
           <Box component="form" onSubmit={savePassword}>
             {pwMsg ? (
-              <Alert severity="success" sx={{ mb: 2 }} onClose={() => setPwMsg(null)}>
+              <Alert
+                severity="success"
+                sx={{ mb: 2 }}
+                onClose={() => setPwMsg(null)}
+              >
                 {pwMsg}
               </Alert>
             ) : null}
             {pwErr ? (
-              <Alert severity="error" sx={{ mb: 2 }} onClose={() => setPwErr(null)}>
+              <Alert
+                severity="error"
+                sx={{ mb: 2 }}
+                onClose={() => setPwErr(null)}
+              >
                 {pwErr}
               </Alert>
             ) : null}
@@ -369,7 +394,11 @@ export default function PerfilPage() {
                   bgcolor: 'action.hover'
                 }}
               >
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                <Typography
+                  variant="subtitle2"
+                  color="text.secondary"
+                  gutterBottom
+                >
                   Requisitos de la nueva contraseña
                 </Typography>
                 <Box component="ul" sx={{ m: 0, pl: 0, listStyle: 'none' }}>
@@ -386,7 +415,11 @@ export default function PerfilPage() {
                     >
                       {rule.ok ? (
                         <CheckCircle
-                          sx={{ fontSize: 20, mt: '2px', color: 'success.main' }}
+                          sx={{
+                            fontSize: 20,
+                            mt: '2px',
+                            color: 'success.main'
+                          }}
                         />
                       ) : (
                         <RadioButtonUnchecked

@@ -1,19 +1,21 @@
-"use client";
+'use client'
 
-import Box from "@mui/material/Box";
-import Container from "@mui/material/Container";
+import Box from '@mui/material/Box'
+import Container from '@mui/material/Container'
 
-import DashboardModuleRouteGate from "@/components/dashboard/DashboardModuleRouteGate";
-import WeeklyEventsSection from "@/components/events/WeeklyEventsSection";
+import DashboardModuleRouteGate from '@/components/dashboard/DashboardModuleRouteGate'
+import WeeklyEventsSection from '@/components/events/WeeklyEventsSection'
+import { alpha } from '@mui/material'
 
 export default function EventosSemanaPage() {
   return (
     <DashboardModuleRouteGate moduleId="weeklyEvents">
       <Box
         sx={{
-          minHeight: "100dvh",
-          bgcolor: "background.default",
-          py: { xs: 2, sm: 4 },
+          minHeight: '100dvh',
+          background: t =>
+            `linear-gradient(165deg, ${alpha(t.palette.primary.main, 0.06)} 0%, ${t.palette.background.default} 38%, ${t.palette.background.default} 100%)`,
+          py: { xs: 2, sm: 4 }
         }}
       >
         <Container maxWidth="lg">
@@ -21,5 +23,5 @@ export default function EventosSemanaPage() {
         </Container>
       </Box>
     </DashboardModuleRouteGate>
-  );
+  )
 }

@@ -34,8 +34,8 @@ export default function Header() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [accountDrawerOpen, setAccountDrawerOpen] = useState(false)
   const muiTheme = useTheme()
-  const appThemeMode = useAppStore((s) => s.theme)
-  const toggleTheme = useAppStore((s) => s.toggleTheme)
+  const appThemeMode = useAppStore(s => s.theme)
+  const toggleTheme = useAppStore(s => s.toggleTheme)
   // Importante: evita mismatch de hidratación. En SSR + primer render del cliente
   // asumimos "mobile-first" y solo calculamos desktop tras montar.
   const [isDesktop, setIsDesktop] = useState(false)
@@ -179,7 +179,11 @@ export default function Header() {
                       {session.user.email}
                     </Typography>
                   </MenuItem>
-                  <MenuItem component={Link} href="/dashboard/perfil" onClick={handleClose}>
+                  <MenuItem
+                    component={Link}
+                    href="/dashboard/perfil"
+                    onClick={handleClose}
+                  >
                     <PersonIcon sx={{ mr: 1 }} />
                     Perfil
                   </MenuItem>
@@ -226,7 +230,11 @@ export default function Header() {
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
                       {session.user.name}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 0.5 }}
+                    >
                       {session.user.email}
                     </Typography>
                   </Box>

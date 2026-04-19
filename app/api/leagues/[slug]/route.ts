@@ -1,74 +1,74 @@
-import { NextResponse } from "next/server";
-import connectDB from "@/lib/mongodb";
+import { NextResponse } from 'next/server'
+import connectDB from '@/lib/mongodb'
 import {
   aggregateLeagueStandings,
-  leagueEventHasContributingRecord,
-} from "@/lib/league-aggregate";
+  leagueEventHasContributingRecord
+} from '@/lib/league-aggregate'
 import {
   LEAGUE_SCORE_LOSS,
   LEAGUE_SCORE_TIE,
-  LEAGUE_SCORE_WIN,
-} from "@/lib/league-constants";
-import League from "@/models/League";
-import WeeklyEvent from "@/models/WeeklyEvent";
+  LEAGUE_SCORE_WIN
+} from '@/lib/league-constants'
+import League from '@/models/League'
+import WeeklyEvent from '@/models/WeeklyEvent'
 
 /**
  * Clasificación pública de una liga (torneos cerrados; puntos por récord W/L/T del participante).
  */
 export async function GET(
   _request: Request,
-  context: { params: Promise<{ slug: string }> },
+  context: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const { slug: raw } = await context.params;
-    const slug = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+    const { slug: raw } = await context.params
+    const slug = typeof raw === 'string' ? raw.trim().toLowerCase() : ''
     if (!slug) {
-      return NextResponse.json({ error: "Slug inválido" }, { status: 400 });
+      return NextResponse.json({ error: 'Slug inválido' }, { status: 400 })
     }
 
-    await connectDB();
-    const leagueDoc = await League.findOne({ slug, isActive: true }).lean();
+    await connectDB()
+    const leagueDoc = await League.findOne({ slug, isActive: true }).lean()
     if (!leagueDoc) {
-      return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+      return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     }
 
     const league = {
       _id: String(leagueDoc._id),
       name: leagueDoc.name,
       slug: leagueDoc.slug,
-      description: leagueDoc.description ?? "",
+      description: leagueDoc.description ?? '',
       countBestEvents:
         leagueDoc.countBestEvents === null ||
         leagueDoc.countBestEvents === undefined
           ? null
-          : typeof leagueDoc.countBestEvents === "number"
+          : typeof leagueDoc.countBestEvents === 'number'
             ? Math.round(leagueDoc.countBestEvents)
             : null,
       scoring: {
         winPoints: LEAGUE_SCORE_WIN,
         lossPoints: LEAGUE_SCORE_LOSS,
-        tiePoints: LEAGUE_SCORE_TIE,
-      },
-    };
+        tiePoints: LEAGUE_SCORE_TIE
+      }
+    }
 
     const events = await WeeklyEvent.find({
       leagueId: leagueDoc._id,
-      tournamentOrigin: "official",
-      kind: "tournament",
-      state: "close",
+      tournamentOrigin: 'official',
+      kind: 'tournament',
+      state: 'close'
     })
       .select(
-        "title startsAt dashboardRoundCap roundSnapshots participants.displayName participants.popId participants.wins participants.losses participants.ties",
+        'title startsAt dashboardRoundCap roundSnapshots participants.displayName participants.popId participants.wins participants.losses participants.ties'
       )
       .sort({ startsAt: 1 })
-      .lean();
+      .lean()
 
     const standings = aggregateLeagueStandings(
       events as Parameters<typeof aggregateLeagueStandings>[0],
-      league.countBestEvents,
-    );
+      league.countBestEvents
+    )
 
-    const tournamentSummaries = events.map((ev) => ({
+    const tournamentSummaries = events.map(ev => ({
       _id: String(ev._id),
       title: ev.title,
       startsAt:
@@ -76,31 +76,31 @@ export async function GET(
           ? ev.startsAt.toISOString()
           : new Date(ev.startsAt as unknown as string).toISOString(),
       hasRecord: leagueEventHasContributingRecord(
-        ev as Parameters<typeof leagueEventHasContributingRecord>[0],
-      ),
-    }));
+        ev as Parameters<typeof leagueEventHasContributingRecord>[0]
+      )
+    }))
 
     const chartTop = standings.slice(0, 12).map((r, i) => ({
       rank: i + 1,
       name: r.displayName,
       points: r.totalPoints,
-      popId: r.popId,
-    }));
+      popId: r.popId
+    }))
 
     return NextResponse.json(
       {
         league,
         tournaments: tournamentSummaries,
         standings,
-        chartTop,
+        chartTop
       },
-      { status: 200 },
-    );
+      { status: 200 }
+    )
   } catch (error) {
-    console.error("GET /api/leagues/[slug]:", error);
+    console.error('GET /api/leagues/[slug]:', error)
     return NextResponse.json(
-      { error: "Error al cargar la liga" },
-      { status: 500 },
-    );
+      { error: 'Error al cargar la liga' },
+      { status: 500 }
+    )
   }
 }

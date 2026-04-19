@@ -28,11 +28,7 @@ import {
   validateRegisterName
 } from '@/lib/password-rules'
 import { validatePopidOptional } from '@/lib/rut-chile'
-import {
-  formatRutOnBlur,
-  getRutFieldError,
-  onlyDigits
-} from '@/lib/rut-input'
+import { formatRutOnBlur, getRutFieldError, onlyDigits } from '@/lib/rut-input'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -52,9 +48,7 @@ export default function RegisterPage() {
   )
 
   const passwordsMatch =
-    password.length > 0 &&
-    confirm.length > 0 &&
-    password === confirm
+    password.length > 0 && confirm.length > 0 && password === confirm
 
   const formChecklist = useMemo(
     () => [
@@ -256,7 +250,9 @@ export default function RegisterPage() {
               required
               fullWidth
               placeholder="12.345.678-9"
-              error={Boolean(rut.trim()) && getRutFieldError(rut, true) !== null}
+              error={
+                Boolean(rut.trim()) && getRutFieldError(rut, true) !== null
+              }
               helperText={
                 getRutFieldError(rut, true) ??
                 (!rut.trim()
@@ -277,7 +273,11 @@ export default function RegisterPage() {
               error={
                 Boolean(popid.trim()) && validatePopidOptional(popid) !== null
               }
-              inputProps={{ maxLength: 64, inputMode: 'numeric', pattern: '[0-9]*' }}
+              inputProps={{
+                maxLength: 64,
+                inputMode: 'numeric',
+                pattern: '[0-9]*'
+              }}
             />
             <TextField
               label="Contraseña"
@@ -315,7 +315,11 @@ export default function RegisterPage() {
                 bgcolor: 'action.hover'
               }}
             >
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                gutterBottom
+              >
                 Contraseña y confirmación
               </Typography>
               <Box
@@ -324,7 +328,12 @@ export default function RegisterPage() {
                   m: 0,
                   pl: 0,
                   listStyle: 'none',
-                  '& li': { display: 'flex', alignItems: 'flex-start', gap: 1, py: 0.35 }
+                  '& li': {
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 1,
+                    py: 0.35
+                  }
                 }}
               >
                 {formChecklist.map(rule => (
@@ -336,7 +345,11 @@ export default function RegisterPage() {
                       />
                     ) : (
                       <RadioButtonUnchecked
-                        sx={{ fontSize: 20, mt: '2px', color: 'action.disabled' }}
+                        sx={{
+                          fontSize: 20,
+                          mt: '2px',
+                          color: 'action.disabled'
+                        }}
                         aria-hidden
                       />
                     )}
@@ -370,7 +383,11 @@ export default function RegisterPage() {
               disabled={!canSubmit}
               sx={{ py: 1.5, textTransform: 'none' }}
             >
-              {loading ? <CircularProgress size={24} color="inherit" /> : 'Registrarse'}
+              {loading ? (
+                <CircularProgress size={24} color="inherit" />
+              ) : (
+                'Registrarse'
+              )}
             </Button>
           </Box>
           <Typography variant="body2" color="text.secondary" textAlign="center">

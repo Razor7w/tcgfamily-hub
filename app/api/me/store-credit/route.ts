@@ -24,7 +24,10 @@ export async function GET() {
       .lean()
 
     if (!user || Array.isArray(user)) {
-      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+      return NextResponse.json(
+        { error: 'Usuario no encontrado' },
+        { status: 404 }
+      )
     }
 
     const u = user as {

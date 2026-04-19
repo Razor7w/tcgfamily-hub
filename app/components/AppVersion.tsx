@@ -1,17 +1,17 @@
-"use client";
+'use client'
 
-import Typography from "@mui/material/Typography";
-import { APP_VERSION } from "@/lib/app-version";
+import Typography from '@mui/material/Typography'
+import { APP_VERSION } from '@/lib/app-version'
 
 type AppVersionProps = {
-  align?: "left" | "center";
-};
+  align?: 'left' | 'center'
+}
 
 /**
  * Muestra la versión actual (la de `package.json` al construir el bundle).
  * Tras subir versión y desplegar, los usuarios verán el número nuevo.
  */
-export default function AppVersion({ align = "center" }: AppVersionProps) {
+export default function AppVersion({ align = 'center' }: AppVersionProps) {
   return (
     <Typography
       component="p"
@@ -20,10 +20,10 @@ export default function AppVersion({ align = "center" }: AppVersionProps) {
       sx={{
         opacity: 0.85,
         m: 0,
-        textAlign: align,
+        textAlign: align
       }}
     >
       Versión {APP_VERSION}
     </Typography>
-  );
+  )
 }

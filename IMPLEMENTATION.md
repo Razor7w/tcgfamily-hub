@@ -5,16 +5,19 @@
 ### 1. **Configuración Base**
 
 #### Dependencias instaladas
+
 - `@tanstack/react-query`: ^5.62.0
 - `zustand`: ^5.0.2
 
 #### Provider configurado
+
 - ✅ `app/lib/query-client.tsx`: QueryClientProvider configurado
 - ✅ `app/layout.tsx`: QueryProvider añadido al layout raíz
 
 ### 2. **Hooks personalizados para APIs**
 
 #### Users (`app/hooks/useUsers.ts`)
+
 - ✅ `useUsers()` - Obtener todos los usuarios
 - ✅ `useUser(id)` - Obtener un usuario por ID
 - ✅ `useCreateUser()` - Crear usuario
@@ -23,12 +26,14 @@
 - ✅ `useBulkUploadUsers()` - Carga masiva desde CSV
 
 #### Mails (`app/hooks/useMails.ts`)
+
 - ✅ `useMails()` - Obtener todos los mails
 - ✅ `useCreateMail()` - Crear mail
 
 ### 3. **Store de Zustand**
 
 #### `app/store/useAppStore.ts`
+
 - ✅ Estado UI: `sidebarOpen`, `theme`
 - ✅ Filtros globales: `userFilter` (role, search)
 - ✅ Sistema de notificaciones: `notifications`
@@ -38,12 +43,14 @@
 ### 4. **Ejemplos y Documentación**
 
 #### Archivos de ejemplo
+
 - ✅ `app/examples/TanStackQueryExample.tsx` - Ejemplos de TanStack Query
 - ✅ `app/examples/ZustandExample.tsx` - Ejemplos de Zustand
 - ✅ `app/examples/CombinedExample.tsx` - Ejemplo combinado
 - ✅ `app/examples/README.md` - Documentación de ejemplos
 
 #### Componente refactorizado
+
 - ✅ `app/Admin/Users/page-refactored.tsx` - Versión refactorizada usando TanStack Query
 
 ## 🚀 Cómo usar
@@ -59,18 +66,18 @@ yarn install
 ### Usar TanStack Query
 
 ```tsx
-import { useUsers, useCreateUser } from "@/hooks/useUsers";
+import { useUsers, useCreateUser } from '@/hooks/useUsers'
 
 function MyComponent() {
-  const { data: users, isLoading, error } = useUsers();
-  const createUser = useCreateUser();
+  const { data: users, isLoading, error } = useUsers()
+  const createUser = useCreateUser()
 
   const handleCreate = async () => {
     await createUser.mutateAsync({
-      name: "Juan",
-      email: "juan@example.com",
-    });
-  };
+      name: 'Juan',
+      email: 'juan@example.com'
+    })
+  }
 
   // ...
 }
@@ -79,13 +86,13 @@ function MyComponent() {
 ### Usar Zustand
 
 ```tsx
-import { useAppStore } from "@/store/useAppStore";
+import { useAppStore } from '@/store/useAppStore'
 
 function MyComponent() {
-  const sidebarOpen = useAppStore((state) => state.sidebarOpen);
-  const toggleSidebar = useAppStore((state) => state.toggleSidebar);
+  const sidebarOpen = useAppStore(state => state.sidebarOpen)
+  const toggleSidebar = useAppStore(state => state.toggleSidebar)
 
-  return <button onClick={toggleSidebar}>Toggle</button>;
+  return <button onClick={toggleSidebar}>Toggle</button>
 }
 ```
 
@@ -113,26 +120,29 @@ app/
 ## 🔄 Migración desde código anterior
 
 ### Antes (useState + fetch)
+
 ```tsx
-const [users, setUsers] = useState([]);
-const [loading, setLoading] = useState(true);
+const [users, setUsers] = useState([])
+const [loading, setLoading] = useState(true)
 
 useEffect(() => {
-  fetch("/api/users")
+  fetch('/api/users')
     .then(res => res.json())
     .then(data => {
-      setUsers(data);
-      setLoading(false);
-    });
-}, []);
+      setUsers(data)
+      setLoading(false)
+    })
+}, [])
 ```
 
 ### Después (TanStack Query)
+
 ```tsx
-const { data: users, isLoading } = useUsers();
+const { data: users, isLoading } = useUsers()
 ```
 
 **Beneficios:**
+
 - ✅ Menos código
 - ✅ Caché automático
 - ✅ Refetch automático
@@ -142,12 +152,14 @@ const { data: users, isLoading } = useUsers();
 ## 💡 Mejores Prácticas
 
 ### TanStack Query
+
 1. **Usa siempre para datos del servidor**: No uses `useState` + `fetch`
 2. **Invalidación inteligente**: Invalida solo las queries necesarias
 3. **Optimistic updates**: Para mejor UX en mutaciones
 4. **Query keys consistentes**: Usa arrays para las keys
 
 ### Zustand
+
 1. **Solo para estado global**: No uses para estado local
 2. **Selectores específicos**: Para mejor performance
 3. **Persistencia selectiva**: Solo persiste lo necesario
@@ -163,14 +175,17 @@ const { data: users, isLoading } = useUsers();
 ## 🐛 Troubleshooting
 
 ### Error: "Cannot find module '@tanstack/react-query'"
+
 ```bash
 npm install @tanstack/react-query zustand
 ```
 
 ### Error: "QueryClientProvider not found"
+
 Asegúrate de que `QueryProvider` esté en `app/layout.tsx`
 
 ### Zustand persist no funciona
+
 Verifica que `createJSONStorage` esté importado correctamente
 
 ## 📚 Recursos

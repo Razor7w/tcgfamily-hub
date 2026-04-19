@@ -10,12 +10,7 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
-import {
-  Box,
-  Chip,
-  CircularProgress,
-  Stack
-} from '@mui/material'
+import { Box, Chip, CircularProgress, Stack } from '@mui/material'
 import { CalendarMonth, Comment } from '@mui/icons-material'
 import ButtonBarCode from '../molecule/ButtonBarCode'
 import { useMyMails } from '@/hooks/useMails'
@@ -68,9 +63,15 @@ export default function CardMails() {
           No tienes correos registrados.
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Los correos que registres (como emisor) y los que estén a tu nombre aparecerán aquí.
+          Los correos que registres (como emisor) y los que estén a tu nombre
+          aparecerán aquí.
         </Typography>
-        <Button component={Link} href="/dashboard/mail" size="small" variant="outlined">
+        <Button
+          component={Link}
+          href="/dashboard/mail"
+          size="small"
+          variant="outlined"
+        >
           Ver historial de correos
         </Button>
       </Box>
@@ -79,7 +80,7 @@ export default function CardMails() {
 
   const commentText =
     commentOpen != null
-      ? mails.find(m => m._id === commentOpen)?.observations?.trim() ?? ''
+      ? (mails.find(m => m._id === commentOpen)?.observations?.trim() ?? '')
       : ''
 
   return (
@@ -92,101 +93,114 @@ export default function CardMails() {
           rowGap: 1.5
         }}
       >
-          {mails.map(mail => {
-            const from = typeof mail.fromUserId === 'object' ? mail.fromUserId : null
-            const to = typeof mail.toUserId === 'object' ? mail.toUserId : null
-            const isEmisor = currentUserId && mailUserId(mail.fromUserId) === currentUserId
-            const status = getMailStatusChip(mail)
-            const dateLabel = new Date(mail.createdAt).toLocaleDateString('es-CL', {
+        {mails.map(mail => {
+          const from =
+            typeof mail.fromUserId === 'object' ? mail.fromUserId : null
+          const to = typeof mail.toUserId === 'object' ? mail.toUserId : null
+          const isEmisor =
+            currentUserId && mailUserId(mail.fromUserId) === currentUserId
+          const status = getMailStatusChip(mail)
+          const dateLabel = new Date(mail.createdAt).toLocaleDateString(
+            'es-CL',
+            {
               day: '2-digit',
               month: '2-digit',
               year: 'numeric'
-            })
-            const counterparty = isEmisor
-              ? to
-                ? `${to.name ?? '-'} (${format(to.rut ?? '') ?? '-'})`
-                : mail.toRut
-                  ? `RUT: ${format(mail.toRut ?? '') ?? '-'}`
-                  : '-'
-              : from
-                ? `${from.name ?? '-'} (${format(from.rut ?? '') ?? '-'})`
+            }
+          )
+          const counterparty = isEmisor
+            ? to
+              ? `${to.name ?? '-'} (${format(to.rut ?? '') ?? '-'})`
+              : mail.toRut
+                ? `RUT: ${format(mail.toRut ?? '') ?? '-'}`
                 : '-'
+            : from
+              ? `${from.name ?? '-'} (${format(from.rut ?? '') ?? '-'})`
+              : '-'
 
-              return (
-                <Paper
-                  key={mail._id}
-                  elevation={0}
+          return (
+            <Paper
+              key={mail._id}
+              elevation={0}
+              sx={{
+                p: 1.5,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                gap: 1.2,
+                height: '100%',
+                borderRadius: 2,
+                border: '1px solid',
+                borderColor: 'divider',
+                bgcolor: 'background.paper'
+              }}
+            >
+              {/* HEADER */}
+              <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+              >
+                <Chip
+                  size="small"
+                  color={status.color}
+                  label={status.label}
+                  sx={{ fontWeight: 700 }}
+                />
+
+                <Typography variant="caption" color="text.secondary">
+                  Código: {mail.code ?? mail._id}
+                </Typography>
+              </Stack>
+
+              {/* MAIN CONTENT */}
+              <Box>
+                <Typography
+                  variant="subtitle2"
                   sx={{
-                    p: 1.5,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    gap: 1.2,
-                    height: '100%',
-                    borderRadius: 2,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    bgcolor: 'background.paper'
+                    fontWeight: 600,
+                    lineHeight: 1.2,
+                    wordBreak: 'break-word'
                   }}
                 >
-                  {/* HEADER */}
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Chip
+                  {counterparty}
+                </Typography>
+
+                <Typography variant="caption" color="text.secondary">
+                  {isEmisor ? 'Enviado por ti' : 'Recibido por ti'}
+                </Typography>
+              </Box>
+
+              {/* FOOTER */}
+              <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+              >
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <CalendarMonth fontSize="small" color="action" />
+                  <Typography variant="caption" color="text.secondary">
+                    {dateLabel}
+                  </Typography>
+                </Stack>
+
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  {mail.observations?.trim() && (
+                    <IconButton
                       size="small"
-                      color={status.color}
-                      label={status.label}
-                      sx={{ fontWeight: 700 }}
-                    />
-              
-                    <Typography variant="caption" color="text.secondary">
-                      Código: {mail.code ?? mail._id}
-                    </Typography>
-                  </Stack>
-              
-                  {/* MAIN CONTENT */}
-                  <Box>
-                    <Typography
-                      variant="subtitle2"
-                      sx={{
-                        fontWeight: 600,
-                        lineHeight: 1.2,
-                        wordBreak: 'break-word'
-                      }}
+                      color="primary"
+                      onClick={() => setCommentOpen(mail._id)}
                     >
-                      {counterparty}
-                    </Typography>
-              
-                    <Typography variant="caption" color="text.secondary">
-                      {isEmisor ? 'Enviado por ti' : 'Recibido por ti'}
-                    </Typography>
-                  </Box>
-              
-                  {/* FOOTER */}
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Stack direction="row" spacing={0.5} alignItems="center">
-                      <CalendarMonth fontSize="small" color="action" />
-                      <Typography variant="caption" color="text.secondary">
-                        {dateLabel}
-                      </Typography>
-                    </Stack>
-              
-                    <Stack direction="row" spacing={0.5} alignItems="center">
-                      {mail.observations?.trim() && (
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => setCommentOpen(mail._id)}
-                        >
-                          <Comment fontSize="small" />
-                        </IconButton>
-                      )}
-              
-                      <ButtonBarCode id={mail.code ?? mail._id} />
-                    </Stack>
-                  </Stack>
-                </Paper>
-              )
-          })}
+                      <Comment fontSize="small" />
+                    </IconButton>
+                  )}
+
+                  <ButtonBarCode id={mail.code ?? mail._id} />
+                </Stack>
+              </Stack>
+            </Paper>
+          )
+        })}
       </Box>
 
       <Dialog

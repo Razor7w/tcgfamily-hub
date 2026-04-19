@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import {
   Alert,
+  alpha,
   Box,
   Button,
   Container,
@@ -67,11 +68,11 @@ export default function AdminPuntosPage() {
 
   return (
     <Box
-      sx={{
+      sx={t => ({
         minHeight: '100vh',
-        bgcolor: 'background.default',
+        background: `linear-gradient(165deg, ${alpha(t.palette.primary.main, 0.06)} 0%, ${t.palette.background.default} 38%, ${t.palette.background.default} 100%)`,
         py: 4
-      }}
+      })}
     >
       <Container maxWidth="sm">
         <Stack spacing={3}>
@@ -90,12 +91,11 @@ export default function AdminPuntosPage() {
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Sube el reporte (CSV con punto y coma, mismo formato que el de
-            ejemplo).             Se busca al usuario por RUT (todas las formas guardadas) o por
-            correo (minúsculas). Si vienen ambos, primero se intenta por RUT
+            ejemplo). Se busca al usuario por RUT (todas las formas guardadas) o
+            por correo (minúsculas). Si vienen ambos, primero se intenta por RUT
             (incluye filas solo con RUT) y, si no hay coincidencia, por correo.
-            Se sincronizan
-            saldo, próximos puntos a vencer y fecha de vencimiento. No se crean
-            usuarios nuevos.
+            Se sincronizan saldo, próximos puntos a vencer y fecha de
+            vencimiento. No se crean usuarios nuevos.
           </Typography>
           <Box
             component="form"
@@ -110,7 +110,11 @@ export default function AdminPuntosPage() {
               borderRadius: 1
             }}
           >
-            <Button component="label" variant="outlined" startIcon={<CloudUpload />}>
+            <Button
+              component="label"
+              variant="outlined"
+              startIcon={<CloudUpload />}
+            >
               Elegir archivo .csv
               <input
                 type="file"

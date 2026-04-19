@@ -1,109 +1,110 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   DashboardModuleSettingsDTO,
-  DashboardShortcutsVisibility,
-} from "@/lib/dashboard-module-config";
+  DashboardShortcutsVisibility
+} from '@/lib/dashboard-module-config'
 
 export type AdminConfiguracionData = {
-  settings: DashboardModuleSettingsDTO;
-  resendNotifyPickupInStoreEnabled: boolean;
-};
+  settings: DashboardModuleSettingsDTO
+  resendNotifyPickupInStoreEnabled: boolean
+}
 
 /** Configuración admin: bloques del dashboard + correo Resend (requiere rol admin). */
 export function useAdminConfiguracion() {
   return useQuery<AdminConfiguracionData>({
-    queryKey: ["admin", "configuracion"],
+    queryKey: ['admin', 'configuracion'],
     queryFn: async () => {
-      const response = await fetch("/api/admin/configuracion");
+      const response = await fetch('/api/admin/configuracion')
       if (!response.ok) {
-        throw new Error("Error al cargar configuración");
+        throw new Error('Error al cargar configuración')
       }
       const data = (await response.json()) as {
-        settings?: DashboardModuleSettingsDTO;
-        resendNotifyPickupInStoreEnabled?: boolean;
-      };
+        settings?: DashboardModuleSettingsDTO
+        resendNotifyPickupInStoreEnabled?: boolean
+      }
       if (!data.settings) {
-        throw new Error("Respuesta inválida");
+        throw new Error('Respuesta inválida')
       }
       return {
         settings: data.settings,
-        resendNotifyPickupInStoreEnabled: data.resendNotifyPickupInStoreEnabled !== false,
-      };
+        resendNotifyPickupInStoreEnabled:
+          data.resendNotifyPickupInStoreEnabled !== false
+      }
     },
-    staleTime: 60_000,
-  });
+    staleTime: 60_000
+  })
 }
 
 export function useUpdateDashboardModuleSettings() {
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async (settings: DashboardModuleSettingsDTO) => {
-      const response = await fetch("/api/admin/configuracion", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
-      });
+      const response = await fetch('/api/admin/configuracion', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+      })
       if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
+        const err = await response.json().catch(() => ({}))
         throw new Error(
-          typeof err.error === "string" ? err.error : "Error al guardar",
-        );
+          typeof err.error === 'string' ? err.error : 'Error al guardar'
+        )
       }
-      const data = await response.json();
-      return data.settings as DashboardModuleSettingsDTO;
+      const data = await response.json()
+      return data.settings as DashboardModuleSettingsDTO
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "configuracion"] });
-    },
-  });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'configuracion'] })
+    }
+  })
 }
 
 export function useUpdateDashboardShortcuts() {
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async (shortcuts: DashboardShortcutsVisibility) => {
-      const response = await fetch("/api/admin/configuracion", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shortcuts }),
-      });
+      const response = await fetch('/api/admin/configuracion', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shortcuts })
+      })
       if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
+        const err = await response.json().catch(() => ({}))
         throw new Error(
-          typeof err.error === "string" ? err.error : "Error al guardar",
-        );
+          typeof err.error === 'string' ? err.error : 'Error al guardar'
+        )
       }
-      const data = await response.json();
-      return data.settings as DashboardModuleSettingsDTO;
+      const data = await response.json()
+      return data.settings as DashboardModuleSettingsDTO
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "configuracion"] });
-    },
-  });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'configuracion'] })
+    }
+  })
 }
 
 export function useUpdateResendPickupNotifySettings() {
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async (resendNotifyPickupInStoreEnabled: boolean) => {
-      const response = await fetch("/api/admin/configuracion", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resendNotifyPickupInStoreEnabled }),
-      });
+      const response = await fetch('/api/admin/configuracion', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resendNotifyPickupInStoreEnabled })
+      })
       if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
+        const err = await response.json().catch(() => ({}))
         throw new Error(
-          typeof err.error === "string" ? err.error : "Error al guardar",
-        );
+          typeof err.error === 'string' ? err.error : 'Error al guardar'
+        )
       }
-      return response.json() as Promise<AdminConfiguracionData>;
+      return response.json() as Promise<AdminConfiguracionData>
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "configuracion"] });
-    },
-  });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'configuracion'] })
+    }
+  })
 }
