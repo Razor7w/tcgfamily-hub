@@ -10,6 +10,16 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [0.5.1] - 2026-04-18
+
+### Cambiado
+
+- **Ligas** (`/ligas/[slug]`): clasificación **por división de edad** (Júnior, Sénior, Máster); la API pública `GET /api/leagues/[slug]` devuelve `standingsByCategory` (tabla y gráfico por pestaña). Textos informativos alineados con el manual de Ligas de Play! Pokémon (TOM, archivo .tdf, Play! Tools; independiente de los Puntos de Campeonato oficiales). Agregación en [`aggregateLeagueStandingsByCategory`](./app/lib/league-aggregate.ts) y copy en [`app/lib/league-public-copy.ts`](./app/lib/league-public-copy.ts).
+
+### Corregido
+
+- **Admin y dashboard — Correos**: la búsqueda por código trata como equivalentes los separadores que envían algunos lectores de código de barras (p. ej. apóstrofos) y los guiones del código almacenado (`19'04'2026'001` vs `19-04-2026-001`) mediante [`normalizeMailCodeForSearch`](./app/lib/mail-code-search.ts).
+
 ## [0.5.0] - 2026-04-18
 
 ### Añadido
@@ -141,4 +151,4 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 Línea base anterior en `package.json` antes de este changelog; el detalle de cambios queda en el historial de git.
 
-Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.5.0…HEAD`, `[0.5.0]: …/compare/v0.4.6…v0.5.0`, `[0.4.6]: …/compare/v0.4.5…v0.4.6`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
+Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo *Keep a Changelog* (`[Unreleased]: …/compare/v0.5.1…HEAD`, `[0.5.1]: …/compare/v0.5.0…v0.5.1`, `[0.5.0]: …/compare/v0.4.6…v0.5.0`, `[0.4.6]: …/compare/v0.4.5…v0.4.6`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).

@@ -29,6 +29,7 @@ import ButtonBarCode from '@/components/molecule/ButtonBarCode'
 import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
 import MailFlowExplainer from '@/components/mails/MailFlowExplainer'
 import { getMailStatusChip } from '@/lib/mail-status'
+import { normalizeMailCodeForSearch } from '@/lib/mail-code-search'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -113,12 +114,13 @@ function DashboardMailPageContent() {
 
   const mails = useMemo(() => {
     let list = allMails
-    const q = searchId.trim().toLowerCase()
-    if (q)
+    const qCode = normalizeMailCodeForSearch(searchId)
+    const qId = searchId.trim().toLowerCase()
+    if (qCode)
       list = list.filter(
         m =>
-          (m.code ?? '').toLowerCase().includes(q) ||
-          m._id.toLowerCase().includes(q)
+          normalizeMailCodeForSearch(m.code ?? '').includes(qCode) ||
+          m._id.toLowerCase().includes(qId)
       )
     if (filterStatus === 'retired') list = list.filter(m => m.isRecived)
     else if (filterStatus === 'inStore')
