@@ -24,6 +24,31 @@ export function opponentDeckKey(slugs: string[]): string {
   return u.join('|') || '__empty__'
 }
 
+/**
+ * Orden de slugs para **mostrar** el mismo mazo que `deckKey` (clave ordenada).
+ * Respeta el orden en que el usuario guardó los Pokémon en `rawSlugs` (p. ej. deck de perfil).
+ */
+export function slugsDisplayOrderForDeckKey(
+  deckKey: string,
+  rawSlugs: string[]
+): string[] {
+  if (deckKey === '__empty__') return []
+  const keyParts = deckKey.split('|')
+  const keySet = new Set(keyParts)
+  const ordered: string[] = []
+  const used = new Set<string>()
+  for (const s of rawSlugs) {
+    const low = s.trim().toLowerCase()
+    if (!keySet.has(low) || used.has(low)) continue
+    used.add(low)
+    ordered.push(low)
+  }
+  for (const k of keyParts) {
+    if (!used.has(k)) ordered.push(k)
+  }
+  return ordered
+}
+
 type LeanParticipant = {
   userId?: unknown
   matchRounds?: unknown
@@ -58,6 +83,43 @@ export type MyDeckStatsRowDTO = {
 }
 
 /** Agrupa todas las mesas reportadas por la combinación de Pokémon de TU deck (perfil del torneo). */
+/**
+ * Orden de slugs del mazo del usuario para mostrar, tomando el torneo **más reciente**
+ * (`startsAt`) donde participó con esa clave de mazo.
+ */
+export function myDeckSlugsDisplayOrderFromEvents(
+  events: LeanEventForMatchups[],
+  userIdStr: string,
+  deckKey: string
+): string[] {
+  if (deckKey === '__empty__') return []
+  let bestT = -1
+  let bestRaw: string[] = []
+  for (const ev of events) {
+    const parts = ev.participants ?? []
+    const mine = parts.find(
+      p => p?.userId != null && String(p.userId) === userIdStr
+    ) as LeanParticipant | undefined
+    if (!mine) continue
+    const raw = myDeckSlugsFromParticipant(mine)
+    if (opponentDeckKey(raw) !== deckKey) continue
+    const startsAtRaw = ev.startsAt
+    const startsAt =
+      startsAtRaw instanceof Date
+        ? startsAtRaw
+        : new Date(
+            typeof startsAtRaw === 'string' ? startsAtRaw : String(startsAtRaw)
+          )
+    const t = startsAt.getTime()
+    if (t >= bestT) {
+      bestT = t
+      bestRaw = raw
+    }
+  }
+  if (bestRaw.length === 0) return deckKey.split('|')
+  return slugsDisplayOrderForDeckKey(deckKey, bestRaw)
+}
+
 export function aggregateMyDeckStats(
   events: LeanEventForMatchups[],
   userIdStr: string,
@@ -73,6 +135,8 @@ export function aggregateMyDeckStats(
       roundsPlayed: number
       lastPlayedAt: Date
       tournamentIds: Set<string>
+      displaySlugs: string[]
+      displaySourceTime: number
     }
   >()
 
@@ -90,7 +154,8 @@ export function aggregateMyDeckStats(
     const rounds = parseParticipantMatchRoundsFromLean(mine.matchRounds)
     if (rounds.length === 0) continue
 
-    const myKey = opponentDeckKey(myDeckSlugsFromParticipant(mine))
+    const rawSlugs = myDeckSlugsFromParticipant(mine)
+    const myKey = opponentDeckKey(rawSlugs)
 
     const startsAtRaw = ev.startsAt
     const startsAt =
@@ -111,11 +176,19 @@ export function aggregateMyDeckStats(
         neutral: 0,
         roundsPlayed: 0,
         lastPlayedAt: startsAt,
-        tournamentIds: new Set()
+        tournamentIds: new Set(),
+        displaySlugs: [],
+        displaySourceTime: -1
       }
       map.set(myKey, cur)
     }
     if (eventIdStr) cur.tournamentIds.add(eventIdStr)
+
+    const t = startsAt.getTime()
+    if (t >= cur.displaySourceTime) {
+      cur.displaySourceTime = t
+      cur.displaySlugs = slugsDisplayOrderForDeckKey(myKey, rawSlugs)
+    }
 
     for (const r of rounds) {
       const outcome = roundTableOutcome(r)
@@ -132,7 +205,12 @@ export function aggregateMyDeckStats(
 
   const rows: MyDeckStatsRowDTO[] = []
   for (const [myDeckKey, v] of map) {
-    const myDeckSlugs = myDeckKey === '__empty__' ? [] : myDeckKey.split('|')
+    const myDeckSlugs =
+      myDeckKey === '__empty__'
+        ? []
+        : v.displaySlugs.length > 0
+          ? v.displaySlugs
+          : myDeckKey.split('|')
     rows.push({
       myDeckKey,
       myDeckSlugs,

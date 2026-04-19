@@ -5,6 +5,7 @@ import connectDB from '@/lib/mongodb'
 import {
   aggregateMyDeckStats,
   aggregateOpponentMatchupsForMyDeck,
+  myDeckSlugsDisplayOrderFromEvents,
   type TournamentOriginFilter
 } from '@/lib/pokemon-matchup-stats'
 import WeeklyEvent from '@/models/WeeklyEvent'
@@ -58,7 +59,13 @@ export async function GET(request: Request) {
         myDeckKeyFilter
       )
       const myDeckSlugs =
-        myDeckKeyFilter === '__empty__' ? [] : myDeckKeyFilter.split('|')
+        myDeckKeyFilter === '__empty__'
+          ? []
+          : myDeckSlugsDisplayOrderFromEvents(
+              docs as Parameters<typeof aggregateMyDeckStats>[0],
+              session.user.id,
+              myDeckKeyFilter
+            )
       return NextResponse.json(
         {
           origin,
