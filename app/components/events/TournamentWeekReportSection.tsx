@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import CalendarTodayOutlined from '@mui/icons-material/CalendarTodayOutlined'
 import EmojiEvents from '@mui/icons-material/EmojiEvents'
 import FilterList from '@mui/icons-material/FilterList'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
@@ -559,8 +560,8 @@ export default function TournamentWeekReportSection({
 
         {isPending ? (
           <Stack spacing={1.5}>
-            <Skeleton variant="rounded" height={72} sx={{ borderRadius: 2 }} />
-            <Skeleton variant="rounded" height={72} sx={{ borderRadius: 2 }} />
+            <Skeleton variant="rounded" height={112} sx={{ borderRadius: 2 }} />
+            <Skeleton variant="rounded" height={112} sx={{ borderRadius: 2 }} />
           </Stack>
         ) : isError ? (
           <Alert
@@ -649,123 +650,165 @@ export default function TournamentWeekReportSection({
           <Stack spacing={2}>
             {displayed.map(t => {
               const origin = t.tournamentOrigin ?? 'official'
+              const btnSize = isNarrow ? 'medium' : 'small'
               return (
-                <Stack
+                <Box
                   key={t.eventId}
-                  spacing={0.75}
-                  sx={{
-                    p: 2,
+                  sx={theme => ({
+                    p: { xs: 1.75, sm: 2 },
                     borderRadius: 2,
                     border: '1px solid',
                     borderColor: 'divider',
-                    bgcolor: 'action.hover'
-                  }}
+                    bgcolor: alpha(theme.palette.background.paper, 0.72),
+                    transition: theme.transitions.create(
+                      ['border-color', 'box-shadow'],
+                      { duration: theme.transitions.duration.shorter }
+                    ),
+                    '@media (hover: hover)': {
+                      '&:hover': {
+                        borderColor: alpha(theme.palette.primary.main, 0.28),
+                        boxShadow: `0 2px 12px ${alpha(theme.palette.common.black, 0.06)}`
+                      }
+                    }
+                  })}
                 >
                   <Stack
                     direction={{ xs: 'column', sm: 'row' }}
-                    spacing={1.25}
+                    spacing={{ xs: 2, sm: 2 }}
+                    alignItems={{ xs: 'stretch', sm: 'flex-start' }}
                     justifyContent="space-between"
-                    alignItems={{ xs: 'stretch', sm: 'center' }}
                   >
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      alignItems="center"
-                      sx={{ minWidth: 0, flex: 1 }}
-                    >
-                      <Typography
-                        variant="subtitle1"
-                        fontWeight={700}
-                        sx={{ minWidth: 0 }}
-                      >
-                        {t.title}
-                      </Typography>
-                      {allTimeMode ? (
-                        <Chip
-                          size="small"
-                          label={origin === 'custom' ? 'Custom' : 'Oficial'}
-                          variant="outlined"
-                          sx={{ flexShrink: 0, fontWeight: 600 }}
-                        />
-                      ) : null}
-                    </Stack>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        flexDirection: 'row',
-                        flexWrap: 'wrap',
-                        alignItems: 'center',
-                        gap: 1,
-                        justifyContent: { xs: 'flex-start', sm: 'flex-end' },
-                        width: { xs: '100%', sm: 'auto' }
-                      }}
-                    >
-                      {origin !== 'custom' ? (
-                        <Chip
-                          size="small"
-                          label={stateLabel(t.state)}
-                          color={stateColor(t.state)}
-                          variant="outlined"
-                          sx={theme => ({
-                            flexShrink: 0,
-                            height: 26,
-                            fontWeight: 600,
-                            fontSize: '0.7rem',
-                            borderWidth: 1,
-                            bgcolor:
-                              t.state === 'close'
-                                ? alpha(theme.palette.success.main, 0.06)
-                                : undefined,
-                            borderColor:
-                              t.state === 'close'
-                                ? alpha(theme.palette.success.main, 0.35)
-                                : undefined,
-                            color:
-                              t.state === 'close'
-                                ? theme.palette.success.dark
-                                : undefined,
-                            maxWidth: '100%',
-                            '& .MuiChip-label': { px: 1, py: 0 }
-                          })}
-                        />
-                      ) : null}
+                    <Stack spacing={1.25} sx={{ minWidth: 0, flex: 1 }}>
                       <Stack
                         direction="row"
-                        spacing={1}
+                        flexWrap="wrap"
                         alignItems="center"
-                        sx={{
-                          flexShrink: 0,
-                          ml: { xs: 'auto', sm: 0 }
-                        }}
+                        columnGap={1}
+                        rowGap={0.75}
                       >
-                        <Button
-                          component={Link}
-                          href={`/dashboard/torneos-semana/${t.eventId}`}
-                          variant="outlined"
-                          size="small"
-                          sx={{ flexShrink: 0 }}
+                        <Typography
+                          variant="subtitle1"
+                          component="h3"
+                          fontWeight={700}
+                          sx={{
+                            minWidth: 0,
+                            lineHeight: 1.3,
+                            wordBreak: 'break-word'
+                          }}
                         >
-                          Ver detalle
-                        </Button>
-                        {origin === 'custom' ? (
-                          <DeleteCustomTournamentButton
-                            eventId={t.eventId}
-                            tournamentTitle={t.title}
+                          {t.title}
+                        </Typography>
+                        {allTimeMode ? (
+                          <Chip
                             size="small"
-                            variant="text"
-                            label="Eliminar"
+                            label={origin === 'custom' ? 'Custom' : 'Oficial'}
+                            variant="outlined"
+                            sx={{ flexShrink: 0, fontWeight: 600 }}
+                          />
+                        ) : null}
+                        {origin !== 'custom' ? (
+                          <Chip
+                            size="small"
+                            label={stateLabel(t.state)}
+                            color={stateColor(t.state)}
+                            variant="outlined"
+                            sx={theme => ({
+                              flexShrink: 0,
+                              height: 26,
+                              fontWeight: 600,
+                              fontSize: '0.7rem',
+                              borderWidth: 1,
+                              bgcolor:
+                                t.state === 'close'
+                                  ? alpha(theme.palette.success.main, 0.06)
+                                  : undefined,
+                              borderColor:
+                                t.state === 'close'
+                                  ? alpha(theme.palette.success.main, 0.35)
+                                  : undefined,
+                              color:
+                                t.state === 'close'
+                                  ? theme.palette.success.dark
+                                  : undefined,
+                              maxWidth: '100%',
+                              '& .MuiChip-label': { px: 1, py: 0 }
+                            })}
                           />
                         ) : null}
                       </Stack>
+
+                      <Stack
+                        direction="row"
+                        alignItems="center"
+                        spacing={0.75}
+                        sx={{ color: 'text.secondary' }}
+                      >
+                        <CalendarTodayOutlined
+                          sx={{
+                            fontSize: 17,
+                            opacity: 0.85,
+                            flexShrink: 0
+                          }}
+                          aria-hidden
+                        />
+                        <Typography variant="body2" component="p" sx={{ m: 0 }}>
+                          {formatWhen(t.startsAt)}
+                        </Typography>
+                      </Stack>
+
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ lineHeight: 1.55, m: 0 }}
+                      >
+                        {placementSummary(t)}
+                      </Typography>
+                    </Stack>
+
+                    <Box
+                      sx={{
+                        display: { xs: 'grid', sm: 'flex' },
+                        flexDirection: { sm: 'column' },
+                        gap: 1,
+                        width: { xs: '100%', sm: 'auto' },
+                        flexShrink: 0,
+                        alignSelf: { xs: 'stretch', sm: 'flex-start' },
+                        minWidth: { sm: 148 },
+                        gridTemplateColumns:
+                          origin === 'custom'
+                            ? { xs: 'repeat(2, minmax(0, 1fr))', sm: 'none' }
+                            : { xs: 'minmax(0, 1fr)', sm: 'none' }
+                      }}
+                    >
+                      <Button
+                        component={Link}
+                        href={`/dashboard/torneos-semana/${t.eventId}`}
+                        variant="outlined"
+                        color="primary"
+                        size={btnSize}
+                        fullWidth
+                        sx={{
+                          textTransform: 'none',
+                          fontWeight: 700
+                        }}
+                      >
+                        Ver detalle
+                      </Button>
+                      {origin === 'custom' ? (
+                        <Box sx={{ minWidth: 0, width: '100%' }}>
+                          <DeleteCustomTournamentButton
+                            eventId={t.eventId}
+                            tournamentTitle={t.title}
+                            size={btnSize}
+                            variant="outlined"
+                            label="Eliminar"
+                            fullWidth
+                          />
+                        </Box>
+                      ) : null}
                     </Box>
                   </Stack>
-                  <Typography variant="caption" color="text.secondary">
-                    {formatWhen(t.startsAt)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {placementSummary(t)}
-                  </Typography>
-                </Stack>
+                </Box>
               )
             })}
           </Stack>
