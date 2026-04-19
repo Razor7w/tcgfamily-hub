@@ -232,7 +232,10 @@ export default function CustomTournamentManualPlacementSection({
                   size="small"
                   disabled={save.isPending}
                   onClick={() =>
-                    save.mutate({ clear: true }, { onSuccess: () => setOpen(false) })
+                    save.mutate(
+                      { clear: true },
+                      { onSuccess: () => setOpen(false) }
+                    )
                   }
                   sx={{ alignSelf: 'flex-start', textTransform: 'none' }}
                 >
