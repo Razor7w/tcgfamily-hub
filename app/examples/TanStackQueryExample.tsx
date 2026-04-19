@@ -183,9 +183,14 @@ function Example3OptimisticUpdates() {
   const { data } = useMails()
 
   // Ejemplo de actualización optimista
-  const optimisticUpdate = useMutation({
+  const optimisticUpdate = useMutation<
+    { success: boolean },
+    Error,
+    string,
+    { previousMails: { mails: Mail[] } | undefined }
+  >({
     mutationFn: async () => {
-      // Simular llamada API
+      // Simular llamada API (el id llega a onMutate / onError vía useMutation<…, …, string>)
       await new Promise(resolve => setTimeout(resolve, 1000))
       return { success: true }
     },
