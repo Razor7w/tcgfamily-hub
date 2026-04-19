@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import { requireAdminSession } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
 import mongoose from 'mongoose'
@@ -17,12 +17,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth()
-
-    // Verificar que el usuario esté autenticado y sea admin
-    if (!session || session.user.role !== 'admin') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireAdminSession()
+    if (!gate.ok) return gate.response
 
     const { id } = await params
     await connectDB()
@@ -96,12 +92,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth()
-
-    // Verificar que el usuario esté autenticado y sea admin
-    if (!session || session.user.role !== 'admin') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireAdminSession()
+    if (!gate.ok) return gate.response
 
     const { id } = await params
     const body = await request.json()
@@ -205,12 +197,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth()
-
-    // Verificar que el usuario esté autenticado y sea admin
-    if (!session || session.user.role !== 'admin') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireAdminSession()
+    if (!gate.ok) return gate.response
 
     const { id } = await params
     await connectDB()

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { AnyBulkWriteOperation } from 'mongoose'
 import mongoose from 'mongoose'
-import { auth } from '@/auth'
+import { requireAdminSession } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
 import {
@@ -31,10 +31,8 @@ const BULK_CHUNK = 500
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session || session.user.role !== 'admin') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireAdminSession()
+    if (!gate.ok) return gate.response
 
     const form = await request.formData()
     const file = form.get('file')

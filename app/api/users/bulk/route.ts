@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import { requireAdminSession } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
 
@@ -31,12 +31,8 @@ function parseCSV(csvText: string): Array<Record<string, string>> {
 // POST - Crear usuarios masivamente desde CSV
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth()
-
-    // Verificar que el usuario esté autenticado y sea admin
-    if (!session || session.user.role !== 'admin') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireAdminSession()
+    if (!gate.ok) return gate.response
 
     const formData = await request.formData()
     const file = formData.get('file') as File | null

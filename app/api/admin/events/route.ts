@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import { requireAdminSession } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import mongoose from 'mongoose'
 import { ADMIN_WEEKLY_EVENTS_ORIGIN_FILTER } from '@/lib/admin-weekly-event-access'
@@ -88,10 +88,8 @@ function serializeAdminParticipant(p: {
 
 export async function GET() {
   try {
-    const session = await auth()
-    if (!session || session.user.role !== 'admin') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireAdminSession()
+    if (!gate.ok) return gate.response
 
     await connectDB()
     const raw = await WeeklyEvent.find(ADMIN_WEEKLY_EVENTS_ORIGIN_FILTER)
@@ -169,10 +167,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session || session.user.role !== 'admin') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireAdminSession()
+    if (!gate.ok) return gate.response
 
     const body = parseBody(await request.json().catch(() => null))
     if (!body) {

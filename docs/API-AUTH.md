@@ -21,10 +21,14 @@ export async function GET() {
 
 - Respuesta unificada: **`401`** + `{ error: 'No autorizado' }` si no hay usuario o el rol no es `admin` (alineado con rutas existentes como [`app/api/admin/events/route.ts`](../app/api/admin/events/route.ts)).
 
-### Rutas que deben seguir este patrón
+### Cobertura en el código
 
-- Prefijo **`/api/admin/*`**: eventos, ligas, importaciones, configuración, etc.
-- **`/api/users/*`** y **`/api/mail/*`**: operaciones reservadas a admin según el handler (revisar cada método).
+- Todas las rutas **solo admin** bajo **`/api/admin/*`** usan `requireAdminSession()` (incl. eventos, ligas, importación de puntos, etc.).
+- **`GET /api/users`**, **`POST /api/users`**, **`/api/users/[id]`** (GET/PUT/DELETE) y **`POST /api/users/bulk`**: admin vía el mismo helper.
+- **`GET /api/mail`**: listado solo admin → `requireAdminSession()`.
+- **`PUT /api/mail/[id]`**: actualización solo admin → `requireAdminSession()`.
+
+Los handlers que mezclan **admin y usuario** (`POST /api/mail`, `GET`/`DELETE /api/mail/[id]`, etc.) siguen usando `auth()` y comprobando `session.user.role` en la lógica del cuerpo.
 
 ### Usuarios autenticados (no admin)
 

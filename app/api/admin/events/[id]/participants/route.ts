@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import mongoose from 'mongoose'
-import { auth } from '@/auth'
+import { requireAdminSession } from '@/lib/api-auth'
 import { adminWeeklyEventForbiddenResponse } from '@/lib/admin-weekly-event-access'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
@@ -16,10 +16,8 @@ export async function POST(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth()
-    if (!session || session.user.role !== 'admin') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireAdminSession()
+    if (!gate.ok) return gate.response
 
     const { id: eventId } = await context.params
     if (!eventId?.trim()) {
@@ -150,10 +148,8 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth()
-    if (!session || session.user.role !== 'admin') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireAdminSession()
+    if (!gate.ok) return gate.response
 
     const { id: eventId } = await context.params
     if (!eventId?.trim()) {

@@ -9,32 +9,14 @@ import Stack from '@mui/material/Stack'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Alert from '@mui/material/Alert'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
-import List from '@mui/material/List'
-import ListItem from '@mui/material/ListItem'
-import ListItemText from '@mui/material/ListItemText'
-import Paper from '@mui/material/Paper'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
-import CircularProgress from '@mui/material/CircularProgress'
 import { alpha, useTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import {
-  CalendarMonth,
   EmojiEvents,
-  EventAvailable,
   GridView,
   Groups,
   Leaderboard,
   LocalActivity,
-  OpenInNew,
   PersonOutline,
   Place,
   TableRestaurant,
@@ -61,17 +43,23 @@ import LinearCapacity from '@/components/events/LinearCapacity'
 import TournamentFinishedStandingsTabs from '@/components/events/TournamentFinishedStandingsTabs'
 import WeeklyEventPreRegisterForm from '@/components/events/WeeklyEventPreRegisterForm'
 import {
-  WEEKDAY_SHORT,
   formatCloseNote,
   formatPrice,
   formatWhen,
-  formatWlt,
   gameLabel,
   isUnlimitedWeeklyCapacity,
   kindLabel,
   pokemonSubtypeLabel
 } from '@/components/events/weeklyEventsSectionUtils'
 import WeeklyEventsSectionSkeleton from '@/components/events/WeeklyEventsSectionSkeleton'
+import WeeklyEventsSectionHeader from '@/components/events/WeeklyEventsSectionHeader'
+import WeeklyEventsDayStrip from '@/components/events/WeeklyEventsDayStrip'
+import WeeklyEventsOtherDaysEmptyPanel from '@/components/events/WeeklyEventsOtherDaysEmptyPanel'
+import WeeklyEventsWeekEmptyPanel from '@/components/events/WeeklyEventsWeekEmptyPanel'
+import WeeklyEventsSameDayEventChips from '@/components/events/WeeklyEventsSameDayEventChips'
+import WeeklyParticipantsDialog from '@/components/events/WeeklyParticipantsDialog'
+import WeeklyFullStandingsDialog from '@/components/events/WeeklyFullStandingsDialog'
+import WeeklyCurrentRoundDialog from '@/components/events/WeeklyCurrentRoundDialog'
 
 type WeeklyEventsSectionProps = {
   showSeeAllLink?: boolean
@@ -265,94 +253,7 @@ export default function WeeklyEventsSection({
         boxShadow: '0 20px 40px -20px rgba(24, 24, 27, 0.12)'
       }}
     >
-      <Box
-        sx={{
-          px: { xs: 2, sm: 3 },
-          pt: { xs: 2.5, sm: 3 },
-          pb: { xs: 2, sm: 2.25 },
-          borderBottom: '1px solid',
-          borderColor: t => alpha(t.palette.text.primary, 0.06),
-          bgcolor: t => alpha(t.palette.text.primary, 0.02)
-        }}
-      >
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          alignItems={{ xs: 'flex-start', sm: 'flex-start' }}
-          justifyContent="space-between"
-          gap={2}
-        >
-          <Stack
-            direction="row"
-            alignItems="flex-start"
-            gap={1.5}
-            sx={{ minWidth: 0, flex: 1 }}
-          >
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 44,
-                height: 44,
-                borderRadius: 2.5,
-                flexShrink: 0,
-                color: 'primary.main',
-                bgcolor: t => alpha(t.palette.primary.main, 0.1),
-                border: '1px solid',
-                borderColor: t => alpha(t.palette.primary.main, 0.2),
-                boxShadow: t =>
-                  `inset 0 1px 0 ${alpha(t.palette.common.white, 0.45)}`
-              }}
-            >
-              <CalendarMonth aria-hidden sx={{ fontSize: 22 }} />
-            </Box>
-            <Box sx={{ minWidth: 0, pt: 0.25 }}>
-              <Typography
-                variant="h5"
-                component="h2"
-                sx={{
-                  fontWeight: 700,
-                  lineHeight: 1.15,
-                  letterSpacing: '-0.03em',
-                  color: 'text.primary'
-                }}
-              >
-                Eventos de la semana
-              </Typography>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{
-                  display: 'block',
-                  mt: 0.75,
-                  lineHeight: 1.5,
-                  maxWidth: { sm: '42ch' }
-                }}
-              >
-                Elige día y horario; aquí ves el cartel, cupos y tu inscripción.
-              </Typography>
-            </Box>
-          </Stack>
-          {showSeeAllLink ? (
-            <Button
-              component={Link}
-              href="/dashboard/eventos"
-              size="medium"
-              color="primary"
-              variant="outlined"
-              endIcon={<OpenInNew sx={{ fontSize: 18 }} />}
-              sx={{
-                flexShrink: 0,
-                fontWeight: 600,
-                borderColor: t => alpha(t.palette.primary.main, 0.35),
-                alignSelf: { xs: 'stretch', sm: 'flex-start' }
-              }}
-            >
-              Vista completa
-            </Button>
-          ) : null}
-        </Stack>
-      </Box>
+      <WeeklyEventsSectionHeader showSeeAllLink={showSeeAllLink} />
 
       <CardContent
         sx={{
@@ -368,105 +269,15 @@ export default function WeeklyEventsSection({
           />
         </Box>
 
-        <Box
-          ref={dayPickerStripRef}
-          component="nav"
-          aria-label="Días de la semana"
-          sx={{
-            display: 'flex',
-            gap: 1,
-            overflowX: 'auto',
-            pb: 1.5,
-            mx: { xs: -0.5, sm: 0 },
-            px: 0.5,
-            scrollSnapType: 'x proximity',
-            WebkitOverflowScrolling: 'touch',
-            '&::-webkit-scrollbar': { height: 6 },
-            '&::-webkit-scrollbar-thumb': {
-              borderRadius: 3,
-              bgcolor: t => alpha(t.palette.text.primary, 0.15)
-            }
-          }}
-        >
-          {dayKeys.map((key, idx) => {
-            const d = new Date(weekStart)
-            d.setDate(weekStart.getDate() + idx)
-            const count = countsByDay.get(key) ?? 0
-            const selected = idx === selectedOffset
-            const isToday = key === localDayKey(new Date())
-            return (
-              <Button
-                key={key}
-                ref={el => {
-                  dayPickerButtonRefs.current[idx] = el
-                }}
-                onClick={() => setSelectedOffset(idx)}
-                variant={selected ? 'contained' : 'outlined'}
-                color={selected ? 'primary' : 'inherit'}
-                size="small"
-                aria-pressed={selected}
-                aria-current={selected ? 'date' : undefined}
-                sx={{
-                  minWidth: 58,
-                  flexShrink: 0,
-                  scrollSnapAlign: 'start',
-                  py: 1.35,
-                  flexDirection: 'column',
-                  lineHeight: 1.2,
-                  borderRadius: 2.5,
-                  borderWidth: isToday && !selected ? 2 : 1,
-                  borderColor:
-                    isToday && !selected
-                      ? t => alpha(t.palette.primary.main, 0.45)
-                      : undefined,
-                  bgcolor: selected
-                    ? undefined
-                    : t => alpha(t.palette.background.paper, 0.8),
-                  transition:
-                    'background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                  boxShadow: selected
-                    ? t =>
-                        `0 8px 20px -8px ${alpha(t.palette.primary.main, 0.45)}`
-                    : 'none',
-                  '&:active': { transform: 'scale(0.98)' }
-                }}
-              >
-                <Typography
-                  variant="caption"
-                  display="block"
-                  sx={{ opacity: selected ? 0.95 : 0.75, fontWeight: 600 }}
-                >
-                  {WEEKDAY_SHORT[idx]}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  fontWeight={800}
-                  sx={{ fontVariantNumeric: 'tabular-nums' }}
-                >
-                  {d.getDate()}
-                </Typography>
-                {count > 0 ? (
-                  <Chip
-                    label={count}
-                    size="small"
-                    color={selected ? 'default' : 'primary'}
-                    variant={selected ? 'filled' : 'outlined'}
-                    sx={{
-                      mt: 0.5,
-                      height: 20,
-                      '& .MuiChip-label': {
-                        px: 0.75,
-                        fontSize: 10,
-                        fontWeight: 700,
-                        fontVariantNumeric: 'tabular-nums'
-                      }
-                    }}
-                  />
-                ) : null}
-              </Button>
-            )
-          })}
-        </Box>
+        <WeeklyEventsDayStrip
+          stripRef={dayPickerStripRef}
+          dayPickerButtonRefs={dayPickerButtonRefs}
+          dayKeys={dayKeys}
+          weekStart={weekStart}
+          selectedOffset={selectedOffset}
+          onSelectOffset={setSelectedOffset}
+          countsByDay={countsByDay}
+        />
 
         {isPending ? (
           <WeeklyEventsSectionSkeleton />
@@ -485,186 +296,23 @@ export default function WeeklyEventsSection({
               : 'No se pudieron cargar los eventos'}
           </Alert>
         ) : !eventsForDay.length && events.length > 0 ? (
-          <Stack
-            alignItems="stretch"
-            spacing={1.5}
-            sx={{
-              py: 3,
-              px: { xs: 2, sm: 2.5 },
-              borderRadius: 3,
-              border: '1px dashed',
-              borderColor: t => alpha(t.palette.text.primary, 0.12),
-              bgcolor: t => alpha(t.palette.text.primary, 0.02)
+          <WeeklyEventsOtherDaysEmptyPanel
+            eventsWeekSorted={eventsWeekSorted}
+            weekStart={weekStart}
+            onPickEvent={(dayOffset, eventId) => {
+              setSelectedOffset(dayOffset)
+              setSelectedEventId(eventId)
             }}
-          >
-            <Stack direction="row" alignItems="flex-start" gap={1.5}>
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 40,
-                  height: 40,
-                  borderRadius: 2,
-                  flexShrink: 0,
-                  bgcolor: t => alpha(t.palette.text.primary, 0.06),
-                  color: 'text.secondary'
-                }}
-              >
-                <EventAvailable sx={{ fontSize: 22 }} />
-              </Box>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography
-                  color="text.primary"
-                  fontWeight={700}
-                  sx={{ letterSpacing: '-0.02em' }}
-                >
-                  No hay eventos este día
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mt: 0.35, maxWidth: 480 }}
-                >
-                  Esta semana hay otros eventos (incluidos los que ya pasaron).
-                  Toca uno para ver el detalle o elige ese día en la fila
-                  superior.
-                </Typography>
-              </Box>
-            </Stack>
-            <Stack spacing={1} sx={{ pl: { xs: 0, sm: 0 }, pt: 0.5 }}>
-              {eventsWeekSorted.map(ev => {
-                const k = localDayKey(new Date(ev.startsAt))
-                let dayOffset = 0
-                for (let i = 0; i < 7; i++) {
-                  const d = new Date(weekStart)
-                  d.setDate(weekStart.getDate() + i)
-                  if (localDayKey(d) === k) {
-                    dayOffset = i
-                    break
-                  }
-                }
-                return (
-                  <Button
-                    key={ev._id}
-                    type="button"
-                    variant="outlined"
-                    color="primary"
-                    fullWidth
-                    sx={{
-                      justifyContent: 'flex-start',
-                      textAlign: 'left',
-                      py: 1.25
-                    }}
-                    onClick={() => {
-                      setSelectedOffset(dayOffset)
-                      setSelectedEventId(ev._id)
-                    }}
-                  >
-                    <Box component="span" sx={{ width: '100%' }}>
-                      <Typography
-                        component="span"
-                        variant="body2"
-                        fontWeight={700}
-                        display="block"
-                      >
-                        {formatWhen(ev.startsAt)}
-                      </Typography>
-                      <Typography
-                        component="span"
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{ display: 'block', mt: 0.25 }}
-                      >
-                        {ev.title}
-                      </Typography>
-                    </Box>
-                  </Button>
-                )
-              })}
-            </Stack>
-          </Stack>
+          />
         ) : !eventsForDay.length ? (
-          <Stack
-            alignItems="flex-start"
-            spacing={1.25}
-            sx={{
-              py: 4,
-              px: { xs: 2, sm: 2.5 },
-              borderRadius: 3,
-              border: '1px dashed',
-              borderColor: t => alpha(t.palette.text.primary, 0.12),
-              bgcolor: t => alpha(t.palette.text.primary, 0.02)
-            }}
-          >
-            <Stack direction="row" alignItems="center" gap={1.5}>
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 40,
-                  height: 40,
-                  borderRadius: 2,
-                  bgcolor: t => alpha(t.palette.text.primary, 0.06),
-                  color: 'text.secondary'
-                }}
-              >
-                <EventAvailable sx={{ fontSize: 22 }} />
-              </Box>
-              <Box>
-                <Typography
-                  color="text.primary"
-                  fontWeight={700}
-                  sx={{ letterSpacing: '-0.02em' }}
-                >
-                  No hay eventos esta semana
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mt: 0.25, maxWidth: 360 }}
-                >
-                  Cambia de día en la fila superior o navega a otra semana.
-                </Typography>
-              </Box>
-            </Stack>
-          </Stack>
+          <WeeklyEventsWeekEmptyPanel />
         ) : (
           <>
-            {eventsForDay.length > 1 ? (
-              <Stack
-                direction="row"
-                role="tablist"
-                aria-label="Eventos del día"
-                gap={1}
-                flexWrap="wrap"
-                sx={{ mb: 2.5 }}
-              >
-                {eventsForDay.map(ev => {
-                  const active = ev._id === selectedEvent?._id
-                  return (
-                    <Chip
-                      key={ev._id}
-                      label={ev.title}
-                      onClick={() => setSelectedEventId(ev._id)}
-                      color={active ? 'primary' : 'default'}
-                      variant={active ? 'filled' : 'outlined'}
-                      sx={{
-                        fontWeight: active ? 700 : 600,
-                        borderRadius: 2,
-                        borderColor: active
-                          ? undefined
-                          : t => alpha(t.palette.text.primary, 0.14),
-                        transition:
-                          'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
-                        '&:active': { transform: 'scale(0.98)' }
-                      }}
-                    />
-                  )
-                })}
-              </Stack>
-            ) : null}
+            <WeeklyEventsSameDayEventChips
+              eventsForDay={eventsForDay}
+              selectedEventId={selectedEvent?._id ?? null}
+              onSelectEventId={setSelectedEventId}
+            />
 
             {selectedEvent ? (
               <>
@@ -1392,340 +1040,27 @@ export default function WeeklyEventsSection({
                           </>
                         )}
 
-                        <Dialog
+                        <WeeklyParticipantsDialog
                           open={participantsModalOpen}
                           onClose={() => setParticipantsOpenForEventId(null)}
-                          fullWidth
-                          maxWidth="sm"
-                          scroll="paper"
-                          aria-labelledby="participants-dialog-title"
-                        >
-                          <DialogTitle id="participants-dialog-title">
-                            Participantes
-                          </DialogTitle>
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ px: 3, pb: 0, mt: -1 }}
-                          >
-                            {selectedEvent.title}
-                          </Typography>
-                          <DialogContent dividers sx={{ pt: 2 }}>
-                            <List dense disablePadding>
-                              {selectedEvent.participantNames.length === 0 ? (
-                                <Typography
-                                  variant="body2"
-                                  color="text.secondary"
-                                  sx={{ py: 2 }}
-                                >
-                                  Todavía no hay nadie inscrito.
-                                </Typography>
-                              ) : (
-                                selectedEvent.participantNames.map((n, i) => (
-                                  <ListItem
-                                    key={`${i}-${n}`}
-                                    disableGutters
-                                    sx={{
-                                      borderRadius: 1,
-                                      mb: 0.5,
-                                      px: 1,
-                                      py: 0.75,
-                                      bgcolor: t =>
-                                        i % 2 === 0
-                                          ? alpha(t.palette.text.primary, 0.04)
-                                          : 'transparent'
-                                    }}
-                                  >
-                                    <ListItemText
-                                      primary={`${i + 1}. ${n}`}
-                                      primaryTypographyProps={{
-                                        variant: 'body2',
-                                        fontWeight: 500
-                                      }}
-                                    />
-                                  </ListItem>
-                                ))
-                              )}
-                            </List>
-                          </DialogContent>
-                          <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
-                            <Button
-                              variant="contained"
-                              onClick={() =>
-                                setParticipantsOpenForEventId(null)
-                              }
-                            >
-                              Listo
-                            </Button>
-                          </DialogActions>
-                        </Dialog>
+                          eventTitle={selectedEvent.title}
+                          participantNames={selectedEvent.participantNames}
+                        />
 
-                        <Dialog
+                        <WeeklyFullStandingsDialog
                           open={fullStandingsModalOpen}
                           onClose={() => setFullStandingsOpenForEventId(null)}
-                          fullWidth
-                          maxWidth="md"
-                          aria-labelledby="full-standings-dialog-title"
-                          PaperProps={{
-                            sx: {
-                              maxHeight: 'min(92vh, 880px)',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              overflow: 'hidden'
-                            }
-                          }}
-                        >
-                          <DialogTitle
-                            id="full-standings-dialog-title"
-                            sx={{ flexShrink: 0 }}
-                          >
-                            Clasificación completa
-                          </DialogTitle>
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ px: 3, pb: 0, mt: -1, flexShrink: 0 }}
-                          >
-                            {selectedEvent.title}
-                          </Typography>
-                          <DialogContent
-                            dividers
-                            sx={{
-                              pt: 2,
-                              overflow: 'hidden',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              flex: '1 1 auto',
-                              minHeight: 0
-                            }}
-                          >
-                            {fullStandingsQuery.isPending ? (
-                              <Stack
-                                alignItems="center"
-                                justifyContent="center"
-                                sx={{ py: 5 }}
-                              >
-                                <CircularProgress
-                                  size={36}
-                                  aria-label="Cargando clasificación"
-                                />
-                              </Stack>
-                            ) : fullStandingsQuery.isError ? (
-                              <Alert severity="error" variant="outlined">
-                                {fullStandingsQuery.error instanceof Error
-                                  ? fullStandingsQuery.error.message
-                                  : 'No se pudo cargar la clasificación'}
-                              </Alert>
-                            ) : fullStandingsQuery.data
-                                ?.standingsFullByCategory &&
-                              fullStandingsQuery.data.standingsFullByCategory
-                                .length > 0 ? (
-                              <TournamentFinishedStandingsTabs
-                                key={`${selectedEvent._id}-full`}
-                                variant="dialog"
-                                categories={
-                                  fullStandingsQuery.data
-                                    .standingsFullByCategory
-                                }
-                              />
-                            ) : (
-                              <Alert severity="info" variant="outlined">
-                                La clasificación detallada aún no está publicada
-                                para este evento.
-                              </Alert>
-                            )}
-                          </DialogContent>
-                          <DialogActions
-                            sx={{ px: 3, pb: 2, pt: 1, flexShrink: 0 }}
-                          >
-                            <Button
-                              variant="contained"
-                              onClick={() =>
-                                setFullStandingsOpenForEventId(null)
-                              }
-                            >
-                              Cerrar
-                            </Button>
-                          </DialogActions>
-                        </Dialog>
+                          eventTitle={selectedEvent.title}
+                          eventId={selectedEvent._id}
+                          fullStandingsQuery={fullStandingsQuery}
+                        />
 
-                        <Dialog
+                        <WeeklyCurrentRoundDialog
                           open={currentRoundModalOpen}
                           onClose={() => setCurrentRoundOpenForEventId(null)}
-                          fullWidth
-                          maxWidth="md"
-                          scroll="paper"
-                          aria-labelledby="current-round-dialog-title"
-                        >
-                          <DialogTitle id="current-round-dialog-title">
-                            Ronda en curso
-                          </DialogTitle>
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ px: 3, pb: 0, mt: -1 }}
-                          >
-                            {selectedEvent.title}
-                          </Typography>
-                          <DialogContent dividers sx={{ pt: 2 }}>
-                            {currentRoundQuery.isPending ? (
-                              <Stack
-                                alignItems="center"
-                                justifyContent="center"
-                                sx={{ py: 5 }}
-                              >
-                                <CircularProgress
-                                  size={36}
-                                  aria-label="Cargando ronda"
-                                />
-                              </Stack>
-                            ) : currentRoundQuery.isError ? (
-                              <Alert severity="error" variant="outlined">
-                                {currentRoundQuery.error instanceof Error
-                                  ? currentRoundQuery.error.message
-                                  : 'No se pudo cargar la ronda'}
-                              </Alert>
-                            ) : currentRoundQuery.data ? (
-                              <Stack spacing={2}>
-                                <Typography
-                                  variant="body2"
-                                  color="text.secondary"
-                                >
-                                  Ronda{' '}
-                                  <strong>
-                                    {currentRoundQuery.data.roundNum}
-                                  </strong>
-                                  {currentRoundQuery.data.syncedAt
-                                    ? ` · Publicada ${new Date(
-                                        currentRoundQuery.data.syncedAt
-                                      ).toLocaleString('es-CL')}`
-                                    : null}
-                                </Typography>
-                                {currentRoundQuery.data.roundNum === 0 ||
-                                !currentRoundQuery.data.hasSnapshot ? (
-                                  <Alert severity="info" variant="outlined">
-                                    {currentRoundQuery.data.roundNum === 0
-                                      ? 'Todavía no hay una ronda en curso publicada para este torneo.'
-                                      : 'La tienda aún no ha publicado los emparejamientos de esta ronda. Vuelve a intentar más tarde.'}
-                                  </Alert>
-                                ) : (
-                                  <TableContainer
-                                    component={Paper}
-                                    variant="outlined"
-                                    sx={{
-                                      borderRadius: 2,
-                                      maxHeight: { xs: 360, sm: 480 }
-                                    }}
-                                  >
-                                    <Table size="small" stickyHeader>
-                                      <TableHead>
-                                        <TableRow>
-                                          <TableCell>Mesa</TableCell>
-                                          <TableCell>Jugador 1</TableCell>
-                                          <TableCell
-                                            align="center"
-                                            sx={{ whiteSpace: 'nowrap' }}
-                                          >
-                                            W / L / T
-                                          </TableCell>
-                                          <TableCell>Jugador 2</TableCell>
-                                          <TableCell
-                                            align="center"
-                                            sx={{ whiteSpace: 'nowrap' }}
-                                          >
-                                            W / L / T
-                                          </TableCell>
-                                        </TableRow>
-                                      </TableHead>
-                                      <TableBody>
-                                        {currentRoundQuery.data.pairings.map(
-                                          (row, idx) => (
-                                            <TableRow
-                                              key={`${row.tableNumber}-${idx}`}
-                                            >
-                                              <TableCell
-                                                sx={{ fontWeight: 600 }}
-                                              >
-                                                {row.tableNumber || '—'}
-                                              </TableCell>
-                                              <TableCell>
-                                                {row.player1Name?.trim() || '—'}
-                                                {row.isBye ? (
-                                                  <Typography
-                                                    component="span"
-                                                    variant="caption"
-                                                    color="text.secondary"
-                                                    sx={{ ml: 0.5 }}
-                                                  >
-                                                    (bye)
-                                                  </Typography>
-                                                ) : null}
-                                              </TableCell>
-                                              <TableCell align="center">
-                                                {formatWlt(row.player1Record)}
-                                              </TableCell>
-                                              <TableCell>
-                                                {row.isBye
-                                                  ? '—'
-                                                  : row.player2Name?.trim() ||
-                                                    '—'}
-                                              </TableCell>
-                                              <TableCell align="center">
-                                                {row.isBye
-                                                  ? '—'
-                                                  : formatWlt(
-                                                      row.player2Record
-                                                    )}
-                                              </TableCell>
-                                            </TableRow>
-                                          )
-                                        )}
-                                      </TableBody>
-                                    </Table>
-                                  </TableContainer>
-                                )}
-                                {currentRoundQuery.data.skipped.length > 0 ? (
-                                  <Alert severity="warning" variant="outlined">
-                                    <Typography
-                                      variant="body2"
-                                      fontWeight={600}
-                                      sx={{ mb: 0.5 }}
-                                    >
-                                      Mesas no aplicadas en el sistema
-                                    </Typography>
-                                    <Stack
-                                      component="ul"
-                                      sx={{ m: 0, pl: 2.5 }}
-                                      spacing={0.5}
-                                    >
-                                      {currentRoundQuery.data.skipped.map(
-                                        (s, i) => (
-                                          <Typography
-                                            component="li"
-                                            key={`${s.tableNumber}-${i}`}
-                                            variant="body2"
-                                          >
-                                            Mesa {s.tableNumber}: {s.reason}
-                                          </Typography>
-                                        )
-                                      )}
-                                    </Stack>
-                                  </Alert>
-                                ) : null}
-                              </Stack>
-                            ) : null}
-                          </DialogContent>
-                          <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
-                            <Button
-                              variant="contained"
-                              onClick={() =>
-                                setCurrentRoundOpenForEventId(null)
-                              }
-                            >
-                              Cerrar
-                            </Button>
-                          </DialogActions>
-                        </Dialog>
+                          eventTitle={selectedEvent.title}
+                          currentRoundQuery={currentRoundQuery}
+                        />
                       </CardContent>
                     </Card>
                   </Box>
