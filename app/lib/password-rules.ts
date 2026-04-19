@@ -26,7 +26,11 @@ const WEAK_PASSWORDS = new Set(
   ].map(s => s.toLowerCase())
 )
 
-const EMAIL_RE =
+/**
+ * Comprobación final de caracteres permitidos (ASCII habitual en correos).
+ * Va después de validar estructura local@dominio.
+ */
+const EMAIL_FULL_RE =
   /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
 
 const SPECIAL_RE = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/
@@ -35,10 +39,60 @@ export function normalizeEmail(raw: string): string {
   return raw.trim().toLowerCase()
 }
 
+/**
+ * Valida un correo usable para registro: usuario@dominio con extensión (TLD),
+ * longitudes razonables y sin artefactos obvios (espacios, puntos dobles, varios @).
+ */
 export function validateEmailFormat(email: string): string | null {
   if (!email) return 'El correo es obligatorio.'
   if (email.length > EMAIL_MAX) return 'El correo es demasiado largo.'
-  if (!EMAIL_RE.test(email)) return 'Introduce un correo electrónico válido.'
+  if (/\s/.test(email)) {
+    return 'El correo no puede contener espacios ni saltos de línea.'
+  }
+
+  const atCount = (email.match(/@/g) ?? []).length
+  if (atCount !== 1) {
+    return 'Usa un solo símbolo @ (formato usuario@dominio).'
+  }
+
+  const [local, domain] = email.split('@') as [string, string]
+  if (!local || !domain) {
+    return 'Introduce un correo con formato usuario@dominio.'
+  }
+  if (local.length > 64) {
+    return 'La parte antes de @ es demasiado larga.'
+  }
+  if (domain.length > 253) {
+    return 'El dominio del correo no es válido.'
+  }
+  if (local.startsWith('.') || local.endsWith('.')) {
+    return 'La parte antes de @ no puede empezar ni terminar con punto.'
+  }
+  if (local.includes('..')) {
+    return 'La parte antes de @ no puede tener puntos seguidos.'
+  }
+  if (domain.startsWith('.') || domain.endsWith('.') || domain.startsWith('-')) {
+    return 'El dominio del correo no es válido.'
+  }
+  if (domain.includes('..')) {
+    return 'El dominio no puede tener puntos seguidos.'
+  }
+  if (!domain.includes('.')) {
+    return 'El dominio debe incluir una extensión (ej. .com, .cl).'
+  }
+
+  const domainLabels = domain.split('.').filter(Boolean)
+  const tld = domainLabels[domainLabels.length - 1] ?? ''
+  if (tld.length < 2 || tld.length > 63) {
+    return 'Introduce una extensión de dominio válida (ej. .cl, .com).'
+  }
+  if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(tld)) {
+    return 'La extensión del dominio no es válida.'
+  }
+
+  if (!EMAIL_FULL_RE.test(email)) {
+    return 'Introduce un correo electrónico con caracteres válidos.'
+  }
   return null
 }
 
