@@ -5,6 +5,7 @@ import Container from '@mui/material/Container'
 
 import DashboardModuleRouteGate from '@/components/dashboard/DashboardModuleRouteGate'
 import WeeklyEventsSection from '@/components/events/WeeklyEventsSection'
+import { alpha } from '@mui/material'
 
 export default function EventosSemanaPage() {
   return (
@@ -12,7 +13,8 @@ export default function EventosSemanaPage() {
       <Box
         sx={{
           minHeight: '100dvh',
-          bgcolor: 'background.default',
+          background: t =>
+            `linear-gradient(165deg, ${alpha(t.palette.primary.main, 0.06)} 0%, ${t.palette.background.default} 38%, ${t.palette.background.default} 100%)`,
           py: { xs: 2, sm: 4 }
         }}
       >

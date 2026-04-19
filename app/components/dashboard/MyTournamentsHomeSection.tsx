@@ -10,6 +10,7 @@ import MyTournamentsDashboardSummary from '@/components/dashboard/MyTournamentsD
 import ReportCustomTournamentDialog from '@/components/events/ReportCustomTournamentDialog'
 import TournamentWeekReportSection from '@/components/events/TournamentWeekReportSection'
 import WeekAnchorToolbar from '@/components/events/WeekAnchorToolbar'
+import { alpha } from '@mui/material'
 
 type MyTournamentsHomeSectionProps = {
   /** En la página dedicada muestra selector de semana y listado completo; en el inicio, resumen de los últimos torneos. */
@@ -45,7 +46,8 @@ export default function MyTournamentsHomeSection({
     <Box
       sx={{
         minHeight: '100dvh',
-        bgcolor: 'background.default',
+        background: t =>
+          `linear-gradient(165deg, ${alpha(t.palette.primary.main, 0.06)} 0%, ${t.palette.background.default} 38%, ${t.palette.background.default} 100%)`,
         py: { xs: 2, sm: 4 }
       }}
     >

@@ -22,7 +22,7 @@ import Chip from '@mui/material/Chip'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import MarkunreadMailboxOutlined from '@mui/icons-material/MarkunreadMailboxOutlined'
 import { useMyMails } from '@/hooks/useMails'
-import { Divider, Stack } from '@mui/material'
+import { alpha, Divider, Stack } from '@mui/material'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import ButtonBarCode from '@/components/molecule/ButtonBarCode'
@@ -192,7 +192,8 @@ function DashboardMailPageContent() {
     <Box
       sx={{
         minHeight: '100vh',
-        bgcolor: 'background.default',
+        background: t =>
+          `linear-gradient(165deg, ${alpha(t.palette.primary.main, 0.06)} 0%, ${t.palette.background.default} 38%, ${t.palette.background.default} 100%)`,
         py: { xs: 2, sm: 4 }
       }}
     >
