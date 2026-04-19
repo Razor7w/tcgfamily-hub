@@ -10,6 +10,7 @@ import MyTournamentsDashboardSummary from '@/components/dashboard/MyTournamentsD
 import ReportCustomTournamentDialog from '@/components/events/ReportCustomTournamentDialog'
 import TournamentWeekReportSection from '@/components/events/TournamentWeekReportSection'
 import WeekAnchorToolbar from '@/components/events/WeekAnchorToolbar'
+import { startOfWeekMonday } from '@/components/events/weekUtils'
 import { alpha } from '@mui/material'
 
 type MyTournamentsHomeSectionProps = {
@@ -76,6 +77,7 @@ export default function MyTournamentsHomeSection({
           />
 
           <TournamentWeekReportSection
+            key={startOfWeekMonday(weekAnchor).getTime()}
             weekAnchor={weekAnchor}
             onOpenCreateCustomDialog={() => setCustomOpen(true)}
           />
