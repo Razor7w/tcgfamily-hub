@@ -30,6 +30,7 @@ import CardMails from '@/components/dashboard/CardMails'
 import MailFlowExplainer from '@/components/mails/MailFlowExplainer'
 import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
 import DashboardQuickActions from '@/components/dashboard/DashboardQuickActions'
+import DashboardStatisticsCard from '@/components/dashboard/DashboardStatisticsCard'
 import { useStoreCredit } from '@/hooks/useStoreCredit'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
 import type { DashboardModuleId } from '@/lib/dashboard-module-config'
@@ -78,6 +79,10 @@ export default function DashboardHomeContent() {
 
   const myTournamentsBlock = visibility.myTournaments ? (
     <MyTournamentsHomeSection showPageHeading={false} />
+  ) : null
+
+  const statisticsBlock = visibility.statistics ? (
+    <DashboardStatisticsCard />
   ) : null
 
   const mailBlock = visibility.mail ? (
@@ -258,6 +263,7 @@ export default function DashboardHomeContent() {
   const blocks: Record<DashboardModuleId, ReactNode> = {
     weeklyEvents: weeklyEventsBlock,
     myTournaments: myTournamentsBlock,
+    statistics: statisticsBlock,
     mail: mailBlock,
     storePoints: storePointsBlock
   }

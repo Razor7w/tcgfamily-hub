@@ -1,6 +1,7 @@
 export const DASHBOARD_MODULE_IDS = [
   'weeklyEvents',
   'myTournaments',
+  'statistics',
   'mail',
   'storePoints'
 ] as const
@@ -12,6 +13,7 @@ export type DashboardModuleVisibility = Record<DashboardModuleId, boolean>
 export const DEFAULT_DASHBOARD_VISIBILITY: DashboardModuleVisibility = {
   weeklyEvents: true,
   myTournaments: true,
+  statistics: true,
   mail: true,
   storePoints: true
 }
@@ -19,6 +21,7 @@ export const DEFAULT_DASHBOARD_VISIBILITY: DashboardModuleVisibility = {
 export const DEFAULT_DASHBOARD_ORDER: DashboardModuleId[] = [
   'weeklyEvents',
   'myTournaments',
+  'statistics',
   'mail',
   'storePoints'
 ]
@@ -58,6 +61,30 @@ export function normalizeDashboardOrder(
   return list as DashboardModuleId[]
 }
 
+/** Orden persistido con 4 módulos (antes de «Estadísticas» en el panel). */
+function migrateFourModuleOrder(raw: unknown): DashboardModuleId[] | null {
+  if (!Array.isArray(raw)) return null
+  const list = raw.filter((x): x is string => typeof x === 'string')
+  const LEGACY_FOUR = [
+    'weeklyEvents',
+    'myTournaments',
+    'mail',
+    'storePoints'
+  ] as const
+  if (list.length !== LEGACY_FOUR.length) return null
+  const set = new Set(list)
+  if (set.size !== LEGACY_FOUR.length) return null
+  for (const id of LEGACY_FOUR) {
+    if (!set.has(id)) return null
+  }
+  if (set.has('statistics')) return null
+  const idx = list.indexOf('myTournaments')
+  if (idx < 0) return null
+  const next = [...list]
+  next.splice(idx + 1, 0, 'statistics')
+  return next as DashboardModuleId[]
+}
+
 /**
  * Datos guardados antes de separar «Mis torneos»: orden de 3 ítems sin `myTournaments`.
  */
@@ -86,6 +113,7 @@ export function mergeDashboardSettings(
     ...partial?.visibility
   }
   const order = normalizeDashboardOrder(partial?.order) ??
+    migrateFourModuleOrder(partial?.order) ??
     migrateLegacyDashboardOrder(partial?.order) ?? [...DEFAULT_DASHBOARD_ORDER]
   const shortcuts: DashboardShortcutsVisibility = {
     ...DEFAULT_DASHBOARD_SHORTCUTS,

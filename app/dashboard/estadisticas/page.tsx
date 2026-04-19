@@ -160,7 +160,7 @@ function EstadisticasTorneosContent() {
   const empty = !isPending && !isError && rowsForTable.length === 0
 
   return (
-    <DashboardModuleRouteGate moduleId="myTournaments">
+    <DashboardModuleRouteGate moduleId="statistics">
       <Box
         sx={t => ({
           minHeight: '100dvh',

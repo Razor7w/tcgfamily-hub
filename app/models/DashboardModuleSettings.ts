@@ -6,6 +6,7 @@ export interface IDashboardModuleSettings extends Document {
   visibility: {
     weeklyEvents: boolean
     myTournaments: boolean
+    statistics: boolean
     mail: boolean
     storePoints: boolean
   }
@@ -24,6 +25,7 @@ const DashboardModuleSettingsSchema = new Schema<IDashboardModuleSettings>(
     visibility: {
       weeklyEvents: { type: Boolean, default: true },
       myTournaments: { type: Boolean, default: true },
+      statistics: { type: Boolean, default: true },
       mail: { type: Boolean, default: true },
       storePoints: { type: Boolean, default: true }
     },

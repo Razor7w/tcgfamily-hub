@@ -27,6 +27,7 @@ export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
   const { visibility } = useDashboardModulesFromLayout()
   const showEvents = visibility.weeklyEvents
   const showMyTournaments = visibility.myTournaments
+  const showStatistics = visibility.statistics
   const showMail = visibility.mail
 
   return (
@@ -62,7 +63,7 @@ export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
               </ListItemButton>
             </ListItem>
           ) : null}
-          {showMyTournaments ? (
+          {showStatistics ? (
             <ListItem disablePadding>
               <ListItemButton href="/dashboard/estadisticas">
                 <ListItemIcon>

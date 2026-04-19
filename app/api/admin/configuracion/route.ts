@@ -97,6 +97,7 @@ export async function PUT(request: NextRequest) {
       if (
         typeof vis.weeklyEvents !== 'boolean' ||
         typeof vis.myTournaments !== 'boolean' ||
+        typeof vis.statistics !== 'boolean' ||
         typeof vis.mail !== 'boolean' ||
         typeof vis.storePoints !== 'boolean'
       ) {
@@ -111,7 +112,7 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json(
           {
             error:
-              'order debe ser una permutación de weeklyEvents, myTournaments, mail y storePoints'
+              'order debe ser una permutación válida de los módulos del dashboard'
           },
           { status: 400 }
         )
@@ -129,6 +130,7 @@ export async function PUT(request: NextRequest) {
       doc.visibility = {
         weeklyEvents: vis.weeklyEvents,
         myTournaments: vis.myTournaments,
+        statistics: vis.statistics,
         mail: vis.mail,
         storePoints: vis.storePoints
       }
@@ -161,6 +163,7 @@ export async function PUT(request: NextRequest) {
     revalidatePath('/dashboard/eventos')
     revalidatePath('/dashboard/torneos-semana')
     revalidatePath('/dashboard/mail')
+    revalidatePath('/dashboard/estadisticas')
 
     return NextResponse.json(
       {

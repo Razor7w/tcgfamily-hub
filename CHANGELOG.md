@@ -10,6 +10,25 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [0.6.0] - 2026-04-19
+
+### Añadido
+
+- **Dashboard — Estadísticas**: módulo `statistics` en la configuración global (`DashboardModuleSettings`): visibilidad y orden en **`/admin/configuracion`**; migración de orden guardado de **4** bloques insertando `statistics` justo después de **Mis torneos**.
+- **Inicio del panel** (`/` bajo `/dashboard`): card **Estadísticas por mazo** con tabla resumida (**mazo**, **veces jugado**, **win rate**), hasta 6 filas y aviso si hay más en la vista completa; CTA a **`/dashboard/estadisticas`**.
+- **Navegación**: enlace **Estadísticas** según `visibility.statistics`; la ruta **`/dashboard/estadisticas`** usa `DashboardModuleRouteGate` con `moduleId="statistics"`; API admin y `revalidatePath` al guardar configuración.
+- **Estadísticas (página)**: botón en estado vacío para **añadir torneo custom** (mismo flujo que en el resto del panel).
+
+### Cambiado
+
+- **Accesos rápidos** (`DashboardQuickActions`): fondo **`background.paper`** en tema claro (alineado con otras cards).
+- **Menú lateral del dashboard** (`DashboardUserNav`): fondo en **gradiente** por ítem y estados hover / selección.
+- **Herramientas**: **Prettier** como dependencia de desarrollo, integración **`eslint-plugin-prettier/recommended`**, scripts **`format`** y **`format:check`**.
+
+### Corregido
+
+- ESLint / React: `react-hooks/set-state-in-effect` en detalle de evento admin y placement manual en custom; estadísticas (memoización compatible con React Compiler); `prefer-const` en rutas y XML; ejemplo **TanStack Query** con genéricos de `useMutation` (variables y contexto) para compilación correcta.
+
 ## [0.5.5] - 2026-04-18
 
 ### Añadido
@@ -193,4 +212,4 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 Línea base anterior en `package.json` antes de este changelog; el detalle de cambios queda en el historial de git.
 
-Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo _Keep a Changelog_ (`[Unreleased]: …/compare/v0.5.5…HEAD`, `[0.5.5]: …/compare/v0.5.4…v0.5.5`, `[0.5.4]: …/compare/v0.5.3…v0.5.4`, `[0.5.3]: …/compare/v0.5.2…v0.5.3`, `[0.5.2]: …/compare/v0.5.1…v0.5.2`, `[0.5.1]: …/compare/v0.5.0…v0.5.1`, `[0.5.0]: …/compare/v0.4.6…v0.5.0`, `[0.4.6]: …/compare/v0.4.5…v0.4.6`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
+Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo _Keep a Changelog_ (`[Unreleased]: …/compare/v0.6.0…HEAD`, `[0.6.0]: …/compare/v0.5.5…v0.6.0`, `[0.5.5]: …/compare/v0.5.4…v0.5.5`, `[0.5.4]: …/compare/v0.5.3…v0.5.4`, `[0.5.3]: …/compare/v0.5.2…v0.5.3`, `[0.5.2]: …/compare/v0.5.1…v0.5.2`, `[0.5.1]: …/compare/v0.5.0…v0.5.1`, `[0.5.0]: …/compare/v0.4.6…v0.5.0`, `[0.4.6]: …/compare/v0.4.5…v0.4.6`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).

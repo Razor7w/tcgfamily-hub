@@ -42,6 +42,8 @@ const LABELS: Record<DashboardModuleId, string> = {
   weeklyEvents: 'Eventos de la semana (calendario y preinscripción)',
   myTournaments:
     'Mis torneos (resumen de participaciones, rondas y torneos custom)',
+  statistics:
+    'Estadísticas (récord y win rate por mazo, rivales en el detalle)',
   mail: 'Correo (últimos correos y registro)',
   storePoints: 'Crédito de tienda (puntos)'
 }
