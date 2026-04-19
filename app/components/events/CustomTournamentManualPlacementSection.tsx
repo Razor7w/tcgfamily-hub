@@ -50,19 +50,16 @@ export default function CustomTournamentManualPlacementSection({
 }: Props) {
   const save = useSaveMyManualPlacement(eventId)
   const [open, setOpen] = useState(false)
-  const [includePlacement, setIncludePlacement] = useState(false)
   const [categoryIndex, setCategoryIndex] = useState(2)
   const [placeStr, setPlaceStr] = useState('')
   const [placementDnf, setPlacementDnf] = useState(false)
 
   const seedFormFromPlacement = (p: Placement | null | undefined) => {
     if (p) {
-      setIncludePlacement(true)
       setCategoryIndex(p.categoryIndex)
       setPlacementDnf(p.isDnf)
       setPlaceStr(!p.isDnf && p.place != null ? String(p.place) : '')
     } else {
-      setIncludePlacement(false)
       setCategoryIndex(2)
       setPlacementDnf(false)
       setPlaceStr('')
@@ -70,25 +67,15 @@ export default function CustomTournamentManualPlacementSection({
   }
 
   const placeInvalid =
-    includePlacement &&
     !placementDnf &&
     (!placeStr.trim() ||
       !Number.isFinite(Number.parseInt(placeStr.trim(), 10)) ||
       Number.parseInt(placeStr.trim(), 10) < 1 ||
       Number.parseInt(placeStr.trim(), 10) > 999)
 
-  const canSave =
-    !save.isPending && (!includePlacement || placementDnf || !placeInvalid)
+  const canSave = !save.isPending && (placementDnf || !placeInvalid)
 
   const handleSave = () => {
-    if (!includePlacement) {
-      if (placement) {
-        save.mutate({ clear: true }, { onSuccess: () => setOpen(false) })
-      } else {
-        setOpen(false)
-      }
-      return
-    }
     if (placementDnf) {
       save.mutate(
         {
@@ -188,71 +175,71 @@ export default function CustomTournamentManualPlacementSection({
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
             <Typography variant="body2" color="text.secondary">
-              Igual que al crear el torneo: puedes incluir tu posición final,
-              editarla o quitarla.
+              Indica categoría y puesto, o marca DNF.
             </Typography>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={includePlacement}
-                  onChange={e => setIncludePlacement(e.target.checked)}
-                />
-              }
-              label="Incluir mi posición final"
-            />
-            {includePlacement ? (
-              <Stack spacing={2} sx={{ pl: { xs: 0, sm: 0.5 } }}>
-                <FormControl fullWidth size="small">
-                  <InputLabel id="edit-placement-category">
-                    Categoría
-                  </InputLabel>
-                  <Select
-                    labelId="edit-placement-category"
-                    label="Categoría"
-                    value={categoryIndex}
-                    onChange={e => setCategoryIndex(Number(e.target.value))}
-                  >
-                    {CATEGORY_OPTIONS.map(o => (
-                      <MenuItem key={o.value} value={o.value}>
-                        {o.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={placementDnf}
-                      onChange={e => {
-                        setPlacementDnf(e.target.checked)
-                        if (e.target.checked) setPlaceStr('')
-                      }}
-                    />
-                  }
-                  label="DNF (no terminé clasificación)"
-                />
-                <TextField
-                  label="Puesto"
-                  type="number"
-                  value={placeStr}
-                  onChange={e => setPlaceStr(e.target.value)}
-                  fullWidth
+            <Stack spacing={2} sx={{ pl: { xs: 0, sm: 0.5 } }}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="edit-placement-category">Categoría</InputLabel>
+                <Select
+                  labelId="edit-placement-category"
+                  label="Categoría"
+                  value={categoryIndex}
+                  onChange={e => setCategoryIndex(Number(e.target.value))}
+                >
+                  {CATEGORY_OPTIONS.map(o => (
+                    <MenuItem key={o.value} value={o.value}>
+                      {o.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={placementDnf}
+                    onChange={e => {
+                      setPlacementDnf(e.target.checked)
+                      if (e.target.checked) setPlaceStr('')
+                    }}
+                  />
+                }
+                label="DNF (no terminé clasificación)"
+              />
+              <TextField
+                label="Puesto"
+                type="number"
+                value={placeStr}
+                onChange={e => setPlaceStr(e.target.value)}
+                fullWidth
+                size="small"
+                disabled={placementDnf}
+                required={!placementDnf}
+                inputProps={{
+                  min: 1,
+                  max: 999,
+                  style: { fontVariantNumeric: 'tabular-nums' }
+                }}
+                helperText={
+                  placementDnf
+                    ? 'No aplica puesto numérico con DNF'
+                    : 'Ej.: 12 para 12º lugar'
+                }
+              />
+              {placement ? (
+                <Button
+                  variant="text"
+                  color="error"
                   size="small"
-                  disabled={placementDnf}
-                  required={!placementDnf}
-                  inputProps={{
-                    min: 1,
-                    max: 999,
-                    style: { fontVariantNumeric: 'tabular-nums' }
-                  }}
-                  helperText={
-                    placementDnf
-                      ? 'No aplica puesto numérico con DNF'
-                      : 'Ej.: 12 para 12º lugar'
+                  disabled={save.isPending}
+                  onClick={() =>
+                    save.mutate({ clear: true }, { onSuccess: () => setOpen(false) })
                   }
-                />
-              </Stack>
-            ) : null}
+                  sx={{ alignSelf: 'flex-start', textTransform: 'none' }}
+                >
+                  Quitar mi posición
+                </Button>
+              ) : null}
+            </Stack>
             {save.isError ? (
               <Typography variant="body2" color="error">
                 {save.error instanceof Error
