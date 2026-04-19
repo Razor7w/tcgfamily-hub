@@ -14,12 +14,14 @@ export async function loadDashboardModuleSettings(): Promise<DashboardModuleSett
   const d = doc as {
     visibility?: DashboardModuleSettingsDTO["visibility"];
     order?: DashboardModuleSettingsDTO["order"];
+    shortcuts?: DashboardModuleSettingsDTO["shortcuts"];
   } | null;
   return mergeDashboardSettings(
     d
       ? {
           visibility: d.visibility,
           order: d.order,
+          shortcuts: d.shortcuts,
         }
       : null,
   );

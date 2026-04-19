@@ -1,5 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { DashboardModuleSettingsDTO } from "@/lib/dashboard-module-config";
+import type {
+  DashboardModuleSettingsDTO,
+  DashboardShortcutsVisibility,
+} from "@/lib/dashboard-module-config";
 
 export type AdminConfiguracionData = {
   settings: DashboardModuleSettingsDTO;
@@ -40,6 +43,31 @@ export function useUpdateDashboardModuleSettings() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(
+          typeof err.error === "string" ? err.error : "Error al guardar",
+        );
+      }
+      const data = await response.json();
+      return data.settings as DashboardModuleSettingsDTO;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "configuracion"] });
+    },
+  });
+}
+
+export function useUpdateDashboardShortcuts() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (shortcuts: DashboardShortcutsVisibility) => {
+      const response = await fetch("/api/admin/configuracion", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shortcuts }),
       });
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));

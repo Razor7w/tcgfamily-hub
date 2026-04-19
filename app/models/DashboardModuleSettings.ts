@@ -10,6 +10,11 @@ export interface IDashboardModuleSettings extends Document {
     storePoints: boolean;
   };
   order: DashboardModuleId[];
+  /** Accesos rápidos en /dashboard (registrar correo, torneo custom). */
+  shortcuts?: {
+    createMail: boolean;
+    createTournament: boolean;
+  };
   /** Aviso Resend al usuario cuando el admin marca el envío como recepcionado en tienda. */
   resendNotifyPickupInStoreEnabled: boolean;
 }
@@ -25,6 +30,10 @@ const DashboardModuleSettingsSchema = new Schema<IDashboardModuleSettings>(
     order: {
       type: [String],
       default: () => [...DEFAULT_DASHBOARD_ORDER],
+    },
+    shortcuts: {
+      createMail: { type: Boolean, default: true },
+      createTournament: { type: Boolean, default: true },
     },
     resendNotifyPickupInStoreEnabled: { type: Boolean, default: true },
   },

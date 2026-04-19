@@ -23,9 +23,21 @@ export const DEFAULT_DASHBOARD_ORDER: DashboardModuleId[] = [
   "storePoints",
 ];
 
+/** Accesos rápidos en la parte superior del inicio (/dashboard). */
+export type DashboardShortcutsVisibility = {
+  createMail: boolean;
+  createTournament: boolean;
+};
+
+export const DEFAULT_DASHBOARD_SHORTCUTS: DashboardShortcutsVisibility = {
+  createMail: true,
+  createTournament: true,
+};
+
 export type DashboardModuleSettingsDTO = {
   visibility: DashboardModuleVisibility;
   order: DashboardModuleId[];
+  shortcuts: DashboardShortcutsVisibility;
 };
 
 export function isDashboardModuleId(s: string): s is DashboardModuleId {
@@ -77,5 +89,9 @@ export function mergeDashboardSettings(
     normalizeDashboardOrder(partial?.order) ??
     migrateLegacyDashboardOrder(partial?.order) ??
     [...DEFAULT_DASHBOARD_ORDER];
-  return { visibility, order };
+  const shortcuts: DashboardShortcutsVisibility = {
+    ...DEFAULT_DASHBOARD_SHORTCUTS,
+    ...partial?.shortcuts,
+  };
+  return { visibility, order, shortcuts };
 }
