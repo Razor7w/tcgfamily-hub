@@ -62,16 +62,21 @@ type ReportDeckDialogProps = {
 };
 
 function SpriteThumb({ slug, size = 28 }: { slug: string; size?: number }) {
-  const { width, height } = limitlessSpriteDimensions(size);
+  const { width: w, height: h } = limitlessSpriteDimensions(size);
   return (
     <Box
       component="img"
       className="pokemon"
       src={getLimitlessPokemonSpriteUrl(slug)}
       alt=""
-      width={width}
-      height={height}
+      width={w}
+      height={h}
       sx={{
+        width: `${w}px`,
+        height: `${h}px`,
+        minWidth: `${w}px`,
+        minHeight: `${h}px`,
+        display: "block",
         imageRendering: "pixelated",
         objectFit: "contain",
         flexShrink: 0,

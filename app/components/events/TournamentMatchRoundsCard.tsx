@@ -213,13 +213,18 @@ function LimitlessSpriteThumb({
   size: number;
   circular?: boolean;
 }) {
-  const { width, height } = limitlessSpriteDimensions(size);
+  const { width: w, height: h } = limitlessSpriteDimensions(size);
+  const wPx = `${w}px`;
+  const hPx = `${h}px`;
   return (
     <Box
       sx={{
-        width,
-        height,
+        width: wPx,
+        height: hPx,
+        minWidth: wPx,
+        minHeight: hPx,
         flexShrink: 0,
+        boxSizing: "border-box",
         borderRadius: circular ? "50%" : 1,
         overflow: "hidden",
         display: "flex",
@@ -235,11 +240,14 @@ function LimitlessSpriteThumb({
         className="pokemon"
         src={getLimitlessPokemonSpriteUrl(slug)}
         alt=""
+        width={w}
+        height={h}
         sx={{
-          width: "100%",
-          height: "100%",
-          maxWidth: "100%",
-          maxHeight: "100%",
+          width: wPx,
+          height: hPx,
+          maxWidth: wPx,
+          maxHeight: hPx,
+          display: "block",
           objectFit: "contain",
           objectPosition: "center",
           imageRendering: "pixelated",
@@ -1254,8 +1262,15 @@ export default function TournamentMatchRoundsCard({
                                 title={slugToLabel.get(slug) ?? slug}
                                 placement="top"
                               >
-                                <Box sx={{ cursor: "default", display: "inline-flex" }}>
-                                  <LimitlessSpriteThumb slug={slug} size={32} />
+                                <Box
+                                  sx={{
+                                    cursor: "default",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    lineHeight: 0,
+                                  }}
+                                >
+                                  <LimitlessSpriteThumb slug={slug} size={36} />
                                 </Box>
                               </Tooltip>
                             ))
@@ -1917,7 +1932,7 @@ export default function TournamentMatchRoundsCard({
                                 </Typography>
                               ) : (
                                 row.opponentDeckSlugs.map((slug) => (
-                                  <LimitlessSpriteThumb key={slug} slug={slug} size={34} />
+                                  <LimitlessSpriteThumb key={slug} slug={slug} size={36} />
                                 ))
                               )}
                             </Stack>
