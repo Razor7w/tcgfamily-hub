@@ -99,16 +99,6 @@ export default function LigaPublicPage() {
                 ) : null}
               </Box>
 
-              <Alert severity="info" variant="outlined" sx={{ borderRadius: 2 }}>
-                <Stack spacing={1.25}>
-                  {LEAGUE_PUBLIC_INFO_ALERT_PARAGRAPHS.map((paragraph, i) => (
-                    <Typography key={i} variant="body2" sx={{ lineHeight: 1.65 }}>
-                      {paragraph}
-                    </Typography>
-                  ))}
-                </Stack>
-              </Alert>
-
               <Paper
                 elevation={0}
                 sx={{
@@ -294,6 +284,15 @@ export default function LigaPublicPage() {
             </>
           ) : null}
         </Stack>
+        <Alert severity="info" variant="outlined" sx={{ borderRadius: 2, mt: 2 }}>
+          <Stack spacing={1.25}>
+            {LEAGUE_PUBLIC_INFO_ALERT_PARAGRAPHS.map((paragraph, i) => (
+              <Typography key={i} variant="body2" sx={{ lineHeight: 1.65 }}>
+                {paragraph}
+              </Typography>
+            ))}
+          </Stack>
+        </Alert>
       </Container>
     </Box>
   );

@@ -4,10 +4,7 @@
 
 /** Párrafos para el aviso informativo en /ligas/[slug]. */
 export const LEAGUE_PUBLIC_INFO_ALERT_PARAGRAPHS = [
-  "Los puntos de esta liga se calculan solo con el récord de cada jugador en cada torneo asignado a la liga: victoria 3 pts, empate 1 pt, derrota 0 pts. No se usa la tabla de posición final ni la división de edad.",
-  "Si el torneo tiene «tope de ronda» en admin (dashboard de jugadores), la liga usa el mismo criterio: solo cuenta el récord hasta esa ronda (snapshot guardado al sincronizar), no las rondas posteriores.",
-  "Sin tope de ronda, el récord sale de los totales W/L/T del participante. Con tope, del snapshot de emparejamientos guardado al sincronizar (hasta la última ronda ≤ tope). Es independiente de los Puntos de Campeonato oficiales en Play! Tools.",
-  "Opcionalmente puedes limitar la suma a los N mejores torneos por jugador (según los puntos de liga de cada torneo).",
+  "Los puntos de esta liga se calculan solo con el récord de cada jugador en cada torneo asignado a la liga: victoria 3 pts, empate 1 pt, derrota 0 pts.",
 ] as const;
 
 /** Subtítulo breve en el panel de administración de ligas. */
