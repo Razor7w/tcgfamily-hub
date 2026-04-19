@@ -8,7 +8,6 @@ import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined'
 import ViewList from '@mui/icons-material/ViewList'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
-import CardHeader from '@mui/material/CardHeader'
 import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
@@ -29,7 +28,8 @@ import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Box from '@mui/material/Box'
 import Link from 'next/link'
-import { alpha } from '@mui/material/styles'
+import { alpha, useTheme } from '@mui/material/styles'
+import useMediaQuery from '@mui/material/useMediaQuery'
 import DeleteCustomTournamentButton from '@/components/events/DeleteCustomTournamentButton'
 import {
   endOfWeekSunday,
@@ -273,6 +273,26 @@ export default function TournamentWeekReportSection({
 
   const showReportar = onOpenCreateCustomDialog && (allTimeMode || tab === 1)
 
+  const theme = useTheme()
+  const isNarrow = useMediaQuery(theme.breakpoints.down('sm'))
+
+  const cardTitle = allTimeMode ? 'Todos tus torneos' : 'Tu semana en torneos'
+  const subheaderLong = allTimeMode
+    ? 'Todos los torneos en los que participas (más recientes primero). Usa filtros para acotar por tipo o fecha.'
+    : 'Calendario de la tienda frente a torneos que registras tú. Elige una pestaña para ver cada lista.'
+  const subheaderShort = allTimeMode
+    ? 'Oficiales y custom; más recientes primero. Puedes filtrar por tipo o fechas.'
+    : 'Separa torneos del calendario de la tienda y los que registras tú.'
+
+  const actionBtnSx = {
+    textTransform: 'none' as const,
+    fontWeight: 700 as const,
+    minHeight: { xs: 44, sm: 36 },
+    py: { xs: 1, sm: 0.5 },
+    px: { xs: 1.5, sm: 1.25 },
+    fontSize: { xs: '0.875rem', sm: '0.8125rem' }
+  }
+
   return (
     <Card
       variant="outlined"
@@ -281,62 +301,150 @@ export default function TournamentWeekReportSection({
         overflow: 'hidden'
       }}
     >
-      <CardHeader
-        avatar={<EmojiEvents color="primary" />}
-        title={allTimeMode ? 'Todos tus torneos' : 'Tu semana en torneos'}
-        subheader={
-          allTimeMode
-            ? 'Todos los torneos en los que participas (más recientes primero). Usa filtros para acotar por tipo o fecha.'
-            : 'Calendario de la tienda frente a torneos que registras tú. Elige una pestaña para ver cada lista.'
-        }
-        slotProps={{ title: { variant: 'h6' } }}
-        sx={{
-          pb: 1,
-          '& .MuiCardHeader-subheader': { lineHeight: 1.45 }
-        }}
-        action={
+      <Box
+        sx={t => ({
+          px: { xs: 1.5, sm: 2 },
+          pt: { xs: 2, sm: 2 },
+          pb: { xs: 1.5, sm: 1 },
+          borderBottom: allTimeMode ? `1px solid ${t.palette.divider}` : 'none',
+          bgcolor: alpha(t.palette.primary.main, 0.03)
+        })}
+      >
+        <Stack spacing={{ xs: 1.75, sm: 1.25 }}>
           <Stack
-            direction="row"
-            spacing={1}
-            flexWrap="wrap"
-            justifyContent="flex-end"
-            sx={{ maxWidth: { xs: '100%', sm: 360 } }}
+            direction={{ xs: 'column', lg: 'row' }}
+            spacing={{ xs: 1.5, lg: 2 }}
+            alignItems={{ xs: 'stretch', lg: 'flex-start' }}
+            justifyContent="space-between"
           >
-            {!allTimeMode && onAllTimeModeChange ? (
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<ViewList />}
-                onClick={() => onAllTimeModeChange(true)}
-                sx={{ textTransform: 'none', fontWeight: 700 }}
+            <Stack
+              direction="row"
+              spacing={1.25}
+              alignItems="flex-start"
+              sx={{ minWidth: 0, flex: { xs: 'none', lg: 1 } }}
+            >
+              <Box
+                aria-hidden
+                sx={t => ({
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  width: { xs: 44, sm: 40 },
+                  height: { xs: 44, sm: 40 },
+                  borderRadius: 1.5,
+                  bgcolor: alpha(t.palette.primary.main, 0.1),
+                  color: 'primary.main'
+                })}
               >
-                Ver todo
-              </Button>
-            ) : null}
-            {allTimeMode && onAllTimeModeChange ? (
-              <>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<FilterList />}
-                  onClick={openFiltersModal}
-                  sx={{ textTransform: 'none', fontWeight: 700 }}
+                <EmojiEvents sx={{ fontSize: { xs: 24, sm: 22 } }} />
+              </Box>
+              <Box sx={{ minWidth: 0, flex: 1, pt: { xs: 0, sm: 0.25 } }}>
+                <Typography
+                  id="tournaments-card-title"
+                  variant="h6"
+                  component="h2"
+                  fontWeight={700}
+                  sx={{
+                    lineHeight: 1.25,
+                    wordBreak: 'break-word'
+                  }}
                 >
-                  Filtros
-                </Button>
-                <Button
-                  variant="text"
-                  size="small"
-                  onClick={() => onAllTimeModeChange(false)}
-                  sx={{ textTransform: 'none', fontWeight: 600 }}
+                  {cardTitle}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{
+                    mt: 0.75,
+                    lineHeight: 1.5,
+                    display: { xs: 'none', sm: 'block' },
+                    maxWidth: 'min(56ch, 100%)'
+                  }}
                 >
-                  Vista por semana
-                </Button>
-              </>
+                  {subheaderLong}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{
+                    mt: 0.75,
+                    lineHeight: 1.5,
+                    display: { xs: 'block', sm: 'none' },
+                    maxWidth: '100%'
+                  }}
+                >
+                  {subheaderShort}
+                </Typography>
+              </Box>
+            </Stack>
+
+            {onAllTimeModeChange ? (
+              <Stack
+                direction={{ xs: 'row', lg: 'row' }}
+                spacing={1}
+                useFlexGap
+                sx={{
+                  width: { xs: '100%', lg: 'auto' },
+                  flexShrink: 0,
+                  alignSelf: { xs: 'stretch', lg: 'flex-start' },
+                  ...(allTimeMode
+                    ? {
+                        display: 'grid',
+                        gridTemplateColumns: {
+                          xs: '1fr 1fr',
+                          sm: '1fr 1fr',
+                          lg: 'auto auto'
+                        },
+                        gap: 1,
+                        alignItems: 'stretch'
+                      }
+                    : {})
+                }}
+              >
+                {!allTimeMode ? (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    fullWidth={isNarrow}
+                    startIcon={<ViewList />}
+                    onClick={() => onAllTimeModeChange(true)}
+                    sx={actionBtnSx}
+                  >
+                    Ver todo
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      fullWidth={false}
+                      startIcon={<FilterList />}
+                      onClick={openFiltersModal}
+                      sx={actionBtnSx}
+                    >
+                      Filtros
+                    </Button>
+                    <Button
+                      variant="text"
+                      size="small"
+                      fullWidth={false}
+                      onClick={() => onAllTimeModeChange(false)}
+                      sx={{
+                        ...actionBtnSx,
+                        fontWeight: 600,
+                        px: { xs: 1, sm: 1.25 }
+                      }}
+                    >
+                      Vista por semana
+                    </Button>
+                  </>
+                )}
+              </Stack>
             ) : null}
           </Stack>
-        }
-      />
+        </Stack>
+      </Box>
 
       {!allTimeMode ? (
         <Box
@@ -353,25 +461,29 @@ export default function TournamentWeekReportSection({
             variant="fullWidth"
             aria-label="Tipo de torneo"
             sx={{
-              minHeight: 48,
+              minHeight: { xs: 56, sm: 48 },
               '& .MuiTab-root': {
-                minHeight: 48,
+                minHeight: { xs: 56, sm: 48 },
                 textTransform: 'none',
                 fontWeight: 600,
-                fontSize: '0.9375rem'
+                fontSize: { xs: '0.8125rem', sm: '0.9375rem' },
+                lineHeight: 1.2,
+                px: { xs: 0.5, sm: 1 }
               }
             }}
           >
             <Tab
-              icon={<StorefrontOutlinedIcon sx={{ fontSize: 20 }} />}
-              iconPosition="start"
+              icon={
+                <StorefrontOutlinedIcon sx={{ fontSize: isNarrow ? 18 : 20 }} />
+              }
+              iconPosition={isNarrow ? 'top' : 'start'}
               label={tabLabel('Oficiales', officialOnly.length, !isPending)}
               id="tournaments-tab-official"
               aria-controls="tournaments-panel"
             />
             <Tab
-              icon={<TuneOutlinedIcon sx={{ fontSize: 20 }} />}
-              iconPosition="start"
+              icon={<TuneOutlinedIcon sx={{ fontSize: isNarrow ? 18 : 20 }} />}
+              iconPosition={isNarrow ? 'top' : 'start'}
               label={tabLabel('Custom', customOnly.length, !isPending)}
               id="tournaments-tab-custom"
               aria-controls="tournaments-panel"
@@ -383,11 +495,13 @@ export default function TournamentWeekReportSection({
       {showReportar ? (
         <Box
           sx={{
-            px: 2,
-            pt: 2,
-            pb: 0,
+            px: { xs: 1.5, sm: 2 },
+            pt: { xs: 1.75, sm: 2 },
+            pb: { xs: 0.5, sm: 0 },
             display: 'flex',
-            justifyContent: { xs: 'stretch', sm: 'flex-end' }
+            justifyContent: { xs: 'stretch', sm: 'flex-end' },
+            position: 'relative',
+            zIndex: 1
           }}
         >
           <Button
@@ -397,7 +511,8 @@ export default function TournamentWeekReportSection({
             sx={{
               textTransform: 'none',
               fontWeight: 700,
-              py: 1.1,
+              py: { xs: 1.25, sm: 1.1 },
+              minHeight: { xs: 48, sm: 40 },
               width: { xs: '100%', sm: 'auto' }
             }}
           >
@@ -416,7 +531,11 @@ export default function TournamentWeekReportSection({
               ? 'tournaments-tab-official'
               : 'tournaments-tab-custom'
         }
-        sx={{ pt: 2 }}
+        sx={{
+          pt: { xs: 1.75, sm: 2 },
+          px: { xs: 1.5, sm: 2 },
+          pb: { xs: 2.5, sm: 2 }
+        }}
       >
         {allTimeMode ? (
           <Typography

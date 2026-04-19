@@ -55,20 +55,66 @@ export default function MyTournamentsHomeSection({
     >
       <Container maxWidth="lg">
         <Stack spacing={2.5}>
-          <Stack spacing={2.5} sx={{ mb: 2.5 }}>
+          <Stack spacing={2.5} sx={{ mb: { xs: 1.5, sm: 2.5 } }}>
             <Box>
-              <Typography variant="h4" component="h1" fontWeight={700}>
-                Tus torneos de la semana
-              </Typography>
               <Typography
-                variant="body1"
-                color="text.secondary"
-                sx={{ maxWidth: 720, mt: 1.25, lineHeight: 1.6 }}
+                variant="h4"
+                component="h1"
+                fontWeight={700}
+                sx={{
+                  fontSize: { xs: '1.375rem', sm: '2.125rem' },
+                  lineHeight: { xs: 1.25, sm: 1.2 },
+                  letterSpacing: { xs: '-0.02em', sm: 'inherit' }
+                }}
               >
-                {allTimeMode
-                  ? 'Vista de todos tus torneos en los que participas (oficiales y custom), más recientes primero. Usa «Vista por semana» en la tarjeta para volver al calendario semanal.'
-                  : 'Elige la semana y separa torneos del calendario de la tienda de los que registras como custom. En cada tarjeta verás récord y detalle al abrir la vista completa.'}
+                {allTimeMode ? 'Todos tus torneos' : 'Tus torneos de la semana'}
               </Typography>
+              {allTimeMode ? (
+                <>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                      display: { xs: 'block', sm: 'none' },
+                      mt: 1,
+                      lineHeight: 1.55,
+                      maxWidth: '42rem'
+                    }}
+                  >
+                    Oficiales y custom, más recientes primero. Para volver al
+                    calendario semanal usa «Vista por semana» en la tarjeta.
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    color="text.secondary"
+                    sx={{
+                      display: { xs: 'none', sm: 'block' },
+                      maxWidth: 720,
+                      mt: 1.25,
+                      lineHeight: 1.6
+                    }}
+                  >
+                    Vista de todos tus torneos en los que participas (oficiales
+                    y custom), más recientes primero. Usa «Vista por semana» en
+                    la tarjeta para volver al calendario semanal.
+                  </Typography>
+                </>
+              ) : (
+                <Typography
+                  variant="body1"
+                  color="text.secondary"
+                  sx={{
+                    maxWidth: 720,
+                    mt: { xs: 1, sm: 1.25 },
+                    lineHeight: 1.6,
+                    fontSize: { xs: '0.9375rem', sm: '1rem' }
+                  }}
+                >
+                  Elige la semana y separa torneos del calendario de la tienda
+                  de los que registras como custom. En cada tarjeta verás récord
+                  y detalle al abrir la vista completa.
+                </Typography>
+              )}
             </Box>
           </Stack>
 

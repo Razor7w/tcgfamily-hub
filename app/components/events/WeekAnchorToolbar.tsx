@@ -63,11 +63,12 @@ export default function WeekAnchorToolbar({
       }}
     >
       <IconButton
-        size="small"
+        size="medium"
         aria-label="Semana anterior"
         onClick={handlePrevWeek}
         sx={{
           color: 'text.secondary',
+          p: { xs: 1, sm: 0.75 },
           '&:hover': { bgcolor: t => alpha(t.palette.primary.main, 0.06) }
         }}
       >
@@ -86,11 +87,12 @@ export default function WeekAnchorToolbar({
         {rangeLabel}
       </Typography>
       <IconButton
-        size="small"
+        size="medium"
         aria-label="Semana siguiente"
         onClick={handleNextWeek}
         sx={{
           color: 'text.secondary',
+          p: { xs: 1, sm: 0.75 },
           '&:hover': { bgcolor: t => alpha(t.palette.primary.main, 0.06) }
         }}
       >
