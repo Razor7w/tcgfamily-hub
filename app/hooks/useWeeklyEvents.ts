@@ -58,6 +58,8 @@ export interface PublicWeeklyEvent {
     place: number | null;
     isDnf: boolean;
   } | null;
+  /** Liga local asignada (solo torneos oficiales con liga activa). */
+  league?: { name: string; slug: string } | null;
 }
 
 export function useWeekEvents(weekAnchor: Date | null) {
@@ -802,9 +804,12 @@ export type LeagueStandingEventDetail = {
   eventId: string;
   title: string;
   startsAt: string;
-  categoryIndex: number;
-  place: number;
+  wins: number;
+  losses: number;
+  ties: number;
   points: number;
+  /** Ronda hasta la que cuenta el récord si hay tope de dashboard. */
+  leagueRoundBasis?: number;
 };
 
 export type LeagueStandingRow = {
@@ -815,28 +820,27 @@ export type LeagueStandingRow = {
   events: LeagueStandingEventDetail[];
 };
 
-export type PublicLeagueCategoryBlock = {
-  categoryIndex: number;
-  standings: LeagueStandingRow[];
-  chartTop: { rank: number; name: string; points: number; popId: string }[];
-};
-
 export type PublicLeagueResponse = {
   league: {
     _id: string;
     name: string;
     slug: string;
     description: string;
-    pointsByPlace: number[];
     countBestEvents: number | null;
+    scoring: {
+      winPoints: number;
+      lossPoints: number;
+      tiePoints: number;
+    };
   };
   tournaments: {
     _id: string;
     title: string;
     startsAt: string;
-    hasStandings: boolean;
+    hasRecord: boolean;
   }[];
-  standingsByCategory: PublicLeagueCategoryBlock[];
+  standings: LeagueStandingRow[];
+  chartTop: { rank: number; name: string; points: number; popId: string }[];
 };
 
 export function useAdminLeagues() {

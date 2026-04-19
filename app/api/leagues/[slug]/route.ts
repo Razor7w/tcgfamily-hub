@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
-import { aggregateLeagueStandingsByCategory } from "@/lib/league-aggregate";
+import {
+  aggregateLeagueStandings,
+  leagueEventHasContributingRecord,
+} from "@/lib/league-aggregate";
+import {
+  LEAGUE_SCORE_LOSS,
+  LEAGUE_SCORE_TIE,
+  LEAGUE_SCORE_WIN,
+} from "@/lib/league-constants";
 import League from "@/models/League";
 import WeeklyEvent from "@/models/WeeklyEvent";
 
 /**
- * Clasificación pública de una liga (torneos cerrados con standings importados).
+ * Clasificación pública de una liga (torneos cerrados; puntos por récord W/L/T del participante).
  */
 export async function GET(
   _request: Request,
@@ -29,9 +37,6 @@ export async function GET(
       name: leagueDoc.name,
       slug: leagueDoc.slug,
       description: leagueDoc.description ?? "",
-      pointsByPlace: Array.isArray(leagueDoc.pointsByPlace)
-        ? leagueDoc.pointsByPlace.map((n) => Number(n) || 0)
-        : [],
       countBestEvents:
         leagueDoc.countBestEvents === null ||
         leagueDoc.countBestEvents === undefined
@@ -39,6 +44,11 @@ export async function GET(
           : typeof leagueDoc.countBestEvents === "number"
             ? Math.round(leagueDoc.countBestEvents)
             : null,
+      scoring: {
+        winPoints: LEAGUE_SCORE_WIN,
+        lossPoints: LEAGUE_SCORE_LOSS,
+        tiePoints: LEAGUE_SCORE_TIE,
+      },
     };
 
     const events = await WeeklyEvent.find({
@@ -47,13 +57,14 @@ export async function GET(
       kind: "tournament",
       state: "close",
     })
-      .select("title startsAt tournamentStandings participants.displayName participants.popId")
+      .select(
+        "title startsAt dashboardRoundCap roundSnapshots participants.displayName participants.popId participants.wins participants.losses participants.ties",
+      )
       .sort({ startsAt: 1 })
       .lean();
 
-    const standingsByCategory = aggregateLeagueStandingsByCategory(
-      events as Parameters<typeof aggregateLeagueStandingsByCategory>[0],
-      league.pointsByPlace,
+    const standings = aggregateLeagueStandings(
+      events as Parameters<typeof aggregateLeagueStandings>[0],
       league.countBestEvents,
     );
 
@@ -64,29 +75,24 @@ export async function GET(
         ev.startsAt instanceof Date
           ? ev.startsAt.toISOString()
           : new Date(ev.startsAt as unknown as string).toISOString(),
-      hasStandings: Boolean(
-        (ev.tournamentStandings ?? []).some(
-          (c) => (c.finished?.length ?? 0) > 0,
-        ),
+      hasRecord: leagueEventHasContributingRecord(
+        ev as Parameters<typeof leagueEventHasContributingRecord>[0],
       ),
     }));
 
-    const standingsByCategoryPayload = standingsByCategory.map((block) => ({
-      categoryIndex: block.categoryIndex,
-      standings: block.standings,
-      chartTop: block.standings.slice(0, 12).map((r, i) => ({
-        rank: i + 1,
-        name: r.displayName,
-        points: r.totalPoints,
-        popId: r.popId,
-      })),
+    const chartTop = standings.slice(0, 12).map((r, i) => ({
+      rank: i + 1,
+      name: r.displayName,
+      points: r.totalPoints,
+      popId: r.popId,
     }));
 
     return NextResponse.json(
       {
         league,
         tournaments: tournamentSummaries,
-        standingsByCategory: standingsByCategoryPayload,
+        standings,
+        chartTop,
       },
       { status: 200 },
     );

@@ -15,6 +15,20 @@ import {
 } from "@/lib/weekly-event-public";
 import { effectivePublicRoundNum } from "@/lib/dashboard-round-cap";
 
+function publicLeagueFromLeanDoc(d: Record<string, unknown>): {
+  name: string;
+  slug: string;
+} | null {
+  const lr = d.leagueId;
+  if (!lr || typeof lr !== "object" || lr === null) return null;
+  const o = lr as { name?: string; slug?: string; isActive?: boolean };
+  if (o.isActive === false) return null;
+  const name = typeof o.name === "string" ? o.name.trim() : "";
+  const slug = typeof o.slug === "string" ? o.slug.trim().toLowerCase() : "";
+  if (!name || !slug) return null;
+  return { name, slug };
+}
+
 function toPublicEvent(
   doc: {
     _id: unknown;
@@ -48,6 +62,7 @@ function toPublicEvent(
   now: Date,
   currentUserId?: string,
   currentUserPopId?: string,
+  league: { name: string; slug: string } | null = null,
 ) {
   const startsAt = doc.startsAt;
   const roundNum = effectivePublicRoundNum(
@@ -136,6 +151,7 @@ function toPublicEvent(
           myTournamentPlacement: standingsPublic?.myTournamentPlacement ?? null,
         }
       : {}),
+    league,
   };
 }
 
@@ -199,7 +215,10 @@ export async function GET(request: NextRequest) {
             tournamentOrigin: { $ne: "custom" },
           };
 
-    let docs = await WeeklyEvent.find(queryRange).sort({ startsAt: 1 }).lean();
+    let docs = await WeeklyEvent.find(queryRange)
+      .populate({ path: "leagueId", select: "name slug isActive" })
+      .sort({ startsAt: 1 })
+      .lean();
 
     if (weekYmdSet && weekYmdSet.size > 0) {
       docs = docs.filter((d) => {
@@ -210,8 +229,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const events = docs.map((d) =>
-      toPublicEvent(
+    const events = docs.map((d) => {
+      const lean = d as Record<string, unknown>;
+      const league = publicLeagueFromLeanDoc(lean);
+      return toPublicEvent(
         {
           _id: d._id,
           startsAt: d.startsAt,
@@ -245,8 +266,9 @@ export async function GET(request: NextRequest) {
         now,
         userId,
         userPopId,
-      ),
-    );
+        league,
+      );
+    });
 
     return NextResponse.json({ events }, { status: 200 });
   } catch (error) {

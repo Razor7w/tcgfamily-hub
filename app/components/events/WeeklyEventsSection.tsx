@@ -36,6 +36,7 @@ import {
   EventAvailable,
   GridView,
   Groups,
+  Leaderboard,
   LocalActivity,
   OpenInNew,
   PersonOutline,
@@ -966,6 +967,55 @@ export default function WeeklyEventsSection({
                                 label={pokemonSubtypeLabel(selectedEvent.pokemonSubtype)}
                                 color="primary"
                                 variant="outlined"
+                              />
+                            ) : null}
+                            {selectedEvent.kind === "tournament" &&
+                            selectedEvent.league &&
+                            selectedEvent.league.slug ? (
+                              <Chip
+                                component={Link}
+                                href={`/ligas/${encodeURIComponent(selectedEvent.league.slug)}`}
+                                scroll={false}
+                                clickable
+                                size="small"
+                                icon={
+                                  <Leaderboard
+                                    sx={{
+                                      fontSize: "16px !important",
+                                      color: "secondary.main",
+                                    }}
+                                  />
+                                }
+                                label={selectedEvent.league.name}
+                                title={`Ver clasificación de la liga: ${selectedEvent.league.name}`}
+                                aria-label={`Abrir liga ${selectedEvent.league.name}`}
+                                variant="outlined"
+                                sx={{
+                                  maxWidth: { xs: "100%", sm: 240 },
+                                  fontWeight: 700,
+                                  borderColor: (t) => alpha(t.palette.secondary.main, 0.45),
+                                  color: "secondary.main",
+                                  bgcolor: (t) => alpha(t.palette.secondary.main, 0.06),
+                                  transition: (t) =>
+                                    t.transitions.create(["background-color", "border-color", "box-shadow"], {
+                                      duration: t.transitions.duration.shortest,
+                                    }),
+                                  "&:hover": {
+                                    bgcolor: (t) => alpha(t.palette.secondary.main, 0.12),
+                                    borderColor: "secondary.main",
+                                    boxShadow: (t) => `0 1px 4px ${alpha(t.palette.secondary.main, 0.25)}`,
+                                  },
+                                  "&:focus-visible": {
+                                    outline: "2px solid",
+                                    outlineColor: "secondary.main",
+                                    outlineOffset: 2,
+                                  },
+                                  "& .MuiChip-label": {
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    px: 0.5,
+                                  },
+                                }}
                               />
                             ) : null}
                             {selectedEvent.kind === "tournament" &&
