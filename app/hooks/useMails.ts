@@ -47,6 +47,12 @@ export interface RegisterMailData {
   mode?: 'onlyReceptor' | 'all'
 }
 
+export interface MailRegisterQuota {
+  limit: number
+  usedToday: number
+  remaining: number
+}
+
 /** Datos para actualizar un mail (todos opcionales). */
 export interface UpdateMailData {
   fromUserId?: string
@@ -130,6 +136,23 @@ export function useCreateMail() {
   })
 }
 
+/** Cuota de registros de correo del usuario para el día (hora Chile). */
+export function useMailRegisterQuota() {
+  return useQuery<MailRegisterQuota>({
+    queryKey: ['mail-register-quota'],
+    queryFn: async () => {
+      const response = await fetch('/api/mail/register-quota')
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}))
+        throw new Error(
+          typeof err.error === 'string' ? err.error : 'Error al cargar cuota'
+        )
+      }
+      return response.json()
+    }
+  })
+}
+
 // Hook para que un usuario registre un mail por RUT del receptor
 export function useRegisterMail() {
   const queryClient = useQueryClient()
@@ -152,6 +175,7 @@ export function useRegisterMail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mails'] })
       queryClient.invalidateQueries({ queryKey: ['mails', 'me'] })
+      queryClient.invalidateQueries({ queryKey: ['mail-register-quota'] })
     }
   })
 }
@@ -249,6 +273,8 @@ export function useDeleteMail() {
     },
     onSuccess: (_, mailId) => {
       queryClient.invalidateQueries({ queryKey: ['mails'] })
+      queryClient.invalidateQueries({ queryKey: ['mails', 'me'] })
+      queryClient.invalidateQueries({ queryKey: ['mail-register-quota'] })
       queryClient.removeQueries({ queryKey: ['mails', mailId] })
     }
   })

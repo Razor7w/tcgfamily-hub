@@ -22,12 +22,14 @@ import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
+import TextField from '@mui/material/TextField'
 import { alpha, type Theme } from '@mui/material/styles'
 import NextLink from 'next/link'
 import {
   useAdminConfiguracion,
   useUpdateDashboardModuleSettings,
   useUpdateDashboardShortcuts,
+  useUpdateMailRegisterDailyLimit,
   useUpdateResendPickupNotifySettings
 } from '@/hooks/useDashboardModules'
 import {
@@ -37,6 +39,10 @@ import {
   type DashboardModuleSettingsDTO,
   type DashboardShortcutsVisibility
 } from '@/lib/dashboard-module-config'
+import {
+  MAIL_REGISTER_DAILY_LIMIT,
+  MAIL_REGISTER_DAILY_LIMIT_ADMIN_MAX
+} from '@/lib/mail-register-constants'
 
 const LABELS: Record<DashboardModuleId, string> = {
   weeklyEvents: 'Eventos de la semana (calendario y preinscripción)',
@@ -393,6 +399,142 @@ function DashboardShortcutsEditor({
   )
 }
 
+function MailRegisterDailyLimitCard({
+  initialLimit
+}: {
+  initialLimit: number
+}) {
+  const update = useUpdateMailRegisterDailyLimit()
+  const [value, setValue] = useState(String(initialLimit))
+
+  const dirty = useMemo(() => {
+    const n = Math.round(Number(value))
+    if (!Number.isFinite(n)) return true
+    return n !== initialLimit
+  }, [value, initialLimit])
+
+  const clamp = (n: number) =>
+    Math.min(MAIL_REGISTER_DAILY_LIMIT_ADMIN_MAX, Math.max(1, Math.round(n)))
+
+  const handleSave = () => {
+    update.mutate(clamp(Number(value)))
+  }
+
+  return (
+    <Card
+      elevation={0}
+      sx={{
+        borderRadius: 4,
+        border: '1px solid',
+        borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.08)
+      }}
+    >
+      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+        <Stack
+          direction="row"
+          spacing={1.5}
+          alignItems="flex-start"
+          sx={{ mb: 2 }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 44,
+              height: 44,
+              borderRadius: 2,
+              flexShrink: 0,
+              color: 'primary.main',
+              border: '1px solid',
+              borderColor: (t: Theme) => alpha(t.palette.primary.main, 0.2)
+            }}
+          >
+            <MarkunreadMailbox aria-hidden />
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography
+              variant="h6"
+              component="h2"
+              sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}
+            >
+              Registro de correos por usuario
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 0.75, lineHeight: 1.6 }}
+            >
+              Cuántos correos puede registrar cada jugador por día (zona horaria
+              Chile), desde el diálogo «Registrar correo» o la carga múltiple en{' '}
+              <Link
+                href="/dashboard/mail/registrar-multiples"
+                component={NextLink}
+                fontWeight={600}
+              >
+                /dashboard/mail/registrar-multiples
+              </Link>
+              . El servidor rechaza registros por encima de este límite.
+            </Typography>
+          </Box>
+        </Stack>
+
+        <TextField
+          label="Máximo por día y usuario"
+          type="number"
+          value={value}
+          onChange={e => setValue(e.target.value)}
+          onBlur={() => {
+            const n = clamp(Number(value))
+            setValue(String(n))
+          }}
+          size="small"
+          slotProps={{
+            htmlInput: {
+              min: 1,
+              max: MAIL_REGISTER_DAILY_LIMIT_ADMIN_MAX,
+              step: 1
+            }
+          }}
+          sx={{ maxWidth: 280 }}
+          helperText={`Entre 1 y ${MAIL_REGISTER_DAILY_LIMIT_ADMIN_MAX}. Por defecto ${MAIL_REGISTER_DAILY_LIMIT}.`}
+        />
+
+        {update.isError ? (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {update.error instanceof Error
+              ? update.error.message
+              : 'Error al guardar'}
+          </Alert>
+        ) : null}
+
+        <Stack
+          direction="row"
+          spacing={2}
+          sx={{ mt: 3 }}
+          justifyContent="flex-end"
+        >
+          <Button
+            variant="outlined"
+            onClick={() => setValue(String(initialLimit))}
+            disabled={!dirty || update.isPending}
+          >
+            Deshacer
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => handleSave()}
+            disabled={!dirty || update.isPending}
+            sx={{ fontWeight: 700, minWidth: 120 }}
+          >
+            {update.isPending ? 'Guardando…' : 'Guardar'}
+          </Button>
+        </Stack>
+      </CardContent>
+    </Card>
+  )
+}
+
 function ResendPickupEmailCard({
   initialEnabled
 }: {
@@ -566,8 +708,8 @@ export default function AdminConfiguracionPage() {
               <Link href="/dashboard" component={NextLink} fontWeight={600}>
                 /dashboard
               </Link>{' '}
-              y avisos por correo (Resend) cuando un envío queda listo para
-              retiro en tienda.
+              , límite diario de registro de correos por jugador y avisos por
+              correo (Resend) cuando un envío queda listo para retiro en tienda.
             </Typography>
           </Box>
         </Stack>
@@ -597,6 +739,10 @@ export default function AdminConfiguracionPage() {
               key={`shortcuts-${dataUpdatedAt}`}
               initial={mergeDashboardSettings(data.settings).shortcuts}
             />
+            <MailRegisterDailyLimitCard
+              key={`mail-limit-${dataUpdatedAt}`}
+              initialLimit={data.mailRegisterDailyLimit}
+            />
             <ResendPickupEmailCard
               key={`email-${dataUpdatedAt}`}
               initialEnabled={data.resendNotifyPickupInStoreEnabled}
@@ -611,6 +757,10 @@ export default function AdminConfiguracionPage() {
             <DashboardShortcutsEditor
               key="shortcuts-defaults"
               initial={mergeDashboardSettings(null).shortcuts}
+            />
+            <MailRegisterDailyLimitCard
+              key="mail-limit-defaults"
+              initialLimit={MAIL_REGISTER_DAILY_LIMIT}
             />
             <ResendPickupEmailCard key="email-defaults" initialEnabled />
           </Stack>

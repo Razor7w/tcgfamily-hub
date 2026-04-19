@@ -18,6 +18,8 @@ export interface IDashboardModuleSettings extends Document {
   }
   /** Aviso Resend al usuario cuando el admin marca el envío como recepcionado en tienda. */
   resendNotifyPickupInStoreEnabled: boolean
+  /** Máximo de registros de correo (onlyReceptor) por usuario y día (hora Chile). */
+  mailRegisterDailyLimit: number
 }
 
 const DashboardModuleSettingsSchema = new Schema<IDashboardModuleSettings>(
@@ -37,7 +39,8 @@ const DashboardModuleSettingsSchema = new Schema<IDashboardModuleSettings>(
       createMail: { type: Boolean, default: true },
       createTournament: { type: Boolean, default: true }
     },
-    resendNotifyPickupInStoreEnabled: { type: Boolean, default: true }
+    resendNotifyPickupInStoreEnabled: { type: Boolean, default: true },
+    mailRegisterDailyLimit: { type: Number, default: 10, min: 1 }
   },
   { timestamps: true }
 )
