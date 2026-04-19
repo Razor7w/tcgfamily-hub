@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import connectDB from "@/lib/mongodb";
+import {
+  matchRecordFromRounds,
+  parseParticipantMatchRoundsFromLean,
+} from "@/lib/participant-match-round";
 import "@/models/User";
 import WeeklyEvent from "@/models/WeeklyEvent";
 
@@ -87,9 +91,21 @@ function serializeCustomTournament(doc: Record<string, unknown>) {
   } | null = null;
 
   if (p) {
-    const mr = Array.isArray(p.matchRounds) ? p.matchRounds.length : 0;
+    const parsedRounds = parseParticipantMatchRoundsFromLean(p.matchRounds);
+    const mr = parsedRounds.length;
     const deck = Array.isArray(p.deckPokemonSlugs) ? p.deckPokemonSlugs : [];
     const mp = p.manualPlacement;
+    /** En torneos custom el W‑L‑T persistido en el participante suele ser 0; el récord real sale de las rondas. */
+    const recordFromRounds =
+      mr > 0 ? matchRecordFromRounds(parsedRounds) : null;
+    const winsFallback =
+      typeof p.wins === "number" && Number.isFinite(p.wins) ? p.wins : 0;
+    const lossesFallback =
+      typeof p.losses === "number" && Number.isFinite(p.losses)
+        ? p.losses
+        : 0;
+    const tiesFallback =
+      typeof p.ties === "number" && Number.isFinite(p.ties) ? p.ties : 0;
     creatorParticipant = {
       displayName:
         typeof p.displayName === "string" && p.displayName.trim()
@@ -97,12 +113,9 @@ function serializeCustomTournament(doc: Record<string, unknown>) {
           : "—",
       matchRoundsReported: mr,
       deckPokemonSlugs: deck.filter((s) => typeof s === "string" && s.trim()),
-      wins: typeof p.wins === "number" && Number.isFinite(p.wins) ? p.wins : 0,
-      losses:
-        typeof p.losses === "number" && Number.isFinite(p.losses)
-          ? p.losses
-          : 0,
-      ties: typeof p.ties === "number" && Number.isFinite(p.ties) ? p.ties : 0,
+      wins: recordFromRounds?.wins ?? winsFallback,
+      losses: recordFromRounds?.losses ?? lossesFallback,
+      ties: recordFromRounds?.ties ?? tiesFallback,
       manualPlacement:
         mp &&
         typeof mp === "object" &&

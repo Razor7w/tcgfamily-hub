@@ -98,23 +98,39 @@ export async function GET(
         ? (session.user as { popid: string }).popid
         : "";
     const parts = doc.participants ?? [];
+    const tournamentOrigin: "official" | "custom" =
+      doc.tournamentOrigin === "custom" ? "custom" : "official";
+
     const mine = parts.find(
       (p) =>
         p.userId &&
         String(p.userId) === uid,
     );
-    const myRegistration = mine?.displayName ?? null;
-    const myAttendanceConfirmed = Boolean(mine?.confirmed);
+
+    const createdByStr =
+      doc.createdByUserId != null ? String(doc.createdByUserId) : "";
+    let creatorParticipant = createdByStr
+      ? parts.find(
+          (p) => p.userId && String(p.userId) === createdByStr,
+        )
+      : undefined;
+    if (!creatorParticipant) {
+      creatorParticipant = parts.find((p) => p.userId);
+    }
+
+    const isAdmin = (session.user as { role?: string }).role === "admin";
+    const adminReadOnlyView = isAdmin && tournamentOrigin === "custom";
+    const viewAs =
+      adminReadOnlyView && creatorParticipant ? creatorParticipant : mine;
+
+    const myRegistration = viewAs?.displayName ?? null;
+    const myAttendanceConfirmed = Boolean(viewAs?.confirmed);
     const roundNum = effectivePublicRoundNum(
       doc.roundNum,
       doc.dashboardRoundCap,
     );
     const { myTable, myOpponentName } = pairingExtrasForUser(parts, uid);
-    const tournamentOrigin: "official" | "custom" =
-      doc.tournamentOrigin === "custom" ? "custom" : "official";
 
-    const createdByStr =
-      doc.createdByUserId != null ? String(doc.createdByUserId) : "";
     /** Solo el creador puede borrar un torneo custom (fallback si falta el campo en datos viejos). */
     const canDeleteCustomTournament =
       tournamentOrigin === "custom" &&
@@ -123,30 +139,30 @@ export async function GET(
           Boolean(mine?.userId && String(mine.userId) === uid)));
 
     const myMatchRounds: ParticipantMatchRoundDTO[] =
-      parseParticipantMatchRoundsFromLean(mine?.matchRounds);
+      parseParticipantMatchRoundsFromLean(viewAs?.matchRounds);
 
     let myMatchRecord: {
       wins: number;
       losses: number;
       ties: number;
-    } | null = mine
+    } | null = viewAs
       ? {
           wins: Math.max(
             0,
-            Math.min(999, Math.round(Number(mine.wins) || 0)),
+            Math.min(999, Math.round(Number(viewAs.wins) || 0)),
           ),
           losses: Math.max(
             0,
-            Math.min(999, Math.round(Number(mine.losses) || 0)),
+            Math.min(999, Math.round(Number(viewAs.losses) || 0)),
           ),
           ties: Math.max(
             0,
-            Math.min(999, Math.round(Number(mine.ties) || 0)),
+            Math.min(999, Math.round(Number(viewAs.ties) || 0)),
           ),
         }
       : null;
 
-    if (mine && tournamentOrigin === "custom") {
+    if (viewAs && tournamentOrigin === "custom") {
       myMatchRecord = matchRecordFromRounds(myMatchRounds);
     }
     const eventStateRaw =
@@ -158,17 +174,27 @@ export async function GET(
       tournamentOrigin === "custom" ? "close" : eventStateRaw;
     const tournamentClosed =
       doc.kind === "tournament" && doc.state === "close";
-    const myParticipantPopId =
-      mine && typeof mine.popId === "string" ? mine.popId : undefined;
-    const myDeckPokemonSlugs = Array.isArray(mine?.deckPokemonSlugs)
-      ? mine.deckPokemonSlugs.filter((s): s is string => typeof s === "string")
+    const popForStandingsSession = adminReadOnlyView
+      ? typeof viewAs?.popId === "string"
+        ? viewAs.popId
+        : ""
+      : userPopId;
+    const popForStandingsParticipant = adminReadOnlyView
+      ? typeof viewAs?.popId === "string"
+        ? viewAs.popId
+        : undefined
+      : mine && typeof mine.popId === "string"
+        ? mine.popId
+        : undefined;
+    const myDeckPokemonSlugs = Array.isArray(viewAs?.deckPokemonSlugs)
+      ? viewAs.deckPokemonSlugs.filter((s): s is string => typeof s === "string")
       : [];
     const standingsPublic = tournamentClosed
       ? buildTournamentStandingsPublic(
           doc.tournamentStandings,
           parts as { displayName: string; popId?: string }[],
-          userPopId,
-          myParticipantPopId,
+          popForStandingsSession,
+          popForStandingsParticipant,
           wantFullStandings
             ? { maxRowsPerCategory: PUBLIC_STANDINGS_FULL_MAX }
             : undefined,
@@ -181,10 +207,10 @@ export async function GET(
       !myTournamentPlacement &&
       tournamentClosed &&
       tournamentOrigin === "custom" &&
-      mine?.manualPlacement &&
-      typeof mine.manualPlacement.categoryIndex === "number"
+      viewAs?.manualPlacement &&
+      typeof viewAs.manualPlacement.categoryIndex === "number"
     ) {
-      const mp = mine.manualPlacement;
+      const mp = viewAs.manualPlacement;
       const idx = Math.max(
         0,
         Math.min(2, Math.round(Number(mp.categoryIndex))),
@@ -235,11 +261,13 @@ export async function GET(
         doc.state !== "close",
       myDeckPokemonSlugs,
       canReportDeck:
+        !adminReadOnlyView &&
         Boolean(myRegistration) &&
         doc.kind === "tournament" &&
         doc.game === "pokemon",
       myMatchRounds,
       canDeleteCustomTournament,
+      adminReadOnlyView,
       ...(tournamentClosed
         ? wantFullStandings
           ? {

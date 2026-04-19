@@ -282,27 +282,36 @@ function RoundMobileCard({
   onEdit,
   onDelete,
   deleteDisabled,
+  readOnly,
 }: {
   row: ParticipantMatchRoundDTO;
   slugToLabel: Map<string, string>;
   onEdit: () => void;
   onDelete: () => void;
   deleteDisabled: boolean;
+  readOnly?: boolean;
 }) {
   const outcome = roundTableOutcome(row);
   const p = matchRowAccentParts(outcome);
+  const interactive = !readOnly;
   return (
     <Box
-      role="button"
-      tabIndex={0}
-      onClick={onEdit}
-      onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onEdit();
-        }
-      }}
-      aria-label={`Editar ronda ${row.roundNum}`}
+      role={interactive ? "button" : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onClick={interactive ? onEdit : undefined}
+      onKeyDown={
+        interactive
+          ? (e: KeyboardEvent<HTMLDivElement>) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onEdit();
+              }
+            }
+          : undefined
+      }
+      aria-label={
+        interactive ? `Editar ronda ${row.roundNum}` : `Ronda ${row.roundNum}`
+      }
       sx={(t) => ({
         borderRadius: 2,
         border: "1px solid",
@@ -311,19 +320,23 @@ function RoundMobileCard({
         borderLeftColor: p.borderLeftColor,
         bgcolor: p.bgcolor,
         p: { xs: 1.5, sm: 1.75 },
-        cursor: "pointer",
+        cursor: interactive ? "pointer" : "default",
         transition: "background-color 0.15s ease",
         outlineOffset: 2,
         WebkitTapHighlightColor: "transparent",
-        "&:focus-visible": {
-          outline: `2px solid ${t.palette.primary.main}`,
-        },
-        "&:hover": {
-          bgcolor:
-            outcome !== "neutral" && p.hoverBg
-              ? p.hoverBg
-              : t.palette.action.hover,
-        },
+        "&:focus-visible": interactive
+          ? {
+              outline: `2px solid ${t.palette.primary.main}`,
+            }
+          : {},
+        "&:hover": interactive
+          ? {
+              bgcolor:
+                outcome !== "neutral" && p.hoverBg
+                  ? p.hoverBg
+                  : t.palette.action.hover,
+            }
+          : {},
       })}
     >
       <Stack
@@ -394,18 +407,20 @@ function RoundMobileCard({
           >
             {summarizeRoundResult(row)}
           </Box>
-          <IconButton
-            size="medium"
-            aria-label="Eliminar ronda"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            disabled={deleteDisabled}
-            sx={{ mt: -0.25 }}
-          >
-            <DeleteOutlineIcon fontSize="small" />
-          </IconButton>
+          {interactive ? (
+            <IconButton
+              size="medium"
+              aria-label="Eliminar ronda"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              disabled={deleteDisabled}
+              sx={{ mt: -0.25 }}
+            >
+              <DeleteOutlineIcon fontSize="small" />
+            </IconButton>
+          ) : null}
         </Stack>
       </Stack>
     </Box>
@@ -508,6 +523,8 @@ type Props = {
   isCustomTournament?: boolean;
   /** Si no hay Pokémon en perfil, muestra un botón + que abre el flujo de elegir Pokémon (p. ej. `ReportDeckDialog`). */
   onRequestChoosePokemon?: () => void;
+  /** Solo lectura: oculta compartir, edición de rondas y flujo de deck. */
+  readOnly?: boolean;
 };
 
 export default function TournamentMatchRoundsCard({
@@ -523,6 +540,7 @@ export default function TournamentMatchRoundsCard({
   tournamentPlacement,
   isCustomTournament = false,
   onRequestChoosePokemon,
+  readOnly = false,
 }: Props) {
   const theme = useTheme();
   const isMobileViewport = useMediaQuery(theme.breakpoints.down("sm"));
@@ -574,7 +592,8 @@ export default function TournamentMatchRoundsCard({
 
   const canAddRound = rounds.length < maxSelfReportedRounds;
   /** Mostrar el botón del formulario: añadir ronda, o cerrar si el panel está abierto (p. ej. editando al límite). */
-  const showRoundFormToggle = canAddRound || formOpen;
+  const showRoundFormToggle =
+    !readOnly && (canAddRound || formOpen);
 
   /** En pantallas estrechas, al abrir el formulario el scroll lleva el panel a la vista (tras la animación de Collapse). */
   useEffect(() => {
@@ -877,16 +896,18 @@ export default function TournamentMatchRoundsCard({
                     />
                   ) : null}
                 </Stack>
-                <Tooltip title="Compartir resumen">
-                  <IconButton
-                    size="small"
-                    onClick={() => setShareOpen(true)}
-                    aria-label="Compartir resumen"
-                    sx={{ flexShrink: 0, mt: -0.25 }}
-                  >
-                    <ShareIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+                {!readOnly ? (
+                  <Tooltip title="Compartir resumen">
+                    <IconButton
+                      size="small"
+                      onClick={() => setShareOpen(true)}
+                      aria-label="Compartir resumen"
+                      sx={{ flexShrink: 0, mt: -0.25 }}
+                    >
+                      <ShareIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                ) : null}
               </Stack>
               <Typography
                 variant="body2"
@@ -937,7 +958,11 @@ export default function TournamentMatchRoundsCard({
                     color="text.secondary"
                     sx={{ lineHeight: 1.2, letterSpacing: "0.08em", display: "block" }}
                   >
-                    {showOfficialRecord ? "Récord oficial" : "Tu récord"}
+                    {showOfficialRecord
+                      ? "Récord oficial"
+                      : readOnly
+                        ? "Récord del jugador"
+                        : "Tu récord"}
                   </Typography>
                   <Typography
                     variant="h4"
@@ -1035,7 +1060,7 @@ export default function TournamentMatchRoundsCard({
                       >
                         Sin Pokémon en perfil
                       </Typography>
-                      {onRequestChoosePokemon ? (
+                      {onRequestChoosePokemon && !readOnly ? (
                         <Tooltip title="Elegir Pokémon">
                           <IconButton
                             size="small"
@@ -1090,9 +1115,13 @@ export default function TournamentMatchRoundsCard({
           color="text.secondary"
           sx={{ mb: showOfficialRecord ? 1 : 2, lineHeight: 1.55 }}
         >
-          {rounds.length === 0
-            ? "El emparejamiento oficial no se muestra aquí: puedes llevar tu propio registro de mesas."
-            : "Pulsa una fila o tarjeta para editarla."}
+          {readOnly
+            ? rounds.length === 0
+              ? "Este torneo no tiene rondas reportadas en la bitácora."
+              : "Vista de solo lectura: datos que reportó el jugador."
+            : rounds.length === 0
+              ? "El emparejamiento oficial no se muestra aquí: puedes llevar tu propio registro de mesas."
+              : "Pulsa una fila o tarjeta para editarla."}
         </Typography>
         {showOfficialRecord ? (
           <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: "block", lineHeight: 1.5 }}>
@@ -1129,12 +1158,15 @@ export default function TournamentMatchRoundsCard({
               color="text.secondary"
               sx={{ mb: 2, maxWidth: 440, mx: "auto", lineHeight: 1.6 }}
             >
-              Cuando juegues una mesa, añádela aquí: rival (opcional), resultado por juego y
-              desenlaces como ID o bye.
+              {readOnly
+                ? "El creador del torneo no ha añadido mesas a su bitácora."
+                : "Cuando juegues una mesa, añádela aquí: rival (opcional), resultado por juego y desenlaces como ID o bye."}
             </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-              Usa el botón de abajo para crear la primera ronda.
-            </Typography>
+            {!readOnly ? (
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                Usa el botón de abajo para crear la primera ronda.
+              </Typography>
+            ) : null}
           </Box>
         ) : (
           <>
@@ -1147,6 +1179,7 @@ export default function TournamentMatchRoundsCard({
                   onEdit={() => openEditRound(row)}
                   onDelete={() => handleDeleteRound(row.roundNum)}
                   deleteDisabled={saveRounds.isPending}
+                  readOnly={readOnly}
                 />
               ))}
             </Stack>
@@ -1183,43 +1216,58 @@ export default function TournamentMatchRoundsCard({
                   <TableCell width={120} align="right">
                     Resultado
                   </TableCell>
-                  <TableCell width={48} />
+                  {!readOnly ? <TableCell width={48} /> : null}
                 </TableRow>
               </TableHead>
               <TableBody>
                 {rounds.map((row) => {
                   const outcome = roundTableOutcome(row);
+                  const rowInteractive = !readOnly;
                   return (
                     <TableRow
                       key={row.roundNum}
-                      onClick={() => openEditRound(row)}
-                      onKeyDown={(e: KeyboardEvent<HTMLTableRowElement>) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          openEditRound(row);
-                        }
-                      }}
-                      tabIndex={0}
-                      role="button"
-                      aria-label={`Editar ronda ${row.roundNum}`}
+                      onClick={
+                        rowInteractive ? () => openEditRound(row) : undefined
+                      }
+                      onKeyDown={
+                        rowInteractive
+                          ? (e: KeyboardEvent<HTMLTableRowElement>) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                openEditRound(row);
+                              }
+                            }
+                          : undefined
+                      }
+                      tabIndex={rowInteractive ? 0 : undefined}
+                      role={rowInteractive ? "button" : undefined}
+                      aria-label={
+                        rowInteractive
+                          ? `Editar ronda ${row.roundNum}`
+                          : `Ronda ${row.roundNum}`
+                      }
                       sx={(t) => {
                         const p = matchRowAccentParts(outcome);
                         return {
-                          cursor: "pointer",
+                          cursor: rowInteractive ? "pointer" : "default",
                           borderLeft: "4px solid",
                           borderLeftColor: p.borderLeftColor,
                           bgcolor: p.bgcolor,
                           transition: "background-color 0.15s ease",
                           outlineOffset: -2,
-                          "&:focus-visible": {
-                            outline: `2px solid ${t.palette.primary.main}`,
-                          },
-                          "&:hover": {
-                            bgcolor:
-                              outcome !== "neutral" && p.hoverBg
-                                ? p.hoverBg
-                                : t.palette.action.hover,
-                          },
+                          "&:focus-visible": rowInteractive
+                            ? {
+                                outline: `2px solid ${t.palette.primary.main}`,
+                              }
+                            : {},
+                          "&:hover": rowInteractive
+                            ? {
+                                bgcolor:
+                                  outcome !== "neutral" && p.hoverBg
+                                    ? p.hoverBg
+                                    : t.palette.action.hover,
+                              }
+                            : {},
                         };
                       }}
                     >
@@ -1298,19 +1346,21 @@ export default function TournamentMatchRoundsCard({
                           {summarizeRoundResult(row)}
                         </Box>
                       </TableCell>
-                      <TableCell align="right" sx={{ py: 1.5 }}>
-                        <IconButton
-                          size="small"
-                          aria-label="Eliminar ronda"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteRound(row.roundNum);
-                          }}
-                          disabled={saveRounds.isPending}
-                        >
-                          <DeleteOutlineIcon fontSize="small" />
-                        </IconButton>
-                      </TableCell>
+                      {rowInteractive ? (
+                        <TableCell align="right" sx={{ py: 1.5 }}>
+                          <IconButton
+                            size="small"
+                            aria-label="Eliminar ronda"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteRound(row.roundNum);
+                            }}
+                            disabled={saveRounds.isPending}
+                          >
+                            <DeleteOutlineIcon fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      ) : null}
                     </TableRow>
                   );
                 })}
@@ -1320,6 +1370,8 @@ export default function TournamentMatchRoundsCard({
           </>
         )}
 
+        {!readOnly ? (
+          <>
         {showRoundFormToggle ? (
           <Button
             fullWidth
@@ -1604,9 +1656,12 @@ export default function TournamentMatchRoundsCard({
             </Stack>
           </Box>
         </Collapse>
+          </>
+        ) : null}
       </Box>
     </Card>
 
+    {!readOnly ? (
     <Drawer
       anchor="right"
       open={shareOpen}
@@ -1995,6 +2050,7 @@ export default function TournamentMatchRoundsCard({
         </Box>
       </Box>
     </Drawer>
+    ) : null}
     </>
   );
 }

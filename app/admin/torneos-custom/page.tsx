@@ -24,7 +24,6 @@ import { alpha, useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import {
   ArrowBack,
-  OpenInNew,
   Person,
   Search,
   SportsEsports,
@@ -124,7 +123,7 @@ function DeckSprites({ slugs }: { slugs: string[] }) {
 
 function TournamentCard({ row }: { row: AdminCustomTournament }) {
   const cp = row.creatorParticipant;
-  const dashboardUrl = `/dashboard/torneos-semana/${row._id}`;
+  const adminDetailUrl = `/admin/torneos-custom/${row._id}`;
   return (
     <Paper
       variant="outlined"
@@ -177,15 +176,12 @@ function TournamentCard({ row }: { row: AdminCustomTournament }) {
       ) : null}
       <Button
         component={Link}
-        href={dashboardUrl}
-        target="_blank"
-        rel="noopener noreferrer"
+        href={adminDetailUrl}
         size="small"
-        variant="outlined"
-        endIcon={<OpenInNew sx={{ fontSize: 16 }} />}
+        variant="contained"
         sx={{ alignSelf: "flex-start", textTransform: "none" }}
       >
-        Abrir vista jugador
+        Ver
       </Button>
     </Paper>
   );
@@ -330,7 +326,7 @@ export default function AdminTorneosCustomPage() {
                 <TableBody>
                   {filtered.map((row) => {
                     const cp = row.creatorParticipant;
-                    const dashboardUrl = `/dashboard/torneos-semana/${row._id}`;
+                    const adminDetailUrl = `/admin/torneos-custom/${row._id}`;
                     return (
                       <TableRow key={row._id} hover>
                         <TableCell>
@@ -387,11 +383,9 @@ export default function AdminTorneosCustomPage() {
                         <TableCell align="right">
                           <Button
                             component={Link}
-                            href={dashboardUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            href={adminDetailUrl}
                             size="small"
-                            endIcon={<OpenInNew sx={{ fontSize: 16 }} />}
+                            variant="outlined"
                             sx={{ textTransform: "none" }}
                           >
                             Ver

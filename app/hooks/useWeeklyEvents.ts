@@ -138,6 +138,8 @@ export type DashboardEventDetail = PublicWeeklyEvent & {
   myMatchRounds: ParticipantMatchRoundDTO[];
   /** Solo torneos custom creados por el usuario actual. */
   canDeleteCustomTournament?: boolean;
+  /** Admin viendo un torneo custom: datos del creador, sin acciones de edición. */
+  adminReadOnlyView?: boolean;
 };
 
 export function useDashboardEventDetail(eventId: string | null) {
