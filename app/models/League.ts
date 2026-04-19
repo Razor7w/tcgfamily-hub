@@ -9,11 +9,11 @@ export interface ILeague extends Document {
   /** Solo torneos Pokémon en tienda suelen usar ligas; reservado por si amplías. */
   game: "pokemon";
   isActive: boolean;
+  /** Legado en BD; el cálculo de la liga usa récord W/L/T (3/0/1), no esta tabla. */
   pointsByPlace: number[];
   /**
-   * Si es un entero >= 1, solo cuentan los N mejores torneos por jugador **por división de edad** (Júnior, Sénior, Máster).
-   * `null` o ausente = sumar todos los torneos de la liga en esa categoría.
-   * Independiente de los Puntos de Campeonato oficiales en Play! Tools.
+   * Si es un entero >= 1, solo cuentan los N mejores torneos por jugador (por puntos de liga en cada torneo).
+   * `null` o ausente = sumar todos los torneos cerrados de la liga con récord W/L/T.
    */
   countBestEvents: number | null;
 }

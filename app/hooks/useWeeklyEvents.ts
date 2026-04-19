@@ -802,8 +802,9 @@ export type LeagueStandingEventDetail = {
   eventId: string;
   title: string;
   startsAt: string;
-  categoryIndex: number;
-  place: number;
+  wins: number;
+  losses: number;
+  ties: number;
   points: number;
 };
 
@@ -815,28 +816,27 @@ export type LeagueStandingRow = {
   events: LeagueStandingEventDetail[];
 };
 
-export type PublicLeagueCategoryBlock = {
-  categoryIndex: number;
-  standings: LeagueStandingRow[];
-  chartTop: { rank: number; name: string; points: number; popId: string }[];
-};
-
 export type PublicLeagueResponse = {
   league: {
     _id: string;
     name: string;
     slug: string;
     description: string;
-    pointsByPlace: number[];
     countBestEvents: number | null;
+    scoring: {
+      winPoints: number;
+      lossPoints: number;
+      tiePoints: number;
+    };
   };
   tournaments: {
     _id: string;
     title: string;
     startsAt: string;
-    hasStandings: boolean;
+    hasRecord: boolean;
   }[];
-  standingsByCategory: PublicLeagueCategoryBlock[];
+  standings: LeagueStandingRow[];
+  chartTop: { rank: number; name: string; points: number; popId: string }[];
 };
 
 export function useAdminLeagues() {

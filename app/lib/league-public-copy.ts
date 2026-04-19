@@ -1,19 +1,18 @@
 /**
- * Textos alineados con el «Manual de reglas de las Ligas de Play! Pokémon» (español).
- * La clasificación en esta app es complementaria / local; no sustituye Play! Tools ni los CP oficiales.
+ * Textos para la vista pública de ligas. La puntuación es local (W/L/T), no CP oficiales.
  */
 
 /** Párrafos para el aviso informativo en /ligas/[slug]. */
 export const LEAGUE_PUBLIC_INFO_ALERT_PARAGRAPHS = [
-  "Esta página muestra una clasificación local de la tienda, separada por división de edad (Júnior, Sénior, Máster), según la tabla de puntos por posición que definas aquí y la clasificación final importada desde el torneo (mismo origen que el archivo .tdf generado con Tournament Operations Manager, TOM).",
-  "En el programa oficial de Juego Organizado Pokémon, los torneos de Desafío de Liga y Copa de Liga se programan en Play! Tools; los resultados se envían en formato .tdf para completar el evento. Los Puntos de Campeonato (CP) del programa global siguen las reglas publicadas por The Pokémon Company; no se muestran en esta vista.",
-  "Las Copas de Liga suelen otorgar más Puntos de Campeonato que los Desafíos de Liga a escala internacional; eso no altera esta puntuación local. Opcionalmente puedes limitar a los N mejores torneos por jugador y por categoría.",
+  "Los puntos de esta liga se calculan solo con el récord de cada jugador en cada torneo asignado a la liga: victoria 3 pts, empate 1 pt, derrota 0 pts. No se usa la tabla de posición final ni la división de edad.",
+  "Ese récord (W / L / T) debe estar cargado en los datos del participante del evento (sincronización con la clasificación del torneo). Es independiente de los Puntos de Campeonato del programa oficial en Play! Tools.",
+  "Opcionalmente puedes limitar la suma a los N mejores torneos por jugador (según los puntos de liga de cada torneo).",
 ] as const;
 
 /** Subtítulo breve en el panel de administración de ligas. */
 export const LEAGUE_ADMIN_INTRO =
-  "Clasificación local por división de edad (Júnior, Sénior, Máster), a partir de la clasificación TDF importada. Asigna la liga al crear o editar un torneo oficial; la página pública acumula puntos cuando el torneo está cerrado y tiene standings.";
+  "La clasificación suma puntos por récord W/L/T en cada torneo cerrado (3 / 0 / 1). Asigna la liga al crear o editar un torneo oficial; hace falta que el participante tenga victorias, derrotas o empates registrados en el evento.";
 
 /** Ayuda del campo «N mejores torneos». */
 export const LEAGUE_ADMIN_COUNT_BEST_HELPER =
-  "Opcional: análogo a contar solo las mejores actuaciones en una temporada. Vacío = sumar todos los torneos cerrados de la liga, por categoría. Independiente de los Puntos de Campeonato oficiales en Play! Tools.";
+  "Opcional: solo cuentan los N torneos en los que cada jugador obtuvo más puntos de liga. Vacío = sumar todos los torneos cerrados de la liga.";

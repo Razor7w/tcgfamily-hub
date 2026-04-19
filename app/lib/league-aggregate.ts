@@ -1,22 +1,36 @@
 import { popidForStorage } from "@/lib/rut-chile";
-import type { ITournamentCategoryStandings } from "@/models/WeeklyEvent";
+import {
+  LEAGUE_SCORE_LOSS,
+  LEAGUE_SCORE_TIE,
+  LEAGUE_SCORE_WIN,
+} from "@/lib/league-constants";
 
-export function pointsForPlace(place: number, pointsByPlace: number[]): number {
-  if (place < 1 || !Number.isFinite(place)) return 0;
-  const idx = Math.floor(place) - 1;
-  if (idx < 0) return 0;
-  if (idx >= pointsByPlace.length) {
-    return pointsByPlace.length > 0 ? pointsByPlace[pointsByPlace.length - 1]! : 0;
-  }
-  return pointsByPlace[idx] ?? 0;
+function nonNegativeInt(n: unknown): number {
+  const x = typeof n === "number" ? n : Number(n);
+  if (!Number.isFinite(x) || x < 0) return 0;
+  return Math.floor(x);
+}
+
+/** Puntos de liga en un torneo: 3·W + 1·T + 0·L (independiente del puesto final). */
+export function pointsFromWLRecord(
+  wins: number,
+  losses: number,
+  ties: number,
+): number {
+  return (
+    wins * LEAGUE_SCORE_WIN +
+    losses * LEAGUE_SCORE_LOSS +
+    ties * LEAGUE_SCORE_TIE
+  );
 }
 
 export type LeagueStandingEventDetail = {
   eventId: string;
   title: string;
   startsAt: string;
-  categoryIndex: number;
-  place: number;
+  wins: number;
+  losses: number;
+  ties: number;
   points: number;
 };
 
@@ -28,22 +42,55 @@ export type LeagueStandingRow = {
   events: LeagueStandingEventDetail[];
 };
 
+type LeanParticipant = {
+  displayName: string;
+  popId?: string;
+  wins?: number;
+  losses?: number;
+  ties?: number;
+};
+
 type LeanEventForLeague = {
   _id: unknown;
   title: string;
   startsAt: Date;
-  tournamentStandings?: ITournamentCategoryStandings[];
-  participants: { displayName: string; popId?: string }[];
+  participants: LeanParticipant[];
 };
 
 /**
- * `onlyCategory`: null = todas las categorías (mezcla división de edad; no recomendado para podio);
- * 0–2 = solo esa división (Júnior, Sénior, Máster).
+ * Agrupa por POP dentro de un evento por si hubiera filas duplicadas.
  */
-function collectPlayerDetails(
+function mergeParticipantsByPop(ev: LeanEventForLeague): Map<
+  string,
+  { displayName: string; w: number; l: number; t: number }
+> {
+  const byPop = new Map<
+    string,
+    { displayName: string; w: number; l: number; t: number }
+  >();
+
+  for (const p of ev.participants ?? []) {
+    const k = popidForStorage(typeof p.popId === "string" ? p.popId : "");
+    if (!k) continue;
+    const w = nonNegativeInt(p.wins);
+    const l = nonNegativeInt(p.losses);
+    const t = nonNegativeInt(p.ties);
+    const name = p.displayName || "—";
+    const cur = byPop.get(k);
+    if (!cur) {
+      byPop.set(k, { displayName: name, w, l, t });
+    } else {
+      cur.displayName = name || cur.displayName;
+      cur.w += w;
+      cur.l += l;
+      cur.t += t;
+    }
+  }
+  return byPop;
+}
+
+function collectPlayerDetailsFromRecords(
   events: LeanEventForLeague[],
-  pointsByPlace: number[],
-  onlyCategory: number | null,
 ): {
   popToName: Map<string, string>;
   playerDetails: Map<string, LeagueStandingEventDetail[]>;
@@ -52,50 +99,34 @@ function collectPlayerDetails(
   const playerDetails = new Map<string, LeagueStandingEventDetail[]>();
 
   for (const ev of events) {
-    const popNameLocal = new Map<string, string>();
-    for (const p of ev.participants ?? []) {
-      const k = popidForStorage(typeof p.popId === "string" ? p.popId : "");
-      if (k) {
-        const name = p.displayName || "—";
-        popNameLocal.set(k, name);
-        if (!popToName.has(k)) popToName.set(k, name);
-      }
-    }
-
     const eventId = String(ev._id);
     const startsAtIso =
       ev.startsAt instanceof Date
         ? ev.startsAt.toISOString()
         : new Date(ev.startsAt as unknown as string).toISOString();
 
-    for (const cat of ev.tournamentStandings ?? []) {
-      const ci =
-        typeof cat.categoryIndex === "number" && Number.isFinite(cat.categoryIndex)
-          ? Math.max(0, Math.min(2, Math.round(cat.categoryIndex)))
-          : 0;
-      if (onlyCategory !== null && ci !== onlyCategory) continue;
+    const merged = mergeParticipantsByPop(ev);
 
-      for (const row of cat.finished ?? []) {
-        const popRaw = typeof row.popId === "string" ? row.popId : "";
-        const k = popidForStorage(popRaw);
-        if (!k) continue;
-        const place = Math.max(1, Math.round(Number(row.place) || 0));
-        const pts = pointsForPlace(place, pointsByPlace);
-        const displayName = popNameLocal.get(k) ?? popToName.get(k) ?? "—";
-        if (!popToName.has(k)) popToName.set(k, displayName);
+    for (const [k, rec] of merged) {
+      if (rec.w + rec.l + rec.t === 0) continue;
 
-        const detail: LeagueStandingEventDetail = {
-          eventId,
-          title: ev.title,
-          startsAt: startsAtIso,
-          categoryIndex: ci,
-          place,
-          points: pts,
-        };
-        const list = playerDetails.get(k) ?? [];
-        list.push(detail);
-        playerDetails.set(k, list);
-      }
+      if (!popToName.has(k)) popToName.set(k, rec.displayName);
+      else if (rec.displayName && rec.displayName !== "—")
+        popToName.set(k, rec.displayName);
+
+      const pts = pointsFromWLRecord(rec.w, rec.l, rec.t);
+      const detail: LeagueStandingEventDetail = {
+        eventId,
+        title: ev.title,
+        startsAt: startsAtIso,
+        wins: rec.w,
+        losses: rec.l,
+        ties: rec.t,
+        points: pts,
+      };
+      const list = playerDetails.get(k) ?? [];
+      list.push(detail);
+      playerDetails.set(k, list);
     }
   }
 
@@ -103,8 +134,7 @@ function collectPlayerDetails(
 }
 
 /**
- * `countBestEvents`: si es >= 1, solo suman los N torneos con más puntos por jugador
- * (dentro del conjunto de detalles ya filtrado, p. ej. por categoría).
+ * `countBestEvents`: si es >= 1, solo suman los N torneos con más puntos por jugador.
  */
 function finalizeStandings(
   popToName: Map<string, string>,
@@ -167,50 +197,13 @@ function finalizeStandings(
 }
 
 /**
- * Suma puntos por posición final (TDF) en torneos cerrados de la liga, mezclando todas las categorías.
- * Preferir `aggregateLeagueStandingsByCategory` en la vista pública para no mezclar divisiones de edad.
+ * Suma puntos de liga por récord W/L/T en cada torneo cerrado (datos del participante en el evento).
+ * No usa la tabla de posición final ni separa por categoría de edad.
  */
 export function aggregateLeagueStandings(
   events: LeanEventForLeague[],
-  pointsByPlace: number[],
   countBestEvents: number | null | undefined,
 ): LeagueStandingRow[] {
-  const { popToName, playerDetails } = collectPlayerDetails(
-    events,
-    pointsByPlace,
-    null,
-  );
+  const { popToName, playerDetails } = collectPlayerDetailsFromRecords(events);
   return finalizeStandings(popToName, playerDetails, countBestEvents);
-}
-
-export type LeagueCategoryStandingsBlock = {
-  categoryIndex: number;
-  standings: LeagueStandingRow[];
-};
-
-/**
- * Una tabla por división de edad (índice TOM 0–2), evitando un único ranking global con varios «primeros lugares».
- */
-export function aggregateLeagueStandingsByCategory(
-  events: LeanEventForLeague[],
-  pointsByPlace: number[],
-  countBestEvents: number | null | undefined,
-): LeagueCategoryStandingsBlock[] {
-  const out: LeagueCategoryStandingsBlock[] = [];
-  for (let categoryIndex = 0; categoryIndex <= 2; categoryIndex++) {
-    const { popToName, playerDetails } = collectPlayerDetails(
-      events,
-      pointsByPlace,
-      categoryIndex,
-    );
-    out.push({
-      categoryIndex,
-      standings: finalizeStandings(
-        popToName,
-        playerDetails,
-        countBestEvents,
-      ),
-    });
-  }
-  return out;
 }
