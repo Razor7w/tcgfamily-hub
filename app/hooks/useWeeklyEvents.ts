@@ -97,6 +97,23 @@ export function useWeekEvents(weekAnchor: Date | null) {
   })
 }
 
+/** Todos los torneos en los que participas (más recientes primero; límite en servidor). */
+export function useMyTournamentsAllReport(enabled = true) {
+  return useQuery<{ tournaments: MyTournamentWeekItem[] }>({
+    queryKey: ['my-tournaments-all'],
+    queryFn: async () => {
+      const res = await fetch('/api/events/my-tournaments-all', {
+        cache: 'no-store'
+      })
+      if (!res.ok) {
+        throw new Error('Error al cargar todos tus torneos')
+      }
+      return res.json()
+    },
+    enabled
+  })
+}
+
 /** Torneos de la semana en los que participas (resumen informativo). */
 export function useMyTournamentsWeekReport(weekAnchor: Date | null) {
   const from = weekAnchor ? startOfWeekMonday(weekAnchor) : null
@@ -234,6 +251,7 @@ export function useSaveMyDeck(eventId: string) {
         queryKey: ['dashboard-event-detail', eventId]
       })
       queryClient.invalidateQueries({ queryKey: ['my-tournaments-week'] })
+      queryClient.invalidateQueries({ queryKey: ['my-tournaments-all'] })
       queryClient.invalidateQueries({ queryKey: ['my-recent-tournaments'] })
     }
   })
@@ -272,6 +290,7 @@ export function useSaveMyManualPlacement(eventId: string) {
         queryKey: ['dashboard-event-detail', eventId]
       })
       queryClient.invalidateQueries({ queryKey: ['my-tournaments-week'] })
+      queryClient.invalidateQueries({ queryKey: ['my-tournaments-all'] })
       queryClient.invalidateQueries({ queryKey: ['my-recent-tournaments'] })
       queryClient.invalidateQueries({ queryKey: ['my-matchup-stats'] })
     }
@@ -307,6 +326,7 @@ export function useCreateCustomTournament() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-tournaments-week'] })
+      queryClient.invalidateQueries({ queryKey: ['my-tournaments-all'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-event-detail'] })
       queryClient.invalidateQueries({ queryKey: ['my-recent-tournaments'] })
     }
@@ -330,6 +350,7 @@ export function useDeleteCustomTournament() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-tournaments-week'] })
+      queryClient.invalidateQueries({ queryKey: ['my-tournaments-all'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-event-detail'] })
       queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
       queryClient.invalidateQueries({ queryKey: ['my-recent-tournaments'] })
@@ -361,6 +382,7 @@ export function useSaveMyMatchRounds(eventId: string) {
         queryKey: ['dashboard-event-detail', eventId]
       })
       queryClient.invalidateQueries({ queryKey: ['my-tournaments-week'] })
+      queryClient.invalidateQueries({ queryKey: ['my-tournaments-all'] })
       queryClient.invalidateQueries({ queryKey: ['my-recent-tournaments'] })
     }
   })
@@ -440,6 +462,7 @@ export function useRegisterWeeklyEvent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
       queryClient.invalidateQueries({ queryKey: ['my-tournaments-week'] })
+      queryClient.invalidateQueries({ queryKey: ['my-tournaments-all'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-event-detail'] })
     }
   })
@@ -470,6 +493,7 @@ export function useUnregisterWeeklyEvent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
       queryClient.invalidateQueries({ queryKey: ['my-tournaments-week'] })
+      queryClient.invalidateQueries({ queryKey: ['my-tournaments-all'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-event-detail'] })
     }
   })

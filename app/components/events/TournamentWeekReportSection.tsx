@@ -36,7 +36,10 @@ import {
   localDayKey,
   startOfWeekMonday
 } from '@/components/events/weekUtils'
-import { useMyTournamentsWeekReport } from '@/hooks/useWeeklyEvents'
+import {
+  useMyTournamentsAllReport,
+  useMyTournamentsWeekReport
+} from '@/hooks/useWeeklyEvents'
 import type { MyTournamentWeekItem } from '@/lib/my-tournament-week-types'
 import type { WeeklyEventState } from '@/models/WeeklyEvent'
 
@@ -146,7 +149,11 @@ function filterUnifiedList(
 
 type TournamentWeekReportSectionProps = {
   weekAnchor: Date
-  /** Abre el diálogo para registrar un torneo custom (se muestra en la pestaña correspondiente). */
+  /** Cuando es true, lista todos los torneos del usuario (sin filtro de semana). El padre suele ocultar el selector de semana. */
+  allTimeMode?: boolean
+  /** Activa o desactiva la vista «todos los torneos» (p. ej. desde «Ver todo» / «Vista por semana»). */
+  onAllTimeModeChange?: (allTime: boolean) => void
+  /** Abre el diálogo para registrar un torneo custom (se muestra en la pestaña correspondiente o en vista completa). */
   onOpenCreateCustomDialog?: () => void
 }
 
@@ -156,10 +163,18 @@ type TournamentWeekReportSectionProps = {
  */
 export default function TournamentWeekReportSection({
   weekAnchor,
+  allTimeMode = false,
+  onAllTimeModeChange,
   onOpenCreateCustomDialog
 }: TournamentWeekReportSectionProps) {
-  const { data, isPending, isError, error, refetch } =
-    useMyTournamentsWeekReport(weekAnchor)
+  const weekQuery = useMyTournamentsWeekReport(allTimeMode ? null : weekAnchor)
+  const allQuery = useMyTournamentsAllReport(allTimeMode)
+
+  const data = allTimeMode ? allQuery.data : weekQuery.data
+  const isPending = allTimeMode ? allQuery.isPending : weekQuery.isPending
+  const isError = allTimeMode ? allQuery.isError : weekQuery.isError
+  const error = allTimeMode ? allQuery.error : weekQuery.error
+  const refetch = () => (allTimeMode ? allQuery.refetch() : weekQuery.refetch())
 
   const list = useMemo(() => data?.tournaments ?? [], [data?.tournaments])
   const officialOnly = useMemo(() => list.filter(isOfficial), [list])
@@ -174,8 +189,27 @@ export default function TournamentWeekReportSection({
     }
   }, [weekAnchor])
 
+  const boundsForFilters = useMemo(() => {
+    if (!allTimeMode) return weekBounds
+    if (list.length === 0) {
+      const d = new Date()
+      const k = localDayKey(d)
+      return { from: k, to: k }
+    }
+    let minMs = Infinity
+    let maxMs = -Infinity
+    for (const t of list) {
+      const ms = new Date(t.startsAt).getTime()
+      if (ms < minMs) minMs = ms
+      if (ms > maxMs) maxMs = ms
+    }
+    return {
+      from: localDayKey(new Date(minMs)),
+      to: localDayKey(new Date(maxMs))
+    }
+  }, [allTimeMode, weekBounds, list])
+
   const [tab, setTab] = useState(0)
-  const [unifiedMode, setUnifiedMode] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
 
   const [filterOrigin, setFilterOrigin] = useState<OriginFilter>('all')
@@ -186,21 +220,21 @@ export default function TournamentWeekReportSection({
   const [draftFrom, setDraftFrom] = useState('')
   const [draftTo, setDraftTo] = useState('')
 
-  const effFrom = filterDateFrom ?? weekBounds.from
-  const effTo = filterDateTo ?? weekBounds.to
+  const effFrom = filterDateFrom ?? boundsForFilters.from
+  const effTo = filterDateTo ?? boundsForFilters.to
 
-  const unifiedSorted = useMemo(() => {
+  const allTimeSorted = useMemo(() => {
     return [...list].sort(
-      (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
+      (a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime()
     )
   }, [list])
 
-  const filteredUnified = useMemo(() => {
-    return filterUnifiedList(unifiedSorted, filterOrigin, effFrom, effTo)
-  }, [unifiedSorted, filterOrigin, effFrom, effTo])
+  const filteredAllTime = useMemo(() => {
+    return filterUnifiedList(allTimeSorted, filterOrigin, effFrom, effTo)
+  }, [allTimeSorted, filterOrigin, effFrom, effTo])
 
-  const displayed = unifiedMode
-    ? filteredUnified
+  const displayed = allTimeMode
+    ? filteredAllTime
     : tab === 0
       ? officialOnly
       : customOnly
@@ -212,8 +246,8 @@ export default function TournamentWeekReportSection({
 
   const openFiltersModal = () => {
     setDraftOrigin(filterOrigin)
-    setDraftFrom(filterDateFrom ?? weekBounds.from)
-    setDraftTo(filterDateTo ?? weekBounds.to)
+    setDraftFrom(filterDateFrom ?? boundsForFilters.from)
+    setDraftTo(filterDateTo ?? boundsForFilters.to)
     setFiltersOpen(true)
   }
 
@@ -237,7 +271,7 @@ export default function TournamentWeekReportSection({
     setFilterDateTo(null)
   }
 
-  const showReportar = onOpenCreateCustomDialog && (unifiedMode || tab === 1)
+  const showReportar = onOpenCreateCustomDialog && (allTimeMode || tab === 1)
 
   return (
     <Card
@@ -249,10 +283,10 @@ export default function TournamentWeekReportSection({
     >
       <CardHeader
         avatar={<EmojiEvents color="primary" />}
-        title="Tu semana en torneos"
+        title={allTimeMode ? 'Todos tus torneos' : 'Tu semana en torneos'}
         subheader={
-          unifiedMode
-            ? 'Lista unificada de la semana (oficiales y custom). Usa filtros para acotar por tipo o fecha.'
+          allTimeMode
+            ? 'Todos los torneos en los que participas (más recientes primero). Usa filtros para acotar por tipo o fecha.'
             : 'Calendario de la tienda frente a torneos que registras tú. Elige una pestaña para ver cada lista.'
         }
         slotProps={{ title: { variant: 'h6' } }}
@@ -268,17 +302,18 @@ export default function TournamentWeekReportSection({
             justifyContent="flex-end"
             sx={{ maxWidth: { xs: '100%', sm: 360 } }}
           >
-            {!unifiedMode ? (
+            {!allTimeMode && onAllTimeModeChange ? (
               <Button
                 variant="outlined"
                 size="small"
                 startIcon={<ViewList />}
-                onClick={() => setUnifiedMode(true)}
+                onClick={() => onAllTimeModeChange(true)}
                 sx={{ textTransform: 'none', fontWeight: 700 }}
               >
                 Ver todo
               </Button>
-            ) : (
+            ) : null}
+            {allTimeMode && onAllTimeModeChange ? (
               <>
                 <Button
                   variant="outlined"
@@ -292,18 +327,18 @@ export default function TournamentWeekReportSection({
                 <Button
                   variant="text"
                   size="small"
-                  onClick={() => setUnifiedMode(false)}
+                  onClick={() => onAllTimeModeChange(false)}
                   sx={{ textTransform: 'none', fontWeight: 600 }}
                 >
-                  Vista por pestañas
+                  Vista por semana
                 </Button>
               </>
-            )}
+            ) : null}
           </Stack>
         }
       />
 
-      {!unifiedMode ? (
+      {!allTimeMode ? (
         <Box
           sx={t => ({
             px: { xs: 1, sm: 2 },
@@ -375,17 +410,17 @@ export default function TournamentWeekReportSection({
         id="tournaments-panel"
         role="tabpanel"
         aria-labelledby={
-          unifiedMode
-            ? 'tournaments-unified'
+          allTimeMode
+            ? 'tournaments-all-time'
             : tab === 0
               ? 'tournaments-tab-official'
               : 'tournaments-tab-custom'
         }
         sx={{ pt: 2 }}
       >
-        {unifiedMode ? (
+        {allTimeMode ? (
           <Typography
-            id="tournaments-unified"
+            id="tournaments-all-time"
             component="h3"
             sx={{
               position: 'absolute',
@@ -399,7 +434,7 @@ export default function TournamentWeekReportSection({
               border: 0
             }}
           >
-            Lista unificada de torneos de la semana
+            Lista completa de torneos
           </Typography>
         ) : null}
 
@@ -423,16 +458,16 @@ export default function TournamentWeekReportSection({
           </Alert>
         ) : displayed.length === 0 ? (
           <Stack spacing={1.5} sx={{ py: 1 }}>
-            {unifiedMode ? (
+            {allTimeMode ? (
               list.length === 0 ? (
                 <Typography
                   variant="body2"
                   color="text.secondary"
                   sx={{ lineHeight: 1.6 }}
                 >
-                  No tienes torneos en esta semana (ni del calendario de la
-                  tienda ni custom). Preinscríbete en eventos o reporta un
-                  torneo personal.
+                  Aún no tienes torneos en los que figuras como participante.
+                  Preinscríbete en eventos de la tienda o reporta un torneo
+                  personal.
                 </Typography>
               ) : (
                 <Stack spacing={1.5}>
@@ -526,7 +561,7 @@ export default function TournamentWeekReportSection({
                       >
                         {t.title}
                       </Typography>
-                      {unifiedMode ? (
+                      {allTimeMode ? (
                         <Chip
                           size="small"
                           label={origin === 'custom' ? 'Custom' : 'Oficial'}
@@ -663,8 +698,11 @@ export default function TournamentWeekReportSection({
                 display="block"
                 sx={{ mb: 1.5 }}
               >
-                Acota por día dentro de la semana seleccionada arriba (
-                {weekBounds.from} — {weekBounds.to}).
+                Acota por día entre {boundsForFilters.from} y{' '}
+                {boundsForFilters.to}
+                {allTimeMode
+                  ? ' (rango de los torneos cargados en esta vista).'
+                  : ' (semana seleccionada).'}
               </Typography>
               <Stack
                 direction={{ xs: 'column', sm: 'row' }}
@@ -680,8 +718,8 @@ export default function TournamentWeekReportSection({
                   onChange={e => setDraftFrom(e.target.value)}
                   InputLabelProps={{ shrink: true }}
                   inputProps={{
-                    min: weekBounds.from,
-                    max: weekBounds.to
+                    min: boundsForFilters.from,
+                    max: boundsForFilters.to
                   }}
                 />
                 <TextField
@@ -693,8 +731,8 @@ export default function TournamentWeekReportSection({
                   onChange={e => setDraftTo(e.target.value)}
                   InputLabelProps={{ shrink: true }}
                   inputProps={{
-                    min: weekBounds.from,
-                    max: weekBounds.to
+                    min: boundsForFilters.from,
+                    max: boundsForFilters.to
                   }}
                 />
               </Stack>
@@ -705,8 +743,8 @@ export default function TournamentWeekReportSection({
           <Button
             onClick={() => {
               setDraftOrigin('all')
-              setDraftFrom(weekBounds.from)
-              setDraftTo(weekBounds.to)
+              setDraftFrom(boundsForFilters.from)
+              setDraftTo(boundsForFilters.to)
             }}
             sx={{ textTransform: 'none' }}
           >

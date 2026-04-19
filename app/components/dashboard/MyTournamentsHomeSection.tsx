@@ -24,6 +24,7 @@ export default function MyTournamentsHomeSection({
   const router = useRouter()
   const [weekAnchor, setWeekAnchor] = useState(() => new Date())
   const [customOpen, setCustomOpen] = useState(false)
+  const [allTimeMode, setAllTimeMode] = useState(false)
 
   if (!showPageHeading) {
     return (
@@ -64,21 +65,29 @@ export default function MyTournamentsHomeSection({
                 color="text.secondary"
                 sx={{ maxWidth: 720, mt: 1.25, lineHeight: 1.6 }}
               >
-                Elige la semana y separa torneos del calendario de la tienda de
-                los que registras como custom. En cada tarjeta verás récord y
-                detalle al abrir la vista completa.
+                {allTimeMode
+                  ? 'Vista de todos tus torneos en los que participas (oficiales y custom), más recientes primero. Usa «Vista por semana» en la tarjeta para volver al calendario semanal.'
+                  : 'Elige la semana y separa torneos del calendario de la tienda de los que registras como custom. En cada tarjeta verás récord y detalle al abrir la vista completa.'}
               </Typography>
             </Box>
           </Stack>
 
-          <WeekAnchorToolbar
-            weekAnchor={weekAnchor}
-            onWeekAnchorChange={setWeekAnchor}
-          />
+          {!allTimeMode ? (
+            <WeekAnchorToolbar
+              weekAnchor={weekAnchor}
+              onWeekAnchorChange={setWeekAnchor}
+            />
+          ) : null}
 
           <TournamentWeekReportSection
-            key={startOfWeekMonday(weekAnchor).getTime()}
+            key={
+              allTimeMode
+                ? 'all-time'
+                : String(startOfWeekMonday(weekAnchor).getTime())
+            }
             weekAnchor={weekAnchor}
+            allTimeMode={allTimeMode}
+            onAllTimeModeChange={setAllTimeMode}
             onOpenCreateCustomDialog={() => setCustomOpen(true)}
           />
 
