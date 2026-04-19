@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import Button from "@mui/material/Button";
 import Checkbox from "@mui/material/Checkbox";
 import Dialog from "@mui/material/Dialog";
@@ -46,16 +46,25 @@ function defaultStartsAtIsoForWeek(weekAnchor: Date): string {
   return `${y}-${m}-${day}T${h}:${min}`;
 }
 
+type CreateCustomMutation = ReturnType<typeof useCreateCustomTournament>;
+
+type ReportCustomTournamentFormProps = {
+  weekAnchor: Date;
+  onClose: () => void;
+  onCreated: (eventId: string) => void;
+  createTournament: CreateCustomMutation;
+};
+
 /**
- * Crear torneo Pokémon personal (nombre, fecha y posición opcional) sin depender del calendario de la tienda.
+ * Formulario montado solo mientras el diálogo está abierto: estado inicial fresco por apertura
+ * (sin useEffect al abrir).
  */
-export default function ReportCustomTournamentDialog({
-  open,
-  onClose,
+function ReportCustomTournamentForm({
   weekAnchor,
+  onClose,
   onCreated,
-}: ReportCustomTournamentDialogProps) {
-  const createTournament = useCreateCustomTournament();
+  createTournament,
+}: ReportCustomTournamentFormProps) {
   const [title, setTitle] = useState("");
   const [startsAtLocal, setStartsAtLocal] = useState(() =>
     defaultStartsAtIsoForWeek(weekAnchor),
@@ -64,16 +73,6 @@ export default function ReportCustomTournamentDialog({
   const [categoryIndex, setCategoryIndex] = useState(2);
   const [placeStr, setPlaceStr] = useState("");
   const [placementDnf, setPlacementDnf] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setStartsAtLocal(defaultStartsAtIsoForWeek(weekAnchor));
-      setIncludePlacement(false);
-      setCategoryIndex(2);
-      setPlaceStr("");
-      setPlacementDnf(false);
-    }
-  }, [open, weekAnchor]);
 
   const handleClose = useCallback(() => {
     if (!createTournament.isPending) onClose();
@@ -113,13 +112,8 @@ export default function ReportCustomTournamentDialog({
         ...(placement ? { placement } : {}),
       },
       {
-        onSuccess: (data) => {
+        onSuccess: (data: { ok: boolean; eventId: string }) => {
           onCreated(data.eventId);
-          setTitle("");
-          setIncludePlacement(false);
-          setCategoryIndex(2);
-          setPlaceStr("");
-          setPlacementDnf(false);
           onClose();
         },
       },
@@ -139,14 +133,13 @@ export default function ReportCustomTournamentDialog({
     (!includePlacement || placementDnf || !placeInvalid);
 
   return (
-    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-      <DialogTitle>Reportar torneo custom</DialogTitle>
+    <>
+      <DialogTitle>Reportar torneo</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 1 }}>
           <Typography variant="body2" color="text.secondary">
             Registra un torneo que no esté en el calendario de la tienda. Tu récord W‑L‑T se
-            calculará con las rondas que reportes (hasta 20). Puedes indicar tu posición final
-            para verla en el resumen junto a torneos oficiales.
+            calculará con las rondas que reportes. Puedes indicar tu posición final.
           </Typography>
           <TextField
             label="Nombre del torneo"
@@ -245,6 +238,36 @@ export default function ReportCustomTournamentDialog({
           Crear y abrir
         </Button>
       </DialogActions>
+    </>
+  );
+}
+
+/**
+ * Crear torneo Pokémon personal (nombre, fecha y posición opcional) sin depender del calendario de la tienda.
+ */
+export default function ReportCustomTournamentDialog({
+  open,
+  onClose,
+  weekAnchor,
+  onCreated,
+}: ReportCustomTournamentDialogProps) {
+  const createTournament = useCreateCustomTournament();
+
+  const handleClose = useCallback(() => {
+    if (!createTournament.isPending) onClose();
+  }, [createTournament.isPending, onClose]);
+
+  return (
+    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
+      {open ? (
+        <ReportCustomTournamentForm
+          key={weekAnchor.getTime()}
+          weekAnchor={weekAnchor}
+          onClose={onClose}
+          onCreated={onCreated}
+          createTournament={createTournament}
+        />
+      ) : null}
     </Dialog>
   );
 }

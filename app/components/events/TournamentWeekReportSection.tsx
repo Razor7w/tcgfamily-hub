@@ -115,7 +115,10 @@ export default function TournamentWeekReportSection({
   const { data, isPending, isError, error, refetch } =
     useMyTournamentsWeekReport(weekAnchor);
 
-  const list = data?.tournaments ?? [];
+  const list = useMemo(
+    () => data?.tournaments ?? [],
+    [data?.tournaments],
+  );
   const officialOnly = useMemo(
     () => list.filter(isOfficial),
     [list],
@@ -211,7 +214,7 @@ export default function TournamentWeekReportSection({
               width: { xs: "100%", sm: "auto" },
             }}
           >
-            Reportar torneo custom
+            Reportar torneo
           </Button>
         </Box>
       ) : null}
