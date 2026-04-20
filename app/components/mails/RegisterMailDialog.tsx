@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import {
   Alert,
   Box,
@@ -10,6 +11,9 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
+  Popover,
+  Stack,
   TextField,
   Typography
 } from '@mui/material'
@@ -19,6 +23,9 @@ import { useMailRegisterQuota, useRegisterMail } from '@/hooks/useMails'
 import { MAIL_REGISTER_DAILY_LIMIT } from '@/lib/mail-register-constants'
 
 const OBS_MAX = 2000
+
+const REGISTER_MAIL_HELP_TEXT =
+  'Ingresa el RUT del receptor. El correo quedará como pendiente de ingreso en tienda hasta que la tienda lo confirme. Se generará un código único: úsalo para identificar el envío en tienda y, una vez ingresado el paquete, para solicitar o retirar con el mismo código.'
 
 export type RegisterMailDialogProps = {
   open: boolean
@@ -54,7 +61,10 @@ export default function RegisterMailDialog({
   const [observations, setObservations] = useState('')
   const [submitAttempted, setSubmitAttempted] = useState(false)
 
+  const [helpAnchor, setHelpAnchor] = useState<HTMLElement | null>(null)
+
   const handleClose = () => {
+    setHelpAnchor(null)
     setRut('')
     setObservations('')
     setSubmitAttempted(false)
@@ -90,17 +100,55 @@ export default function RegisterMailDialog({
       scroll="paper"
       aria-labelledby="register-mail-title"
     >
-      <DialogTitle id="register-mail-title">Registrar correo</DialogTitle>
+      <DialogTitle
+        id="register-mail-title"
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.5,
+          pr: 1,
+          pb: 1.5
+        }}
+      >
+        <Typography
+          component="span"
+          variant="h6"
+          sx={{ flex: 1, fontWeight: 700 }}
+        >
+          Registrar correo
+        </Typography>
+        <IconButton
+          size="small"
+          aria-label="Información sobre registrar correo"
+          aria-expanded={Boolean(helpAnchor)}
+          onClick={e => setHelpAnchor(e.currentTarget)}
+          edge="end"
+        >
+          <InfoOutlinedIcon fontSize="small" />
+        </IconButton>
+      </DialogTitle>
+      <Popover
+        open={Boolean(helpAnchor)}
+        anchorEl={helpAnchor}
+        onClose={() => setHelpAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        slotProps={{
+          paper: {
+            sx: { maxWidth: 340, p: 2 }
+          }
+        }}
+      >
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ lineHeight: 1.55 }}
+        >
+          {REGISTER_MAIL_HELP_TEXT}
+        </Typography>
+      </Popover>
       <DialogContent dividers>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1 }}>
-          <Typography variant="body2" color="text.secondary">
-            Ingresa el RUT del receptor. El correo quedará como{' '}
-            <strong>pendiente de ingreso en tienda</strong> hasta que la tienda
-            lo confirme. Se generará un <strong>código único</strong>: úsalo
-            para identificar el envío en tienda y, una vez ingresado el paquete,
-            para <strong>solicitar o retirar</strong> con el mismo código.
-          </Typography>
-
           <TextField
             label="RUT receptor"
             placeholder="12.345.678-5"
@@ -155,26 +203,73 @@ export default function RegisterMailDialog({
         sx={{
           px: 3,
           py: 2,
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: 'stretch',
           justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 1
+          gap: { xs: 0, sm: 1 }
         }}
       >
+        <Stack
+          spacing={1.5}
+          sx={{
+            width: '100%',
+            display: { xs: 'flex', sm: 'none' }
+          }}
+        >
+          <Stack direction="row" spacing={1} sx={{ width: '100%' }}>
+            <Button
+              fullWidth
+              onClick={handleClose}
+              disabled={registerMail.isPending || quotaLoading}
+              sx={{ py: 1 }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              fullWidth
+              onClick={handleSubmit}
+              variant="contained"
+              disabled={
+                registerMail.isPending ||
+                quotaLoading ||
+                quotaError ||
+                quotaBlocked
+              }
+              sx={{ py: 1, fontWeight: 700 }}
+            >
+              {registerMail.isPending ? 'Registrando…' : 'Registrar'}
+            </Button>
+          </Stack>
+          <Button
+            component={Link}
+            href="/dashboard/mail/registrar-multiples"
+            onClick={handleClose}
+            color="primary"
+            fullWidth
+            variant="text"
+            disabled={registerMail.isPending || quotaLoading}
+            sx={{ fontWeight: 700 }}
+          >
+            Cargar múltiples
+          </Button>
+        </Stack>
+
         <Button
           component={Link}
           href="/dashboard/mail/registrar-multiples"
           onClick={handleClose}
           color="primary"
           disabled={registerMail.isPending || quotaLoading}
+          sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
         >
           Cargar múltiples
         </Button>
         <Box
           sx={{
-            display: 'flex',
+            display: { xs: 'none', sm: 'flex' },
             gap: 1,
             flexWrap: 'wrap',
-            ml: { xs: 0, sm: 'auto' }
+            ml: 'auto'
           }}
         >
           <Button
