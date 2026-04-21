@@ -6,6 +6,7 @@ import {
   MAIL_REGISTER_DAILY_LIMIT,
   MAIL_REGISTER_DAILY_LIMIT_ADMIN_MAX
 } from '@/lib/mail-register-constants'
+import { invalidateMailRegisterDailyLimitCache } from '@/lib/mail-register-daily'
 import {
   mergeDashboardSettings,
   normalizeDashboardOrder,
@@ -173,6 +174,10 @@ export async function PUT(request: NextRequest) {
     }
 
     await doc.save()
+
+    if (updatingMailRegisterLimit) {
+      invalidateMailRegisterDailyLimitCache()
+    }
 
     const dShortcuts = doc.shortcuts as
       | DashboardModuleSettingsDTO['shortcuts']
