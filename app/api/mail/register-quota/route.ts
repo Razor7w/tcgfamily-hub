@@ -14,8 +14,10 @@ export async function GET() {
     }
 
     await connectDB()
-    const usedToday = await countMailsRegisteredTodayBySender(session.user.id)
-    const limit = await getMailRegisterDailyLimit()
+    const [usedToday, limit] = await Promise.all([
+      countMailsRegisteredTodayBySender(session.user.id),
+      getMailRegisterDailyLimit()
+    ])
     const remaining = Math.max(0, limit - usedToday)
 
     return NextResponse.json(

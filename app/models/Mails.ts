@@ -32,4 +32,7 @@ const MailSchema = new Schema<IMail>(
   }
 )
 
+/** Cuota diaria por emisor: equality on fromUserId + range on createdAt */
+MailSchema.index({ fromUserId: 1, createdAt: 1 })
+
 export default mongoose.models.Mail || mongoose.model<IMail>('Mail', MailSchema)

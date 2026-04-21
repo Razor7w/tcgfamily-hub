@@ -135,6 +135,8 @@ export async function POST(request: NextRequest) {
     let resolvedFromUserId: string | null = null
     let resolvedToUserId: string | null = null
     let resolvedToRut: string | null = null
+    /** Evita un segundo `findById` cuando el emisor ya se cargó desde la sesión. */
+    let cachedFromUser: InstanceType<typeof User> | null = null
 
     if (adminFullCreate) {
       // Admin en panel: emisor y destinatario por ID
@@ -168,6 +170,7 @@ export async function POST(request: NextRequest) {
           { status: 404 }
         )
       }
+      cachedFromUser = fromUser
       resolvedFromUserId = String(fromUser._id)
       resolvedToRut = formatRut(cleanRut(toRut))
       const maybeUser = await findUserByRut(toRut)
@@ -183,7 +186,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar existencia de IDs (admin) o resueltos (usuario)
-    const fromUser = await User.findById(resolvedFromUserId)
+    const fromUser =
+      cachedFromUser &&
+      String(cachedFromUser._id) === String(resolvedFromUserId)
+        ? cachedFromUser
+        : await User.findById(resolvedFromUserId)
     if (!fromUser) {
       return NextResponse.json(
         { error: `El usuario con ID ${resolvedFromUserId} no existe` },
@@ -214,10 +221,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (!adminFullCreate) {
-      const usedToday = await countMailsRegisteredTodayBySender(
-        session.user.id as string
-      )
-      const dailyLimit = await getMailRegisterDailyLimit()
+      const [usedToday, dailyLimit] = await Promise.all([
+        countMailsRegisteredTodayBySender(session.user.id as string),
+        getMailRegisterDailyLimit()
+      ])
       if (usedToday >= dailyLimit) {
         return NextResponse.json(
           {

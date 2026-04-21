@@ -82,4 +82,6 @@ const UserSchema = new Schema<IUser>(
   }
 )
 
+UserSchema.index({ rut: 1 })
+
 export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema)
