@@ -6,6 +6,7 @@ import {
   EmojiEvents,
   Event,
   Home,
+  Layers,
   Person
 } from '@mui/icons-material'
 import {
@@ -83,6 +84,14 @@ export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
               </ListItemButton>
             </ListItem>
           ) : null}
+          <ListItem disablePadding>
+            <ListItemButton href="/dashboard/decklists">
+              <ListItemIcon>
+                <Layers />
+              </ListItemIcon>
+              <ListItemText primary="Decklists" />
+            </ListItemButton>
+          </ListItem>
           <ListItem disablePadding>
             <ListItemButton href="/dashboard/perfil">
               <ListItemIcon>
