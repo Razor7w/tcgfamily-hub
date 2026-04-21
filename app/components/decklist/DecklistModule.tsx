@@ -36,18 +36,47 @@ function SectionCard({
   totalLabel: string
   lines: { count: number; name: string; set: string; number: number }[]
 }) {
+  const theme = useTheme()
   return (
-    <Paper variant="outlined" sx={{ overflow: 'hidden', borderRadius: 2 }}>
+    <Paper
+      elevation={0}
+      sx={{
+        overflow: 'hidden',
+        borderRadius: 2,
+        border: '1px solid',
+        borderColor: 'divider',
+        boxShadow: `0 14px 32px -20px ${alpha(theme.palette.mode === 'dark' ? '#000000' : theme.palette.primary.dark, theme.palette.mode === 'dark' ? 0.5 : 0.14)}`
+      }}
+    >
       <Box
         sx={{
-          px: 1.5,
-          py: 1,
-          bgcolor: 'grey.900',
-          color: 'common.white'
+          px: 1.75,
+          py: 1.1,
+          background: `linear-gradient(115deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 92%)`,
+          color: theme.palette.primary.contrastText
         }}
       >
-        <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
-          {title} ({totalLabel})
+        <Typography
+          component="div"
+          variant="subtitle2"
+          sx={{
+            fontWeight: 800,
+            letterSpacing: '-0.02em',
+            textWrap: 'balance'
+          }}
+        >
+          {title}{' '}
+          <Box
+            component="span"
+            sx={{
+              fontWeight: 700,
+              opacity: 0.92,
+              fontVariantNumeric: 'tabular-nums',
+              typography: 'caption'
+            }}
+          >
+            ({totalLabel})
+          </Box>
         </Typography>
       </Box>
       <Box sx={{ bgcolor: 'background.paper' }}>
@@ -56,26 +85,45 @@ function SectionCard({
             key={`${l.set}-${l.number}-${idx}`}
             sx={{
               px: 1.5,
-              py: 0.85,
+              py: 0.9,
               borderTop: idx === 0 ? 0 : 1,
               borderColor: 'divider',
               display: 'flex',
-              gap: 1,
-              alignItems: 'baseline'
+              gap: 1.25,
+              alignItems: 'baseline',
+              transition: 'background-color 0.2s ease',
+              '&:hover': {
+                bgcolor: alpha(theme.palette.primary.main, 0.045)
+              }
             }}
           >
             <Typography
               variant="body2"
-              sx={{ fontWeight: 800, minWidth: 18, textAlign: 'right' }}
+              sx={{
+                fontWeight: 800,
+                minWidth: 22,
+                textAlign: 'right',
+                fontVariantNumeric: 'tabular-nums',
+                color: 'primary.main'
+              }}
             >
               {l.count}
             </Typography>
-            <Typography variant="body2" sx={{ flex: 1, minWidth: 0 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                lineHeight: 1.55,
+                textWrap: 'pretty'
+              }}
+            >
               {l.name}{' '}
               <Typography
                 component="span"
                 variant="body2"
                 color="text.secondary"
+                sx={{ fontWeight: 500 }}
               >
                 ({l.set}-{l.number})
               </Typography>
@@ -115,11 +163,15 @@ function DeckImageDialog({
       sx={{
         p: { xs: 1, sm: 2.5 },
         borderRadius: 0,
-        bgcolor: '#1b1b1b',
-        backgroundImage:
-          'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.06), transparent 45%), radial-gradient(circle at 80% 30%, rgba(255,255,255,0.05), transparent 55%), radial-gradient(circle at 50% 80%, rgba(255,255,255,0.05), transparent 55%)',
+        bgcolor: theme.palette.background.default,
+        backgroundImage: `radial-gradient(circle at 18% 18%, ${alpha(theme.palette.primary.light, 0.09)}, transparent 44%), radial-gradient(circle at 82% 12%, ${alpha(theme.palette.primary.main, 0.07)}, transparent 48%), radial-gradient(circle at 50% 88%, ${alpha('#ffffff', 0.04)}, transparent 52%)`,
         border: '1px solid',
-        borderColor: alpha('#ffffff', 0.08)
+        borderColor: alpha(
+          theme.palette.mode === 'dark'
+            ? theme.palette.common.white
+            : theme.palette.primary.dark,
+          0.1
+        )
       }}
     >
       <Box
@@ -153,19 +205,19 @@ function DeckImageDialog({
                 position: 'relative',
                 borderRadius: 0,
                 overflow: 'hidden',
-                boxShadow: '0 10px 26px rgba(0,0,0,0.35)',
+                boxShadow: `0 12px 28px ${alpha(theme.palette.primary.dark, 0.28)}`,
                 border: '1px solid',
-                borderColor: alpha('#ffffff', 0.08),
+                borderColor: alpha(theme.palette.common.white, 0.1),
                 cursor: 'zoom-in',
                 outline: 'none',
-                transition: 'transform 140ms ease, box-shadow 140ms ease',
+                transition:
+                  'transform 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1)',
                 '&:hover': {
-                  transform: 'translateY(-1px)',
-                  boxShadow: '0 14px 30px rgba(0,0,0,0.42)'
+                  transform: 'translateY(-2px)',
+                  boxShadow: `0 18px 36px ${alpha(theme.palette.primary.dark, 0.38)}`
                 },
                 '&:focus-visible': {
-                  boxShadow:
-                    '0 0 0 3px rgba(255,255,255,0.35), 0 14px 30px rgba(0,0,0,0.42)'
+                  boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.light, 0.45)}, 0 18px 36px ${alpha(theme.palette.primary.dark, 0.38)}`
                 }
               }}
             >
@@ -188,14 +240,16 @@ function DeckImageDialog({
                   width: { xs: 24, sm: 30 },
                   height: { xs: 24, sm: 30 },
                   borderRadius: 999,
-                  bgcolor: '#9b1b2e',
-                  color: 'common.white',
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
                   display: 'grid',
                   placeItems: 'center',
                   fontWeight: 900,
                   fontSize: { xs: 12, sm: 14 },
-                  border: '2px solid rgba(255,255,255,0.9)',
-                  boxShadow: '0 10px 20px rgba(0,0,0,0.35)'
+                  fontVariantNumeric: 'tabular-nums',
+                  border: '2px solid',
+                  borderColor: alpha(theme.palette.common.white, 0.88),
+                  boxShadow: `0 10px 22px ${alpha(theme.palette.primary.dark, 0.35)}`
                 }}
               >
                 {c.count}
@@ -237,8 +291,10 @@ function DeckImageDialog({
               borderColor: 'divider'
             }}
           >
-            <Typography sx={{ fontWeight: 900, flex: 1 }}>
-              Deck image
+            <Typography
+              sx={{ fontWeight: 800, flex: 1, letterSpacing: '-0.02em' }}
+            >
+              Vista en imágenes
             </Typography>
             <IconButton onClick={handleClose} aria-label="Cerrar">
               <CloseIcon />
@@ -262,7 +318,9 @@ function DeckImageDialog({
           fullWidth
           scroll="paper"
         >
-          <DialogTitle sx={{ fontWeight: 800 }}>Deck image</DialogTitle>
+          <DialogTitle sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>
+            Vista en imágenes
+          </DialogTitle>
           <DialogContent dividers>{grid}</DialogContent>
           <DialogActions sx={{ px: 3, py: 2 }}>
             <Button onClick={handleClose}>Cerrar</Button>
@@ -456,8 +514,12 @@ export default function DecklistModule({ value, title }: DecklistModuleProps) {
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: '1.2fr 1.2fr 0.8fr' },
-          gap: 2,
+          gridTemplateColumns: {
+            xs: '1fr',
+            sm: 'repeat(2, minmax(0, 1fr))',
+            md: '1.15fr 1.15fr 0.88fr'
+          },
+          gap: { xs: 2, md: 2.5 },
           alignItems: 'start'
         }}
       >
@@ -471,31 +533,60 @@ export default function DecklistModule({ value, title }: DecklistModuleProps) {
           totalLabel={String(trainerTotal)}
           lines={trainer}
         />
-        <Stack spacing={2}>
+        <Stack
+          spacing={2}
+          sx={{
+            gridColumn: { xs: 'auto', sm: '1 / -1', md: 'auto' },
+            width: '100%'
+          }}
+        >
           <SectionCard
             title="Energy"
             totalLabel={String(energyTotal)}
             lines={energy}
           />
 
-          <Stack spacing={1.25}>
-            <Button
-              variant="contained"
-              onClick={() => setImageOpen(true)}
-              sx={{ fontWeight: 800, textTransform: 'none' }}
-            >
-              Open as Image
-            </Button>
-          </Stack>
+          <Button
+            variant="contained"
+            color="primary"
+            fullWidth
+            onClick={() => setImageOpen(true)}
+            sx={{
+              fontWeight: 700,
+              py: 1.15,
+              borderRadius: 1.5,
+              boxShadow: theme =>
+                theme.palette.mode === 'dark'
+                  ? `0 8px 24px ${alpha(theme.palette.primary.main, 0.25)}`
+                  : `0 8px 22px ${alpha(theme.palette.primary.dark, 0.22)}`,
+              '&:hover': {
+                boxShadow: theme =>
+                  theme.palette.mode === 'dark'
+                    ? `0 12px 28px ${alpha(theme.palette.primary.main, 0.32)}`
+                    : `0 12px 26px ${alpha(theme.palette.primary.dark, 0.28)}`
+              }
+            }}
+          >
+            Ver como imagen
+          </Button>
         </Stack>
       </Box>
 
       {parsed.unknownLines.length > 0 ? (
-        <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: 1.75,
+            borderRadius: 2,
+            border: '1px dashed',
+            borderColor: 'warning.main',
+            bgcolor: theme => alpha(theme.palette.warning.main, 0.06)
+          }}
+        >
           <Typography
             variant="caption"
             color="text.secondary"
-            sx={{ fontWeight: 700 }}
+            sx={{ fontWeight: 700, letterSpacing: '0.02em' }}
           >
             Líneas no reconocidas
           </Typography>
