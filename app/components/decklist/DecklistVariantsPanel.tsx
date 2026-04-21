@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import AddIcon from '@mui/icons-material/Add'
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import StarRoundedIcon from '@mui/icons-material/StarRounded'
@@ -19,7 +20,11 @@ import Tabs from '@mui/material/Tabs'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
+import Snackbar from '@mui/material/Snackbar'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { alpha, useTheme } from '@mui/material/styles'
+import DecklistCompareDialog from '@/components/decklist/DecklistCompareDialog'
 import DecklistModule from '@/components/decklist/DecklistModule'
 import {
   DECKLIST_VARIANT_LABEL_MAX,
@@ -55,8 +60,13 @@ export default function DecklistVariantsPanel({
   }, [router])
 
   const [tab, setTab] = useState<string>('principal')
+  /** En pestaña Principal: listado en uso vs listado base (referencia), si el principal es una variante. */
+  const [principalView, setPrincipalView] = useState<'main' | 'baseRef'>('main')
   /** Tras crear variante: cambiar pestaña solo cuando el servidor ya la devuelve en `variants`. */
   const [pendingOpenTabId, setPendingOpenTabId] = useState<string | null>(null)
+  const [compareOpen, setCompareOpen] = useState(false)
+  const [compareSession, setCompareSession] = useState(0)
+  const [principalToastOpen, setPrincipalToastOpen] = useState(false)
 
   const resolvedTab = useMemo(() => {
     if (tab === 'principal') return 'principal'
@@ -74,6 +84,10 @@ export default function DecklistVariantsPanel({
       setPendingOpenTabId(null)
     }
   }, [variants, pendingOpenTabId])
+
+  useEffect(() => {
+    if (resolvedTab !== 'principal') setPrincipalView('main')
+  }, [resolvedTab])
 
   const [addOpen, setAddOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -211,7 +225,7 @@ export default function DecklistVariantsPanel({
   const handleUseVariantAsPrincipal = async () => {
     if (!editing) return
     await patchPrincipalVariant(editing.id)
-    setTab('principal')
+    setPrincipalToastOpen(true)
   }
 
   const handleUseBaseDeckAsPrincipal = async () => {
@@ -245,12 +259,31 @@ export default function DecklistVariantsPanel({
     }
   }
 
-  const activeDeckText =
+  const activeDeckText = useMemo(() => {
+    if (resolvedTab === 'principal') {
+      if (principalVariantId && principalView === 'baseRef') {
+        return baseDeckText
+      }
+      return principalDisplayText
+    }
+    return variants.find(v => v.id === resolvedTab)?.deckText ?? ''
+  }, [
+    resolvedTab,
+    principalVariantId,
+    principalView,
+    baseDeckText,
+    principalDisplayText,
+    variants
+  ])
+
+  const deckModuleKey =
     resolvedTab === 'principal'
-      ? principalDisplayText
-      : (variants.find(v => v.id === resolvedTab)?.deckText ?? '')
+      ? `principal-${principalVariantId ?? 'root'}-${principalView}`
+      : resolvedTab
 
   const atVariantLimit = variants.length >= DECKLIST_VARIANTS_MAX
+
+  const canCompare = variants.length > 0
 
   const principalLabel = principalVariantId
     ? (variants.find(v => v.id === principalVariantId)?.label ?? 'Variante')
@@ -306,23 +339,47 @@ export default function DecklistVariantsPanel({
             >
               Listas del mazo
             </Typography>
-            <Button
-              size="small"
-              variant="outlined"
-              color="primary"
-              startIcon={<AddIcon />}
-              disabled={atVariantLimit || pending}
-              onClick={openAdd}
-              sx={{
-                fontWeight: 600,
-                textTransform: 'none',
-                alignSelf: { xs: 'stretch', sm: 'center' },
-                transition: 'transform 0.15s ease, box-shadow 0.2s ease',
-                '&:active': { transform: 'translateY(1px) scale(0.99)' }
-              }}
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              alignItems={{ xs: 'stretch', sm: 'center' }}
             >
-              Añadir variante
-            </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                color="secondary"
+                startIcon={<CompareArrowsIcon />}
+                disabled={!canCompare || pending}
+                onClick={() => {
+                  setCompareSession(s => s + 1)
+                  setCompareOpen(true)
+                }}
+                sx={{
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  transition: 'transform 0.15s ease, box-shadow 0.2s ease',
+                  '&:active': { transform: 'translateY(1px) scale(0.99)' }
+                }}
+              >
+                Comparar listados
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                color="primary"
+                startIcon={<AddIcon />}
+                disabled={atVariantLimit || pending}
+                onClick={openAdd}
+                sx={{
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  transition: 'transform 0.15s ease, box-shadow 0.2s ease',
+                  '&:active': { transform: 'translateY(1px) scale(0.99)' }
+                }}
+              >
+                Añadir variante
+              </Button>
+            </Stack>
           </Stack>
 
           <Tabs
@@ -398,29 +455,73 @@ export default function DecklistVariantsPanel({
           </Tabs>
 
           {resolvedTab === 'principal' && principalVariantId ? (
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={1}
-              alignItems={{ xs: 'flex-start', sm: 'center' }}
-              sx={{ pb: 0.5, px: { xs: 0.5, sm: 0 } }}
-            >
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                fontWeight={600}
+            <Stack spacing={1.25} sx={{ pb: 0.5, px: { xs: 0.5, sm: 0 } }}>
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={1}
+                alignItems={{ xs: 'flex-start', sm: 'center' }}
+                justifyContent="space-between"
+                gap={1}
               >
-                Listado principal: variante «{principalLabel}»
-              </Typography>
-              <Button
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  fontWeight={600}
+                  sx={{
+                    maxWidth: '62ch',
+                    lineHeight: 1.55,
+                    textWrap: 'pretty'
+                  }}
+                >
+                  El listado principal es la variante «{principalLabel}». El
+                  listado base es el texto guardado al crear el mazo
+                  (referencia).
+                </Typography>
+                <Button
+                  size="small"
+                  variant="text"
+                  color="inherit"
+                  onClick={() => void handleUseBaseDeckAsPrincipal()}
+                  disabled={pending}
+                  sx={{
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    flexShrink: 0,
+                    transition: 'color 0.2s ease',
+                    '&:hover': { color: 'primary.main' }
+                  }}
+                >
+                  Usar listado base como principal
+                </Button>
+              </Stack>
+              <ToggleButtonGroup
+                exclusive
                 size="small"
-                variant="text"
-                color="inherit"
-                onClick={() => void handleUseBaseDeckAsPrincipal()}
-                disabled={pending}
-                sx={{ fontWeight: 600, textTransform: 'none' }}
+                value={principalView}
+                onChange={(_e, v) => {
+                  if (v !== null) setPrincipalView(v)
+                }}
+                aria-label="Vista del listado principal"
+                sx={{
+                  alignSelf: { xs: 'stretch', sm: 'flex-start' },
+                  '& .MuiToggleButton-root': {
+                    px: 1.5,
+                    py: 0.65,
+                    fontWeight: 600,
+                    textTransform: 'none'
+                  }
+                }}
               >
-                Usar listado base del mazo
-              </Button>
+                <ToggleButton
+                  value="main"
+                  aria-label="Mostrar listado principal"
+                >
+                  Listado en uso (principal)
+                </ToggleButton>
+                <ToggleButton value="baseRef" aria-label="Mostrar listado base">
+                  Listado base (referencia)
+                </ToggleButton>
+              </ToggleButtonGroup>
             </Stack>
           ) : null}
 
@@ -476,8 +577,33 @@ export default function DecklistVariantsPanel({
       </Box>
 
       <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
-        <DecklistModule key={resolvedTab} value={activeDeckText} />
+        <DecklistModule key={deckModuleKey} value={activeDeckText} />
       </Box>
+
+      <DecklistCompareDialog
+        key={compareSession}
+        open={compareOpen}
+        onClose={() => setCompareOpen(false)}
+        baseDeckText={baseDeckText}
+        variants={variants}
+      />
+
+      <Snackbar
+        open={principalToastOpen}
+        autoHideDuration={5000}
+        onClose={() => setPrincipalToastOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setPrincipalToastOpen(false)}
+          severity="success"
+          variant="filled"
+          sx={{ fontWeight: 600 }}
+        >
+          Listado principal actualizado. Sigues en esta variante para seguir
+          editándola o comparando.
+        </Alert>
+      </Snackbar>
 
       <Dialog
         open={addOpen}
