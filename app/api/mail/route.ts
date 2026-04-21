@@ -27,6 +27,8 @@ function todayPrefix(date = new Date()) {
 
 async function generateNextMailCode() {
   const prefix = todayPrefix()
+  // Regex con prefijo fijo por día (no usar $gte/$lt sobre DD-MM-YYYY: el orden lexicográfico
+  // no coincide con el orden de fechas entre meses/años).
   const last = await Mail.findOne({ code: { $regex: `^${prefix}` } })
     .sort({ code: -1 })
     .select({ code: 1 })
@@ -56,20 +58,23 @@ async function findUserByRut(input: string) {
   const formattedDots = formatRut(cleaned) // default dots true
   const formattedNoDots = formatRut(cleaned, { dots: false })
 
-  // Intentos: exact match por variantes comunes
-  const user =
-    (await User.findOne({
-      rut: { $in: [formattedDots, formattedNoDots, cleaned] }
-    })) ??
-    (await User.findOne({
-      rut: { $regex: `^${formattedDots}$`, $options: 'i' }
-    })) ??
-    (await User.findOne({
-      rut: { $regex: `^${formattedNoDots}$`, $options: 'i' }
-    })) ??
-    (await User.findOne({ rut: { $regex: `^${cleaned}$`, $options: 'i' } }))
+  // Índice { rut: 1 }: una sola búsqueda por variantes exactas (caso habitual)
+  const exact = await User.findOne({
+    rut: { $in: [formattedDots, formattedNoDots, cleaned] }
+  })
+  if (exact) return exact
 
-  return user
+  // Fallbacks (formatos legacy): en paralelo para no encadenar 3 round-trips
+  const [byDots, byNoDots, byCleaned] = await Promise.all([
+    User.findOne({
+      rut: { $regex: `^${formattedDots}$`, $options: 'i' }
+    }),
+    User.findOne({
+      rut: { $regex: `^${formattedNoDots}$`, $options: 'i' }
+    }),
+    User.findOne({ rut: { $regex: `^${cleaned}$`, $options: 'i' } })
+  ])
+  return byDots ?? byNoDots ?? byCleaned
 }
 
 // GET - listar mails
@@ -137,6 +142,8 @@ export async function POST(request: NextRequest) {
     let resolvedToRut: string | null = null
     /** Evita un segundo `findById` cuando el emisor ya se cargó desde la sesión. */
     let cachedFromUser: InstanceType<typeof User> | null = null
+    /** Evita `findById` del receptor cuando ya se resolvió con `findUserByRut`. */
+    let cachedToUserFromRut: InstanceType<typeof User> | null = null
 
     if (adminFullCreate) {
       // Admin en panel: emisor y destinatario por ID
@@ -174,6 +181,7 @@ export async function POST(request: NextRequest) {
       resolvedFromUserId = String(fromUser._id)
       resolvedToRut = formatRut(cleanRut(toRut))
       const maybeUser = await findUserByRut(toRut)
+      cachedToUserFromRut = maybeUser
       resolvedToUserId = maybeUser ? String(maybeUser._id) : null
     }
 
@@ -199,7 +207,11 @@ export async function POST(request: NextRequest) {
     }
     let toUser: { rut?: unknown } | null = null
     if (resolvedToUserId) {
-      toUser = await User.findById(resolvedToUserId)
+      toUser =
+        cachedToUserFromRut &&
+        String(cachedToUserFromRut._id) === String(resolvedToUserId)
+          ? cachedToUserFromRut
+          : await User.findById(resolvedToUserId)
       if (!toUser) {
         return NextResponse.json(
           { error: `El usuario con ID ${resolvedToUserId} no existe` },
