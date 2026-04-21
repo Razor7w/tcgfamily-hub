@@ -205,14 +205,6 @@ export default function WeeklyEventsSection({
         })
         return
       }
-
-      const btn = dayPickerButtonRefs.current[selectedOffset]
-      if (!btn) return
-      btn.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-        inline: 'nearest'
-      })
     })
     return () => cancelAnimationFrame(id)
   }, [selectedOffset, weekStart])
