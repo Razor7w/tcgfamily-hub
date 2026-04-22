@@ -154,9 +154,6 @@ export default function PlayPokemonDecklistPdfDialog({
     setVariantId(id)
   }
 
-  console.log('offsetX', offsetX)
-  console.log('offsetY', offsetY)
-
   const buildRequestBody = () =>
     JSON.stringify({
       playerName: playerName.trim(),
