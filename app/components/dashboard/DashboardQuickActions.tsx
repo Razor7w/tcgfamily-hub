@@ -8,6 +8,7 @@ import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import ChevronRight from '@mui/icons-material/ChevronRight'
 import MarkunreadMailbox from '@mui/icons-material/MarkunreadMailbox'
+import PictureAsPdf from '@mui/icons-material/PictureAsPdf'
 import SportsEsports from '@mui/icons-material/SportsEsports'
 import type { DashboardShortcutsVisibility } from '@/lib/dashboard-module-config'
 
@@ -15,6 +16,7 @@ type DashboardQuickActionsProps = {
   shortcuts: DashboardShortcutsVisibility
   onRegisterMail: () => void
   onCreateCustomTournament: () => void
+  onPlayPokemonDecklistPdf: () => void
 }
 
 function ActionTile({
@@ -155,14 +157,21 @@ function ActionTile({
 export default function DashboardQuickActions({
   shortcuts,
   onRegisterMail,
-  onCreateCustomTournament
+  onCreateCustomTournament,
+  onPlayPokemonDecklistPdf
 }: DashboardQuickActionsProps) {
-  if (!shortcuts.createMail && !shortcuts.createTournament) {
+  if (
+    !shortcuts.createMail &&
+    !shortcuts.createTournament &&
+    !shortcuts.playPokemonDecklistPdf
+  ) {
     return null
   }
 
   const tileCount =
-    Number(shortcuts.createMail) + Number(shortcuts.createTournament)
+    Number(shortcuts.createMail) +
+    Number(shortcuts.createTournament) +
+    Number(shortcuts.playPokemonDecklistPdf)
 
   return (
     <Box
@@ -215,8 +224,15 @@ export default function DashboardQuickActions({
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns:
-            tileCount === 1 ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))',
+          gridTemplateColumns: {
+            xs: 'minmax(0, 1fr)',
+            sm:
+              tileCount === 1
+                ? 'minmax(0, 1fr)'
+                : tileCount === 2
+                  ? 'repeat(2, minmax(0, 1fr))'
+                  : 'repeat(3, minmax(0, 1fr))'
+          },
           gap: { xs: 1, sm: 2 }
         }}
       >
@@ -234,6 +250,14 @@ export default function DashboardQuickActions({
             title="Reportar torneo"
             description="Registra un torneo personal."
             onClick={onCreateCustomTournament}
+          />
+        ) : null}
+        {shortcuts.playPokemonDecklistPdf ? (
+          <ActionTile
+            icon={<PictureAsPdf sx={{ fontSize: { xs: 22, sm: 26 } }} />}
+            title="PDF de listas"
+            description="Hoja oficial Play! Pokémon (PDF)."
+            onClick={onPlayPokemonDecklistPdf}
           />
         ) : null}
       </Box>

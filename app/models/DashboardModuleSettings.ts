@@ -11,10 +11,11 @@ export interface IDashboardModuleSettings extends Document {
     storePoints: boolean
   }
   order: DashboardModuleId[]
-  /** Accesos rápidos en /dashboard (registrar correo, torneo custom). */
+  /** Accesos rápidos en /dashboard (registrar correo, torneo, PDF de listas). */
   shortcuts?: {
     createMail: boolean
     createTournament: boolean
+    playPokemonDecklistPdf?: boolean
   }
   /** Aviso Resend al usuario cuando el admin marca el envío como recepcionado en tienda. */
   resendNotifyPickupInStoreEnabled: boolean
@@ -37,7 +38,8 @@ const DashboardModuleSettingsSchema = new Schema<IDashboardModuleSettings>(
     },
     shortcuts: {
       createMail: { type: Boolean, default: true },
-      createTournament: { type: Boolean, default: true }
+      createTournament: { type: Boolean, default: true },
+      playPokemonDecklistPdf: { type: Boolean, default: true }
     },
     resendNotifyPickupInStoreEnabled: { type: Boolean, default: true },
     mailRegisterDailyLimit: { type: Number, default: 10, min: 1 }

@@ -5,7 +5,7 @@
  */
 export const PLAY_POKEMON_PDF_CALIBRATION = {
   offsetX: 0,
-  offsetY: 200
+  offsetY: 0
 } as const
 
 export type PlayPokemonPdfCalibration = {

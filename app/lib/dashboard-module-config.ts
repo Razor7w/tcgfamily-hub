@@ -30,11 +30,14 @@ export const DEFAULT_DASHBOARD_ORDER: DashboardModuleId[] = [
 export type DashboardShortcutsVisibility = {
   createMail: boolean
   createTournament: boolean
+  /** Atajo a la página de PDF de listas (Play! Pokémon). */
+  playPokemonDecklistPdf: boolean
 }
 
 export const DEFAULT_DASHBOARD_SHORTCUTS: DashboardShortcutsVisibility = {
   createMail: true,
-  createTournament: true
+  createTournament: true,
+  playPokemonDecklistPdf: true
 }
 
 export type DashboardModuleSettingsDTO = {

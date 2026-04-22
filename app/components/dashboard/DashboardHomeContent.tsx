@@ -276,13 +276,19 @@ export default function DashboardHomeContent() {
 
   const visibleOrdered = order.filter(id => visibility[id])
 
-  const showQuickActions = shortcuts.createMail || shortcuts.createTournament
+  const showQuickActions =
+    shortcuts.createMail ||
+    shortcuts.createTournament ||
+    shortcuts.playPokemonDecklistPdf
 
   const quickActionsBlock = (
     <DashboardQuickActions
       shortcuts={shortcuts}
       onRegisterMail={() => setRegisterMailOpen(true)}
       onCreateCustomTournament={() => setCustomTournamentOpen(true)}
+      onPlayPokemonDecklistPdf={() =>
+        router.push('/dashboard/decklist-pdf-torneo')
+      }
     />
   )
 

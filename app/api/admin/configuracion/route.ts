@@ -94,7 +94,9 @@ export async function PUT(request: NextRequest) {
       shortcutsBody &&
       typeof shortcutsBody === 'object' &&
       typeof shortcutsBody.createMail === 'boolean' &&
-      typeof shortcutsBody.createTournament === 'boolean'
+      typeof shortcutsBody.createTournament === 'boolean' &&
+      typeof (shortcutsBody as { playPokemonDecklistPdf?: boolean })
+        .playPokemonDecklistPdf === 'boolean'
     const updatingMailRegisterLimit =
       typeof mailLimitRaw === 'number' && Number.isFinite(mailLimitRaw)
 
@@ -107,7 +109,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            'Envía visibility+order, shortcuts (createMail, createTournament), resendNotifyPickupInStoreEnabled (boolean) y/o mailRegisterDailyLimit (número)'
+            'Envía visibility+order, shortcuts (createMail, createTournament, playPokemonDecklistPdf), resendNotifyPickupInStoreEnabled (boolean) y/o mailRegisterDailyLimit (número)'
         },
         { status: 400 }
       )
@@ -163,9 +165,15 @@ export async function PUT(request: NextRequest) {
     }
 
     if (updatingShortcuts) {
+      const sb = shortcutsBody as {
+        createMail: boolean
+        createTournament: boolean
+        playPokemonDecklistPdf: boolean
+      }
       doc.set('shortcuts', {
-        createMail: shortcutsBody.createMail,
-        createTournament: shortcutsBody.createTournament
+        createMail: sb.createMail,
+        createTournament: sb.createTournament,
+        playPokemonDecklistPdf: sb.playPokemonDecklistPdf
       })
     }
 
