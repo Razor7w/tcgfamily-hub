@@ -62,8 +62,31 @@ export const PLAY_POKEMON_FORM_PNG_URL =
 const A4_W = 595.28
 const A4_H = 841.89
 
-const FONT_ROW = 7.2
-const FONT_HEADER = 7
+/** En PDF no hay font-weight CSS: se usa Helvetica (normal) o HelveticaBold. */
+export type PlayPokemonPdfFontWeight = 'normal' | 'bold'
+
+export const PLAY_POKEMON_PDF_TEXT_STYLE = {
+  playerName: {
+    fontSize: 10,
+    fontWeight: 'normal' as PlayPokemonPdfFontWeight
+  },
+  playerId: { fontSize: 10, fontWeight: 'normal' as PlayPokemonPdfFontWeight },
+  dateOfBirth: {
+    fontSize: 10,
+    fontWeight: 'normal' as PlayPokemonPdfFontWeight
+  },
+  pokemon: { fontSize: 7.2, fontWeight: 'normal' as PlayPokemonPdfFontWeight },
+  trainer: { fontSize: 7.2, fontWeight: 'normal' as PlayPokemonPdfFontWeight },
+  energy: { fontSize: 7.2, fontWeight: 'normal' as PlayPokemonPdfFontWeight }
+} as const
+
+function pdfFontForWeight(
+  weight: PlayPokemonPdfFontWeight,
+  font: PDFFont,
+  fontBold: PDFFont
+): PDFFont {
+  return weight === 'bold' ? fontBold : font
+}
 
 /**
  * Coordenadas en pt (origen abajo-izquierda) sobre la PNG A4 a pantalla completa.
@@ -92,7 +115,7 @@ const FORM = {
     xColl: 505,
     xReg: 520,
     yFirst: 648,
-    dy: 12.15,
+    dy: 10,
     maxRows: 14
   },
   /** Trainer: dos columnas (12 filas cada una) como en la hoja oficial */
@@ -102,7 +125,7 @@ const FORM = {
     xQtyR: 402,
     xNameR: 424,
     yFirst: 470,
-    dy: 11.65,
+    dy: 10,
     rowsPerCol: 12
   },
   energy: {
@@ -189,40 +212,47 @@ function drawPlayerOverlay(
   const dobD = day ? safePdfText(day) : ''
   const dobY = year ? safePdfText(year) : ''
 
+  const sName = PLAY_POKEMON_PDF_TEXT_STYLE.playerName
+  const sId = PLAY_POKEMON_PDF_TEXT_STYLE.playerId
+  const sDob = PLAY_POKEMON_PDF_TEXT_STYLE.dateOfBirth
+  const fName = pdfFontForWeight(sName.fontWeight, font, fontBold)
+  const fId = pdfFontForWeight(sId.fontWeight, font, fontBold)
+  const fDob = pdfFontForWeight(sDob.fontWeight, font, fontBold)
+
   page.drawText(truncate(n, 48), {
     x: FORM.playerName.x + cal.ox,
     y: FORM.playerName.y + cal.oy,
-    size: FONT_HEADER,
-    font,
+    size: sName.fontSize,
+    font: fName,
     color: rgb(0, 0, 0)
   })
   page.drawText(truncate(id, 36), {
     x: FORM.playerId.x + cal.ox,
     y: FORM.playerId.y + cal.oy,
-    size: FONT_HEADER,
-    font,
+    size: sId.fontSize,
+    font: fId,
     color: rgb(0, 0, 0)
   })
   const posDob = FORM.dateOfBirth
   page.drawText(dobM, {
     x: posDob.xMonth + cal.ox,
     y: posDob.y + cal.oy,
-    size: FONT_HEADER,
-    font,
+    size: sDob.fontSize,
+    font: fDob,
     color: rgb(0, 0, 0)
   })
   page.drawText(dobD, {
     x: posDob.xDay + cal.ox,
     y: posDob.y + cal.oy,
-    size: FONT_HEADER,
-    font,
+    size: sDob.fontSize,
+    font: fDob,
     color: rgb(0, 0, 0)
   })
   page.drawText(dobY, {
     x: posDob.xYear + cal.ox,
     y: posDob.y + cal.oy,
-    size: FONT_HEADER,
-    font,
+    size: sDob.fontSize,
+    font: fDob,
     color: rgb(0, 0, 0)
   })
 
@@ -252,9 +282,12 @@ function drawPlayerOverlay(
 function drawPokemonOverlay(
   page: PDFPage,
   font: PDFFont,
+  fontBold: PDFFont,
   cards: DeckCardLine[],
   cal: CalPt
 ) {
+  const st = PLAY_POKEMON_PDF_TEXT_STYLE.pokemon
+  const fRow = pdfFontForWeight(st.fontWeight, font, fontBold)
   const { xQty, xName, xSet, xColl, yFirst, dy, maxRows } = FORM.pokemon
   const slice = cards.slice(0, maxRows)
   let i = 0
@@ -263,29 +296,29 @@ function drawPokemonOverlay(
     page.drawText(String(c.count), {
       x: xQty + cal.ox,
       y,
-      size: FONT_ROW,
-      font,
+      size: st.fontSize,
+      font: fRow,
       color: rgb(0, 0, 0)
     })
     page.drawText(truncate(c.name, 22), {
       x: xName + cal.ox,
       y,
-      size: FONT_ROW,
-      font,
+      size: st.fontSize,
+      font: fRow,
       color: rgb(0, 0, 0)
     })
     page.drawText(truncate(c.set, 5), {
       x: xSet + cal.ox,
       y,
-      size: FONT_ROW,
-      font,
+      size: st.fontSize,
+      font: fRow,
       color: rgb(0, 0, 0)
     })
     page.drawText(String(c.number), {
       x: xColl + cal.ox,
       y,
-      size: FONT_ROW,
-      font,
+      size: st.fontSize,
+      font: fRow,
       color: rgb(0, 0, 0)
     })
     i += 1
@@ -294,8 +327,8 @@ function drawPokemonOverlay(
     page.drawText(`+${cards.length - maxRows} Pokemon (no caben)`, {
       x: xName + cal.ox,
       y: yFirst - maxRows * dy - 2 + cal.oy,
-      size: 6,
-      font,
+      size: Math.min(6, st.fontSize),
+      font: fRow,
       color: rgb(0.5, 0, 0)
     })
   }
@@ -304,9 +337,12 @@ function drawPokemonOverlay(
 function drawTrainerOverlay(
   page: PDFPage,
   font: PDFFont,
+  fontBold: PDFFont,
   cards: DeckCardLine[],
   cal: CalPt
 ) {
+  const st = PLAY_POKEMON_PDF_TEXT_STYLE.trainer
+  const fRow = pdfFontForWeight(st.fontWeight, font, fontBold)
   const { xQtyL, xNameL, xQtyR, xNameR, yFirst, dy, rowsPerCol } = FORM.trainer
   const maxTotal = rowsPerCol * 2
   const slice = cards.slice(0, maxTotal)
@@ -320,15 +356,15 @@ function drawTrainerOverlay(
     page.drawText(String(c.count), {
       x: xQ,
       y,
-      size: FONT_ROW,
-      font,
+      size: st.fontSize,
+      font: fRow,
       color: rgb(0, 0, 0)
     })
     page.drawText(truncate(c.name, col === 0 ? 20 : 20), {
       x: xN,
       y,
-      size: FONT_ROW,
-      font,
+      size: st.fontSize,
+      font: fRow,
       color: rgb(0, 0, 0)
     })
   }
@@ -336,8 +372,8 @@ function drawTrainerOverlay(
     page.drawText(`+${cards.length - maxTotal} trainer`, {
       x: xNameL + cal.ox,
       y: yFirst - rowsPerCol * dy - 2 + cal.oy,
-      size: 6,
-      font,
+      size: Math.min(6, st.fontSize),
+      font: fRow,
       color: rgb(0.5, 0, 0)
     })
   }
@@ -346,9 +382,12 @@ function drawTrainerOverlay(
 function drawEnergyOverlay(
   page: PDFPage,
   font: PDFFont,
+  fontBold: PDFFont,
   cards: DeckCardLine[],
   cal: CalPt
 ) {
+  const st = PLAY_POKEMON_PDF_TEXT_STYLE.energy
+  const fRow = pdfFontForWeight(st.fontWeight, font, fontBold)
   const { xQty, xName, yFirst, dy, maxRows } = FORM.energy
   const slice = cards.slice(0, maxRows)
   let i = 0
@@ -357,15 +396,15 @@ function drawEnergyOverlay(
     page.drawText(String(c.count), {
       x: xQty + cal.ox,
       y,
-      size: FONT_ROW,
-      font,
+      size: st.fontSize,
+      font: fRow,
       color: rgb(0, 0, 0)
     })
     page.drawText(truncate(c.name, 32), {
       x: xName + cal.ox,
       y,
-      size: FONT_ROW,
-      font,
+      size: st.fontSize,
+      font: fRow,
       color: rgb(0, 0, 0)
     })
     i += 1
@@ -374,8 +413,8 @@ function drawEnergyOverlay(
     page.drawText(`+${cards.length - maxRows} energy`, {
       x: xName + cal.ox,
       y: yFirst - maxRows * dy - 2 + cal.oy,
-      size: 6,
-      font,
+      size: Math.min(6, st.fontSize),
+      font: fRow,
       color: rgb(0.5, 0, 0)
     })
   }
@@ -399,12 +438,14 @@ function drawOtherOverflowPage(
     color: rgb(0, 0, 0)
   })
   y -= 22
+  const stOther = PLAY_POKEMON_PDF_TEXT_STYLE.pokemon
+  const fOther = pdfFontForWeight(stOther.fontWeight, font, fontBold)
   for (const c of cards) {
     page.drawText(`${c.count} ${truncate(c.name, 40)} ${c.set} ${c.number}`, {
       x: 48 + cal.ox,
       y: y + cal.oy,
-      size: FONT_ROW,
-      font,
+      size: stOther.fontSize,
+      font: fOther,
       color: rgb(0, 0, 0)
     })
     y -= 14
@@ -428,9 +469,9 @@ export async function buildPlayPokemonDecklistPdf(
   const { page, font, fontBold } = await drawFormBackgroundAsync(pdf, pngBytes)
 
   drawPlayerOverlay(page, font, fontBold, input, cal)
-  drawPokemonOverlay(page, font, pokemon, cal)
-  drawTrainerOverlay(page, font, trainer, cal)
-  drawEnergyOverlay(page, font, energy, cal)
+  drawPokemonOverlay(page, font, fontBold, pokemon, cal)
+  drawTrainerOverlay(page, font, fontBold, trainer, cal)
+  drawEnergyOverlay(page, font, fontBold, energy, cal)
 
   if (other.length > 0) {
     drawOtherOverflowPage(pdf, font, fontBold, other, cal)
