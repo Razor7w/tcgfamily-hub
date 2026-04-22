@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Container from '@mui/material/Container'
@@ -16,6 +17,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
 import { alpha, useTheme } from '@mui/material/styles'
+import PlayPokemonDecklistPdfDialog from '@/components/decklist/PlayPokemonDecklistPdfDialog'
 import DecklistVariantsPanel from '@/components/decklist/DecklistVariantsPanel'
 import type { DecklistVariantDTO } from '@/components/decklist/DecklistVariantsPanel'
 import { DecklistSpritePair } from '@/components/decklist/DecklistPokemonSlotPickers'
@@ -43,6 +45,7 @@ export default function DecklistDetailClient({
   const router = useRouter()
   const deleteDeck = useDeleteSavedDecklist()
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [pdfOpen, setPdfOpen] = useState(false)
 
   const handleDelete = () => {
     deleteDeck.mutate(initial.id, {
@@ -147,6 +150,20 @@ export default function DecklistDetailClient({
               </Box>
               <Button
                 variant="outlined"
+                color="primary"
+                size="small"
+                startIcon={<PictureAsPdfIcon />}
+                onClick={() => setPdfOpen(true)}
+                sx={{
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  alignSelf: { xs: 'stretch', sm: 'center' }
+                }}
+              >
+                GenerarPDF
+              </Button>
+              <Button
+                variant="outlined"
                 color="error"
                 size="small"
                 startIcon={<DeleteOutlineIcon />}
@@ -171,6 +188,15 @@ export default function DecklistDetailClient({
           />
         </Stack>
       </Container>
+
+      <PlayPokemonDecklistPdfDialog
+        open={pdfOpen}
+        onClose={() => setPdfOpen(false)}
+        decklistId={initial.id}
+        decklistName={initial.name}
+        principalVariantId={initial.principalVariantId}
+        variants={initial.variants}
+      />
 
       <Dialog
         open={deleteOpen}
