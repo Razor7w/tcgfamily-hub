@@ -4,6 +4,8 @@ export type SavedDecklistSummary = {
   id: string
   name: string
   pokemonSlugs: string[]
+  variants: { id: string; label: string }[]
+  principalVariantId: string | null
   updatedAt: string
   createdAt: string
 }

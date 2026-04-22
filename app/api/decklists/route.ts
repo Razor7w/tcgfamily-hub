@@ -22,13 +22,24 @@ export async function GET() {
 
     const rows = await SavedDecklist.find({ userId: uid })
       .sort({ updatedAt: -1 })
-      .select('name pokemonSlugs updatedAt createdAt')
+      .select(
+        'name pokemonSlugs updatedAt createdAt variants principalVariantId'
+      )
       .lean()
 
     const decklists = rows.map(r => ({
       id: String(r._id),
       name: r.name,
       pokemonSlugs: Array.isArray(r.pokemonSlugs) ? r.pokemonSlugs : [],
+      variants: Array.isArray(r.variants)
+        ? r.variants.map(v => ({
+            id: String(v._id),
+            label: typeof v.label === 'string' ? v.label : ''
+          }))
+        : [],
+      principalVariantId: r.principalVariantId
+        ? String(r.principalVariantId)
+        : null,
       updatedAt: (r.updatedAt as Date).toISOString(),
       createdAt: (r.createdAt as Date).toISOString()
     }))

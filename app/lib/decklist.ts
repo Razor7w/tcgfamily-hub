@@ -132,6 +132,33 @@ export function parseDecklistText(input: string): ParsedDecklist {
   return { sections, unknownLines }
 }
 
+export type DecklistFlatCard = {
+  count: number
+  name: string
+  set: string
+  number: number
+}
+
+/** Cartas únicas (set+número) con conteos sumados, para la vista en imágenes. */
+export function flatCardsFromDecklistText(value: string): DecklistFlatCard[] {
+  const parsed = parseDecklistText(value)
+  const all = parsed.sections.flatMap(s => s.cards)
+  const map = new Map<string, DecklistFlatCard>()
+  for (const c of all) {
+    const key = `${c.set}-${c.number}`
+    const prev = map.get(key)
+    if (prev) prev.count += c.count
+    else
+      map.set(key, {
+        count: c.count,
+        set: c.set,
+        number: c.number,
+        name: c.name
+      })
+  }
+  return Array.from(map.values())
+}
+
 export function limitlessCardImageUrl(args: {
   set: string
   number: number

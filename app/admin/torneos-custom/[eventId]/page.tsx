@@ -116,6 +116,7 @@ export default function AdminTorneoCustomDetallePage() {
                   tournamentPlacement={ev.myTournamentPlacement ?? null}
                   isCustomTournament={ev.tournamentOrigin === 'custom'}
                   readOnly
+                  myTournamentDecklistRef={ev.myTournamentDecklistRef ?? null}
                 />
 
                 <Card
@@ -176,6 +177,26 @@ export default function AdminTorneoCustomDetallePage() {
                           Pokémon que el jugador eligió mostrar junto a su
                           récord en «Mis torneos».
                         </Typography>
+                        {ev.myTournamentDecklistDisplay ? (
+                          <Box sx={{ mt: 1.25 }}>
+                            <Typography
+                              variant="body2"
+                              fontWeight={700}
+                              color="text.primary"
+                              sx={{ lineHeight: 1.45 }}
+                            >
+                              {ev.myTournamentDecklistDisplay.decklistName}
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              fontWeight={600}
+                              color="text.secondary"
+                              sx={{ mt: 0.25, lineHeight: 1.45 }}
+                            >
+                              {ev.myTournamentDecklistDisplay.listLabel}
+                            </Typography>
+                          </Box>
+                        ) : null}
                       </Box>
                     </Stack>
                     {ev.myDeckPokemonSlugs &&

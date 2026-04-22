@@ -156,9 +156,26 @@ export function useMyRecentTournaments(limit = 2) {
   })
 }
 
+/** Referencia al listado guardado para vista en imágenes en el detalle del torneo. */
+export type MyTournamentDecklistRefDTO = {
+  decklistId: string
+  listKind: 'base' | 'variant'
+  variantId: string | null
+}
+
+/** Nombre del mazo + etiqueta del listado (resuelto en servidor). */
+export type MyTournamentDecklistDisplayDTO = {
+  decklistName: string
+  listLabel: string
+}
+
 /** Detalle de evento para el dashboard (incluye deck reportado). */
 export type DashboardEventDetail = PublicWeeklyEvent & {
   myDeckPokemonSlugs: string[]
+  /** Listado guardado vinculado al torneo (si existe); la vista en imágenes usa el endpoint del evento. */
+  myTournamentDecklistRef?: MyTournamentDecklistRefDTO | null
+  /** Nombre del mazo y variante/listado para mostrar en perfil. */
+  myTournamentDecklistDisplay?: MyTournamentDecklistDisplayDTO | null
   canReportDeck: boolean
   myMatchRounds: ParticipantMatchRoundDTO[]
   /** Solo torneos custom creados por el usuario actual. */
@@ -232,11 +249,17 @@ export function useWeeklyEventFullStandings(
 export function useSaveMyDeck(eventId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (pokemon: string[]) => {
+    mutationFn: async (input: {
+      pokemon: string[]
+      tournamentDecklistRef: MyTournamentDecklistRefDTO | null
+    }) => {
       const res = await fetch(`/api/events/${eventId}/my-deck`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pokemon })
+        body: JSON.stringify({
+          pokemon: input.pokemon,
+          tournamentDecklistRef: input.tournamentDecklistRef
+        })
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -308,6 +331,9 @@ export function useCreateCustomTournament() {
         place: number | null
         isDnf: boolean
       }
+      /** Slugs del deck (sprites), p. ej. desde un decklist guardado */
+      pokemon?: string[]
+      tournamentDecklistRef?: MyTournamentDecklistRefDTO | null
     }) => {
       const res = await fetch('/api/events/custom-tournament', {
         method: 'POST',

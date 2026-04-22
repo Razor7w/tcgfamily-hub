@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
+import mongoose from 'mongoose'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
+import { getTournamentDecklistDisplayLabels } from '@/lib/tournament-decklist-display'
 import WeeklyEvent from '@/models/WeeklyEvent'
 import {
   canPreRegisterNow,
@@ -18,6 +20,10 @@ import {
   type ParticipantMatchRoundDTO
 } from '@/lib/participant-match-round'
 import { effectivePublicRoundNum } from '@/lib/dashboard-round-cap'
+import {
+  resolveViewAsParticipant,
+  serializeTournamentDecklistRef
+} from '@/lib/weekly-event-view-as'
 
 type LeanEvent = {
   _id: unknown
@@ -62,6 +68,11 @@ type LeanEvent = {
       place?: number | null
       isDnf?: boolean
     }
+    tournamentDecklistRef?: {
+      decklistId?: unknown
+      listKind?: string
+      variantId?: unknown
+    }
   }[]
 }
 
@@ -105,17 +116,10 @@ export async function GET(
 
     const createdByStr =
       doc.createdByUserId != null ? String(doc.createdByUserId) : ''
-    let creatorParticipant = createdByStr
-      ? parts.find(p => p.userId && String(p.userId) === createdByStr)
-      : undefined
-    if (!creatorParticipant) {
-      creatorParticipant = parts.find(p => p.userId)
-    }
 
     const isAdmin = (session.user as { role?: string }).role === 'admin'
     const adminReadOnlyView = isAdmin && tournamentOrigin === 'custom'
-    const viewAs =
-      adminReadOnlyView && creatorParticipant ? creatorParticipant : mine
+    const viewAs = resolveViewAsParticipant(doc, uid, isAdmin)
 
     const myRegistration = viewAs?.displayName ?? null
     const myAttendanceConfirmed = Boolean(viewAs?.confirmed)
@@ -181,6 +185,18 @@ export async function GET(
           (s): s is string => typeof s === 'string'
         )
       : []
+
+    let myTournamentDecklistDisplay: {
+      decklistName: string
+      listLabel: string
+    } | null = null
+    if (viewAs?.userId && viewAs?.tournamentDecklistRef?.decklistId) {
+      myTournamentDecklistDisplay = await getTournamentDecklistDisplayLabels(
+        new mongoose.Types.ObjectId(String(viewAs.userId)),
+        viewAs.tournamentDecklistRef
+      )
+    }
+
     const standingsPublic = tournamentClosed
       ? buildTournamentStandingsPublic(
           doc.tournamentStandings,
@@ -247,6 +263,10 @@ export async function GET(
         doc.state !== 'running' &&
         doc.state !== 'close',
       myDeckPokemonSlugs,
+      myTournamentDecklistRef: serializeTournamentDecklistRef(
+        viewAs?.tournamentDecklistRef
+      ),
+      myTournamentDecklistDisplay,
       canReportDeck:
         !adminReadOnlyView &&
         Boolean(myRegistration) &&

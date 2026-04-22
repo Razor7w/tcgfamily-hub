@@ -3,6 +3,9 @@ import mongoose from 'mongoose'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import { parseManualPlacementBody } from '@/lib/manual-placement'
+import { normalizeParticipantDeckPokemonSlugs } from '@/lib/participant-deck-pokemon'
+import { parseTournamentDecklistRefBody } from '@/lib/tournament-decklist-ref'
+import { validateTournamentDecklistRefForUser } from '@/lib/validate-tournament-decklist-ref'
 import WeeklyEvent from '@/models/WeeklyEvent'
 
 const TITLE_MAX = 200
@@ -89,7 +92,72 @@ export async function POST(request: NextRequest) {
       manualPlacement = parsed
     }
 
+    let deckPokemonSlugs: string[] | undefined
+    if (Object.prototype.hasOwnProperty.call(b, 'pokemon')) {
+      const slugs = normalizeParticipantDeckPokemonSlugs(b.pokemon)
+      if (slugs === null) {
+        return NextResponse.json(
+          {
+            error:
+              'Deck inválido: máximo 2 Pokémon (slugs válidos en minúsculas)'
+          },
+          { status: 400 }
+        )
+      }
+      deckPokemonSlugs = slugs
+    }
+
     await connectDB()
+
+    let tournamentDecklistRef:
+      | {
+          decklistId: mongoose.Types.ObjectId
+          listKind: 'base' | 'variant'
+          variantId?: mongoose.Types.ObjectId | null
+        }
+      | undefined
+    if ('tournamentDecklistRef' in b) {
+      const refParsed = parseTournamentDecklistRefBody(
+        b as Record<string, unknown>
+      )
+      if (refParsed === null) {
+        tournamentDecklistRef = undefined
+      } else if (refParsed === undefined) {
+        return NextResponse.json(
+          { error: 'Referencia de decklist inválida' },
+          { status: 400 }
+        )
+      } else {
+        if (!deckPokemonSlugs?.length) {
+          return NextResponse.json(
+            {
+              error:
+                'Para vincular un decklist guardado debes enviar los Pokémon del deck'
+            },
+            { status: 400 }
+          )
+        }
+        const checked = await validateTournamentDecklistRefForUser(
+          uid,
+          refParsed,
+          deckPokemonSlugs
+        )
+        if (!checked.ok) {
+          const msg =
+            checked.reason === 'not_found'
+              ? 'Decklist no encontrado'
+              : checked.reason === 'slug_mismatch'
+                ? 'Los Pokémon del deck deben coincidir con el mazo elegido'
+                : 'Variante no válida'
+          return NextResponse.json({ error: msg }, { status: 400 })
+        }
+        tournamentDecklistRef = {
+          decklistId: checked.value.decklistId,
+          listKind: checked.value.listKind,
+          variantId: checked.value.variantId ?? undefined
+        }
+      }
+    }
 
     const doc = await WeeklyEvent.create({
       startsAt,
@@ -114,7 +182,9 @@ export async function POST(request: NextRequest) {
           wins: 0,
           losses: 0,
           ties: 0,
-          ...(manualPlacement ? { manualPlacement } : {})
+          ...(manualPlacement ? { manualPlacement } : {}),
+          ...(deckPokemonSlugs !== undefined ? { deckPokemonSlugs } : {}),
+          ...(tournamentDecklistRef ? { tournamentDecklistRef } : {})
         }
       ]
     })

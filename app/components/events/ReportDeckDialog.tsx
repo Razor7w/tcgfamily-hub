@@ -22,6 +22,9 @@ import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import SavedDecklistVariantPicker, {
+  type SavedDecklistTournamentOption
+} from '@/components/decklist/SavedDecklistVariantPicker'
 import {
   filterPokemonAutocompleteOptions,
   POKEMON_AUTOCOMPLETE_HINT_EMPTY,
@@ -33,7 +36,10 @@ import {
   getLimitlessPokemonSpriteUrl,
   limitlessSpriteDimensions
 } from '@/lib/limitless-pokemon-sprite'
-import { useSaveMyDeck } from '@/hooks/useWeeklyEvents'
+import {
+  useSaveMyDeck,
+  type MyTournamentDecklistRefDTO
+} from '@/hooks/useWeeklyEvents'
 
 type AutocompleteLiProps = HTMLAttributes<HTMLLIElement> & { key?: Key }
 
@@ -59,6 +65,8 @@ type ReportDeckDialogProps = {
   eventId: string
   eventTitle: string
   initialSlugs: string[]
+  /** Mazo + listado ya vinculados al torneo (preselección del Autocomplete). */
+  initialDecklistPick?: SavedDecklistTournamentOption | null
 }
 
 function SpriteThumb({ slug, size = 28 }: { slug: string; size?: number }) {
@@ -93,12 +101,15 @@ export default function ReportDeckDialog({
   onClose,
   eventId,
   eventTitle,
-  initialSlugs
+  initialSlugs,
+  initialDecklistPick = null
 }: ReportDeckDialogProps) {
   const { data: allOptions = [], isPending: optionsLoading } =
     usePokemonSpeciesOptions()
   const saveDeck = useSaveMyDeck(eventId)
 
+  const [decklistPick, setDecklistPick] =
+    useState<SavedDecklistTournamentOption | null>(null)
   const [slot1, setSlot1] = useState<PokemonSpeciesOption | null>(null)
   const [slot2, setSlot2] = useState<PokemonSpeciesOption | null>(null)
   const [slot1Open, setSlot1Open] = useState(false)
@@ -116,17 +127,26 @@ export default function ReportDeckDialog({
 
   useEffect(() => {
     if (!open || optionsLoading || allOptions.length === 0) return
-    const a = initialSlugs[0]
-      ? (optionBySlug.get(initialSlugs[0]) ?? null)
-      : null
-    const b = initialSlugs[1]
-      ? (optionBySlug.get(initialSlugs[1]) ?? null)
-      : null
+    const slugSource =
+      initialDecklistPick?.pokemonSlugs?.length &&
+      initialDecklistPick.pokemonSlugs.some(Boolean)
+        ? initialDecklistPick.pokemonSlugs
+        : initialSlugs
+    const a = slugSource[0] ? (optionBySlug.get(slugSource[0]) ?? null) : null
+    const b = slugSource[1] ? (optionBySlug.get(slugSource[1]) ?? null) : null
     /* Sincronizar selección inicial del modal con slugs ya guardados (datos async). */
     // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDecklistPick(initialDecklistPick ?? null)
     setSlot1(a)
     setSlot2(b)
-  }, [open, optionsLoading, allOptions.length, optionBySlug, initialSlugs])
+  }, [
+    open,
+    optionsLoading,
+    allOptions.length,
+    optionBySlug,
+    initialSlugs,
+    initialDecklistPick
+  ])
 
   const optionsForSlot1 = useMemo(
     () => allOptions.filter(o => o.slug !== slot2?.slug),
@@ -141,11 +161,40 @@ export default function ReportDeckDialog({
     if (!saveDeck.isPending) onClose()
   }, [onClose, saveDeck.isPending])
 
+  const applyDecklistPick = (opt: SavedDecklistTournamentOption | null) => {
+    setDecklistPick(opt)
+    if (!opt) return
+    const slugs = opt.pokemonSlugs
+    setSlot1(slugs[0] ? (optionBySlug.get(slugs[0]) ?? null) : null)
+    setSlot2(slugs[1] ? (optionBySlug.get(slugs[1]) ?? null) : null)
+  }
+
+  const handleSlot1Change = (_e: unknown, v: PokemonSpeciesOption | null) => {
+    setDecklistPick(null)
+    setSlot1(v)
+  }
+
+  const handleSlot2Change = (_e: unknown, v: PokemonSpeciesOption | null) => {
+    setDecklistPick(null)
+    setSlot2(v)
+  }
+
   const handleSave = () => {
     const pokemon = [slot1?.slug, slot2?.slug].filter(
       (s): s is string => typeof s === 'string' && s.length > 0
     )
-    saveDeck.mutate(pokemon, { onSuccess: () => onClose() })
+    const tournamentDecklistRef: MyTournamentDecklistRefDTO | null =
+      decklistPick
+        ? {
+            decklistId: decklistPick.decklistId,
+            listKind: decklistPick.listKind,
+            variantId: decklistPick.variantId
+          }
+        : null
+    saveDeck.mutate(
+      { pokemon, tournamentDecklistRef },
+      { onSuccess: () => onClose() }
+    )
   }
 
   const showChips = Boolean(slot1 || slot2)
@@ -173,6 +222,34 @@ export default function ReportDeckDialog({
           </Stack>
         ) : (
           <Stack spacing={2}>
+            <SavedDecklistVariantPicker
+              value={decklistPick}
+              onChange={applyDecklistPick}
+              disabled={saveDeck.isPending}
+              helperText="Elige el listado base o una variante; puedes ajustar los Pokémon abajo."
+            />
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                my: 0.5
+              }}
+            >
+              <Box
+                sx={{ flex: 1, borderTop: '1px solid', borderColor: 'divider' }}
+              />
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                fontWeight={600}
+              >
+                o elige Pokémon manualmente
+              </Typography>
+              <Box
+                sx={{ flex: 1, borderTop: '1px solid', borderColor: 'divider' }}
+              />
+            </Box>
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
               spacing={2}
@@ -183,7 +260,7 @@ export default function ReportDeckDialog({
                 options={optionsForSlot1}
                 loading={optionsLoading}
                 value={slot1}
-                onChange={(_e, v) => setSlot1(v)}
+                onChange={handleSlot1Change}
                 inputValue={slot1Open ? slot1Query : (slot1?.label ?? '')}
                 onInputChange={(_e, v) => {
                   if (slot1Open) setSlot1Query(v)
@@ -220,7 +297,7 @@ export default function ReportDeckDialog({
                 options={optionsForSlot2}
                 loading={optionsLoading}
                 value={slot2}
-                onChange={(_e, v) => setSlot2(v)}
+                onChange={handleSlot2Change}
                 inputValue={slot2Open ? slot2Query : (slot2?.label ?? '')}
                 onInputChange={(_e, v) => {
                   if (slot2Open) setSlot2Query(v)
@@ -266,7 +343,10 @@ export default function ReportDeckDialog({
                         </Typography>
                       </Stack>
                     }
-                    onDelete={() => setSlot1(null)}
+                    onDelete={() => {
+                      setDecklistPick(null)
+                      setSlot1(null)
+                    }}
                     variant="outlined"
                   />
                 ) : null}
@@ -280,7 +360,10 @@ export default function ReportDeckDialog({
                         </Typography>
                       </Stack>
                     }
-                    onDelete={() => setSlot2(null)}
+                    onDelete={() => {
+                      setDecklistPick(null)
+                      setSlot2(null)
+                    }}
                     variant="outlined"
                   />
                 ) : null}
