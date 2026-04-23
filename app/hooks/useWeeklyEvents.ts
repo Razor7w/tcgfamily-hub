@@ -901,7 +901,6 @@ export type AdminLeague = {
   description: string
   game: 'pokemon'
   isActive: boolean
-  pointsByPlace: number[]
   countBestEvents: number | null
   createdAt?: string
   updatedAt?: string
@@ -947,7 +946,7 @@ export type PublicLeagueResponse = {
     hasRecord: boolean
   }[]
   standings: LeagueStandingRow[]
-  chartTop: { rank: number; name: string; points: number; popId: string }[]
+  chartTop: { name: string; points: number }[]
 }
 
 export type AdminCustomTournament = {

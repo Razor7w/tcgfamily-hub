@@ -1,5 +1,4 @@
 import mongoose, { Schema, Document } from 'mongoose'
-import { DEFAULT_LEAGUE_POINTS_BY_PLACE } from '@/lib/league-constants'
 
 export interface ILeague extends Document {
   name: string
@@ -9,8 +8,6 @@ export interface ILeague extends Document {
   /** Solo torneos Pokémon en tienda suelen usar ligas; reservado por si amplías. */
   game: 'pokemon'
   isActive: boolean
-  /** Legado en BD; el cálculo de la liga usa récord W/L/T (3/0/1), no esta tabla. */
-  pointsByPlace: number[]
   /**
    * Si es un entero >= 1, solo cuentan los N mejores torneos por jugador (por puntos de liga en cada torneo).
    * `null` o ausente = sumar todos los torneos cerrados de la liga con récord W/L/T.
@@ -38,21 +35,6 @@ const LeagueSchema = new Schema<ILeague>(
       default: 'pokemon'
     },
     isActive: { type: Boolean, default: true, index: true },
-    pointsByPlace: {
-      type: [Number],
-      default: () => [...DEFAULT_LEAGUE_POINTS_BY_PLACE],
-      validate: {
-        validator(v: unknown) {
-          return (
-            Array.isArray(v) &&
-            v.length >= 1 &&
-            v.length <= 32 &&
-            v.every(n => typeof n === 'number' && Number.isFinite(n) && n >= 0)
-          )
-        },
-        message: 'pointsByPlace debe ser un array de 1–32 números >= 0'
-      }
-    },
     countBestEvents: {
       type: Number,
       required: false,

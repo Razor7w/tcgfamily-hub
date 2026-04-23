@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import WeeklyEvent from '@/models/WeeklyEvent'
-import { DEFAULT_LEAGUE_POINTS_BY_PLACE } from '@/lib/league-constants'
 import League from '@/models/League'
 
 function parseBody(body: unknown) {
@@ -11,20 +10,6 @@ function parseBody(body: unknown) {
 }
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
-
-function readPointsByPlace(raw: unknown): number[] | null {
-  if (raw === undefined || raw === null) return null
-  if (!Array.isArray(raw)) return null
-  const out: number[] = []
-  for (const x of raw) {
-    const n =
-      typeof x === 'number' ? x : typeof x === 'string' ? Number(x) : NaN
-    if (!Number.isFinite(n) || n < 0) return null
-    out.push(Math.round(n))
-  }
-  if (out.length < 1 || out.length > 32) return null
-  return out
-}
 
 function serializeLeague(doc: Record<string, unknown>) {
   const id = doc._id
@@ -35,9 +20,6 @@ function serializeLeague(doc: Record<string, unknown>) {
     description: typeof doc.description === 'string' ? doc.description : '',
     game: doc.game ?? 'pokemon',
     isActive: Boolean(doc.isActive),
-    pointsByPlace: Array.isArray(doc.pointsByPlace)
-      ? doc.pointsByPlace.map(n => Number(n) || 0)
-      : [...DEFAULT_LEAGUE_POINTS_BY_PLACE],
     countBestEvents:
       doc.countBestEvents === null || doc.countBestEvents === undefined
         ? null
@@ -132,17 +114,6 @@ export async function PATCH(
 
     if (body.isActive !== undefined) {
       doc.isActive = Boolean(body.isActive)
-    }
-
-    if (body.pointsByPlace !== undefined) {
-      const pts = readPointsByPlace(body.pointsByPlace)
-      if (!pts) {
-        return NextResponse.json(
-          { error: 'pointsByPlace inválido' },
-          { status: 400 }
-        )
-      }
-      doc.pointsByPlace = pts
     }
 
     if (body.countBestEvents !== undefined) {
