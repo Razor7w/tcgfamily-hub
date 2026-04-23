@@ -218,14 +218,6 @@ export default function DecklistsPage() {
               </List>
             </Paper>
           )}
-
-          <Typography variant="body2" color="text.secondary">
-            ¿Solo quieres probar el formato?{' '}
-            <Link href="/dashboard/decklist-demo" style={{ fontWeight: 600 }}>
-              Abrir demo sin guardar
-            </Link>
-            .
-          </Typography>
         </Stack>
       </Container>
 

@@ -1,12 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined'
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
 import Box from '@mui/material/Box'
+import ButtonBase from '@mui/material/ButtonBase'
 import Button from '@mui/material/Button'
 import Container from '@mui/material/Container'
 import Dialog from '@mui/material/Dialog'
@@ -14,13 +17,17 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
 import { alpha, useTheme } from '@mui/material/styles'
 import PlayPokemonDecklistPdfDialog from '@/components/decklist/PlayPokemonDecklistPdfDialog'
 import DecklistVariantsPanel from '@/components/decklist/DecklistVariantsPanel'
 import type { DecklistVariantDTO } from '@/components/decklist/DecklistVariantsPanel'
+import DecklistDeckMetaDialogs from '@/components/decklist/DecklistDeckMetaDialogs'
+import DecklistImageDialog from '@/components/decklist/DecklistImageDialog'
 import { DecklistSpritePair } from '@/components/decklist/DecklistPokemonSlotPickers'
+import { flatCardsFromDecklistText } from '@/lib/decklist'
 import { useDeleteSavedDecklist } from '@/hooks/useSavedDecklists'
 
 export type DecklistDetailInitial = {
@@ -36,6 +43,12 @@ export type DecklistDetailInitial = {
   updatedAtLabel: string
 }
 
+function initialPrincipalDeckText(i: DecklistDetailInitial): string {
+  if (!i.principalVariantId) return i.deckText
+  const v = i.variants.find(x => x.id === i.principalVariantId)
+  return v?.deckText ?? i.deckText
+}
+
 export default function DecklistDetailClient({
   initial
 }: {
@@ -46,6 +59,34 @@ export default function DecklistDetailClient({
   const deleteDeck = useDeleteSavedDecklist()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [pdfOpen, setPdfOpen] = useState(false)
+  const [imageOpen, setImageOpen] = useState(false)
+  const [editFullOpen, setEditFullOpen] = useState(false)
+  const [editSpritesOpen, setEditSpritesOpen] = useState(false)
+  const [liveDeck, setLiveDeck] = useState({
+    text: initialPrincipalDeckText(initial),
+    summary: 'Principal' as string
+  })
+
+  const handleActiveDeckChange = useCallback(
+    (payload: { text: string; summary: string }) => {
+      setLiveDeck(payload)
+    },
+    []
+  )
+
+  const handleDeckMetaApplied = useCallback(() => {
+    router.refresh()
+  }, [router])
+
+  const imageCards = useMemo(
+    () => flatCardsFromDecklistText(liveDeck.text),
+    [liveDeck.text]
+  )
+
+  const imageDialogTitle = useMemo(
+    () => `${initial.name} · ${liveDeck.summary}`,
+    [initial.name, liveDeck.summary]
+  )
 
   const handleDelete = () => {
     deleteDeck.mutate(initial.id, {
@@ -104,21 +145,25 @@ export default function DecklistDetailClient({
             Mis decklists
           </Button>
 
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={2}
-            alignItems={{ xs: 'flex-start', sm: 'center' }}
-            justifyContent="space-between"
-            gap={2}
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', md: 'row' },
+              alignItems: { xs: 'stretch', md: 'flex-start' },
+              justifyContent: 'space-between',
+              gap: { xs: 2.25, md: 3 }
+            }}
           >
-            <Stack spacing={1} sx={{ minWidth: 0 }}>
+            <Stack spacing={1} sx={{ minWidth: 0, flex: { md: '1 1 0%' } }}>
               <Typography
                 component="h1"
                 variant="h5"
                 sx={{
                   fontWeight: 800,
                   letterSpacing: '-0.03em',
-                  textWrap: 'balance'
+                  lineHeight: 1.15,
+                  textWrap: 'balance',
+                  fontSize: { xs: '1.65rem', md: '2rem' }
                 }}
               >
                 {initial.name}
@@ -127,64 +172,193 @@ export default function DecklistDetailClient({
                 variant="body2"
                 color="text.secondary"
                 fontWeight={500}
+                sx={{ fontVariantNumeric: 'tabular-nums' }}
               >
                 Actualizado {initial.updatedAtLabel}
               </Typography>
             </Stack>
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={1.5}
-              alignItems={{ xs: 'stretch', sm: 'center' }}
+
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: { xs: 'center', md: 'flex-end' },
+                gap: 1.5,
+                width: { xs: '100%', md: 'auto' },
+                maxWidth: { xs: 560, md: 'none' },
+                mx: { xs: 'auto', md: 0 },
+                flexShrink: 0
+              }}
             >
+              <Tooltip title="Editar sprites" placement="top">
+                <ButtonBase
+                  focusRipple
+                  aria-label="Editar sprites del mazo"
+                  onClick={() => {
+                    setEditFullOpen(false)
+                    setEditSpritesOpen(true)
+                  }}
+                  sx={{
+                    borderRadius: 2,
+                    display: 'block',
+                    transition: 'transform 0.15s ease, box-shadow 0.2s ease',
+                    '&:hover': {
+                      boxShadow:
+                        theme.palette.mode === 'dark'
+                          ? `0 12px 32px -14px ${alpha('#000', 0.55)}`
+                          : `0 14px 36px -18px ${alpha(theme.palette.primary.dark, 0.22)}`
+                    },
+                    '&:active': { transform: 'scale(0.98)' }
+                  }}
+                >
+                  <Box
+                    sx={{
+                      p: 1.25,
+                      borderRadius: 2,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      bgcolor: alpha(theme.palette.primary.main, 0.06),
+                      boxShadow:
+                        theme.palette.mode === 'dark'
+                          ? `0 10px 28px -18px ${alpha('#000', 0.4)}`
+                          : `0 12px 28px -20px ${alpha(theme.palette.primary.dark, 0.12)}`
+                    }}
+                  >
+                    <DecklistSpritePair
+                      slugs={initial.pokemonSlugs}
+                      size={44}
+                    />
+                  </Box>
+                </ButtonBase>
+              </Tooltip>
+
               <Box
                 sx={{
-                  p: 1,
-                  borderRadius: 2,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  bgcolor: alpha(theme.palette.primary.main, 0.06),
-                  alignSelf: { xs: 'center', sm: 'center' }
+                  display: 'flex',
+                  flexDirection: { xs: 'column', md: 'row' },
+                  flexWrap: { md: 'wrap' },
+                  alignItems: { xs: 'stretch', md: 'center' },
+                  justifyContent: { md: 'flex-end' },
+                  gap: 1.5,
+                  width: { xs: '100%', md: 'auto' }
                 }}
               >
-                <DecklistSpritePair slugs={initial.pokemonSlugs} size={44} />
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="medium"
+                  startIcon={<ImageOutlinedIcon />}
+                  onClick={() => setImageOpen(true)}
+                  disabled={imageCards.length === 0}
+                  sx={{
+                    width: { xs: '100%', md: 'auto' },
+                    px: { md: 2.25 },
+                    py: 1.35,
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    borderRadius: 2,
+                    transition: 'transform 0.15s ease, box-shadow 0.2s ease',
+                    '&:active': { transform: 'translateY(1px) scale(0.99)' },
+                    boxShadow:
+                      theme.palette.mode === 'dark'
+                        ? `0 10px 28px ${alpha(theme.palette.primary.main, 0.28)}`
+                        : `0 10px 26px ${alpha(theme.palette.primary.dark, 0.2)}`,
+                    '&:hover': {
+                      boxShadow:
+                        theme.palette.mode === 'dark'
+                          ? `0 14px 32px ${alpha(theme.palette.primary.main, 0.34)}`
+                          : `0 14px 30px ${alpha(theme.palette.primary.dark, 0.24)}`
+                    }
+                  }}
+                >
+                  Ver como imagen
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="inherit"
+                  size="medium"
+                  startIcon={<EditOutlinedIcon />}
+                  onClick={() => {
+                    setEditSpritesOpen(false)
+                    setEditFullOpen(true)
+                  }}
+                  sx={{
+                    width: { xs: '100%', md: 'auto' },
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    py: 1.1,
+                    borderRadius: 2,
+                    borderColor: 'divider',
+                    transition:
+                      'transform 0.15s ease, background-color 0.2s ease',
+                    '&:active': { transform: 'translateY(1px) scale(0.99)' },
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      bgcolor: alpha(theme.palette.primary.main, 0.06)
+                    }
+                  }}
+                >
+                  Editar mazo
+                </Button>
+                <Box
+                  sx={{
+                    display: { xs: 'grid', md: 'contents' },
+                    gridTemplateColumns: { xs: '1fr 1fr' },
+                    gap: 1.5,
+                    width: { xs: '100%', md: 'auto' }
+                  }}
+                >
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    size="medium"
+                    startIcon={<PictureAsPdfIcon />}
+                    onClick={() => setPdfOpen(true)}
+                    sx={{
+                      width: { xs: '100%', md: 'auto' },
+                      fontWeight: 600,
+                      textTransform: 'none',
+                      py: 1.1,
+                      borderRadius: 2,
+                      transition:
+                        'transform 0.15s ease, background-color 0.2s ease',
+                      '&:active': { transform: 'translateY(1px) scale(0.99)' }
+                    }}
+                  >
+                    Generar PDF
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    size="medium"
+                    startIcon={<DeleteOutlineIcon />}
+                    onClick={() => setDeleteOpen(true)}
+                    disabled={deleteDeck.isPending}
+                    sx={{
+                      width: { xs: '100%', md: 'auto' },
+                      fontWeight: 600,
+                      textTransform: 'none',
+                      py: 1.1,
+                      borderRadius: 2,
+                      transition:
+                        'transform 0.15s ease, background-color 0.2s ease',
+                      '&:active': { transform: 'translateY(1px) scale(0.99)' }
+                    }}
+                  >
+                    Eliminar mazo
+                  </Button>
+                </Box>
               </Box>
-              <Button
-                variant="outlined"
-                color="primary"
-                size="small"
-                startIcon={<PictureAsPdfIcon />}
-                onClick={() => setPdfOpen(true)}
-                sx={{
-                  fontWeight: 600,
-                  textTransform: 'none',
-                  alignSelf: { xs: 'stretch', sm: 'center' }
-                }}
-              >
-                GenerarPDF
-              </Button>
-              <Button
-                variant="outlined"
-                color="error"
-                size="small"
-                startIcon={<DeleteOutlineIcon />}
-                onClick={() => setDeleteOpen(true)}
-                disabled={deleteDeck.isPending}
-                sx={{
-                  fontWeight: 600,
-                  textTransform: 'none',
-                  alignSelf: { xs: 'stretch', sm: 'center' }
-                }}
-              >
-                Eliminar mazo
-              </Button>
-            </Stack>
-          </Stack>
+            </Box>
+          </Box>
 
           <DecklistVariantsPanel
             decklistId={initial.id}
             baseDeckText={initial.deckText}
             principalVariantId={initial.principalVariantId}
             variants={initial.variants}
+            onActiveDeckChange={handleActiveDeckChange}
+            hideDecklistImageButton
           />
         </Stack>
       </Container>
@@ -196,6 +370,24 @@ export default function DecklistDetailClient({
         decklistName={initial.name}
         principalVariantId={initial.principalVariantId}
         variants={initial.variants}
+      />
+
+      <DecklistDeckMetaDialogs
+        decklistId={initial.id}
+        draftName={initial.name}
+        draftSlugs={initial.pokemonSlugs}
+        fullOpen={editFullOpen}
+        spritesOpen={editSpritesOpen}
+        onCloseFull={() => setEditFullOpen(false)}
+        onCloseSprites={() => setEditSpritesOpen(false)}
+        onApplied={handleDeckMetaApplied}
+      />
+
+      <DecklistImageDialog
+        open={imageOpen}
+        onClose={() => setImageOpen(false)}
+        cards={imageCards}
+        title={imageDialogTitle}
       />
 
       <Dialog

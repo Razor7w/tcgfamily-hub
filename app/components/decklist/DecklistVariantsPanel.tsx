@@ -45,13 +45,19 @@ type Props = {
   /** Si no es null, la pestaña Principal muestra el texto de esa variante. */
   principalVariantId: string | null
   variants: DecklistVariantDTO[]
+  /** Sincroniza el listado visible (pestaña / vista principal) con la cabecera (vista en imágenes). */
+  onActiveDeckChange?: (payload: { text: string; summary: string }) => void
+  /** Oculta el botón duplicado «Ver como imagen» dentro del módulo de cartas. */
+  hideDecklistImageButton?: boolean
 }
 
 export default function DecklistVariantsPanel({
   decklistId,
   baseDeckText,
   principalVariantId,
-  variants
+  variants,
+  onActiveDeckChange,
+  hideDecklistImageButton = false
 }: Props) {
   const theme = useTheme()
   const router = useRouter()
@@ -288,6 +294,22 @@ export default function DecklistVariantsPanel({
   const principalLabel = principalVariantId
     ? (variants.find(v => v.id === principalVariantId)?.label ?? 'Variante')
     : null
+
+  const activeDeckSummary = useMemo(() => {
+    if (resolvedTab === 'principal') {
+      if (principalVariantId && principalView === 'baseRef')
+        return 'Listado base (referencia)'
+      return 'Principal'
+    }
+    return variants.find(v => v.id === resolvedTab)?.label ?? 'Variante'
+  }, [resolvedTab, principalVariantId, principalView, variants])
+
+  useEffect(() => {
+    onActiveDeckChange?.({
+      text: activeDeckText,
+      summary: activeDeckSummary
+    })
+  }, [activeDeckText, activeDeckSummary, onActiveDeckChange])
 
   return (
     <Paper
@@ -577,7 +599,11 @@ export default function DecklistVariantsPanel({
       </Box>
 
       <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
-        <DecklistModule key={deckModuleKey} value={activeDeckText} />
+        <DecklistModule
+          key={deckModuleKey}
+          value={activeDeckText}
+          hideImageButton={hideDecklistImageButton}
+        />
       </Box>
 
       <DecklistCompareDialog

@@ -3,6 +3,10 @@ import mongoose from 'mongoose'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import SavedDecklist from '@/models/SavedDecklist'
+import {
+  normalizeOneOrTwoPokemonSlugs,
+  SAVED_DECKLIST_NAME_MAX
+} from '@/lib/saved-decklist-validation'
 
 function serializePrincipalVariantId(
   raw: mongoose.Types.ObjectId | null | undefined
@@ -78,8 +82,8 @@ export async function GET(
 }
 
 /**
- * Actualiza qué listado muestra la pestaña «Principal»: el texto base del mazo
- * o el de una variante existente.
+ * Actualiza metadatos del mazo: nombre, sprites (`pokemon`), y/o qué listado
+ * muestra la pestaña «Principal» (`principalVariantId`).
  */
 export async function PATCH(
   request: Request,
@@ -108,14 +112,26 @@ export async function PATCH(
       body && typeof body === 'object' && body !== null
         ? (body as Record<string, unknown>)
         : null
-    if (!o || !('principalVariantId' in o)) {
+    if (!o) {
+      return NextResponse.json({ error: 'Cuerpo inválido' }, { status: 400 })
+    }
+
+    const hasPrincipal = Object.prototype.hasOwnProperty.call(
+      o,
+      'principalVariantId'
+    )
+    const hasName = Object.prototype.hasOwnProperty.call(o, 'name')
+    const hasPokemon = Object.prototype.hasOwnProperty.call(o, 'pokemon')
+
+    if (!hasPrincipal && !hasName && !hasPokemon) {
       return NextResponse.json(
-        { error: 'Falta principalVariantId (string o null)' },
+        {
+          error: 'Envía al menos uno: principalVariantId, name o pokemon'
+        },
         { status: 400 }
       )
     }
 
-    const raw = o.principalVariantId
     await connectDB()
     const uid = new mongoose.Types.ObjectId(session.user.id)
 
@@ -124,34 +140,66 @@ export async function PATCH(
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     }
 
-    if (raw === null) {
-      doc.set('principalVariantId', null)
-    } else if (typeof raw === 'string') {
-      const vid = parseObjectId(raw)
-      if (!vid) {
+    if (hasName) {
+      const nameRaw = typeof o.name === 'string' ? o.name.trim() : ''
+      if (!nameRaw || nameRaw.length > SAVED_DECKLIST_NAME_MAX) {
         return NextResponse.json(
-          { error: 'principalVariantId inválido' },
+          {
+            error: `Nombre obligatorio (máx. ${SAVED_DECKLIST_NAME_MAX} caracteres)`
+          },
           { status: 400 }
         )
       }
-      const sub = doc.variants.id(vid)
-      if (!sub) {
+      doc.name = nameRaw
+    }
+
+    if (hasPokemon) {
+      const pokemonSlugs = normalizeOneOrTwoPokemonSlugs(o.pokemon)
+      if (!pokemonSlugs) {
         return NextResponse.json(
-          { error: 'La variante no existe en este mazo' },
+          {
+            error:
+              'pokemon: 1 o 2 slugs distintos válidos (minúsculas, Pokédex Limitless)'
+          },
           { status: 400 }
         )
       }
-      doc.principalVariantId = vid
-    } else {
-      return NextResponse.json(
-        { error: 'principalVariantId debe ser string o null' },
-        { status: 400 }
-      )
+      doc.pokemonSlugs = pokemonSlugs
+    }
+
+    if (hasPrincipal) {
+      const raw = o.principalVariantId
+      if (raw === null) {
+        doc.set('principalVariantId', null)
+      } else if (typeof raw === 'string') {
+        const vid = parseObjectId(raw)
+        if (!vid) {
+          return NextResponse.json(
+            { error: 'principalVariantId inválido' },
+            { status: 400 }
+          )
+        }
+        const sub = doc.variants.id(vid)
+        if (!sub) {
+          return NextResponse.json(
+            { error: 'La variante no existe en este mazo' },
+            { status: 400 }
+          )
+        }
+        doc.principalVariantId = vid
+      } else {
+        return NextResponse.json(
+          { error: 'principalVariantId debe ser string o null' },
+          { status: 400 }
+        )
+      }
     }
 
     await doc.save()
 
     return NextResponse.json({
+      name: doc.name,
+      pokemonSlugs: Array.isArray(doc.pokemonSlugs) ? doc.pokemonSlugs : [],
       principalVariantId: serializePrincipalVariantId(doc.principalVariantId),
       updatedAt: doc.updatedAt.toISOString()
     })
