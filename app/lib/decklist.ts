@@ -159,13 +159,23 @@ export function flatCardsFromDecklistText(value: string): DecklistFlatCard[] {
   return Array.from(map.values())
 }
 
+/**
+ * El CDN de Limitless usa códigos de carpeta distintos a los impresos en carta en algunos casos.
+ * Las Scarlet/Violet promos en decklist suelen venir como `PR-SV`; en el CDN son `SVP`.
+ */
+function limitlessCdnSetCode(rawSet: string): string {
+  const u = rawSet.trim().toUpperCase()
+  if (u === 'PR-SV' || u === 'PRSV') return 'SVP'
+  return u
+}
+
 export function limitlessCardImageUrl(args: {
   set: string
   number: number
   size?: 'SM' | 'LG'
   lang?: 'EN'
 }): string {
-  const set = args.set.toUpperCase()
+  const set = limitlessCdnSetCode(args.set)
   const num = String(args.number).padStart(3, '0')
   const size = args.size ?? 'LG'
   const lang = args.lang ?? 'EN'
