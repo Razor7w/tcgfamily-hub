@@ -19,16 +19,29 @@ type DashboardQuickActionsProps = {
   onPlayPokemonDecklistPdf: () => void
 }
 
+type ActionItem = {
+  id: 'mail' | 'tournament' | 'pdf'
+  title: string
+  description: string
+  icon: ReactNode
+  onClick: () => void
+}
+
 function ActionTile({
   icon,
   title,
   description,
-  onClick
+  onClick,
+  dense,
+  titleAttr
 }: {
   icon: ReactNode
   title: string
   description: string
   onClick: () => void
+  /** Tipografía más ajustada cuando la grilla muestra 3 columnas. */
+  dense: boolean
+  titleAttr: string
 }) {
   const ariaLabel = `${title}. ${description}`
 
@@ -37,38 +50,49 @@ function ActionTile({
       focusRipple
       onClick={onClick}
       aria-label={ariaLabel}
+      title={titleAttr}
       sx={{
         width: '100%',
         display: 'block',
         textAlign: 'left',
-        borderRadius: 2,
-        overflow: 'hidden',
+        borderRadius: 2.5,
+        // Sin overflow hidden: en celdas estrechas el texto de varias líneas no se corta.
+        overflow: 'visible',
+        minHeight: { xs: 68, sm: 72 },
+        touchAction: 'manipulation',
         transition:
-          'transform 0.18s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.18s ease, border-color 0.18s ease',
+          'transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s ease, border-color 0.22s ease, background-color 0.22s ease',
         border: '1px solid',
         borderColor: 'divider',
         bgcolor: t =>
           alpha(
             t.palette.primary.main,
-            t.palette.mode === 'dark' ? 0.14 : 0.07
+            t.palette.mode === 'dark' ? 0.12 : 0.05
           ),
         boxShadow: 'none',
         '&:hover': {
-          borderColor: 'primary.main',
+          borderColor: t => alpha(t.palette.primary.main, 0.42),
           bgcolor: t =>
             alpha(
               t.palette.primary.main,
-              t.palette.mode === 'dark' ? 0.2 : 0.1
+              t.palette.mode === 'dark' ? 0.18 : 0.08
             ),
-          boxShadow: t =>
-            `0 10px 28px -8px ${alpha(
-              t.palette.common.black,
-              t.palette.mode === 'dark' ? 0.45 : 0.12
-            )}`,
-          transform: 'translateY(-2px)'
+          boxShadow: t => {
+            const c = t.palette.primary.main
+            return `0 12px 32px -10px ${alpha(
+              c,
+              t.palette.mode === 'dark' ? 0.5 : 0.22
+            )}`
+          },
+          transform: 'translateY(-1px)',
+          '& [data-qa="shortcut-icon"]': {
+            borderColor: t => alpha(t.palette.primary.main, 0.38),
+            bgcolor: t => alpha(t.palette.primary.main, 0.16)
+          }
         },
         '&:active': {
-          transform: 'translateY(0) scale(0.995)'
+          transform: 'translateY(0) scale(0.992)',
+          transitionDuration: '0.1s'
         },
         '&.Mui-focusVisible': {
           outline: '2px solid',
@@ -78,28 +102,36 @@ function ActionTile({
       }}
     >
       <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={{ xs: 1, sm: 2 }}
-        alignItems={{ xs: 'center', sm: 'flex-start' }}
+        direction="row"
+        alignItems="center"
+        justifyContent="flex-start"
+        spacing={{ xs: 1.5, sm: 2 }}
         sx={{
-          p: { xs: 1.25, sm: 2.25 },
+          p: { xs: 1.5, sm: 2, md: dense ? 1.75 : 2.25 },
           width: '100%',
-          textAlign: { xs: 'center', sm: 'left' }
+          minHeight: 'inherit'
         }}
       >
         <Box
+          data-qa="shortcut-icon"
           sx={{
             flexShrink: 0,
-            width: { xs: 40, sm: 48 },
-            height: { xs: 40, sm: 48 },
-            borderRadius: 1.5,
+            width: { xs: 44, sm: 48, md: dense ? 44 : 52 },
+            height: { xs: 44, sm: 48, md: dense ? 44 : 52 },
+            borderRadius: 2,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'primary.main',
-            bgcolor: t => alpha(t.palette.primary.main, 0.14),
+            color: 'primary.dark',
+            bgcolor: t => alpha(t.palette.primary.main, 0.12),
             border: '1px solid',
-            borderColor: t => alpha(t.palette.primary.main, 0.22)
+            borderColor: t => alpha(t.palette.primary.main, 0.2),
+            transition: 'background-color 0.22s ease, border-color 0.22s ease',
+            '& .MuiSvgIcon-root': {
+              fontSize: dense
+                ? { xs: 22, sm: 24, md: 22 }
+                : { xs: 22, sm: 26, md: 26 }
+            }
           }}
           aria-hidden
         >
@@ -109,8 +141,11 @@ function ActionTile({
           sx={{
             minWidth: 0,
             flex: 1,
-            pt: { xs: 0, sm: 0.25 },
-            width: { xs: '100%', sm: 'auto' }
+            textAlign: 'left',
+            // Evita el fallo "Regi... correo" con columnas estrechas
+            wordBreak: 'break-word',
+            hyphens: 'auto',
+            pr: 0.25
           }}
         >
           <Typography
@@ -118,21 +153,45 @@ function ActionTile({
             component="span"
             sx={{
               fontWeight: 700,
-              letterSpacing: '-0.01em',
+              letterSpacing: '-0.02em',
               display: 'block',
-              fontSize: { xs: '0.8125rem', sm: undefined },
-              lineHeight: { xs: 1.3, sm: undefined }
+              textWrap: 'balance',
+              fontSize: dense
+                ? { xs: '0.9rem', sm: '0.92rem', md: '0.8rem' }
+                : { xs: '0.9rem', sm: '0.95rem' },
+              lineHeight: 1.3,
+              // Ellipsis solo en 3 columnas (md+), donde el ancho fijo de celda aplica
+              ...(dense
+                ? {
+                    overflow: { xs: 'visible', sm: 'visible', md: 'hidden' },
+                    textOverflow: { xs: 'clip', sm: 'clip', md: 'ellipsis' },
+                    whiteSpace: { xs: 'normal', sm: 'normal', md: 'nowrap' }
+                  }
+                : {
+                    overflow: 'visible',
+                    textOverflow: 'clip',
+                    whiteSpace: 'normal'
+                  })
             }}
           >
             {title}
           </Typography>
           <Typography
-            variant="body2"
+            component="span"
             color="text.secondary"
             sx={{
-              mt: { xs: 0, sm: 0.5 },
-              lineHeight: 1.45,
-              display: { xs: 'none', sm: 'block' }
+              mt: 0.35,
+              lineHeight: 1.5,
+              fontSize: {
+                xs: '0.75rem',
+                sm: dense ? '0.75rem' : '0.8125rem',
+                md: dense ? '0.7rem' : '0.8125rem'
+              },
+              fontWeight: 500,
+              display: '-webkit-box',
+              WebkitLineClamp: { xs: 3, sm: 3, md: dense ? 2 : 3 },
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden'
             }}
           >
             {description}
@@ -140,12 +199,10 @@ function ActionTile({
         </Box>
         <ChevronRight
           sx={{
-            display: { xs: 'none', sm: 'block' },
             flexShrink: 0,
-            mt: { xs: 0, sm: 0.5 },
             color: 'text.secondary',
-            opacity: 0.7,
-            fontSize: 22
+            opacity: { xs: 0.5, sm: 0.62 },
+            fontSize: { xs: 20, sm: 22 }
           }}
           aria-hidden
         />
@@ -168,18 +225,45 @@ export default function DashboardQuickActions({
     return null
   }
 
-  const tileCount =
-    Number(shortcuts.createMail) +
-    Number(shortcuts.createTournament) +
-    Number(shortcuts.playPokemonDecklistPdf)
+  const items: ActionItem[] = []
+  if (shortcuts.createMail) {
+    items.push({
+      id: 'mail',
+      title: 'Registrar correo',
+      description: 'Añade un envío a la tienda.',
+      icon: <MarkunreadMailbox />,
+      onClick: onRegisterMail
+    })
+  }
+  if (shortcuts.createTournament) {
+    items.push({
+      id: 'tournament',
+      title: 'Reportar torneo',
+      description: 'Registra un torneo personal.',
+      icon: <SportsEsports />,
+      onClick: onCreateCustomTournament
+    })
+  }
+  if (shortcuts.playPokemonDecklistPdf) {
+    items.push({
+      id: 'pdf',
+      title: 'PDF de listas',
+      description: 'Hoja oficial Play! Pokémon (PDF).',
+      icon: <PictureAsPdf />,
+      onClick: onPlayPokemonDecklistPdf
+    })
+  }
+
+  const tileCount = items.length
+  const dense = tileCount === 3
 
   return (
     <Box
       component="section"
       aria-labelledby="dashboard-quick-actions-heading"
       sx={{
-        borderRadius: 2,
-        p: { xs: 1.25, sm: 2.5 },
+        borderRadius: 2.5,
+        p: { xs: 1.5, sm: 2.5 },
         border: '1px solid',
         borderColor: t => alpha(t.palette.text.primary, 0.08),
         background: t =>
@@ -189,7 +273,7 @@ export default function DashboardQuickActions({
         boxShadow: t =>
           t.palette.mode === 'dark'
             ? `inset 0 1px 0 ${alpha(t.palette.common.white, 0.06)}`
-            : `inset 0 1px 0 ${alpha(t.palette.common.black, 0.04)}`
+            : `0 1px 0 ${alpha(t.palette.common.black, 0.04)}, inset 0 1px 0 ${alpha(t.palette.common.black, 0.02)}`
       }}
     >
       <Typography
@@ -198,11 +282,14 @@ export default function DashboardQuickActions({
         component="h2"
         color="text.secondary"
         sx={{
-          fontWeight: 800,
-          letterSpacing: { xs: '0.1em', sm: '0.14em' },
+          fontWeight: 700,
+          letterSpacing: { xs: '0.12em', sm: '0.1em' },
           display: 'block',
-          mb: { xs: 0.75, sm: 0.5 },
-          fontSize: { xs: '0.65rem', sm: undefined }
+          mb: { xs: 0.5, sm: 0.5 },
+          fontSize: { xs: '0.7rem', sm: '0.75rem' },
+          textTransform: 'none',
+          color: 'text.primary',
+          opacity: 0.85
         }}
       >
         Accesos rápidos
@@ -211,55 +298,57 @@ export default function DashboardQuickActions({
         variant="body2"
         color="text.secondary"
         sx={{
-          display: { xs: 'none', sm: 'block' },
-          mb: 2,
-          maxWidth: 560,
-          lineHeight: 1.5
+          mb: { xs: 1.5, sm: 2 },
+          maxWidth: 480,
+          lineHeight: 1.6,
+          fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+          fontWeight: 500
         }}
       >
-        Atajos para las acciones que usas con más frecuencia. El resto del panel
-        sigue igual debajo.
+        {tileCount > 1
+          ? 'Atajos a lo que usas a menudo. El resto del panel sigue abajo.'
+          : 'Un atajo a una acción frecuente. El resto del panel sigue abajo.'}
       </Typography>
 
       <Box
         sx={{
           display: 'grid',
+          // Con 3 atajos, dos columnas en móvil dejan celdas demasiado estrechas: una columna hasta md.
           gridTemplateColumns: {
-            xs: 'minmax(0, 1fr)',
+            xs:
+              tileCount === 1
+                ? 'minmax(0, 1fr)'
+                : tileCount === 3
+                  ? 'minmax(0, 1fr)'
+                  : 'repeat(2, minmax(0, 1fr))',
             sm:
+              tileCount === 1
+                ? 'minmax(0, 1fr)'
+                : tileCount === 3
+                  ? 'minmax(0, 1fr)'
+                  : 'repeat(2, minmax(0, 1fr))',
+            md:
               tileCount === 1
                 ? 'minmax(0, 1fr)'
                 : tileCount === 2
                   ? 'repeat(2, minmax(0, 1fr))'
                   : 'repeat(3, minmax(0, 1fr))'
           },
-          gap: { xs: 1, sm: 2 }
+          columnGap: { xs: 1.25, sm: 2 },
+          rowGap: { xs: 1.25, sm: 2 }
         }}
       >
-        {shortcuts.createMail ? (
+        {items.map(item => (
           <ActionTile
-            icon={<MarkunreadMailbox sx={{ fontSize: { xs: 22, sm: 26 } }} />}
-            title="Registrar correo"
-            description="Añade un envío a la tienda."
-            onClick={onRegisterMail}
+            key={item.id}
+            icon={item.icon}
+            title={item.title}
+            titleAttr={item.description}
+            description={item.description}
+            onClick={item.onClick}
+            dense={dense}
           />
-        ) : null}
-        {shortcuts.createTournament ? (
-          <ActionTile
-            icon={<SportsEsports sx={{ fontSize: { xs: 22, sm: 26 } }} />}
-            title="Reportar torneo"
-            description="Registra un torneo personal."
-            onClick={onCreateCustomTournament}
-          />
-        ) : null}
-        {shortcuts.playPokemonDecklistPdf ? (
-          <ActionTile
-            icon={<PictureAsPdf sx={{ fontSize: { xs: 22, sm: 26 } }} />}
-            title="PDF de listas"
-            description="Hoja oficial Play! Pokémon (PDF)."
-            onClick={onPlayPokemonDecklistPdf}
-          />
-        ) : null}
+        ))}
       </Box>
     </Box>
   )

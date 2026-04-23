@@ -1,21 +1,27 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Card from '@mui/material/Card'
-import CardContent from '@mui/material/CardContent'
+import Container from '@mui/material/Container'
+import Divider from '@mui/material/Divider'
 import FormControl from '@mui/material/FormControl'
+import FormHelperText from '@mui/material/FormHelperText'
 import InputLabel from '@mui/material/InputLabel'
+import LinearProgress from '@mui/material/LinearProgress'
 import MenuItem from '@mui/material/MenuItem'
+import Paper from '@mui/material/Paper'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
+import { alpha, useTheme } from '@mui/material/styles'
 import { useQuery } from '@tanstack/react-query'
 import {
   useSavedDecklistsList,
@@ -86,7 +92,25 @@ function writePrefsForDeck(
   }
 }
 
+function sectionLabel(text: string) {
+  return (
+    <Typography
+      variant="overline"
+      component="p"
+      sx={{
+        letterSpacing: '0.1em',
+        fontWeight: 700,
+        color: 'primary.main',
+        m: 0
+      }}
+    >
+      {text}
+    </Typography>
+  )
+}
+
 export default function PlayPokemonDecklistPdfPageClient() {
+  const theme = useTheme()
   const { data: decklistSummaries = [], isLoading: listLoading } =
     useSavedDecklistsList()
 
@@ -219,175 +243,399 @@ export default function PlayPokemonDecklistPdfPageClient() {
     return o
   }, [loadedDeck])
 
-  return (
-    <Box sx={{ maxWidth: 720, mx: 'auto' }}>
-      <Stack spacing={2} sx={{ mb: 2 }}>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 800 }}>
-          PDF listas (Play! Pokémon)
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Genera la hoja oficial: pega un listado o carga un mazo guardado. Si
-          eliges un mazo, se rellenan tu nombre y POP ID (perfil o último usado
-          con ese mazo).
-        </Typography>
-      </Stack>
+  const hasSavedDecks = decklistSummaries.length > 0
+  const noSavedDecksHint = source === 'saved' && !listLoading && !hasSavedDecks
 
-      <Card variant="outlined" sx={{ borderRadius: 2 }}>
-        <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-          <Stack spacing={2.5}>
-            <FormControl fullWidth size="small">
-              <InputLabel id="source-label">Origen del listado</InputLabel>
-              <Select
-                labelId="source-label"
-                label="Origen del listado"
-                value={source}
-                onChange={e => {
-                  const v = e.target.value as 'manual' | 'saved'
-                  setSource(v)
-                  setError(null)
-                  if (v === 'manual') {
-                    setSelectedDeckId('')
-                    setLoadedDeck(null)
-                    if (me?.name) setPlayerName(me.name)
-                    setPlayerId(me?.popid ?? '')
+  return (
+    <Box
+      component="main"
+      sx={{
+        position: 'relative',
+        overflow: 'hidden',
+        minHeight: '100%',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          opacity: theme.palette.mode === 'dark' ? 0.06 : 0.09,
+          backgroundImage: `radial-gradient(ellipse 120% 80% at 0% 0%, ${alpha(theme.palette.primary.main, 0.16)} 0%, transparent 55%), radial-gradient(ellipse 90% 70% at 100% 15%, ${alpha(theme.palette.secondary.main, 0.1)} 0%, transparent 50%), radial-gradient(circle at 50% 100%, ${alpha(theme.palette.primary.dark, 0.05)} 0%, transparent 42%)`
+        }
+      }}
+    >
+      <Container
+        maxWidth="md"
+        sx={{
+          position: 'relative',
+          py: { xs: 3, sm: 4, md: 5 },
+          px: { xs: 2, sm: 3 }
+        }}
+      >
+        <Stack spacing={3.5} component="article">
+          <Button
+            component={Link}
+            href="/dashboard"
+            startIcon={<ArrowBackIcon />}
+            variant="text"
+            color="inherit"
+            sx={{
+              alignSelf: 'flex-start',
+              px: 1,
+              minWidth: 0,
+              color: 'text.secondary',
+              fontWeight: 600,
+              borderRadius: 1.5,
+              transition: 'color 0.2s ease, background-color 0.2s ease',
+              '&:hover': {
+                color: 'primary.main',
+                bgcolor: alpha(theme.palette.primary.main, 0.06)
+              }
+            }}
+          >
+            Volver al panel
+          </Button>
+
+          <Stack spacing={1.25}>
+            <Typography
+              variant="overline"
+              sx={{
+                letterSpacing: '0.12em',
+                fontWeight: 700,
+                color: 'primary.main'
+              }}
+            >
+              Play! Pokémon
+            </Typography>
+            <Typography
+              component="h1"
+              variant="h4"
+              sx={{
+                fontWeight: 800,
+                letterSpacing: '-0.035em',
+                lineHeight: 1.12,
+                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '1.9rem' }
+              }}
+            >
+              Hoja de listas (PDF)
+            </Typography>
+            <Typography
+              variant="body1"
+              color="text.secondary"
+              fontWeight={500}
+              sx={{
+                maxWidth: 'min(62ch, 100%)',
+                lineHeight: 1.65,
+                textWrap: 'pretty',
+                fontSize: { xs: '0.9375rem', sm: '1rem' }
+              }}
+            >
+              Genera el PDF oficial. Puedes pegar un listado o elegir un mazo
+              guardado; en ese caso se rellenan tu nombre y POP ID (perfil o
+              última descarga con ese mazo).
+            </Typography>
+          </Stack>
+
+          <Paper
+            elevation={0}
+            component="section"
+            aria-labelledby="pdf-form-heading"
+            sx={{
+              p: { xs: 2, sm: 2.75 },
+              borderRadius: 2.5,
+              border: '1px solid',
+              borderColor: 'divider',
+              borderLeft: '4px solid',
+              borderLeftColor: 'primary.main',
+              bgcolor: 'background.paper',
+              boxShadow:
+                theme.palette.mode === 'dark'
+                  ? `0 14px 40px -24px ${alpha('#000', 0.5)}`
+                  : `0 14px 40px -28px ${alpha(theme.palette.primary.dark, 0.16)}`
+            }}
+          >
+            <Typography
+              id="pdf-form-heading"
+              variant="subtitle1"
+              sx={{ fontWeight: 800, letterSpacing: '-0.02em', mb: 2.5 }}
+            >
+              Datos del formulario
+            </Typography>
+
+            <Stack spacing={3.25} component="form" noValidate>
+              <Stack spacing={1.75}>
+                {sectionLabel('Listado')}
+                {listLoading && source === 'saved' ? (
+                  <LinearProgress
+                    color="primary"
+                    sx={{ borderRadius: 1, maxWidth: 280 }}
+                    aria-label="Cargando mazos guardados"
+                  />
+                ) : null}
+                <FormControl fullWidth size="small">
+                  <InputLabel id="source-label">Origen del listado</InputLabel>
+                  <Select
+                    labelId="source-label"
+                    label="Origen del listado"
+                    value={source}
+                    onChange={e => {
+                      const v = e.target.value as 'manual' | 'saved'
+                      setSource(v)
+                      setError(null)
+                      if (v === 'manual') {
+                        setSelectedDeckId('')
+                        setLoadedDeck(null)
+                        if (me?.name) setPlayerName(me.name)
+                        setPlayerId(me?.popid ?? '')
+                      }
+                    }}
+                  >
+                    <MenuItem value="manual">
+                      Escribir o pegar en el recuadro
+                    </MenuItem>
+                    <MenuItem
+                      value="saved"
+                      disabled={listLoading || !hasSavedDecks}
+                    >
+                      Mazo guardado
+                    </MenuItem>
+                  </Select>
+                  {!hasSavedDecks && !listLoading ? (
+                    <FormHelperText sx={{ m: 0, mt: 0.5 }}>
+                      <Box component="span" sx={{ display: 'block' }}>
+                        Aún no hay mazos guardados.{' '}
+                        <Box
+                          component={Link}
+                          href="/dashboard/decklists/nuevo"
+                          sx={{
+                            color: 'primary.main',
+                            fontWeight: 600,
+                            textDecoration: 'none',
+                            '&:hover': { textDecoration: 'underline' }
+                          }}
+                        >
+                          Crear un decklist
+                        </Box>
+                      </Box>
+                    </FormHelperText>
+                  ) : null}
+                </FormControl>
+
+                {source === 'saved' ? (
+                  <FormControl fullWidth size="small" error={noSavedDecksHint}>
+                    <InputLabel id="deck-label">Mazo</InputLabel>
+                    <Select
+                      labelId="deck-label"
+                      label="Mazo"
+                      value={selectedDeckId}
+                      onChange={e =>
+                        void handleSelectDeck(String(e.target.value))
+                      }
+                    >
+                      <MenuItem value="">
+                        <em>Elige un mazo…</em>
+                      </MenuItem>
+                      {decklistSummaries.map((d: SavedDecklistSummary) => (
+                        <MenuItem key={d.id} value={d.id}>
+                          {d.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {noSavedDecksHint ? (
+                      <FormHelperText>
+                        Necesitas al menos un mazo en tu cuenta.
+                      </FormHelperText>
+                    ) : null}
+                  </FormControl>
+                ) : null}
+
+                {source === 'saved' &&
+                loadedDeck &&
+                listOriginOptions.length > 1 ? (
+                  <FormControl fullWidth size="small">
+                    <InputLabel id="origin-label">
+                      Qué listado exportar
+                    </InputLabel>
+                    <Select
+                      labelId="origin-label"
+                      label="Qué listado exportar"
+                      value={listOrigin}
+                      onChange={e => {
+                        const v = e.target.value as ListOrigin
+                        setListOrigin(v)
+                        setDeckText(deckTextForOrigin(loadedDeck, v))
+                      }}
+                    >
+                      {listOriginOptions.map(o => (
+                        <MenuItem key={o.value} value={o.value}>
+                          {o.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                ) : null}
+
+                <TextField
+                  label="Listado (texto del mazo)"
+                  value={deckText}
+                  onChange={e => {
+                    setDeckText(e.target.value)
+                    if (source === 'saved') {
+                      setSource('manual')
+                      setSelectedDeckId('')
+                      setLoadedDeck(null)
+                      setListOrigin('base')
+                    }
+                  }}
+                  fullWidth
+                  multiline
+                  minRows={12}
+                  required
+                  size="small"
+                  inputProps={{ spellCheck: false }}
+                  placeholder={'##Pokémon\n4 Dreepy TWM 128\n...'}
+                  sx={{
+                    '& .MuiInputBase-input': {
+                      fontFamily: theme.typography.fontFamily,
+                      fontSize: { xs: '0.8rem', sm: '0.8125rem' },
+                      lineHeight: 1.5,
+                      fontVariantNumeric: 'tabular-nums'
+                    }
+                  }}
+                />
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ fontWeight: 500 }}
+                >
+                  Si editas el texto a mano después de elegir un mazo, el origen
+                  vuelve a &quot;escribir o pegar&quot;.
+                </Typography>
+              </Stack>
+
+              <Divider flexItem />
+
+              <Stack spacing={1.75}>
+                {sectionLabel('Jugador')}
+                <Stack
+                  spacing={1.75}
+                  direction={{ xs: 'column', sm: 'row' }}
+                  sx={{ alignItems: { sm: 'flex-start' } }}
+                >
+                  <TextField
+                    label="Nombre del jugador"
+                    value={playerName}
+                    onChange={e => setPlayerName(e.target.value)}
+                    required
+                    fullWidth
+                    size="small"
+                    autoComplete="name"
+                  />
+                  <TextField
+                    label="POP ID (Player ID)"
+                    value={playerId}
+                    onChange={e => setPlayerId(e.target.value)}
+                    fullWidth
+                    size="small"
+                    placeholder="Opcional en algunos torneos"
+                    inputProps={{ inputMode: 'text' }}
+                  />
+                </Stack>
+                <TextField
+                  label="Fecha de nacimiento"
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={e => setDateOfBirth(e.target.value)}
+                  required
+                  fullWidth
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ max: '2100-12-31' }}
+                />
+                <Stack spacing={1}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    fontWeight={600}
+                    sx={{ letterSpacing: '0.02em' }}
+                  >
+                    Categoría
+                  </Typography>
+                  <ToggleButtonGroup
+                    exclusive
+                    fullWidth
+                    size="small"
+                    value={ageDivision}
+                    onChange={(_e, v: AgeDivisionChoice | null) => {
+                      if (v != null) setAgeDivision(v)
+                    }}
+                    sx={{
+                      '& .MuiToggleButton-root': {
+                        fontWeight: 600,
+                        textTransform: 'none',
+                        py: 1.1,
+                        '&.Mui-selected': {
+                          color: 'primary.contrastText',
+                          bgcolor: 'primary.main',
+                          borderColor: 'primary.main',
+                          '&:hover': {
+                            bgcolor: 'primary.dark',
+                            borderColor: 'primary.dark'
+                          }
+                        }
+                      }
+                    }}
+                  >
+                    <ToggleButton value="junior">Junior</ToggleButton>
+                    <ToggleButton value="senior">Senior</ToggleButton>
+                    <ToggleButton value="masters">Máster</ToggleButton>
+                  </ToggleButtonGroup>
+                </Stack>
+              </Stack>
+
+              {error ? (
+                <Alert
+                  severity="error"
+                  variant="outlined"
+                  sx={{ borderRadius: 2 }}
+                >
+                  {error}
+                </Alert>
+              ) : null}
+
+              <Button
+                type="button"
+                variant="contained"
+                size="large"
+                fullWidth
+                startIcon={pending ? null : <PictureAsPdfIcon aria-hidden />}
+                disabled={!canSubmit || pending}
+                onClick={() => void handleGenerate()}
+                sx={{
+                  mt: 0.5,
+                  fontWeight: 700,
+                  py: 1.25,
+                  borderRadius: 2,
+                  alignSelf: { xs: 'stretch', sm: 'flex-end' },
+                  minWidth: { sm: 220 },
+                  boxShadow: t =>
+                    `0 8px 24px -6px ${alpha(t.palette.primary.main, 0.45)}`,
+                  transition:
+                    'transform 0.18s ease, box-shadow 0.2s ease, background-color 0.2s ease',
+                  '&:hover': {
+                    boxShadow: t =>
+                      `0 10px 28px -4px ${alpha(t.palette.primary.main, 0.5)}`
+                  },
+                  '&:active': {
+                    transform: 'scale(0.99)'
                   }
                 }}
               >
-                <MenuItem value="manual">
-                  Escribir o pegar en el recuadro
-                </MenuItem>
-                <MenuItem value="saved" disabled={listLoading}>
-                  Mazo guardado
-                </MenuItem>
-              </Select>
-            </FormControl>
-
-            {source === 'saved' ? (
-              <FormControl fullWidth size="small">
-                <InputLabel id="deck-label">Mazo</InputLabel>
-                <Select
-                  labelId="deck-label"
-                  label="Mazo"
-                  value={selectedDeckId}
-                  onChange={e => void handleSelectDeck(String(e.target.value))}
-                >
-                  <MenuItem value="">
-                    <em>Elige un mazo…</em>
-                  </MenuItem>
-                  {decklistSummaries.map((d: SavedDecklistSummary) => (
-                    <MenuItem key={d.id} value={d.id}>
-                      {d.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            ) : null}
-
-            {source === 'saved' &&
-            loadedDeck &&
-            listOriginOptions.length > 1 ? (
-              <FormControl fullWidth size="small">
-                <InputLabel id="origin-label">Qué listado exportar</InputLabel>
-                <Select
-                  labelId="origin-label"
-                  label="Qué listado exportar"
-                  value={listOrigin}
-                  onChange={e => {
-                    const v = e.target.value as ListOrigin
-                    setListOrigin(v)
-                    setDeckText(deckTextForOrigin(loadedDeck, v))
-                  }}
-                >
-                  {listOriginOptions.map(o => (
-                    <MenuItem key={o.value} value={o.value}>
-                      {o.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            ) : null}
-
-            <TextField
-              label="Listado (texto del mazo)"
-              value={deckText}
-              onChange={e => {
-                setDeckText(e.target.value)
-                if (source === 'saved') {
-                  setSource('manual')
-                  setSelectedDeckId('')
-                  setLoadedDeck(null)
-                  setListOrigin('base')
-                }
-              }}
-              fullWidth
-              multiline
-              minRows={12}
-              required
-              placeholder={'##Pokémon\n4 Dreepy TWM 128\n...'}
-            />
-
-            <TextField
-              label="Nombre del jugador"
-              value={playerName}
-              onChange={e => setPlayerName(e.target.value)}
-              required
-              fullWidth
-              autoComplete="name"
-            />
-            <TextField
-              label="POP ID (Player ID)"
-              value={playerId}
-              onChange={e => setPlayerId(e.target.value)}
-              fullWidth
-              placeholder="Opcional en algunos torneos"
-            />
-            <TextField
-              label="Fecha de nacimiento"
-              type="date"
-              value={dateOfBirth}
-              onChange={e => setDateOfBirth(e.target.value)}
-              required
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-            />
-            <Stack spacing={0.75}>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                fontWeight={700}
-              >
-                Categoría
-              </Typography>
-              <ToggleButtonGroup
-                exclusive
-                fullWidth
-                size="small"
-                value={ageDivision}
-                onChange={(_e, v: AgeDivisionChoice | null) => {
-                  if (v != null) setAgeDivision(v)
-                }}
-              >
-                <ToggleButton value="junior">Junior</ToggleButton>
-                <ToggleButton value="senior">Senior</ToggleButton>
-                <ToggleButton value="masters">Máster</ToggleButton>
-              </ToggleButtonGroup>
+                {pending ? 'Generando…' : 'Descargar PDF'}
+              </Button>
             </Stack>
-
-            {error ? <Alert severity="error">{error}</Alert> : null}
-
-            <Button
-              variant="contained"
-              size="large"
-              startIcon={<PictureAsPdfIcon />}
-              disabled={!canSubmit || pending}
-              onClick={() => void handleGenerate()}
-              sx={{ fontWeight: 700, alignSelf: 'flex-start' }}
-            >
-              {pending ? 'Generando…' : 'Descargar PDF'}
-            </Button>
-          </Stack>
-        </CardContent>
-      </Card>
+          </Paper>
+        </Stack>
+      </Container>
     </Box>
   )
 }
