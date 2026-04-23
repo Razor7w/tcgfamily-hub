@@ -11,7 +11,7 @@ export interface IDashboardModuleSettings extends Document {
     storePoints: boolean
   }
   order: DashboardModuleId[]
-  /** Accesos rápidos en /dashboard (registrar correo, torneo, PDF de listas). */
+  /** Accesos rápidos en /dashboard (registrar correo, torneo, lista PDF). */
   shortcuts?: {
     createMail: boolean
     createTournament: boolean

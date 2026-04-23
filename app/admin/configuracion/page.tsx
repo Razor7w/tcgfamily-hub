@@ -301,8 +301,8 @@ function DashboardShortcutsEditor({
                 /dashboard
               </Link>{' '}
               para registrar un correo, crear un torneo custom o abrir el
-              generador de PDF de listas. Puedes ocultar cada uno sin desactivar
-              el bloque completo de correo o «Mis torneos».
+              generador de lista PDF (Play! Pokémon). Puedes ocultar cada uno
+              sin desactivar el bloque completo de correo o «Mis torneos».
             </Typography>
           </Box>
         </Stack>
@@ -377,7 +377,7 @@ function DashboardShortcutsEditor({
                 <PictureAsPdf fontSize="small" color="action" />
                 <Box>
                   <Typography variant="body2" fontWeight={600}>
-                    Acceso «PDF de listas (Play! Pokémon)»
+                    Acceso «Lista PDF (Play! Pokémon)»
                   </Typography>
                   <Typography
                     variant="caption"

@@ -247,8 +247,8 @@ export default function DashboardQuickActions({
   if (shortcuts.playPokemonDecklistPdf) {
     items.push({
       id: 'pdf',
-      title: 'PDF de listas',
-      description: 'Hoja oficial Play! Pokémon (PDF).',
+      title: 'Lista PDF',
+      description: 'Hoja oficial Play! Pokémon.',
       icon: <PictureAsPdf />,
       onClick: onPlayPokemonDecklistPdf
     })
