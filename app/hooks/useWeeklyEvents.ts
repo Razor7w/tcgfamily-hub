@@ -933,11 +933,6 @@ export type PublicLeagueResponse = {
     slug: string
     description: string
     countBestEvents: number | null
-    scoring: {
-      winPoints: number
-      lossPoints: number
-      tiePoints: number
-    }
   }
   tournaments: {
     _id: string
