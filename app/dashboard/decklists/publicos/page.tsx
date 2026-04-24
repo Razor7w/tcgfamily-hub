@@ -113,7 +113,7 @@ export default function PublicDecklistsPage() {
                 textWrap: 'balance'
               }}
             >
-              Decklists públicos
+              Listas públicas
             </Typography>
             <Typography
               variant="body2"
@@ -130,7 +130,7 @@ export default function PublicDecklistsPage() {
                   color: theme.palette.primary.main
                 }}
               >
-                Volver a mis decklists
+                Volver a mis listas
               </Link>
             </Typography>
           </Stack>
@@ -158,7 +158,7 @@ export default function PublicDecklistsPage() {
             >
               <Typography color="text.secondary">
                 Nadie ha compartido un mazo todavía. Marca el tuyo como público
-                desde «Mis decklists».
+                desde «Mis listas».
               </Typography>
             </Paper>
           ) : (

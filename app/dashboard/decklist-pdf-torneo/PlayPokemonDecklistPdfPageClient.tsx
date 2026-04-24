@@ -413,7 +413,7 @@ export default function PlayPokemonDecklistPdfPageClient() {
                             '&:hover': { textDecoration: 'underline' }
                           }}
                         >
-                          Crear un decklist
+                          Crear una lista
                         </Box>
                       </Box>
                     </FormHelperText>

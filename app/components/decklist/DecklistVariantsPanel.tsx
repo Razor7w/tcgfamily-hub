@@ -657,7 +657,7 @@ export default function DecklistVariantsPanel({
               helperText={`Ej. «+1 fan», «Torneo local». ${newLabel.length}/${DECKLIST_VARIANT_LABEL_MAX}`}
             />
             <TextField
-              label="Texto del decklist"
+              label="Texto de la lista"
               value={newDeckText}
               onChange={e => setNewDeckText(e.target.value)}
               multiline
@@ -716,7 +716,7 @@ export default function DecklistVariantsPanel({
               helperText={`${newLabel.length}/${DECKLIST_VARIANT_LABEL_MAX}`}
             />
             <TextField
-              label="Texto del decklist"
+              label="Texto de la lista"
               value={newDeckText}
               onChange={e => setNewDeckText(e.target.value)}
               multiline

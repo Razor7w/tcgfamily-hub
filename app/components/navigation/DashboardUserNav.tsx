@@ -118,7 +118,7 @@ export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
               <ListItemIcon>
                 <Style />
               </ListItemIcon>
-              <ListItemText primary="Decklist" />
+              <ListItemText primary="Mazos" />
               {decklistOpen ? <ExpandLess /> : <ExpandMore />}
             </ListItemButton>
           </ListItem>
@@ -129,7 +129,7 @@ export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
                   <ListItemIcon>
                     <Layers fontSize="small" />
                   </ListItemIcon>
-                  <ListItemText primary="Mis Decklists" />
+                  <ListItemText primary="Mis listas" />
                 </ListItemButton>
               </ListItem>
               <ListItem disablePadding>
@@ -140,7 +140,7 @@ export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
                   <ListItemIcon>
                     <Public fontSize="small" />
                   </ListItemIcon>
-                  <ListItemText primary="Decklists públicos" />
+                  <ListItemText primary="Listas públicas" />
                 </ListItemButton>
               </ListItem>
               <ListItem disablePadding>
@@ -148,7 +148,7 @@ export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
                   <ListItemIcon>
                     <ViewModule fontSize="small" />
                   </ListItemIcon>
-                  <ListItemText primary="Deck builder" />
+                  <ListItemText primary="Armar mazo" />
                 </ListItemButton>
               </ListItem>
             </List>

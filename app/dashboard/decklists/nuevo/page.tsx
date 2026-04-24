@@ -149,7 +149,7 @@ export default function NuevoDecklistPage() {
               }
             }}
           >
-            Mis decklists
+            Mis listas
           </Button>
 
           <Stack spacing={1}>
@@ -168,7 +168,7 @@ export default function NuevoDecklistPage() {
               variant="h5"
               sx={{ fontWeight: 800, letterSpacing: '-0.03em' }}
             >
-              Crear decklist
+              Crear una lista
             </Typography>
             <Typography
               variant="body2"
@@ -348,7 +348,7 @@ export default function NuevoDecklistPage() {
                     variant="subtitle1"
                     sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}
                   >
-                    Texto del decklist
+                    Texto de la lista
                   </Typography>
                   <Typography
                     variant="caption"

@@ -136,16 +136,16 @@ export default function DecklistsPage() {
                   textWrap: 'balance'
                 }}
               >
-                Decklists guardados
+                Mis listas
               </Typography>
               <Typography
                 variant="body2"
                 color="text.secondary"
                 sx={{ maxWidth: '62ch', fontWeight: 500 }}
               >
-                Crea un mazo con dos Pokémon representativos, un nombre y el
-                texto del listado. Luego verás la vista previa y la parrilla de
-                cartas.
+                Creá un mazo con dos Pokémon representativos, un nombre y el
+                texto del listado. Después verás la vista previa y la parrilla
+                de cartas.
               </Typography>
             </Stack>
             <Stack
@@ -161,7 +161,7 @@ export default function DecklistsPage() {
                 startIcon={<PublicIcon />}
                 sx={{ fontWeight: 600, py: 1.15, px: 2 }}
               >
-                Decklists públicos
+                Listas públicas
               </Button>
               <Button
                 component={Link}
@@ -175,7 +175,7 @@ export default function DecklistsPage() {
                   px: 2
                 }}
               >
-                Nuevo decklist
+                Nueva lista
               </Button>
             </Stack>
           </Stack>
@@ -202,7 +202,7 @@ export default function DecklistsPage() {
               }}
             >
               <Typography color="text.secondary" sx={{ mb: 2 }}>
-                Aún no tienes decklists guardados.
+                Aún no tienes listas guardadas.
               </Typography>
               <Button
                 component={Link}
@@ -231,7 +231,7 @@ export default function DecklistsPage() {
                     setPage(1)
                   }}
                   placeholder="Buscar por nombre del mazo…"
-                  aria-label="Buscar decklist por nombre"
+                  aria-label="Buscar lista por nombre"
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -309,16 +309,16 @@ export default function DecklistsPage() {
                                 <Tooltip
                                   title={
                                     row.isPublic
-                                      ? 'Quitar de decklists públicos'
-                                      : 'Compartir en decklists públicos'
+                                      ? 'Dejar de mostrar en listas públicas'
+                                      : 'Compartir en listas públicas'
                                   }
                                 >
                                   <IconButton
                                     edge="end"
                                     aria-label={
                                       row.isPublic
-                                        ? 'Quitar de decklists públicos'
-                                        : 'Compartir en decklists públicos'
+                                        ? 'Dejar de mostrar en listas públicas'
+                                        : 'Compartir en listas públicas'
                                     }
                                     onClick={e => {
                                       e.preventDefault()

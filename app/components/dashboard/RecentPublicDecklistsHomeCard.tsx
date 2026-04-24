@@ -114,7 +114,7 @@ export default function RecentPublicDecklistsHomeCard() {
           <Typography variant="body2" color="text.secondary">
             Todavía no hay mazos públicos. Podés compartir el tuyo desde{' '}
             <Link href="/dashboard/decklists" style={{ fontWeight: 600 }}>
-              Mis decklists
+              Mis listas
             </Link>
             .
           </Typography>

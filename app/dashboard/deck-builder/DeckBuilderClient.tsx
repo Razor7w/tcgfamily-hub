@@ -229,16 +229,16 @@ export default function DeckBuilderClient() {
             Herramientas
           </Typography>
           <Typography variant="h4" component="h1" sx={{ fontWeight: 800 }}>
-            Deck builder
+            Armar mazo
           </Typography>
           <Typography
             variant="body2"
             color="text.secondary"
             sx={{ maxWidth: '62ch' }}
           >
-            Búsqueda en Limitless TCG (formato y tipo como en su deck builder).
-            Clic en un resultado abre el diálogo: −1 / +1 para ajustar copias en
-            el mazo, y exportá el texto para pegarlo en Mis decklists.
+            Buscá en Limitless TCG (formato y tipo como en su herramienta
+            oficial). Tocá un resultado para ajustar copias con −1 / +1, y
+            llevate el listado a «Crear lista» o copialo a «Mis listas».
           </Typography>
         </Stack>
 

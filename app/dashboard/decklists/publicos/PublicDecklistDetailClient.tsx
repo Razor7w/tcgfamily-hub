@@ -81,7 +81,7 @@ export default function PublicDecklistDetailClient({
               }
             }}
           >
-            Decklists públicos
+            Listas públicas
           </Button>
 
           <Stack

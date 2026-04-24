@@ -152,7 +152,7 @@ export default function DecklistDetailClient({
               }
             }}
           >
-            Mis decklists
+            Mis listas
           </Button>
 
           <Paper
@@ -271,7 +271,7 @@ export default function DecklistDetailClient({
                       }}
                       disabled={patchPublic.isPending}
                       inputProps={{
-                        'aria-label': 'Compartir en decklists públicos'
+                        'aria-label': 'Compartir en listas públicas'
                       }}
                     />
                   }
@@ -283,7 +283,7 @@ export default function DecklistDetailClient({
                       color="text.secondary"
                       sx={{ letterSpacing: '0.02em' }}
                     >
-                      Visible en Decklists públicos
+                      Visible en listas públicas
                     </Typography>
                   }
                   sx={{

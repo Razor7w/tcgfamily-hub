@@ -107,7 +107,7 @@ export default function SavedDecklistVariantPicker({
   value,
   onChange,
   disabled = false,
-  label = 'Mazo desde tus decklists',
+  label = 'Mazo desde tus listas',
   helperText,
   showViewDecklistButton = true
 }: Props) {
@@ -139,7 +139,7 @@ export default function SavedDecklistVariantPicker({
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5 }}>
         <CircularProgress size={22} />
         <Typography variant="body2" color="text.secondary">
-          Cargando tus decklists…
+          Cargando tus listas…
         </Typography>
       </Box>
     )
@@ -158,7 +158,7 @@ export default function SavedDecklistVariantPicker({
   if (autocompleteOptions.length === 0) {
     return (
       <Typography variant="body2" color="text.secondary">
-        No tienes decklists guardados. Créalos en «Mis decklists» en el panel.
+        No tienes listas guardadas. Créalas en «Mis listas» en el panel.
       </Typography>
     )
   }

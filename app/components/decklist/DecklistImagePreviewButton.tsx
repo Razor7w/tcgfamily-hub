@@ -114,7 +114,7 @@ export default function DecklistImagePreviewButton({
       setImageOpen(true)
     } catch (e) {
       setPreviewError(
-        e instanceof Error ? e.message : 'No se pudo cargar el decklist'
+        e instanceof Error ? e.message : 'No se pudo cargar el listado'
       )
     } finally {
       setPreviewLoading(false)
@@ -145,7 +145,7 @@ export default function DecklistImagePreviewButton({
           textTransform: 'none'
         }}
       >
-        Ver decklist
+        Ver listado
       </Button>
       {previewError ? (
         <Alert
