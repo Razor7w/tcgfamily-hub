@@ -7,7 +7,8 @@ import {
   Event,
   Home,
   Layers,
-  Person
+  Person,
+  Public
 } from '@mui/icons-material'
 import {
   Box,
@@ -89,7 +90,15 @@ export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
               <ListItemIcon>
                 <Layers />
               </ListItemIcon>
-              <ListItemText primary="Decklists" />
+              <ListItemText primary="Mis Decklists" />
+            </ListItemButton>
+          </ListItem>
+          <ListItem disablePadding>
+            <ListItemButton href="/dashboard/decklists/publicos">
+              <ListItemIcon>
+                <Public />
+              </ListItemIcon>
+              <ListItemText primary="Decklists públicos" />
             </ListItemButton>
           </ListItem>
           <ListItem disablePadding>

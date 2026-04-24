@@ -2,11 +2,13 @@ import { auth } from '@/auth'
 import { notFound, redirect } from 'next/navigation'
 import mongoose from 'mongoose'
 import connectDB from '@/lib/mongodb'
+import { ownerPublicDisplay } from '@/lib/public-decklist-owner'
 import SavedDecklist from '@/models/SavedDecklist'
+import User from '@/models/User'
 import { formatClDateTimeMedium } from '@/lib/format-cl-date'
-import DecklistDetailClient from '../DecklistDetailClient'
+import PublicDecklistDetailClient from '../PublicDecklistDetailClient'
 
-export default async function SavedDecklistPage({
+export default async function PublicDecklistDetailPage({
   params
 }: {
   params: Promise<{ id: string }>
@@ -22,10 +24,13 @@ export default async function SavedDecklistPage({
   }
 
   await connectDB()
-  const uid = new mongoose.Types.ObjectId(session.user.id)
   const oid = new mongoose.Types.ObjectId(id.trim())
 
-  const doc = await SavedDecklist.findOne({ _id: oid, userId: uid })
+  const doc = await SavedDecklist.findOne({
+    _id: oid,
+    isPublic: true
+  }).exec()
+
   if (!doc) {
     notFound()
   }
@@ -47,17 +52,27 @@ export default async function SavedDecklistPage({
   const principalVariantId =
     doc.principalVariantId != null ? doc.principalVariantId.toString() : null
 
-  const initial = {
-    id: doc._id.toString(),
-    name: doc.name,
-    deckText: doc.deckText,
-    pokemonSlugs: Array.isArray(doc.pokemonSlugs) ? doc.pokemonSlugs : [],
-    variants,
-    principalVariantId,
-    isPublic: Boolean(doc.isPublic),
-    updatedAt: doc.updatedAt.toISOString(),
-    updatedAtLabel: formatClDateTimeMedium(doc.updatedAt)
-  }
+  const ownerDoc = await User.findById(doc.userId)
+    .select('name email image')
+    .lean()
+  const { displayName: ownerName, imageUrl: ownerImage } = ownerPublicDisplay(
+    ownerDoc as {
+      name?: string | null
+      email?: string | null
+      image?: string | null
+    } | null
+  )
 
-  return <DecklistDetailClient initial={initial} />
+  return (
+    <PublicDecklistDetailClient
+      name={doc.name}
+      pokemonSlugs={Array.isArray(doc.pokemonSlugs) ? doc.pokemonSlugs : []}
+      updatedAtLabel={formatClDateTimeMedium(doc.updatedAt)}
+      ownerName={ownerName}
+      ownerImage={ownerImage}
+      baseDeckText={doc.deckText}
+      principalVariantId={principalVariantId}
+      variants={variants}
+    />
+  )
 }

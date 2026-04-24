@@ -43,8 +43,13 @@ export async function GET(
     await connectDB()
     const uid = new mongoose.Types.ObjectId(session.user.id)
 
-    const doc = await SavedDecklist.findOne({ _id: oid, userId: uid })
+    const doc = await SavedDecklist.findById(oid)
     if (!doc) {
+      return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+    }
+
+    const isOwner = doc.userId.equals(uid)
+    if (!isOwner && !doc.isPublic) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     }
 
@@ -69,6 +74,8 @@ export async function GET(
       pokemonSlugs: Array.isArray(doc.pokemonSlugs) ? doc.pokemonSlugs : [],
       variants,
       principalVariantId: serializePrincipalVariantId(doc.principalVariantId),
+      isPublic: Boolean(doc.isPublic),
+      isOwner,
       updatedAt: doc.updatedAt.toISOString(),
       createdAt: doc.createdAt.toISOString()
     })
@@ -122,11 +129,13 @@ export async function PATCH(
     )
     const hasName = Object.prototype.hasOwnProperty.call(o, 'name')
     const hasPokemon = Object.prototype.hasOwnProperty.call(o, 'pokemon')
+    const hasPublic = Object.prototype.hasOwnProperty.call(o, 'isPublic')
 
-    if (!hasPrincipal && !hasName && !hasPokemon) {
+    if (!hasPrincipal && !hasName && !hasPokemon && !hasPublic) {
       return NextResponse.json(
         {
-          error: 'Envía al menos uno: principalVariantId, name o pokemon'
+          error:
+            'Envía al menos uno: principalVariantId, name, pokemon o isPublic'
         },
         { status: 400 }
       )
@@ -167,6 +176,16 @@ export async function PATCH(
       doc.pokemonSlugs = pokemonSlugs
     }
 
+    if (hasPublic) {
+      if (typeof o.isPublic !== 'boolean') {
+        return NextResponse.json(
+          { error: 'isPublic debe ser boolean' },
+          { status: 400 }
+        )
+      }
+      doc.isPublic = o.isPublic
+    }
+
     if (hasPrincipal) {
       const raw = o.principalVariantId
       if (raw === null) {
@@ -201,6 +220,7 @@ export async function PATCH(
       name: doc.name,
       pokemonSlugs: Array.isArray(doc.pokemonSlugs) ? doc.pokemonSlugs : [],
       principalVariantId: serializePrincipalVariantId(doc.principalVariantId),
+      isPublic: Boolean(doc.isPublic),
       updatedAt: doc.updatedAt.toISOString()
     })
   } catch (e) {

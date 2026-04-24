@@ -6,8 +6,19 @@ export type SavedDecklistSummary = {
   pokemonSlugs: string[]
   variants: { id: string; label: string }[]
   principalVariantId: string | null
+  isPublic: boolean
   updatedAt: string
   createdAt: string
+}
+
+export type PublicDecklistSummary = {
+  id: string
+  name: string
+  pokemonSlugs: string[]
+  ownerId: string
+  ownerName: string
+  ownerImage: string | null
+  updatedAt: string
 }
 
 export function useSavedDecklistsList() {
@@ -44,6 +55,53 @@ export function useDeleteSavedDecklist() {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['decklists'] })
+    }
+  })
+}
+
+export function usePublicDecklistsList() {
+  return useQuery({
+    queryKey: ['public-decklists'],
+    queryFn: async (): Promise<PublicDecklistSummary[]> => {
+      const res = await fetch('/api/decklists/public')
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        throw new Error(
+          typeof j.error === 'string'
+            ? j.error
+            : 'No se pudieron cargar los decklists públicos'
+        )
+      }
+      const data = (await res.json()) as {
+        decklists: PublicDecklistSummary[]
+      }
+      return data.decklists
+    }
+  })
+}
+
+export function usePatchDecklistPublic() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: { id: string; isPublic: boolean }) => {
+      const res = await fetch(`/api/decklists/${payload.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPublic: payload.isPublic })
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(
+          typeof j.error === 'string'
+            ? j.error
+            : 'No se pudo actualizar la visibilidad'
+        )
+      }
+      return j as { isPublic: boolean; updatedAt: string }
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['decklists'] })
+      void qc.invalidateQueries({ queryKey: ['public-decklists'] })
     }
   })
 }

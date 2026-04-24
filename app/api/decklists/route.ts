@@ -23,7 +23,7 @@ export async function GET() {
     const rows = await SavedDecklist.find({ userId: uid })
       .sort({ updatedAt: -1 })
       .select(
-        'name pokemonSlugs updatedAt createdAt variants principalVariantId'
+        'name pokemonSlugs updatedAt createdAt variants principalVariantId isPublic'
       )
       .lean()
 
@@ -40,6 +40,7 @@ export async function GET() {
       principalVariantId: r.principalVariantId
         ? String(r.principalVariantId)
         : null,
+      isPublic: Boolean((r as { isPublic?: boolean }).isPublic),
       updatedAt: (r.updatedAt as Date).toISOString(),
       createdAt: (r.createdAt as Date).toISOString()
     }))

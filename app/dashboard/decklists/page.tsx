@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import LayersIcon from '@mui/icons-material/Layers'
+import PublicIcon from '@mui/icons-material/Public'
+import SearchIcon from '@mui/icons-material/Search'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Container from '@mui/material/Container'
@@ -18,7 +20,13 @@ import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
+import InputAdornment from '@mui/material/InputAdornment'
+import Pagination from '@mui/material/Pagination'
 import Paper from '@mui/material/Paper'
+import TextField from '@mui/material/TextField'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import Tooltip from '@mui/material/Tooltip'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -27,17 +35,52 @@ import { alpha, useTheme } from '@mui/material/styles'
 import { DecklistSpritePair } from '@/components/decklist/DecklistPokemonSlotPickers'
 import {
   useDeleteSavedDecklist,
+  usePatchDecklistPublic,
   useSavedDecklistsList,
   type SavedDecklistSummary
 } from '@/hooks/useSavedDecklists'
+import {
+  matchesDecklistDateFilter,
+  type DecklistDateFilter
+} from '@/lib/decklist-list-utils'
+
+const DECKLIST_LIST_PAGE_SIZE = 10
 
 export default function DecklistsPage() {
   const theme = useTheme()
   const { data: decklists, isPending, error } = useSavedDecklistsList()
   const deleteDeck = useDeleteSavedDecklist()
+  const patchPublic = usePatchDecklistPublic()
   const [deleteTarget, setDeleteTarget] = useState<SavedDecklistSummary | null>(
     null
   )
+  const [nameQuery, setNameQuery] = useState('')
+  const [dateFilter, setDateFilter] = useState<DecklistDateFilter>('all')
+  const [page, setPage] = useState(1)
+
+  const filteredDecklists = useMemo(() => {
+    if (!decklists?.length) return []
+    const q = nameQuery.trim().toLowerCase()
+    let next = decklists
+    if (q) next = next.filter(d => d.name.toLowerCase().includes(q))
+    if (dateFilter !== 'all') {
+      next = next.filter(d =>
+        matchesDecklistDateFilter(d.updatedAt, dateFilter)
+      )
+    }
+    return next
+  }, [decklists, nameQuery, dateFilter])
+
+  const pageCount = Math.max(
+    1,
+    Math.ceil(filteredDecklists.length / DECKLIST_LIST_PAGE_SIZE)
+  )
+  const pageClamped = Math.min(page, pageCount)
+
+  const paginatedDecklists = useMemo(() => {
+    const start = (pageClamped - 1) * DECKLIST_LIST_PAGE_SIZE
+    return filteredDecklists.slice(start, start + DECKLIST_LIST_PAGE_SIZE)
+  }, [filteredDecklists, pageClamped])
 
   return (
     <Box
@@ -105,22 +148,36 @@ export default function DecklistsPage() {
                 cartas.
               </Typography>
             </Stack>
-            <Button
-              component={Link}
-              href="/dashboard/decklists/nuevo"
-              variant="contained"
-              color="primary"
-              startIcon={<AddIcon />}
-              sx={{
-                alignSelf: { xs: 'stretch', sm: 'center' },
-                fontWeight: 700,
-                py: 1.25,
-                px: 2,
-                flexShrink: 0
-              }}
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1.5}
+              sx={{ alignSelf: { xs: 'stretch', sm: 'center' }, flexShrink: 0 }}
             >
-              Nuevo decklist
-            </Button>
+              <Button
+                component={Link}
+                href="/dashboard/decklists/publicos"
+                variant="outlined"
+                color="primary"
+                startIcon={<PublicIcon />}
+                sx={{ fontWeight: 600, py: 1.15, px: 2 }}
+              >
+                Decklists públicos
+              </Button>
+              <Button
+                component={Link}
+                href="/dashboard/decklists/nuevo"
+                variant="contained"
+                color="primary"
+                startIcon={<AddIcon />}
+                sx={{
+                  fontWeight: 700,
+                  py: 1.25,
+                  px: 2
+                }}
+              >
+                Nuevo decklist
+              </Button>
+            </Stack>
           </Stack>
 
           {error ? (
@@ -157,66 +214,194 @@ export default function DecklistsPage() {
               </Button>
             </Paper>
           ) : (
-            <Paper
-              elevation={0}
-              sx={{
-                border: '1px solid',
-                borderColor: 'divider',
-                borderRadius: 2,
-                overflow: 'hidden'
-              }}
-            >
-              <List disablePadding>
-                {decklists.map(row => {
-                  const sub = new Date(row.updatedAt).toLocaleString('es-CL', {
-                    dateStyle: 'medium',
-                    timeStyle: 'short'
-                  })
-                  return (
-                    <ListItem
-                      key={row.id}
-                      divider
-                      secondaryAction={
-                        <IconButton
-                          edge="end"
-                          aria-label={`Eliminar mazo ${row.name}`}
-                          onClick={() => setDeleteTarget(row)}
-                        >
-                          <DeleteOutlineIcon />
-                        </IconButton>
-                      }
-                      disablePadding
-                    >
-                      <ListItemButton
-                        component={Link}
-                        href={`/dashboard/decklists/${row.id}`}
-                        sx={{ py: 1.75, alignItems: 'center', gap: 2, pr: 6 }}
-                      >
-                        <ListItemIcon sx={{ minWidth: 0 }}>
-                          <DecklistSpritePair
-                            slugs={row.pokemonSlugs}
-                            size={36}
-                          />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={row.name}
-                          secondary={`Actualizado ${sub}`}
-                          primaryTypographyProps={{
-                            fontWeight: 700,
-                            noWrap: true
-                          }}
-                          secondaryTypographyProps={{ variant: 'caption' }}
-                        />
-                        <LayersIcon
-                          sx={{ color: 'text.disabled', flexShrink: 0 }}
-                          fontSize="small"
-                        />
-                      </ListItemButton>
-                    </ListItem>
-                  )
-                })}
-              </List>
-            </Paper>
+            <Stack spacing={2}>
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={2}
+                alignItems={{ xs: 'stretch', sm: 'center' }}
+                flexWrap="wrap"
+                useFlexGap
+              >
+                <TextField
+                  size="small"
+                  fullWidth
+                  value={nameQuery}
+                  onChange={e => {
+                    setNameQuery(e.target.value)
+                    setPage(1)
+                  }}
+                  placeholder="Buscar por nombre del mazo…"
+                  aria-label="Buscar decklist por nombre"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon color="action" aria-hidden />
+                      </InputAdornment>
+                    )
+                  }}
+                  sx={{ flex: { sm: '1 1 280px' }, maxWidth: { sm: 420 } }}
+                />
+                <ToggleButtonGroup
+                  exclusive
+                  size="small"
+                  value={dateFilter}
+                  onChange={(_, v: DecklistDateFilter | null) => {
+                    if (v != null) {
+                      setDateFilter(v)
+                      setPage(1)
+                    }
+                  }}
+                  aria-label="Filtrar por fecha de actualización"
+                  sx={{ flexShrink: 0 }}
+                >
+                  <ToggleButton value="all">Todos</ToggleButton>
+                  <ToggleButton value="week">Esta semana</ToggleButton>
+                  <ToggleButton value="month">Este mes</ToggleButton>
+                </ToggleButtonGroup>
+              </Stack>
+              {!filteredDecklists.length ? (
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 3,
+                    textAlign: 'center',
+                    border: '1px dashed',
+                    borderColor: 'divider',
+                    borderRadius: 2
+                  }}
+                >
+                  <Typography color="text.secondary">
+                    No hay mazos que coincidan con los filtros. Probá otro
+                    nombre o cambiá el período (fecha según última
+                    actualización).
+                  </Typography>
+                </Paper>
+              ) : (
+                <>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 2,
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <List disablePadding>
+                      {paginatedDecklists.map(row => {
+                        const sub = new Date(row.updatedAt).toLocaleString(
+                          'es-CL',
+                          {
+                            dateStyle: 'medium',
+                            timeStyle: 'short'
+                          }
+                        )
+                        return (
+                          <ListItem
+                            key={row.id}
+                            divider
+                            secondaryAction={
+                              <Stack
+                                direction="row"
+                                alignItems="center"
+                                spacing={0.5}
+                              >
+                                <Tooltip
+                                  title={
+                                    row.isPublic
+                                      ? 'Quitar de decklists públicos'
+                                      : 'Compartir en decklists públicos'
+                                  }
+                                >
+                                  <IconButton
+                                    edge="end"
+                                    aria-label={
+                                      row.isPublic
+                                        ? 'Quitar de decklists públicos'
+                                        : 'Compartir en decklists públicos'
+                                    }
+                                    onClick={e => {
+                                      e.preventDefault()
+                                      e.stopPropagation()
+                                      patchPublic.mutate({
+                                        id: row.id,
+                                        isPublic: !row.isPublic
+                                      })
+                                    }}
+                                    disabled={patchPublic.isPending}
+                                    color={row.isPublic ? 'primary' : 'default'}
+                                  >
+                                    <PublicIcon />
+                                  </IconButton>
+                                </Tooltip>
+                                <IconButton
+                                  edge="end"
+                                  aria-label={`Eliminar mazo ${row.name}`}
+                                  onClick={e => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    setDeleteTarget(row)
+                                  }}
+                                >
+                                  <DeleteOutlineIcon />
+                                </IconButton>
+                              </Stack>
+                            }
+                            disablePadding
+                          >
+                            <ListItemButton
+                              component={Link}
+                              href={`/dashboard/decklists/${row.id}`}
+                              sx={{
+                                py: 1.75,
+                                alignItems: 'center',
+                                gap: 2,
+                                pr: 12
+                              }}
+                            >
+                              <ListItemIcon sx={{ minWidth: 0 }}>
+                                <DecklistSpritePair
+                                  slugs={row.pokemonSlugs}
+                                  size={36}
+                                />
+                              </ListItemIcon>
+                              <ListItemText
+                                primary={row.name}
+                                secondary={`Actualizado ${sub}`}
+                                primaryTypographyProps={{
+                                  fontWeight: 700,
+                                  noWrap: true
+                                }}
+                                secondaryTypographyProps={{
+                                  variant: 'caption'
+                                }}
+                              />
+                              <LayersIcon
+                                sx={{ color: 'text.disabled', flexShrink: 0 }}
+                                fontSize="small"
+                              />
+                            </ListItemButton>
+                          </ListItem>
+                        )
+                      })}
+                    </List>
+                  </Paper>
+                  {pageCount > 1 ? (
+                    <Stack alignItems="center" sx={{ pt: 0.5 }}>
+                      <Pagination
+                        count={pageCount}
+                        page={pageClamped}
+                        onChange={(_, p) => setPage(p)}
+                        color="primary"
+                        size="small"
+                        showFirstButton
+                        showLastButton
+                      />
+                    </Stack>
+                  ) : null}
+                </>
+              )}
+            </Stack>
           )}
         </Stack>
       </Container>

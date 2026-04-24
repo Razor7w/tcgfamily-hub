@@ -21,6 +21,8 @@ export interface ISavedDecklist extends Document {
    * Si es null, muestra `deckText` (listado guardado al crear el mazo).
    */
   principalVariantId?: mongoose.Types.ObjectId | null
+  /** Si es true, aparece en el listado comunitario de decklists públicos. */
+  isPublic?: boolean
 }
 
 const DecklistVariantSchema = new Schema<IDecklistVariant>(
@@ -65,12 +67,17 @@ const SavedDecklistSchema = new Schema<ISavedDecklist>(
       type: Schema.Types.ObjectId,
       default: null,
       required: false
+    },
+    isPublic: {
+      type: Boolean,
+      default: false
     }
   },
   { timestamps: true, strict: true }
 )
 
 SavedDecklistSchema.index({ userId: 1, updatedAt: -1 })
+SavedDecklistSchema.index({ isPublic: 1, updatedAt: -1 })
 
 export default mongoose.models.SavedDecklist ||
   mongoose.model<ISavedDecklist>('SavedDecklist', SavedDecklistSchema)
