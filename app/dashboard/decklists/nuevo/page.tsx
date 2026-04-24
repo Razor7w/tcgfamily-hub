@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -16,6 +16,7 @@ import { alpha, useTheme } from '@mui/material/styles'
 import DecklistPokemonSlotPickers from '@/components/decklist/DecklistPokemonSlotPickers'
 import type { PokemonSpeciesOption } from '@/hooks/usePokemonSpeciesOptions'
 import { useCreateSavedDecklist } from '@/hooks/useSavedDecklists'
+import { DECKLIST_NUEVO_SESSION_TEXT_KEY } from '@/lib/decklist-nuevo-prefill'
 import {
   SAVED_DECKLIST_NAME_MAX,
   SAVED_DECKLIST_TEXT_MAX
@@ -40,6 +41,27 @@ export default function NuevoDecklistPage() {
   const [deckText, setDeckText] = useState('')
   const [slot1, setSlot1] = useState<PokemonSpeciesOption | null>(null)
   const [slot2, setSlot2] = useState<PokemonSpeciesOption | null>(null)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const p = new URLSearchParams(window.location.search)
+    if (p.get('from') !== 'builder') return
+    const raw = sessionStorage.getItem(DECKLIST_NUEVO_SESSION_TEXT_KEY)
+    if (raw == null) {
+      void router.replace('/dashboard/decklists/nuevo', { scroll: false })
+      return
+    }
+    const text = raw.slice(0, SAVED_DECKLIST_TEXT_MAX)
+    try {
+      sessionStorage.removeItem(DECKLIST_NUEVO_SESSION_TEXT_KEY)
+    } catch {
+      // ignore
+    }
+    void router.replace('/dashboard/decklists/nuevo', { scroll: false })
+    queueMicrotask(() => {
+      setDeckText(text)
+    })
+  }, [router])
 
   const autoName = deckNameFromSlots(slot1, slot2)
   const nameFieldValue =

@@ -169,18 +169,57 @@ function limitlessCdnSetCode(rawSet: string): string {
   return u
 }
 
+/**
+ * Códigos de set (p. ej. en decklists / API) → id de set en images.pokemontcg.io.
+ * El patrón del CDN de Limitless (`SET_###`) no aplica: el número allí no va con ceros a
+ * la izquierda como tpci, y además el slug difiere.
+ */
+const POKEMON_TCG_IO_SET_ID: Readonly<Record<string, string>> = {
+  N1: 'neo1',
+  N2: 'neo2',
+  E2: 'ecard2',
+  TRR: 'ex7',
+  UF: 'ex10',
+  DF: 'ex15',
+  SW: 'dp3'
+}
+
+function isAllDigitsString(s: string): boolean {
+  return /^\d+$/.test(s.trim())
+}
+
+/**
+ * Thumbnail o arte completo: Limitless tpci (`SET_###_R_EN_SM|LG.png`), o images.pokemontcg.io
+ * para sets clásicos, o patrón HIF Shiny Vault (`HIF_SV#_R_EN_XS|LG.png`) en el CDN Limitless.
+ */
 export function limitlessCardImageUrl(args: {
   set: string
-  number: number
+  number: string | number
   size?: 'SM' | 'LG'
   lang?: 'EN'
 }): string {
-  const set = limitlessCdnSetCode(args.set)
-  const num = String(args.number).padStart(3, '0')
+  const setRaw = args.set.trim()
+  const setU = setRaw.toUpperCase()
+  const setFolder = limitlessCdnSetCode(setRaw)
+  const numStr = String(args.number).trim()
   const size = args.size ?? 'LG'
   const lang = args.lang ?? 'EN'
 
-  // Observed pattern from og:image on card pages:
-  // https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/DRI/DRI_007_R_EN_SM.png
-  return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${set}/${set}_${num}_R_${lang}_${size}.png`
+  const ptcgId = POKEMON_TCG_IO_SET_ID[setU]
+  if (ptcgId) {
+    return `https://images.pokemontcg.io/${ptcgId}/${numStr.toLowerCase()}.png`
+  }
+
+  // Hidden Fates — Shiny Vault: numeración SV9, etc.; en tpci no es ### con padding.
+  if (setU === 'HIF' && !isAllDigitsString(numStr)) {
+    const imgSize = size === 'SM' ? 'XS' : 'LG'
+    return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${setFolder}/${setFolder}_${numStr.toUpperCase()}_R_${lang}_${imgSize}.png`
+  }
+
+  if (isAllDigitsString(numStr)) {
+    const num = numStr.padStart(3, '0')
+    return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${setFolder}/${setFolder}_${num}_R_${lang}_${size}.png`
+  }
+
+  return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${setFolder}/${setFolder}_${numStr.toUpperCase()}_R_${lang}_${size}.png`
 }

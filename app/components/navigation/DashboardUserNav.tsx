@@ -1,17 +1,24 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import {
   BarChart,
   Email,
   EmojiEvents,
   Event,
+  ExpandLess,
+  ExpandMore,
   Home,
   Layers,
   Person,
-  Public
+  Public,
+  Style,
+  ViewModule
 } from '@mui/icons-material'
 import {
   Box,
+  Collapse,
   Divider,
   List,
   ListItem,
@@ -25,8 +32,26 @@ import SignOutList from '@/components/auth/SignOutList'
 import AdminSidebarClient from '@/components/navigation/AdminSidebarClient'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
 
+function isUnderDecklistNav(path: string) {
+  return (
+    path === '/dashboard/decklists' ||
+    path.startsWith('/dashboard/decklists/') ||
+    path.startsWith('/dashboard/deck-builder')
+  )
+}
+
 export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
+  const pathname = usePathname() ?? ''
   const { visibility } = useDashboardModulesFromLayout()
+  const [decklistOpen, setDecklistOpen] = useState(() =>
+    isUnderDecklistNav(pathname)
+  )
+  useEffect(() => {
+    if (!isUnderDecklistNav(pathname)) return
+    queueMicrotask(() => {
+      setDecklistOpen(true)
+    })
+  }, [pathname])
   const showEvents = visibility.weeklyEvents
   const showMyTournaments = visibility.myTournaments
   const showStatistics = visibility.statistics
@@ -86,21 +111,48 @@ export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
             </ListItem>
           ) : null}
           <ListItem disablePadding>
-            <ListItemButton href="/dashboard/decklists">
+            <ListItemButton
+              onClick={() => setDecklistOpen(s => !s)}
+              aria-expanded={decklistOpen}
+            >
               <ListItemIcon>
-                <Layers />
+                <Style />
               </ListItemIcon>
-              <ListItemText primary="Mis Decklists" />
+              <ListItemText primary="Decklist" />
+              {decklistOpen ? <ExpandLess /> : <ExpandMore />}
             </ListItemButton>
           </ListItem>
-          <ListItem disablePadding>
-            <ListItemButton href="/dashboard/decklists/publicos">
-              <ListItemIcon>
-                <Public />
-              </ListItemIcon>
-              <ListItemText primary="Decklists públicos" />
-            </ListItemButton>
-          </ListItem>
+          <Collapse in={decklistOpen} timeout="auto" unmountOnExit>
+            <List component="div" disablePadding>
+              <ListItem disablePadding>
+                <ListItemButton href="/dashboard/decklists" sx={{ pl: 3 }}>
+                  <ListItemIcon>
+                    <Layers fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText primary="Mis Decklists" />
+                </ListItemButton>
+              </ListItem>
+              <ListItem disablePadding>
+                <ListItemButton
+                  href="/dashboard/decklists/publicos"
+                  sx={{ pl: 3 }}
+                >
+                  <ListItemIcon>
+                    <Public fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText primary="Decklists públicos" />
+                </ListItemButton>
+              </ListItem>
+              <ListItem disablePadding>
+                <ListItemButton href="/dashboard/deck-builder" sx={{ pl: 3 }}>
+                  <ListItemIcon>
+                    <ViewModule fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText primary="Deck builder" />
+                </ListItemButton>
+              </ListItem>
+            </List>
+          </Collapse>
           <ListItem disablePadding>
             <ListItemButton href="/dashboard/perfil">
               <ListItemIcon>
