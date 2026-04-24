@@ -19,10 +19,15 @@ export type ParsedDecklist = {
   unknownLines: string[]
 }
 
+/** Normaliza para cabeceras de sección (p. ej. «Entrenador» / «Energía») sin depender de acentos. */
+function normalizeSectionKey(raw: string): string {
+  return raw.trim().toLowerCase().normalize('NFD').replace(/\p{M}/gu, '')
+}
+
 function normalizeSectionId(raw: string): DeckSectionId {
-  const v = raw.trim().toLowerCase()
+  const v = normalizeSectionKey(raw)
   if (v.startsWith('pok')) return 'pokemon'
-  if (v.startsWith('train')) return 'trainer'
+  if (v.startsWith('train') || v.startsWith('entrenad')) return 'trainer'
   if (v.startsWith('ener')) return 'energy'
   return 'other'
 }
@@ -189,14 +194,54 @@ function isAllDigitsString(s: string): boolean {
 }
 
 /**
+ * Código de tipo para energía básica en tpci (SUM/…_&lt;LETRA&gt;_R_EN_…), p. ej. G → Grass.
+ * Cubre nombres tipo `Basic {G} Energy` o `Basic Grass Energy`.
+ */
+function basicTpciEnergyLetterFromName(name: string): string | null {
+  const n = name.trim()
+  const brace = n.match(/Basic\s*\{([A-Z])\}\s*Energy/i)
+  if (brace?.[1]) return brace[1].toUpperCase()
+  const oneLetter = n.match(/Basic\s+([A-Z])\s+Energy/i)
+  if (oneLetter?.[1]) return oneLetter[1].toUpperCase()
+  const w = n.match(
+    /Basic\s+(Grass|Fire|Water|Lightning|Psychic|Fighting|Darkness|Metal|Fairy)\s+Energy/i
+  )
+  if (w?.[1]) {
+    const map: Record<string, string> = {
+      Grass: 'G',
+      Fire: 'R',
+      Water: 'W',
+      Lightning: 'L',
+      Psychic: 'P',
+      Fighting: 'F',
+      Darkness: 'D',
+      Metal: 'M',
+      Fairy: 'Y'
+    }
+    return map[w[1]] ?? null
+  }
+  return null
+}
+
+function isDecklistEnergySetToken(set: string): boolean {
+  const k = normalizeSectionKey(set)
+  return k === 'energy' || k === 'energia'
+}
+
+/**
  * Thumbnail o arte completo: Limitless tpci (`SET_###_R_EN_SM|LG.png`), o images.pokemontcg.io
  * para sets clásicos, o patrón HIF Shiny Vault (`HIF_SV#_R_EN_XS|LG.png`) en el CDN Limitless.
+ *
+ * @param cardName Nombre de la carta (p. ej. desde el decklist) para corregir energía básica
+ *  cuando el set se parseó como `Energy` y el tpci usa `SUM_&lt;tipo&gt;_R_EN_…` en vez de
+ *  `ENERGY_009_…`.
  */
 export function limitlessCardImageUrl(args: {
   set: string
   number: string | number
   size?: 'SM' | 'LG'
   lang?: 'EN'
+  cardName?: string
 }): string {
   const setRaw = args.set.trim()
   const setU = setRaw.toUpperCase()
@@ -204,6 +249,18 @@ export function limitlessCardImageUrl(args: {
   const numStr = String(args.number).trim()
   const size = args.size ?? 'LG'
   const lang = args.lang ?? 'EN'
+
+  const fromName = (args.cardName ?? '').trim()
+  if (fromName && isDecklistEnergySetToken(setU)) {
+    const letter = basicTpciEnergyLetterFromName(fromName)
+    if (letter) {
+      // Sun & Moon — energía básica en tpci (p. ej. SUM_G_R_EN_XS.png); el «set» en texto pleno
+      // a veces es `Energy` + número, no un código de producto tpci.
+      const folder = 'SUM'
+      const imgSize = size === 'SM' ? 'XS' : 'LG'
+      return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${folder}/${folder}_${letter}_R_${lang}_${imgSize}.png`
+    }
+  }
 
   const ptcgId = POKEMON_TCG_IO_SET_ID[setU]
   if (ptcgId) {

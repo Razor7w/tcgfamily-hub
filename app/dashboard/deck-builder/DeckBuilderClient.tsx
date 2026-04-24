@@ -66,8 +66,13 @@ function cardKey(set: string, number: string | number) {
   return `${set.toUpperCase()}-${String(number)}`
 }
 
-function thumbUrl(set: string, numStr: string): string {
-  return limitlessCardImageUrl({ set, number: numStr, size: 'SM' })
+function thumbUrl(set: string, numStr: string, cardName?: string): string {
+  return limitlessCardImageUrl({
+    set,
+    number: numStr,
+    size: 'SM',
+    cardName
+  })
 }
 
 function formatLabel(v: LimitlessDmFormat) {
@@ -441,7 +446,7 @@ export default function DeckBuilderClient() {
                 {Object.values(deck)
                   .sort((a, b) => a.name.localeCompare(b.name))
                   .map(line => {
-                    const src = thumbUrl(line.set, line.number)
+                    const src = thumbUrl(line.set, line.number, line.name)
                     return (
                       <Stack
                         key={line.key}
@@ -591,7 +596,7 @@ export default function DeckBuilderClient() {
                 }}
               >
                 {results.map(hit => {
-                  const src = thumbUrl(hit.set, String(hit.number))
+                  const src = thumbUrl(hit.set, String(hit.number), hit.name)
                   return (
                     <ButtonBase
                       key={`${hit.set}-${hit.number}-${hit.id}`}
@@ -774,7 +779,8 @@ export default function DeckBuilderClient() {
                   src={limitlessCardImageUrl({
                     set: detailHit.set,
                     number: detailHit.number,
-                    size: 'LG'
+                    size: 'LG',
+                    cardName: cardDetail?.name ?? detailHit.name
                   })}
                   alt=""
                   style={{
