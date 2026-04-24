@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import { Box, Button, Paper, Stack, Typography, useTheme } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import DecklistImageDialog from '@/components/decklist/DecklistImageDialog'
@@ -13,6 +14,8 @@ export type DecklistModuleProps = {
   title?: string
   /** Oculta el CTA inferior (p. ej. si ya hay «Ver como imagen» en la cabecera de la página). */
   hideImageButton?: boolean
+  /** Muestra «Copiar lista» debajo de «Ver como imagen» (p. ej. listas públicas). */
+  showCopyListButton?: boolean
 }
 
 function SectionCard({
@@ -126,10 +129,12 @@ function SectionCard({
 export default function DecklistModule({
   value,
   title,
-  hideImageButton = false
+  hideImageButton = false,
+  showCopyListButton = false
 }: DecklistModuleProps) {
   const parsed = useMemo(() => parseDecklistText(value), [value])
   const [imageOpen, setImageOpen] = useState(false)
+  const [listCopied, setListCopied] = useState(false)
 
   const flatCards = useMemo(() => flatCardsFromDecklistText(value), [value])
 
@@ -190,32 +195,60 @@ export default function DecklistModule({
             lines={energy}
           />
 
-          {!hideImageButton ? (
-            <Button
-              variant="contained"
-              color="primary"
-              fullWidth
-              onClick={() => setImageOpen(true)}
-              sx={{
-                fontWeight: 700,
-                py: 1.15,
-                borderRadius: 1.5,
-                transition: 'transform 0.15s ease, box-shadow 0.2s ease',
-                '&:active': { transform: 'translateY(1px) scale(0.99)' },
-                boxShadow: theme =>
-                  theme.palette.mode === 'dark'
-                    ? `0 8px 24px ${alpha(theme.palette.primary.main, 0.25)}`
-                    : `0 8px 22px ${alpha(theme.palette.primary.dark, 0.22)}`,
-                '&:hover': {
-                  boxShadow: theme =>
-                    theme.palette.mode === 'dark'
-                      ? `0 12px 28px ${alpha(theme.palette.primary.main, 0.32)}`
-                      : `0 12px 26px ${alpha(theme.palette.primary.dark, 0.28)}`
-                }
-              }}
-            >
-              Ver como imagen
-            </Button>
+          {!hideImageButton || showCopyListButton ? (
+            <Stack spacing={1} sx={{ width: '100%' }}>
+              {!hideImageButton ? (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  fullWidth
+                  onClick={() => setImageOpen(true)}
+                  sx={{
+                    fontWeight: 700,
+                    py: 1.15,
+                    borderRadius: 1.5,
+                    transition: 'transform 0.15s ease, box-shadow 0.2s ease',
+                    '&:active': { transform: 'translateY(1px) scale(0.99)' },
+                    boxShadow: theme =>
+                      theme.palette.mode === 'dark'
+                        ? `0 8px 24px ${alpha(theme.palette.primary.main, 0.25)}`
+                        : `0 8px 22px ${alpha(theme.palette.primary.dark, 0.22)}`,
+                    '&:hover': {
+                      boxShadow: theme =>
+                        theme.palette.mode === 'dark'
+                          ? `0 12px 28px ${alpha(theme.palette.primary.main, 0.32)}`
+                          : `0 12px 26px ${alpha(theme.palette.primary.dark, 0.28)}`
+                    }
+                  }}
+                >
+                  Ver como imagen
+                </Button>
+              ) : null}
+              {showCopyListButton ? (
+                <Button
+                  type="button"
+                  variant="outlined"
+                  color="primary"
+                  fullWidth
+                  startIcon={<ContentCopyIcon />}
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(value)
+                      setListCopied(true)
+                      window.setTimeout(() => {
+                        setListCopied(false)
+                      }, 2000)
+                    } catch {
+                      setListCopied(false)
+                    }
+                  }}
+                  aria-live="polite"
+                  sx={{ fontWeight: 700, py: 1.1, borderRadius: 1.5 }}
+                >
+                  {listCopied ? 'Listado copiado' : 'Copiar lista'}
+                </Button>
+              ) : null}
+            </Stack>
           ) : null}
         </Stack>
       </Box>

@@ -76,7 +76,8 @@ export default function DecklistImageDialog({
           const src = limitlessCardImageUrl({
             set: c.set,
             number: c.number,
-            size: 'LG'
+            size: 'LG',
+            cardName: c.name
           })
           return (
             <Box
@@ -327,7 +328,8 @@ export default function DecklistImageDialog({
                   src={limitlessCardImageUrl({
                     set: active.set,
                     number: active.number,
-                    size: 'LG'
+                    size: 'LG',
+                    cardName: active.name
                   })}
                   alt={`${active.name} ${active.set} ${active.number}`}
                   loading="eager"

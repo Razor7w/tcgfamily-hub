@@ -251,7 +251,11 @@ export default function PublicDecklistVariantsPanel({
       </Box>
 
       <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
-        <DecklistModule key={deckModuleKey} value={activeDeckText} />
+        <DecklistModule
+          key={deckModuleKey}
+          value={activeDeckText}
+          showCopyListButton
+        />
       </Box>
     </Paper>
   )
