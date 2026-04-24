@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
+import AddIcon from '@mui/icons-material/Add'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import PostAddIcon from '@mui/icons-material/PostAdd'
 import RemoveIcon from '@mui/icons-material/Remove'
@@ -29,6 +30,7 @@ import { DECKLIST_NUEVO_SESSION_TEXT_KEY } from '@/lib/decklist-nuevo-prefill'
 import { limitlessCardImageUrl } from '@/lib/decklist'
 import {
   buildDecklistExportText,
+  isEnergyCardExemptFromFourCopyLimit,
   type DeckBuilderLine,
   type LimitlessDmCardDetail,
   type LimitlessDmFormat,
@@ -137,7 +139,12 @@ export default function DeckBuilderClient() {
         const cur = prev[key]
         const total = Object.values(prev).reduce((s, x) => s + x.count, 0)
         const nextCount = (cur?.count ?? 0) + 1
-        if (nextCount > MAX_COPIES) return prev
+        if (
+          !isEnergyCardExemptFromFourCopyLimit(name) &&
+          nextCount > MAX_COPIES
+        ) {
+          return prev
+        }
         if (total + 1 > MAX_DECK) return prev
         return {
           ...prev,
@@ -153,6 +160,23 @@ export default function DeckBuilderClient() {
       })
     },
     []
+  )
+
+  const addOneFromDeckLine = useCallback(
+    (line: DeckBuilderLine) => {
+      const hit: LimitlessDmSearchHit = {
+        id: 0,
+        card_type: line.cardType,
+        region: '',
+        set: line.set,
+        number: line.number,
+        name: line.name,
+        translation: 0,
+        special: null
+      }
+      addCard(hit, null)
+    },
+    [addCard]
   )
 
   const removeCard = useCallback((key: string) => {
@@ -175,12 +199,22 @@ export default function DeckBuilderClient() {
     [detailDeckKey, deck]
   )
 
+  const detailLineName = useMemo(
+    () => cardDetail?.name ?? detailHit?.name ?? '',
+    [cardDetail?.name, detailHit?.name]
+  )
+
   const addOneInDetailDialog = useCallback(() => {
     if (!detailHit) return
-    if (detailInDeck >= MAX_COPIES) return
+    if (
+      !isEnergyCardExemptFromFourCopyLimit(detailLineName) &&
+      detailInDeck >= MAX_COPIES
+    ) {
+      return
+    }
     if (totalCards >= MAX_DECK) return
     addCard(detailHit, cardDetail ?? null)
-  }, [detailHit, cardDetail, detailInDeck, totalCards, addCard])
+  }, [detailHit, cardDetail, detailLineName, detailInDeck, totalCards, addCard])
 
   const removeOneInDetailDialog = useCallback(() => {
     if (detailDeckKey == null) return
@@ -407,13 +441,29 @@ export default function DeckBuilderClient() {
                             {line.set} {line.number}
                           </Typography>
                         </Box>
-                        <IconButton
-                          size="small"
-                          aria-label="Quitar una copia"
-                          onClick={() => removeCard(line.key)}
-                        >
-                          <RemoveIcon fontSize="small" />
-                        </IconButton>
+                        <Stack direction="row" spacing={0} alignItems="center">
+                          <IconButton
+                            size="small"
+                            aria-label="Quitar una copia"
+                            onClick={() => removeCard(line.key)}
+                          >
+                            <RemoveIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            aria-label="Añadir una copia"
+                            disabled={
+                              (!isEnergyCardExemptFromFourCopyLimit(
+                                line.name
+                              ) &&
+                                line.count >= MAX_COPIES) ||
+                              totalCards >= MAX_DECK
+                            }
+                            onClick={() => addOneFromDeckLine(line)}
+                          >
+                            <AddIcon fontSize="small" />
+                          </IconButton>
+                        </Stack>
                       </Stack>
                     )
                   })}
@@ -649,7 +699,9 @@ export default function DeckBuilderClient() {
                   size="large"
                   onClick={addOneInDetailDialog}
                   disabled={
-                    detailInDeck >= MAX_COPIES || totalCards >= MAX_DECK
+                    (!isEnergyCardExemptFromFourCopyLimit(detailLineName) &&
+                      detailInDeck >= MAX_COPIES) ||
+                    totalCards >= MAX_DECK
                   }
                   aria-label="Añadir una copia al mazo"
                   sx={{ minWidth: 64, fontWeight: 800 }}
