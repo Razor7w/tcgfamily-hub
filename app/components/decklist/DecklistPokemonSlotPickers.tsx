@@ -197,11 +197,31 @@ export function DecklistSpritePair({
   slugs: string[]
   size?: number
 }) {
+  const { height: slotH } = limitlessSpriteDimensions(size)
   return (
-    <Stack direction="row" spacing={0.75} alignItems="center">
-      {slugs.slice(0, 2).map(slug => (
-        <SpriteThumb key={slug} slug={slug} size={size} />
-      ))}
-    </Stack>
+    <Box
+      sx={theme => ({
+        display: 'grid',
+        gridTemplateColumns: `repeat(2, ${size}px)`,
+        columnGap: theme.spacing(0.75),
+        alignItems: 'center',
+        justifyItems: 'center',
+        flexShrink: 0
+      })}
+    >
+      {([0, 1] as const).map(i => {
+        const slug = slugs[i]
+        if (!slug) {
+          return (
+            <Box
+              key={`sprite-slot-${i}`}
+              aria-hidden
+              sx={{ width: size, height: slotH }}
+            />
+          )
+        }
+        return <SpriteThumb key={slug} slug={slug} size={size} />
+      })}
+    </Box>
   )
 }

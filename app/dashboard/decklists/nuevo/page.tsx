@@ -222,8 +222,7 @@ export default function NuevoDecklistPage() {
                     color="text.secondary"
                     fontWeight={500}
                   >
-                    Obligatorio el primero; el segundo es opcional. Mismos
-                    sprites que en torneos.
+                    Obligatorio el primero; el segundo es opcional.
                   </Typography>
                 </Stack>
                 <DecklistPokemonSlotPickers
@@ -357,6 +356,21 @@ export default function NuevoDecklistPage() {
                   >
                     Pega el bloque completo (Pokémon, Trainer, Energy…)
                   </Typography>
+                  <Button
+                    component={Link}
+                    href="/dashboard/deck-builder"
+                    variant="outlined"
+                    size="small"
+                    color="primary"
+                    sx={{
+                      alignSelf: 'flex-start',
+                      mt: 0.75,
+                      fontWeight: 700,
+                      borderRadius: 1.5
+                    }}
+                  >
+                    Armar mazo con el buscador de cartas
+                  </Button>
                 </Stack>
               </Box>
               <Box
