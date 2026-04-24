@@ -440,6 +440,7 @@ export default function WeeklyEventsSection({
                               <Chip
                                 component={Link}
                                 href={`/ligas/${encodeURIComponent(selectedEvent.league.slug)}`}
+                                target="_blank"
                                 scroll={false}
                                 clickable
                                 size="small"
