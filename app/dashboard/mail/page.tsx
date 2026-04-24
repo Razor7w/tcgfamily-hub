@@ -216,7 +216,6 @@ function MailFiltersPanel({
           size="small"
           sx={{
             flexWrap: 'wrap',
-            gap: 0.5,
             '& .MuiToggleButton-root': {
               px: 1.25,
               py: 0.5,

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import AddIcon from '@mui/icons-material/Add'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
+import FilterListIcon from '@mui/icons-material/FilterList'
 import PostAddIcon from '@mui/icons-material/PostAdd'
 import RemoveIcon from '@mui/icons-material/Remove'
 import SearchIcon from '@mui/icons-material/Search'
@@ -12,6 +13,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Dialog from '@mui/material/Dialog'
+import Drawer from '@mui/material/Drawer'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
@@ -68,12 +70,21 @@ function thumbUrl(set: string, numStr: string): string {
   return limitlessCardImageUrl({ set, number: numStr, size: 'SM' })
 }
 
+function formatLabel(v: LimitlessDmFormat) {
+  return FORMAT_OPTIONS.find(o => o.value === v)?.label ?? v
+}
+
+function typeLabel(v: LimitlessDmTypeFilter) {
+  return TYPE_OPTIONS.find(o => o.value === v)?.label ?? v
+}
+
 export default function DeckBuilderClient() {
   const router = useRouter()
   const [searchText, setSearchText] = useState('')
   const [debounced, setDebounced] = useState('')
   const [format, setFormat] = useState<LimitlessDmFormat>('standard')
   const [typeFilter, setTypeFilter] = useState<LimitlessDmTypeFilter>('all')
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false)
   const [deck, setDeck] = useState<Record<string, DeckBuilderLine>>({})
   const [detailHit, setDetailHit] = useState<LimitlessDmSearchHit | null>(null)
   const [snack, setSnack] = useState<string | null>(null)
@@ -253,7 +264,7 @@ export default function DeckBuilderClient() {
 
   return (
     <>
-      <Stack spacing={3}>
+      <Stack spacing={{ xs: 2, sm: 3 }}>
         <Stack spacing={0.75}>
           <Typography
             variant="overline"
@@ -270,9 +281,8 @@ export default function DeckBuilderClient() {
             color="text.secondary"
             sx={{ maxWidth: '62ch' }}
           >
-            Buscá en Limitless TCG (formato y tipo como en su herramienta
-            oficial). Tocá un resultado para ajustar copias con −1 / +1, y
-            llevate el listado a «Crear lista» o copialo a «Mis listas».
+            Haz clic en un resultado para ajustar copias con −1 / +1, y llevate
+            el listado a «Crear lista» o copialo al portapapeles.
           </Typography>
         </Stack>
 
@@ -285,52 +295,64 @@ export default function DeckBuilderClient() {
             borderColor: 'divider'
           }}
         >
-          <Stack spacing={2}>
-            <Typography variant="subtitle2" fontWeight={800}>
-              Formato
-            </Typography>
-            <ToggleButtonGroup
-              exclusive
-              size="small"
-              value={format}
-              onChange={(_, v: LimitlessDmFormat | null) => {
-                if (v) setFormat(v)
-              }}
-              aria-label="Formato de juego"
-              sx={{ flexWrap: 'wrap', gap: 0.5 }}
-            >
-              {FORMAT_OPTIONS.map(o => (
-                <ToggleButton key={o.value} value={o.value}>
-                  {o.label}
-                </ToggleButton>
-              ))}
-            </ToggleButtonGroup>
-
-            <Typography variant="subtitle2" fontWeight={800}>
-              Tipo de carta
-            </Typography>
+          <Stack spacing={2} useFlexGap sx={{ flexDirection: 'column' }}>
+            {/* Misma estructura en SSR y cliente: visibilidad y orden vía `sx` (media queries) */}
             <Box
               sx={{
-                display: 'grid',
-                gridTemplateColumns: {
-                  xs: 'repeat(2, minmax(0, 1fr))',
-                  sm: 'repeat(3, minmax(0, 1fr))',
-                  md: 'repeat(5, minmax(0, 1fr))'
-                },
-                gap: 0.75
+                display: { xs: 'none', md: 'block' },
+                order: { xs: 0, md: 0 }
               }}
             >
-              {TYPE_OPTIONS.map(o => (
-                <Button
-                  key={o.value}
-                  variant={typeFilter === o.value ? 'contained' : 'outlined'}
+              <Stack spacing={2}>
+                <Typography variant="subtitle2" fontWeight={800}>
+                  Formato
+                </Typography>
+                <ToggleButtonGroup
+                  exclusive
                   size="small"
-                  onClick={() => setTypeFilter(o.value)}
-                  sx={{ py: 0.75, textTransform: 'none', fontWeight: 600 }}
+                  value={format}
+                  onChange={(_, v: LimitlessDmFormat | null) => {
+                    if (v) setFormat(v)
+                  }}
+                  aria-label="Formato de juego"
+                  sx={{ flexWrap: 'wrap' }}
                 >
-                  {o.label}
-                </Button>
-              ))}
+                  {FORMAT_OPTIONS.map(o => (
+                    <ToggleButton key={o.value} value={o.value}>
+                      {o.label}
+                    </ToggleButton>
+                  ))}
+                </ToggleButtonGroup>
+
+                <Typography variant="subtitle2" fontWeight={800}>
+                  Tipo de carta
+                </Typography>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: {
+                      xs: 'repeat(2, minmax(0, 1fr))',
+                      sm: 'repeat(3, minmax(0, 1fr))',
+                      md: 'repeat(5, minmax(0, 1fr))'
+                    },
+                    gap: 0.75
+                  }}
+                >
+                  {TYPE_OPTIONS.map(o => (
+                    <Button
+                      key={o.value}
+                      variant={
+                        typeFilter === o.value ? 'contained' : 'outlined'
+                      }
+                      size="small"
+                      onClick={() => setTypeFilter(o.value)}
+                      sx={{ py: 0.75, textTransform: 'none', fontWeight: 600 }}
+                    >
+                      {o.label}
+                    </Button>
+                  ))}
+                </Box>
+              </Stack>
             </Box>
 
             <TextField
@@ -345,12 +367,40 @@ export default function DeckBuilderClient() {
                 )
               }}
               aria-label="Buscar cartas"
+              sx={{ order: { xs: 0, md: 1 } }}
             />
+            <Button
+              type="button"
+              variant="outlined"
+              color="primary"
+              startIcon={<FilterListIcon />}
+              onClick={() => setFilterDrawerOpen(true)}
+              sx={{
+                order: { xs: 1, md: 2 },
+                display: { xs: 'inline-flex', md: 'none' },
+                alignSelf: 'flex-start',
+                fontWeight: 700,
+                flexWrap: 'wrap'
+              }}
+              aria-expanded={filterDrawerOpen}
+              aria-controls="deck-builder-filters-drawer"
+            >
+              Filtros
+              <Typography
+                component="span"
+                variant="body2"
+                color="text.secondary"
+                sx={{ ml: 1, fontWeight: 500 }}
+              >
+                ({formatLabel(format)} · {typeLabel(typeFilter)})
+              </Typography>
+            </Button>
           </Stack>
         </Paper>
 
         <Stack
           direction={{ xs: 'column', lg: 'row' }}
+          useFlexGap
           spacing={2}
           alignItems="stretch"
         >
@@ -359,6 +409,7 @@ export default function DeckBuilderClient() {
             sx={{
               flex: 1,
               minWidth: 0,
+              order: { xs: 1, lg: 0 },
               p: { xs: 2, sm: 2.5 },
               borderRadius: 3,
               border: '1px solid',
@@ -383,7 +434,7 @@ export default function DeckBuilderClient() {
             </Stack>
             {Object.keys(deck).length === 0 ? (
               <Typography variant="body2" color="text.secondary">
-                Añadí cartas desde la búsqueda (detalle → +1).
+                Añade cartas desde la búsqueda (detalle → +1).
               </Typography>
             ) : (
               <Stack spacing={1}>
@@ -501,6 +552,7 @@ export default function DeckBuilderClient() {
             sx={{
               flex: 1.15,
               minWidth: 0,
+              order: { xs: 0 },
               p: { xs: 2, sm: 2.5 },
               borderRadius: 3,
               border: '1px solid',
@@ -608,6 +660,93 @@ export default function DeckBuilderClient() {
           </Paper>
         </Stack>
       </Stack>
+
+      <Drawer
+        id="deck-builder-filters-drawer"
+        anchor="bottom"
+        open={filterDrawerOpen}
+        onClose={() => setFilterDrawerOpen(false)}
+        PaperProps={{
+          sx: {
+            borderTopLeftRadius: 12,
+            borderTopRightRadius: 12,
+            maxHeight: 'min(88vh, 640px)',
+            px: 2,
+            pt: 1.5,
+            pb: 2
+          }
+        }}
+      >
+        <Box
+          sx={{
+            width: 40,
+            height: 4,
+            borderRadius: 2,
+            bgcolor: 'divider',
+            mx: 'auto',
+            mb: 1.5
+          }}
+          aria-hidden
+        />
+        <Typography variant="h6" sx={{ fontWeight: 800, mb: 2 }}>
+          Filtros
+        </Typography>
+        <Stack
+          spacing={2}
+          sx={{ overflow: 'auto', maxHeight: 'calc(100% - 48px)' }}
+        >
+          <Typography variant="subtitle2" fontWeight={800}>
+            Formato
+          </Typography>
+          <ToggleButtonGroup
+            exclusive
+            size="small"
+            value={format}
+            onChange={(_, v: LimitlessDmFormat | null) => {
+              if (v) setFormat(v)
+            }}
+            aria-label="Formato de juego"
+            sx={{ flexWrap: 'wrap', gap: 0.5 }}
+          >
+            {FORMAT_OPTIONS.map(o => (
+              <ToggleButton key={o.value} value={o.value}>
+                {o.label}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+
+          <Typography variant="subtitle2" fontWeight={800}>
+            Tipo de carta
+          </Typography>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gap: 0.75
+            }}
+          >
+            {TYPE_OPTIONS.map(o => (
+              <Button
+                key={o.value}
+                variant={typeFilter === o.value ? 'contained' : 'outlined'}
+                size="small"
+                onClick={() => setTypeFilter(o.value)}
+                sx={{ py: 0.75, textTransform: 'none', fontWeight: 600 }}
+              >
+                {o.label}
+              </Button>
+            ))}
+          </Box>
+          <Button
+            variant="contained"
+            fullWidth
+            onClick={() => setFilterDrawerOpen(false)}
+            sx={{ fontWeight: 800, mt: 1 }}
+          >
+            Listo
+          </Button>
+        </Stack>
+      </Drawer>
 
       <Dialog
         open={Boolean(detailHit)}
