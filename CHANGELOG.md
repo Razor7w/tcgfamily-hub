@@ -10,6 +10,21 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [0.9.2] - 2026-04-23
+
+### Añadido
+
+- **Nueva lista** (`/dashboard/decklists/nuevo`): enlace a **Armar mazo** (`/dashboard/deck-builder`) en el bloque de texto de la lista.
+
+### Cambiado
+
+- **Deck builder** (móvil y &lt; `md`): búsqueda arriba, **Filtros** en **drawer** inferior, **Resultados** antes del **Mazo**; contenedor con `gap` y **Drawer** fuera del `Stack` para evitar márgenes raros; filtro visual sin `useMediaQuery` (evita desajustes de hidratación); espaciado general algo más ajustado en `xs`.
+
+### Corregido
+
+- **Listas públicas** (y todo uso de `DecklistSpritePair`): alineación del nombre del mazo cuando falta un sprite, reservando ancho fijo de dos casillas.
+- Hidratación en **/dashboard/deck-builder** por layout distinto servidor/cliente en filtros.
+
 ## [0.9.1] - 2026-04-23
 
 ### Añadido
@@ -328,4 +343,4 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 Línea base anterior en `package.json` antes de este changelog; el detalle de cambios queda en el historial de git.
 
-Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo _Keep a Changelog_ (`[Unreleased]: …/compare/v0.9.1…HEAD`, `[0.9.1]: …/compare/v0.9.0…v0.9.1`, `[0.9.0]: …/compare/v0.8.0…v0.9.0`, `[0.8.0]: …/compare/v0.7.0…v0.8.0`, `[0.7.0]: …/compare/v0.6.6…v0.7.0`, `[0.6.6]: …/compare/v0.6.5…v0.6.6`, `[0.6.5]: …/compare/v0.6.4…v0.6.5`, `[0.6.4]: …/compare/v0.6.3…v0.6.4`, `[0.6.3]: …/compare/v0.6.2…v0.6.3`, `[0.6.2]: …/compare/v0.6.1…v0.6.2`, `[0.6.1]: …/compare/v0.6.0…v0.6.1`, `[0.6.0]: …/compare/v0.5.5…v0.6.0`, `[0.5.5]: …/compare/v0.5.4…v0.5.5`, `[0.5.4]: …/compare/v0.5.3…v0.5.4`, `[0.5.3]: …/compare/v0.5.2…v0.5.3`, `[0.5.2]: …/compare/v0.5.1…v0.5.2`, `[0.5.1]: …/compare/v0.5.0…v0.5.1`, `[0.5.0]: …/compare/v0.4.6…v0.5.0`, `[0.4.6]: …/compare/v0.4.5…v0.4.6`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
+Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo _Keep a Changelog_ (`[Unreleased]: …/compare/v0.9.2…HEAD`, `[0.9.2]: …/compare/v0.9.1…v0.9.2`, `[0.9.1]: …/compare/v0.9.0…v0.9.1`, `[0.9.0]: …/compare/v0.8.0…v0.9.0`, `[0.8.0]: …/compare/v0.7.0…v0.8.0`, `[0.7.0]: …/compare/v0.6.6…v0.7.0`, `[0.6.6]: …/compare/v0.6.5…v0.6.6`, `[0.6.5]: …/compare/v0.6.4…v0.6.5`, `[0.6.4]: …/compare/v0.6.3…v0.6.4`, `[0.6.3]: …/compare/v0.6.2…v0.6.3`, `[0.6.2]: …/compare/v0.6.1…v0.6.2`, `[0.6.1]: …/compare/v0.6.0…v0.6.1`, `[0.6.0]: …/compare/v0.5.5…v0.6.0`, `[0.5.5]: …/compare/v0.5.4…v0.5.5`, `[0.5.4]: …/compare/v0.5.3…v0.5.4`, `[0.5.3]: …/compare/v0.5.2…v0.5.3`, `[0.5.2]: …/compare/v0.5.1…v0.5.2`, `[0.5.1]: …/compare/v0.5.0…v0.5.1`, `[0.5.0]: …/compare/v0.4.6…v0.5.0`, `[0.4.6]: …/compare/v0.4.5…v0.4.6`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
