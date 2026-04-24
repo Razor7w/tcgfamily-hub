@@ -47,6 +47,8 @@ import {
 
 const LABELS: Record<DashboardModuleId, string> = {
   weeklyEvents: 'Eventos de la semana (calendario y preinscripción)',
+  recentPublicDecklists:
+    'Últimos mazos públicos (tarjeta en el inicio del dashboard)',
   myTournaments:
     'Mis torneos (resumen de participaciones, rondas y torneos custom)',
   statistics:

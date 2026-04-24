@@ -1,5 +1,6 @@
 export const DASHBOARD_MODULE_IDS = [
   'weeklyEvents',
+  'recentPublicDecklists',
   'myTournaments',
   'statistics',
   'mail',
@@ -12,6 +13,7 @@ export type DashboardModuleVisibility = Record<DashboardModuleId, boolean>
 
 export const DEFAULT_DASHBOARD_VISIBILITY: DashboardModuleVisibility = {
   weeklyEvents: true,
+  recentPublicDecklists: true,
   myTournaments: true,
   statistics: true,
   mail: true,
@@ -20,6 +22,7 @@ export const DEFAULT_DASHBOARD_VISIBILITY: DashboardModuleVisibility = {
 
 export const DEFAULT_DASHBOARD_ORDER: DashboardModuleId[] = [
   'weeklyEvents',
+  'recentPublicDecklists',
   'myTournaments',
   'statistics',
   'mail',
@@ -62,6 +65,31 @@ export function normalizeDashboardOrder(
     if (!set.has(id)) return null
   }
   return list as DashboardModuleId[]
+}
+
+/** Orden guardado con 5 módulos (sin «Últimos públicos»). */
+function migrateFiveModuleOrder(raw: unknown): DashboardModuleId[] | null {
+  if (!Array.isArray(raw)) return null
+  const list = raw.filter((x): x is string => typeof x === 'string')
+  const LEGACY_FIVE = [
+    'weeklyEvents',
+    'myTournaments',
+    'statistics',
+    'mail',
+    'storePoints'
+  ] as const
+  if (list.length !== LEGACY_FIVE.length) return null
+  const set = new Set(list)
+  if (set.size !== LEGACY_FIVE.length) return null
+  for (const id of LEGACY_FIVE) {
+    if (!set.has(id)) return null
+  }
+  if (set.has('recentPublicDecklists')) return null
+  const idx = list.indexOf('weeklyEvents')
+  if (idx < 0) return null
+  const next = [...list]
+  next.splice(idx + 1, 0, 'recentPublicDecklists')
+  return next as DashboardModuleId[]
 }
 
 /** Orden persistido con 4 módulos (antes de «Estadísticas» en el panel). */
@@ -116,6 +144,7 @@ export function mergeDashboardSettings(
     ...partial?.visibility
   }
   const order = normalizeDashboardOrder(partial?.order) ??
+    migrateFiveModuleOrder(partial?.order) ??
     migrateFourModuleOrder(partial?.order) ??
     migrateLegacyDashboardOrder(partial?.order) ?? [...DEFAULT_DASHBOARD_ORDER]
   const shortcuts: DashboardShortcutsVisibility = {

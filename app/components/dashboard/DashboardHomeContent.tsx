@@ -31,6 +31,7 @@ import CardMails from '@/components/dashboard/CardMails'
 import MailFlowExplainer from '@/components/mails/MailFlowExplainer'
 import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
 import DashboardQuickActions from '@/components/dashboard/DashboardQuickActions'
+import RecentPublicDecklistsHomeCard from '@/components/dashboard/RecentPublicDecklistsHomeCard'
 import DashboardStatisticsCard from '@/components/dashboard/DashboardStatisticsCard'
 import { useStoreCredit } from '@/hooks/useStoreCredit'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
@@ -81,6 +82,10 @@ export default function DashboardHomeContent() {
 
   const weeklyEventsBlock = visibility.weeklyEvents ? (
     <WeeklyEventsSection />
+  ) : null
+
+  const recentPublicDecklistsBlock = visibility.recentPublicDecklists ? (
+    <RecentPublicDecklistsHomeCard />
   ) : null
 
   const myTournamentsBlock = visibility.myTournaments ? (
@@ -268,6 +273,7 @@ export default function DashboardHomeContent() {
 
   const blocks: Record<DashboardModuleId, ReactNode> = {
     weeklyEvents: weeklyEventsBlock,
+    recentPublicDecklists: recentPublicDecklistsBlock,
     myTournaments: myTournamentsBlock,
     statistics: statisticsBlock,
     mail: mailBlock,

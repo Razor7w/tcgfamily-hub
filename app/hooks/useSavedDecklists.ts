@@ -80,6 +80,28 @@ export function usePublicDecklistsList() {
   })
 }
 
+/** Vista previa en inicio (menos ítems que la lista completa). */
+export function useRecentPublicDecklists(limit: number) {
+  return useQuery({
+    queryKey: ['public-decklists', 'recent', limit],
+    queryFn: async (): Promise<PublicDecklistSummary[]> => {
+      const res = await fetch(`/api/decklists/public?limit=${limit}`)
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        throw new Error(
+          typeof j.error === 'string'
+            ? j.error
+            : 'No se pudieron cargar los decklists públicos'
+        )
+      }
+      const data = (await res.json()) as {
+        decklists: PublicDecklistSummary[]
+      }
+      return data.decklists
+    }
+  })
+}
+
 export function usePatchDecklistPublic() {
   const qc = useQueryClient()
   return useMutation({

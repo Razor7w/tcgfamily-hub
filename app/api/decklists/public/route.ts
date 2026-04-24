@@ -10,8 +10,9 @@ const PUBLIC_DECKLIST_LIMIT = 300
 
 /**
  * Decklists marcados como públicos (toda la comunidad), más recientes primero.
+ * Query opcional: `limit` (1–300), por defecto 300.
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await auth()
     if (!session?.user?.id) {
@@ -20,9 +21,19 @@ export async function GET() {
 
     await connectDB()
 
+    const { searchParams } = new URL(request.url)
+    const limitRaw = searchParams.get('limit')
+    let limit = PUBLIC_DECKLIST_LIMIT
+    if (limitRaw !== null && limitRaw !== '') {
+      const n = Number.parseInt(limitRaw, 10)
+      if (Number.isFinite(n) && n >= 1) {
+        limit = Math.min(n, PUBLIC_DECKLIST_LIMIT)
+      }
+    }
+
     const rows = await SavedDecklist.find({ isPublic: true })
       .sort({ updatedAt: -1 })
-      .limit(PUBLIC_DECKLIST_LIMIT)
+      .limit(limit)
       .select('name pokemonSlugs updatedAt userId')
       .lean()
 

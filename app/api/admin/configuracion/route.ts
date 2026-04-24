@@ -119,6 +119,7 @@ export async function PUT(request: NextRequest) {
     if (updatingDashboard) {
       if (
         typeof vis.weeklyEvents !== 'boolean' ||
+        typeof vis.recentPublicDecklists !== 'boolean' ||
         typeof vis.myTournaments !== 'boolean' ||
         typeof vis.statistics !== 'boolean' ||
         typeof vis.mail !== 'boolean' ||
@@ -152,6 +153,7 @@ export async function PUT(request: NextRequest) {
     if (updatingDashboard && normalizedOrder) {
       doc.visibility = {
         weeklyEvents: vis.weeklyEvents,
+        recentPublicDecklists: vis.recentPublicDecklists,
         myTournaments: vis.myTournaments,
         statistics: vis.statistics,
         mail: vis.mail,
