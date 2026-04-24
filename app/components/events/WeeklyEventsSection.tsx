@@ -440,6 +440,7 @@ export default function WeeklyEventsSection({
                               <Chip
                                 component={Link}
                                 href={`/ligas/${encodeURIComponent(selectedEvent.league.slug)}`}
+                                target="_blank"
                                 scroll={false}
                                 clickable
                                 size="small"
@@ -793,7 +794,7 @@ export default function WeeklyEventsSection({
                                   sx={{ mt: 0.5, mb: 2 }}
                                 >
                                   Un nombre público en la lista. Puedes ver
-                                  quién más va sin datos privados.
+                                  quién más va.
                                 </Typography>
                               </>
                             ) : null}

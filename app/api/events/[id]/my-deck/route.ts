@@ -2,24 +2,10 @@ import { NextResponse } from 'next/server'
 import mongoose from 'mongoose'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
-import { isValidPokedexSlug } from '@/lib/limitless-pokemon-sprite'
+import { normalizeParticipantDeckPokemonSlugs } from '@/lib/participant-deck-pokemon'
+import { parseTournamentDecklistRefBody } from '@/lib/tournament-decklist-ref'
+import { validateTournamentDecklistRefForUser } from '@/lib/validate-tournament-decklist-ref'
 import WeeklyEvent from '@/models/WeeklyEvent'
-
-const MAX_DECK_POKEMON = 2
-
-function normalizeSlugs(raw: unknown): string[] | null {
-  if (!Array.isArray(raw)) return null
-  const out: string[] = []
-  for (const x of raw) {
-    if (typeof x !== 'string') return null
-    const s = x.trim().toLowerCase()
-    if (!s) continue
-    if (!isValidPokedexSlug(s)) return null
-    if (!out.includes(s)) out.push(s)
-    if (out.length > MAX_DECK_POKEMON) return null
-  }
-  return out
-}
 
 /** Guarda o actualiza los hasta 2 Pokémon del deck reportado por el usuario en este torneo. */
 export async function PUT(
@@ -48,7 +34,7 @@ export async function PUT(
       body && typeof body === 'object' && body !== null && 'pokemon' in body
         ? (body as { pokemon?: unknown }).pokemon
         : undefined
-    const slugs = normalizeSlugs(pokemonRaw)
+    const slugs = normalizeParticipantDeckPokemonSlugs(pokemonRaw)
     if (slugs === null) {
       return NextResponse.json(
         {
@@ -58,6 +44,11 @@ export async function PUT(
         { status: 400 }
       )
     }
+
+    const bodyObj =
+      body && typeof body === 'object' && body !== null
+        ? (body as Record<string, unknown>)
+        : {}
 
     await connectDB()
     const uid = new mongoose.Types.ObjectId(session.user.id)
@@ -88,6 +79,39 @@ export async function PUT(
     }
 
     part.deckPokemonSlugs = slugs
+
+    if ('tournamentDecklistRef' in bodyObj) {
+      const refParsed = parseTournamentDecklistRefBody(bodyObj)
+      if (refParsed === null) {
+        part.tournamentDecklistRef = undefined
+      } else if (refParsed === undefined) {
+        return NextResponse.json(
+          { error: 'Referencia de decklist inválida' },
+          { status: 400 }
+        )
+      } else {
+        const checked = await validateTournamentDecklistRefForUser(
+          uid,
+          refParsed,
+          slugs
+        )
+        if (!checked.ok) {
+          const msg =
+            checked.reason === 'not_found'
+              ? 'Decklist no encontrado'
+              : checked.reason === 'slug_mismatch'
+                ? 'Los Pokémon del deck deben coincidir con el mazo elegido'
+                : 'Variante no válida'
+          return NextResponse.json({ error: msg }, { status: 400 })
+        }
+        part.tournamentDecklistRef = {
+          decklistId: checked.value.decklistId,
+          listKind: checked.value.listKind,
+          variantId: checked.value.variantId ?? undefined
+        }
+      }
+    }
+
     doc.markModified('participants')
     await doc.save()
 

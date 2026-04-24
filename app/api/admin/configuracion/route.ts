@@ -94,7 +94,9 @@ export async function PUT(request: NextRequest) {
       shortcutsBody &&
       typeof shortcutsBody === 'object' &&
       typeof shortcutsBody.createMail === 'boolean' &&
-      typeof shortcutsBody.createTournament === 'boolean'
+      typeof shortcutsBody.createTournament === 'boolean' &&
+      typeof (shortcutsBody as { playPokemonDecklistPdf?: boolean })
+        .playPokemonDecklistPdf === 'boolean'
     const updatingMailRegisterLimit =
       typeof mailLimitRaw === 'number' && Number.isFinite(mailLimitRaw)
 
@@ -107,7 +109,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            'Envía visibility+order, shortcuts (createMail, createTournament), resendNotifyPickupInStoreEnabled (boolean) y/o mailRegisterDailyLimit (número)'
+            'Envía visibility+order, shortcuts (createMail, createTournament, playPokemonDecklistPdf), resendNotifyPickupInStoreEnabled (boolean) y/o mailRegisterDailyLimit (número)'
         },
         { status: 400 }
       )
@@ -117,6 +119,7 @@ export async function PUT(request: NextRequest) {
     if (updatingDashboard) {
       if (
         typeof vis.weeklyEvents !== 'boolean' ||
+        typeof vis.recentPublicDecklists !== 'boolean' ||
         typeof vis.myTournaments !== 'boolean' ||
         typeof vis.statistics !== 'boolean' ||
         typeof vis.mail !== 'boolean' ||
@@ -150,6 +153,7 @@ export async function PUT(request: NextRequest) {
     if (updatingDashboard && normalizedOrder) {
       doc.visibility = {
         weeklyEvents: vis.weeklyEvents,
+        recentPublicDecklists: vis.recentPublicDecklists,
         myTournaments: vis.myTournaments,
         statistics: vis.statistics,
         mail: vis.mail,
@@ -163,9 +167,15 @@ export async function PUT(request: NextRequest) {
     }
 
     if (updatingShortcuts) {
+      const sb = shortcutsBody as {
+        createMail: boolean
+        createTournament: boolean
+        playPokemonDecklistPdf: boolean
+      }
       doc.set('shortcuts', {
-        createMail: shortcutsBody.createMail,
-        createTournament: shortcutsBody.createTournament
+        createMail: sb.createMail,
+        createTournament: sb.createTournament,
+        playPokemonDecklistPdf: sb.playPokemonDecklistPdf
       })
     }
 

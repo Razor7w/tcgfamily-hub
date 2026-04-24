@@ -16,8 +16,14 @@ import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import SavedDecklistVariantPicker, {
+  type SavedDecklistTournamentOption
+} from '@/components/decklist/SavedDecklistVariantPicker'
 import { startOfWeekMonday } from '@/components/events/weekUtils'
-import { useCreateCustomTournament } from '@/hooks/useWeeklyEvents'
+import {
+  useCreateCustomTournament,
+  type MyTournamentDecklistRefDTO
+} from '@/hooks/useWeeklyEvents'
 
 type ReportCustomTournamentDialogProps = {
   open: boolean
@@ -69,10 +75,11 @@ function ReportCustomTournamentForm({
   const [startsAtLocal, setStartsAtLocal] = useState(() =>
     defaultStartsAtIsoForWeek(weekAnchor)
   )
-  const [includePlacement, setIncludePlacement] = useState(false)
   const [categoryIndex, setCategoryIndex] = useState(2)
   const [placeStr, setPlaceStr] = useState('')
   const [placementDnf, setPlacementDnf] = useState(false)
+  const [decklistPick, setDecklistPick] =
+    useState<SavedDecklistTournamentOption | null>(null)
 
   const handleClose = useCallback(() => {
     if (!createTournament.isPending) onClose()
@@ -87,29 +94,42 @@ function ReportCustomTournamentForm({
     let placement:
       | { categoryIndex: number; place: number | null; isDnf: boolean }
       | undefined
-    if (includePlacement) {
-      if (placementDnf) {
-        placement = {
-          categoryIndex,
-          place: null,
-          isDnf: true
-        }
-      } else {
-        const n = Number.parseInt(placeStr.trim(), 10)
-        if (!Number.isFinite(n) || n < 1 || n > 999) return
-        placement = {
-          categoryIndex,
-          place: n,
-          isDnf: false
-        }
+    if (placementDnf) {
+      placement = {
+        categoryIndex,
+        place: null,
+        isDnf: true
+      }
+    } else if (placeStr.trim()) {
+      const n = Number.parseInt(placeStr.trim(), 10)
+      if (!Number.isFinite(n) || n < 1 || n > 999) return
+      placement = {
+        categoryIndex,
+        place: n,
+        isDnf: false
       }
     }
+
+    const tournamentDecklistRef: MyTournamentDecklistRefDTO | null =
+      decklistPick
+        ? {
+            decklistId: decklistPick.decklistId,
+            listKind: decklistPick.listKind,
+            variantId: decklistPick.variantId
+          }
+        : null
 
     createTournament.mutate(
       {
         title: t,
         startsAt: iso.toISOString(),
-        ...(placement ? { placement } : {})
+        ...(placement ? { placement } : {}),
+        ...(decklistPick
+          ? {
+              pokemon: [...decklistPick.pokemonSlugs],
+              tournamentDecklistRef
+            }
+          : {})
       },
       {
         onSuccess: (data: { ok: boolean; eventId: string }) => {
@@ -120,17 +140,14 @@ function ReportCustomTournamentForm({
     )
   }
 
+  const placeTrimmed = placeStr.trim()
+  const placeNum = placeTrimmed ? Number.parseInt(placeTrimmed, 10) : NaN
   const placeInvalid =
-    includePlacement &&
     !placementDnf &&
-    (!placeStr.trim() ||
-      !Number.isFinite(Number.parseInt(placeStr.trim(), 10)) ||
-      Number.parseInt(placeStr.trim(), 10) < 1)
+    Boolean(placeTrimmed) &&
+    (!Number.isFinite(placeNum) || placeNum < 1 || placeNum > 999)
 
-  const canSubmit =
-    title.trim() &&
-    !createTournament.isPending &&
-    (!includePlacement || placementDnf || !placeInvalid)
+  const canSubmit = title.trim() && !createTournament.isPending && !placeInvalid
 
   return (
     <>
@@ -161,66 +178,79 @@ function ReportCustomTournamentForm({
           />
 
           <Divider />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={includePlacement}
-                onChange={e => setIncludePlacement(e.target.checked)}
-              />
-            }
-            label="Incluir mi posición final"
+          <Typography
+            variant="subtitle2"
+            fontWeight={700}
+            color="text.secondary"
+          >
+            Posición — Categoría (opcional)
+          </Typography>
+          <Stack spacing={2} sx={{ pl: { xs: 0, sm: 0.5 } }}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="custom-category-label">Categoría</InputLabel>
+              <Select
+                labelId="custom-category-label"
+                label="Categoría"
+                value={categoryIndex}
+                onChange={e => setCategoryIndex(Number(e.target.value))}
+              >
+                {CATEGORY_OPTIONS.map(o => (
+                  <MenuItem key={o.value} value={o.value}>
+                    {o.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={placementDnf}
+                  onChange={e => {
+                    setPlacementDnf(e.target.checked)
+                    if (e.target.checked) setPlaceStr('')
+                  }}
+                />
+              }
+              label="DNF (no terminé clasificación)"
+            />
+            <TextField
+              label="Puesto"
+              type="number"
+              value={placeStr}
+              onChange={e => setPlaceStr(e.target.value)}
+              fullWidth
+              size="small"
+              disabled={placementDnf}
+              inputProps={{
+                min: 1,
+                max: 999,
+                style: { fontVariantNumeric: 'tabular-nums' }
+              }}
+              error={placeInvalid}
+              helperText={
+                placementDnf
+                  ? 'No aplica puesto numérico con DNF'
+                  : placeInvalid
+                    ? 'Introduce un puesto entre 1 y 999'
+                    : 'Opcional. Ej.: 12 para 12º lugar'
+              }
+            />
+          </Stack>
+
+          <Divider />
+          <Typography
+            variant="subtitle2"
+            fontWeight={700}
+            color="text.secondary"
+          >
+            Deck (opcional)
+          </Typography>
+          <SavedDecklistVariantPicker
+            value={decklistPick}
+            onChange={setDecklistPick}
+            disabled={createTournament.isPending}
+            helperText="Mismo criterio que en torneos oficiales: sprites del mazo. Puedes elegir el listado base o una variante."
           />
-          {includePlacement ? (
-            <Stack spacing={2} sx={{ pl: { xs: 0, sm: 0.5 } }}>
-              <FormControl fullWidth size="small">
-                <InputLabel id="custom-category-label">Categoría</InputLabel>
-                <Select
-                  labelId="custom-category-label"
-                  label="Categoría"
-                  value={categoryIndex}
-                  onChange={e => setCategoryIndex(Number(e.target.value))}
-                >
-                  {CATEGORY_OPTIONS.map(o => (
-                    <MenuItem key={o.value} value={o.value}>
-                      {o.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={placementDnf}
-                    onChange={e => {
-                      setPlacementDnf(e.target.checked)
-                      if (e.target.checked) setPlaceStr('')
-                    }}
-                  />
-                }
-                label="DNF (no terminé clasificación)"
-              />
-              <TextField
-                label="Puesto"
-                type="number"
-                value={placeStr}
-                onChange={e => setPlaceStr(e.target.value)}
-                fullWidth
-                size="small"
-                disabled={placementDnf}
-                required={!placementDnf}
-                inputProps={{
-                  min: 1,
-                  max: 999,
-                  style: { fontVariantNumeric: 'tabular-nums' }
-                }}
-                helperText={
-                  placementDnf
-                    ? 'No aplica puesto numérico con DNF'
-                    : 'Ej.: 12 para 12º lugar'
-                }
-              />
-            </Stack>
-          ) : null}
 
           {createTournament.isError ? (
             <Typography variant="body2" color="error">

@@ -4,11 +4,6 @@ import {
   aggregateLeagueStandings,
   leagueEventHasContributingRecord
 } from '@/lib/league-aggregate'
-import {
-  LEAGUE_SCORE_LOSS,
-  LEAGUE_SCORE_TIE,
-  LEAGUE_SCORE_WIN
-} from '@/lib/league-constants'
 import League from '@/models/League'
 import WeeklyEvent from '@/models/WeeklyEvent'
 
@@ -43,12 +38,7 @@ export async function GET(
           ? null
           : typeof leagueDoc.countBestEvents === 'number'
             ? Math.round(leagueDoc.countBestEvents)
-            : null,
-      scoring: {
-        winPoints: LEAGUE_SCORE_WIN,
-        lossPoints: LEAGUE_SCORE_LOSS,
-        tiePoints: LEAGUE_SCORE_TIE
-      }
+            : null
     }
 
     const events = await WeeklyEvent.find({
@@ -80,8 +70,7 @@ export async function GET(
       )
     }))
 
-    const chartTop = standings.slice(0, 12).map((r, i) => ({
-      rank: i + 1,
+    const chartTop = standings.slice(0, 12).map(r => ({
       name: r.displayName,
       points: r.totalPoints,
       popId: r.popId

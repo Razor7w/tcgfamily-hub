@@ -6,6 +6,7 @@ import ArrowUpward from '@mui/icons-material/ArrowUpward'
 import MarkEmailReadOutlined from '@mui/icons-material/MarkEmailReadOutlined'
 import SportsEsports from '@mui/icons-material/SportsEsports'
 import MarkunreadMailbox from '@mui/icons-material/MarkunreadMailbox'
+import PictureAsPdf from '@mui/icons-material/PictureAsPdf'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -46,6 +47,8 @@ import {
 
 const LABELS: Record<DashboardModuleId, string> = {
   weeklyEvents: 'Eventos de la semana (calendario y preinscripción)',
+  recentPublicDecklists:
+    'Últimos mazos públicos (tarjeta en el inicio del dashboard)',
   myTournaments:
     'Mis torneos (resumen de participaciones, rondas y torneos custom)',
   statistics:
@@ -233,16 +236,20 @@ function DashboardShortcutsEditor({
   const [createTournament, setCreateTournament] = useState(
     initial.createTournament
   )
+  const [playPokemonDecklistPdf, setPlayPokemonDecklistPdf] = useState(
+    initial.playPokemonDecklistPdf
+  )
 
   const dirty = useMemo(
     () =>
       createMail !== initial.createMail ||
-      createTournament !== initial.createTournament,
-    [initial, createMail, createTournament]
+      createTournament !== initial.createTournament ||
+      playPokemonDecklistPdf !== initial.playPokemonDecklistPdf,
+    [initial, createMail, createTournament, playPokemonDecklistPdf]
   )
 
   const handleSave = () => {
-    update.mutate({ createMail, createTournament })
+    update.mutate({ createMail, createTournament, playPokemonDecklistPdf })
   }
 
   return (
@@ -295,9 +302,9 @@ function DashboardShortcutsEditor({
               <Link href="/dashboard" component={NextLink} fontWeight={600}>
                 /dashboard
               </Link>{' '}
-              para registrar un correo o crear un torneo custom. Puedes ocultar
-              cada uno sin desactivar el bloque completo de correo o «Mis
-              torneos».
+              para registrar un correo, crear un torneo custom o abrir el
+              generador de lista PDF (Play! Pokémon). Puedes ocultar cada uno
+              sin desactivar el bloque completo de correo o «Mis torneos».
             </Typography>
           </Box>
         </Stack>
@@ -359,6 +366,34 @@ function DashboardShortcutsEditor({
             }
             sx={{ alignItems: 'flex-start', ml: 0, gap: 1.5 }}
           />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={playPokemonDecklistPdf}
+                onChange={(_, v) => setPlayPokemonDecklistPdf(v)}
+                color="primary"
+              />
+            }
+            label={
+              <Stack direction="row" spacing={1} alignItems="center">
+                <PictureAsPdf fontSize="small" color="action" />
+                <Box>
+                  <Typography variant="body2" fontWeight={600}>
+                    Acceso «Lista PDF (Play! Pokémon)»
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    display="block"
+                  >
+                    Enlaza a la página de generación de hoja de listas (texto o
+                    mazo guardado).
+                  </Typography>
+                </Box>
+              </Stack>
+            }
+            sx={{ alignItems: 'flex-start', ml: 0, gap: 1.5 }}
+          />
         </Stack>
 
         {update.isError ? (
@@ -380,6 +415,7 @@ function DashboardShortcutsEditor({
             onClick={() => {
               setCreateMail(initial.createMail)
               setCreateTournament(initial.createTournament)
+              setPlayPokemonDecklistPdf(initial.playPokemonDecklistPdf)
             }}
             disabled={!dirty || update.isPending}
           >

@@ -78,6 +78,15 @@ export interface IWeeklyParticipant {
     place: number | null
     isDnf: boolean
   }
+  /**
+   * Decklist guardado usado para este torneo (vista en imágenes en el detalle).
+   * Los sprites siguen en `deckPokemonSlugs`.
+   */
+  tournamentDecklistRef?: {
+    decklistId: Types.ObjectId
+    listKind: 'base' | 'variant'
+    variantId?: Types.ObjectId | null
+  }
 }
 
 /** Torneo creado en tienda vs torneo personal reportado por el usuario (no depende del calendario de la tienda). */
@@ -221,6 +230,29 @@ const ParticipantSchema = new Schema<IWeeklyParticipant>(
           categoryIndex: { type: Number, required: true, min: 0, max: 2 },
           place: { type: Number, default: null, min: 0, max: 999 },
           isDnf: { type: Boolean, default: false }
+        },
+        { _id: false }
+      ),
+      required: false
+    },
+    tournamentDecklistRef: {
+      type: new Schema(
+        {
+          decklistId: {
+            type: Schema.Types.ObjectId,
+            ref: 'SavedDecklist',
+            required: true
+          },
+          listKind: {
+            type: String,
+            enum: ['base', 'variant'],
+            required: true
+          },
+          variantId: {
+            type: Schema.Types.ObjectId,
+            required: false,
+            default: null
+          }
         },
         { _id: false }
       ),

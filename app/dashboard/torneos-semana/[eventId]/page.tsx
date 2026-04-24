@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EmojiEvents from '@mui/icons-material/EmojiEvents'
@@ -22,6 +22,7 @@ import DeleteCustomTournamentButton from '@/components/events/DeleteCustomTourna
 import ReportDeckDialog from '@/components/events/ReportDeckDialog'
 import TournamentMatchRoundsCard from '@/components/events/TournamentMatchRoundsCard'
 import { useDashboardEventDetail } from '@/hooks/useWeeklyEvents'
+import { initialDecklistPickFromTournament } from '@/lib/tournament-decklist-initial-pick'
 import {
   getLimitlessPokemonSpriteUrl,
   limitlessSpriteDimensions
@@ -41,6 +42,15 @@ export default function TorneoSemanaDetallePage() {
     error
   } = useDashboardEventDetail(eventId || null)
   const [deckOpen, setDeckOpen] = useState(false)
+
+  const initialDecklistPick = useMemo(() => {
+    if (!ev) return null
+    return initialDecklistPickFromTournament(
+      ev.myTournamentDecklistRef ?? null,
+      ev.myTournamentDecklistDisplay ?? null,
+      ev.myDeckPokemonSlugs ?? []
+    )
+  }, [ev])
 
   return (
     <DashboardModuleRouteGate moduleId="myTournaments">
@@ -119,6 +129,7 @@ export default function TorneoSemanaDetallePage() {
                     tournamentPlacement={ev.myTournamentPlacement ?? null}
                     isCustomTournament={ev.tournamentOrigin === 'custom'}
                     onRequestChoosePokemon={() => setDeckOpen(true)}
+                    myTournamentDecklistRef={ev.myTournamentDecklistRef ?? null}
                   />
 
                   <Card
@@ -189,6 +200,26 @@ export default function TorneoSemanaDetallePage() {
                               Elige dos Pokémon para mostrarlos junto a tu
                               récord en esta vista.
                             </Typography>
+                            {ev.myTournamentDecklistDisplay ? (
+                              <Box sx={{ mt: 1.25 }}>
+                                <Typography
+                                  variant="body2"
+                                  fontWeight={700}
+                                  color="text.primary"
+                                  sx={{ lineHeight: 1.45 }}
+                                >
+                                  {ev.myTournamentDecklistDisplay.decklistName}
+                                </Typography>
+                                <Typography
+                                  variant="body2"
+                                  fontWeight={600}
+                                  color="text.secondary"
+                                  sx={{ mt: 0.25, lineHeight: 1.45 }}
+                                >
+                                  {ev.myTournamentDecklistDisplay.listLabel}
+                                </Typography>
+                              </Box>
+                            ) : null}
                           </Box>
                         </Stack>
                         <Button
@@ -319,6 +350,7 @@ export default function TorneoSemanaDetallePage() {
                     eventId={eventId}
                     eventTitle={ev.title}
                     initialSlugs={ev.myDeckPokemonSlugs ?? []}
+                    initialDecklistPick={initialDecklistPick}
                   />
                 </>
               ) : ev.myRegistration ? (

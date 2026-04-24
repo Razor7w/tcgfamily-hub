@@ -57,12 +57,10 @@ export default function LigaPublicPage() {
 
   const chartData =
     data?.chartTop.map(r => ({
-      name: shortName(r.name, 14),
+      name: shortName(r.name, 10),
       fullName: r.name,
       puntos: r.points
     })) ?? []
-
-  const sc = data?.league.scoring
 
   return (
     <Box sx={{ minHeight: '100dvh', bgcolor: 'background.default' }}>
@@ -151,29 +149,6 @@ export default function LigaPublicPage() {
                     <strong>Torneos en la liga:</strong>{' '}
                     {data.tournaments.length}
                   </span>
-                  <span>
-                    <strong>Con récord (W/L/T):</strong>{' '}
-                    {data.tournaments.filter(t => t.hasRecord).length}
-                  </span>
-                  {sc ? (
-                    <span>
-                      <strong>Puntos por partido:</strong> victoria{' '}
-                      {sc.winPoints}, empate {sc.tiePoints}, derrota{' '}
-                      {sc.lossPoints}
-                    </span>
-                  ) : null}
-                  {data.league.countBestEvents != null &&
-                  data.league.countBestEvents > 0 ? (
-                    <span>
-                      <strong>Regla:</strong> solo cuentan los{' '}
-                      {data.league.countBestEvents} mejores torneos por jugador
-                    </span>
-                  ) : (
-                    <span>
-                      <strong>Regla:</strong> suman todos los torneos cerrados
-                      con récord
-                    </span>
-                  )}
                 </Stack>
               </Paper>
 

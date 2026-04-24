@@ -10,6 +10,38 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [0.9.0] - 2026-04-23
+
+### Añadido
+
+- **Deck builder** (`/dashboard/deck-builder`): búsqueda Limitless con **`format:standard` (y demás) siempre** en la petición; resolución de **imágenes** hacia `images.pokemontcg.io` y CDN Limitless para sets clásicos (p. ej. N1, N2, E2, TRR, UF, DF, SW) y HIF (Shiny Vault); diálogo de carta con **−1 / cantidad en el mazo / +1**; botón **Crear lista** que abre **Nueva lista** con el listado en **`sessionStorage`** y `?from=builder`.
+- **Navegación**: menú **Mazos** (acordeón) con **Mis listas**, **Listas públicas** y **Armar mazo**.
+
+### Cambiado
+
+- **Copy en español latino** en menú, páginas de listas, deck builder, detalle, comunidad, PDF torneo, variantes y botones (p. ej. “Ver listado”, “Texto de la lista”).
+
+### Corregido
+
+- Fechas en cards de **listas públicas** (inicio y `/dashboard/decklists/publicos`): **solo fecha**, sin hora.
+
+## [0.8.0] - 2026-04-23
+
+### Añadido
+
+- **Decklists públicos**: espacio **`/dashboard/decklists/publicos`** con listado, detalle, variantes en solo lectura y datos del autor; marcar mazos como públicos desde **Mis decklists**; API **`GET /api/decklists/public`** (sesión requerida) y **`PATCH /api/decklists/[id]`** con **`isPublic`**.
+- **Inicio del dashboard**: tarjeta **Últimos mazos públicos** (hasta 3, por fecha de actualización); módulo **`recentPublicDecklists`** en **`/admin/configuracion`** (visibilidad y orden respecto al resto de bloques); parámetro **`?limit=`** en **`GET /api/decklists/public`** para respuestas ligeras.
+- **Mis decklists** y **Decklists públicos**: búsqueda por nombre del mazo, **paginación** y filtros por período (**esta semana** / **este mes**, según **`updatedAt`**, semana desde lunes); helper **`app/lib/decklist-list-utils.ts`**.
+
+### Cambiado
+
+- Tarjeta de últimos mazos públicos en inicio: **cuadrícula 1 columna en móvil y 2 en escritorio**, ítems con superficie propia, estados hover/focus y cabecera más trabajada.
+- **`DashboardModuleSettings`**: campo de visibilidad **`recentPublicDecklists`**; migración de orden guardado de **5** módulos al insertar el nuevo bloque.
+
+### Corregido
+
+- **`PublicDecklistVariantsPanel`**: pestañas derivadas sin **`setState`** sincrónico en efectos (compatibilidad con regla **`react-hooks/set-state-in-effect`**).
+
 ## [0.7.0] - 2026-04-20
 
 ### Añadido
@@ -286,4 +318,4 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 Línea base anterior en `package.json` antes de este changelog; el detalle de cambios queda en el historial de git.
 
-Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo _Keep a Changelog_ (`[Unreleased]: …/compare/v0.7.0…HEAD`, `[0.7.0]: …/compare/v0.6.6…v0.7.0`, `[0.6.6]: …/compare/v0.6.5…v0.6.6`, `[0.6.5]: …/compare/v0.6.4…v0.6.5`, `[0.6.4]: …/compare/v0.6.3…v0.6.4`, `[0.6.3]: …/compare/v0.6.2…v0.6.3`, `[0.6.2]: …/compare/v0.6.1…v0.6.2`, `[0.6.1]: …/compare/v0.6.0…v0.6.1`, `[0.6.0]: …/compare/v0.5.5…v0.6.0`, `[0.5.5]: …/compare/v0.5.4…v0.5.5`, `[0.5.4]: …/compare/v0.5.3…v0.5.4`, `[0.5.3]: …/compare/v0.5.2…v0.5.3`, `[0.5.2]: …/compare/v0.5.1…v0.5.2`, `[0.5.1]: …/compare/v0.5.0…v0.5.1`, `[0.5.0]: …/compare/v0.4.6…v0.5.0`, `[0.4.6]: …/compare/v0.4.5…v0.4.6`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
+Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo _Keep a Changelog_ (`[Unreleased]: …/compare/v0.9.0…HEAD`, `[0.9.0]: …/compare/v0.8.0…v0.9.0`, `[0.8.0]: …/compare/v0.7.0…v0.8.0`, `[0.7.0]: …/compare/v0.6.6…v0.7.0`, `[0.6.6]: …/compare/v0.6.5…v0.6.6`, `[0.6.5]: …/compare/v0.6.4…v0.6.5`, `[0.6.4]: …/compare/v0.6.3…v0.6.4`, `[0.6.3]: …/compare/v0.6.2…v0.6.3`, `[0.6.2]: …/compare/v0.6.1…v0.6.2`, `[0.6.1]: …/compare/v0.6.0…v0.6.1`, `[0.6.0]: …/compare/v0.5.5…v0.6.0`, `[0.5.5]: …/compare/v0.5.4…v0.5.5`, `[0.5.4]: …/compare/v0.5.3…v0.5.4`, `[0.5.3]: …/compare/v0.5.2…v0.5.3`, `[0.5.2]: …/compare/v0.5.1…v0.5.2`, `[0.5.1]: …/compare/v0.5.0…v0.5.1`, `[0.5.0]: …/compare/v0.4.6…v0.5.0`, `[0.4.6]: …/compare/v0.4.5…v0.4.6`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).

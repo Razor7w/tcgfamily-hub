@@ -62,7 +62,11 @@ import {
   type PokemonSpeciesOption,
   usePokemonSpeciesOptions
 } from '@/hooks/usePokemonSpeciesOptions'
-import { useSaveMyMatchRounds } from '@/hooks/useWeeklyEvents'
+import DecklistImagePreviewButton from '@/components/decklist/DecklistImagePreviewButton'
+import {
+  useSaveMyMatchRounds,
+  type MyTournamentDecklistRefDTO
+} from '@/hooks/useWeeklyEvents'
 import type { WeeklyEventState } from '@/models/WeeklyEvent'
 
 /** Verde para victorias en mesa (legible sobre fondo). */
@@ -628,6 +632,8 @@ type Props = {
   onRequestChoosePokemon?: () => void
   /** Solo lectura: oculta compartir, edición de rondas y flujo de deck. */
   readOnly?: boolean
+  /** Listado guardado vinculado: botón «Ver decklist» bajo los chips del torneo. */
+  myTournamentDecklistRef?: MyTournamentDecklistRefDTO | null
 }
 
 export default function TournamentMatchRoundsCard({
@@ -643,7 +649,8 @@ export default function TournamentMatchRoundsCard({
   tournamentPlacement,
   isCustomTournament = false,
   onRequestChoosePokemon,
-  readOnly = false
+  readOnly = false,
+  myTournamentDecklistRef = null
 }: Props) {
   const theme = useTheme()
   const isMobileViewport = useMediaQuery(theme.breakpoints.down('sm'))
@@ -1059,6 +1066,13 @@ export default function TournamentMatchRoundsCard({
                     variant="outlined"
                   />
                 </Stack>
+                {myTournamentDecklistRef ? (
+                  <Box sx={{ mt: 0.25 }}>
+                    <DecklistImagePreviewButton
+                      source={{ kind: 'event', eventId }}
+                    />
+                  </Box>
+                ) : null}
               </Stack>
               <Stack
                 alignItems="stretch"
