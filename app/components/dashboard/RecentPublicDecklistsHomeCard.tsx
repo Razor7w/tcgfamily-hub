@@ -134,9 +134,8 @@ export default function RecentPublicDecklistsHomeCard() {
             }}
           >
             {decklists.map(row => {
-              const sub = new Date(row.updatedAt).toLocaleString('es-CL', {
-                dateStyle: 'medium',
-                timeStyle: 'short'
+              const sub = new Date(row.updatedAt).toLocaleDateString('es-CL', {
+                dateStyle: 'medium'
               })
               const ownerInitial =
                 row.ownerName.trim().charAt(0).toUpperCase() || '?'

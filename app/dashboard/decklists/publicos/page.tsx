@@ -237,11 +237,10 @@ export default function PublicDecklistsPage() {
                   >
                     <List disablePadding>
                       {paginatedDecklists.map(row => {
-                        const sub = new Date(row.updatedAt).toLocaleString(
+                        const sub = new Date(row.updatedAt).toLocaleDateString(
                           'es-CL',
                           {
-                            dateStyle: 'medium',
-                            timeStyle: 'short'
+                            dateStyle: 'medium'
                           }
                         )
                         const ownerInitial =
