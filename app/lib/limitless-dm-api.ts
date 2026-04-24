@@ -119,6 +119,29 @@ export function deckSectionFromCardType(
   return 'trainer'
 }
 
+/** Nombres de energía básica: sin tope 4 (solo mazo 60) en el armador. */
+const BASIC_ENERGY_UNLIMITED_NAMES = new Set(
+  [
+    'Water Energy',
+    'Fighting Energy',
+    'Grass Energy',
+    'Fire Energy',
+    'Lightning Energy',
+    'Psychic Energy',
+    'Darkness Energy',
+    'Metal Energy'
+  ].map(n => n.trim().toLowerCase().replace(/\s+/g, ' '))
+)
+
+/**
+ * @param cardName Nombre de la carta (!= tipo). Coincidencia insensible
+ *   a mayúsculas y espacios.
+ */
+export function isEnergyCardExemptFromFourCopyLimit(cardName: string): boolean {
+  const n = cardName.trim().toLowerCase().replace(/\s+/g, ' ')
+  return BASIC_ENERGY_UNLIMITED_NAMES.has(n)
+}
+
 export type DeckBuilderLine = {
   key: string
   count: number
