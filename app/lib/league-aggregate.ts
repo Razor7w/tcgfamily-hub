@@ -1,6 +1,10 @@
 import { popidForStorage } from '@/lib/rut-chile'
 import { normalizeStoredDashboardRoundCap } from '@/lib/dashboard-round-cap'
 import {
+  matchRecordFromRounds,
+  parseParticipantMatchRoundsFromLean
+} from '@/lib/participant-match-round'
+import {
   LEAGUE_SCORE_LOSS,
   LEAGUE_SCORE_TIE,
   LEAGUE_SCORE_WIN
@@ -33,7 +37,7 @@ export type LeagueStandingEventDetail = {
   losses: number
   ties: number
   points: number
-  /** Si hay tope de ronda y snapshot, ronda hasta la que cuenta el récord (emparejamiento guardado). */
+  /** Con tope de ronda (dashboard), el N mostrado en «hasta ronda N» (coincide con el tope fijado). */
   leagueRoundBasis?: number
 }
 
@@ -51,6 +55,7 @@ type LeanParticipant = {
   wins?: number
   losses?: number
   ties?: number
+  matchRounds?: unknown
 }
 
 type LeanRoundSnapshot = {
@@ -76,25 +81,94 @@ export type LeanEventForLeague = {
 }
 
 /**
- * Entre los snapshots con roundNum ≤ cap, usa el de **mayor** roundNum
- * (récord acumulado al cerrar esa ronda, sin contar rondas posteriores).
+ * Máx. `roundNum` estricto (1-based `1…cap` o 0-based `0…cap-1`), sin ronda
+ * “N+1 abierta” — útil como respaldo o callers que excluyen `cap+1`.
  */
 export function pickRoundSnapshotAtOrUnderCap(
   snapshots: LeanRoundSnapshot[] | undefined,
   cap: number
 ): LeanRoundSnapshot | null {
+  return pickRoundSnapshotNarrow(snapshots, cap)
+}
+
+function pickRoundSnapshotNarrow(
+  snapshots: LeanRoundSnapshot[] | undefined,
+  cap: number
+): LeanRoundSnapshot | null {
   if (!snapshots?.length) return null
+  const hasZero = snapshots.some(s => {
+    const r = Math.round(Number(s.roundNum))
+    return Number.isFinite(r) && r === 0
+  })
   let best: LeanRoundSnapshot | null = null
-  let bestNum = -1
+  let bestNum = -999
   for (const s of snapshots) {
     const r = Math.round(Number(s.roundNum))
-    if (!Number.isFinite(r) || r < 1 || r > cap) continue
+    if (!Number.isFinite(r)) continue
+    if (hasZero) {
+      if (r < 0 || r > cap - 1) continue
+    } else {
+      if (r < 1 || r > cap) continue
+    }
     if (r > bestNum) {
       bestNum = r
       best = s
     }
   }
   return best
+}
+
+/** Nadie con más de `cap` partidos (W+L+T) en el acumulado TDF. */
+function snapshotCumulativeFitsLeagueCap(
+  snapshot: LeanRoundSnapshot,
+  nameByPop: Map<string, string>,
+  cap: number
+): boolean {
+  const m = wlMapFromRoundSnapshot(snapshot, nameByPop)
+  if (m.size === 0) return false
+  for (const rec of m.values()) {
+    if (rec.w + rec.l + rec.t > cap) return false
+  }
+  return true
+}
+
+/**
+ * Snapshot para puntuar la liga con tope de `cap` rondas: suele alinearse con el
+ * TDF de Play! (acumulado **tras 3** swiss a veces vive bajo el snapshot
+ * "ronda 4" aún en curso). Candidatos: 1-based `1…cap+1`, 0-based `0…cap`
+ * (incluida la "siguiente" ronda cuyo cierre aún no suma 4+ partidos). Elige
+ * el de **mayor** `roundNum` cuyo W/L de ningún jugador supera el tope; si
+ * ninguno califica, cae al rango estrecho.
+ */
+function pickLeagueCapSnapshot(
+  snapshots: LeanRoundSnapshot[] | undefined,
+  cap: number,
+  nameByPop: Map<string, string>
+): LeanRoundSnapshot | null {
+  if (!snapshots?.length) return null
+  const hasZero = snapshots.some(s => {
+    const r = Math.round(Number(s.roundNum))
+    return Number.isFinite(r) && r === 0
+  })
+  const candidates: { s: LeanRoundSnapshot; r: number }[] = []
+  for (const s of snapshots) {
+    const r = Math.round(Number(s.roundNum))
+    if (!Number.isFinite(r)) continue
+    if (hasZero) {
+      if (r < 0 || r > cap) continue
+    } else {
+      if (r < 1 || r > cap + 1) continue
+    }
+    candidates.push({ s, r })
+  }
+  if (candidates.length === 0) return null
+  candidates.sort((a, b) => b.r - a.r)
+  for (const { s } of candidates) {
+    if (snapshotCumulativeFitsLeagueCap(s, nameByPop, cap)) {
+      return s
+    }
+  }
+  return pickRoundSnapshotNarrow(snapshots, cap)
 }
 
 function participantNameByPop(ev: LeanEventForLeague): Map<string, string> {
@@ -188,6 +262,36 @@ function mergeParticipantsByPop(
 type Wlt = { displayName: string; w: number; l: number; t: number }
 
 /**
+ * Récord W/L/T sumando solo las mesas con `1 ≤ roundNum ≤ cap` en `matchRounds`.
+ * Es la fuente más fiable bajo tope: no depende del TDF atrasado ni del total
+ * 4-0-0 del participante cuando el tope de liga es 3.
+ */
+function cappedWltByPopFromMatchRounds(
+  ev: LeanEventForLeague,
+  cap: number
+): { map: Map<string, Wlt>; popIds: Set<string> } {
+  const out = new Map<string, Wlt>()
+  const popIds = new Set<string>()
+  for (const p of ev.participants ?? []) {
+    const k = popidForStorage(typeof p.popId === 'string' ? p.popId : '')
+    if (!k) continue
+    const rows = parseParticipantMatchRoundsFromLean(p.matchRounds).filter(
+      r => r.roundNum >= 1 && r.roundNum <= cap
+    )
+    if (rows.length === 0) continue
+    const { wins, losses, ties } = matchRecordFromRounds(rows)
+    popIds.add(k)
+    out.set(k, {
+      displayName: p.displayName || '—',
+      w: wins,
+      l: losses,
+      t: ties
+    })
+  }
+  return { map: out, popIds }
+}
+
+/**
  * El snapshot TDF a veces trae W/L acumulado atrasado en la última ronda, mientras
  * `participants` ya refleja el torneo cerrado. Si el tope de liga es `cap` y el
  * récord del participante suma ≤ `cap` partidos, tiene **más** puntos de liga
@@ -196,10 +300,12 @@ type Wlt = { displayName: string; w: number; l: number; t: number }
 function mergeSnapshotWltWithParticipantsWhenStricter(
   cap: number,
   fromSnapshot: Map<string, Wlt>,
-  fromParticipants: Map<string, Wlt>
+  fromParticipants: Map<string, Wlt>,
+  skipPops: Set<string>
 ): Map<string, Wlt> {
   const out = new Map(fromSnapshot)
   for (const [k, rec] of fromSnapshot) {
+    if (skipPops.has(k)) continue
     const p = fromParticipants.get(k)
     if (!p) continue
     const gamesP = p.w + p.l + p.t
@@ -223,40 +329,60 @@ function mergeSnapshotWltWithParticipantsWhenStricter(
 }
 
 /**
- * Récord W/L/T usado para la liga en un torneo: respeta `dashboardRoundCap`
- * tomando el snapshot de la última ronda ≤ tope; si no hay snapshots guardados,
- * usa los totales del participante (comportamiento previo).
+ * Récord W/L/T usado para la liga en un torneo: respeta `dashboardRoundCap`.
+ * Con tope, si el participante tiene `matchRounds` guardados, se suman solo las
+ * rondas con `roundNum` ≤ tope; si no, se usa el snapshot TDF o totales
+ * ajustados (ver merge con participantes).
  */
 export function leagueMergeSource(ev: LeanEventForLeague): {
   byPop: Map<string, { displayName: string; w: number; l: number; t: number }>
-  snapshotRound?: number
+  /** Ronda tope fijada en admin; para la explicación "hasta ronda N" en la liga. */
+  leagueRoundBasis?: number
 } {
   const cap = normalizeStoredDashboardRoundCap(ev.dashboardRoundCap)
   const nameByPop = participantNameByPop(ev)
+  const fromParticipants = mergeParticipantsByPop(ev)
 
   if (cap === undefined) {
-    return { byPop: mergeParticipantsByPop(ev) }
+    return { byPop: fromParticipants }
   }
 
-  const chosen = pickRoundSnapshotAtOrUnderCap(ev.roundSnapshots ?? [], cap)
+  const { map: fromMatchCapped, popIds: popsFromMatchRounds } =
+    cappedWltByPopFromMatchRounds(ev, cap)
+  const chosen = pickLeagueCapSnapshot(ev.roundSnapshots ?? [], cap, nameByPop)
+
   if (chosen) {
     const fromSnapshot = wlMapFromRoundSnapshot(chosen, nameByPop)
-    const fromParticipants = mergeParticipantsByPop(ev)
+    const combined = new Map<string, Wlt>(fromSnapshot)
+    for (const [k, wlt] of fromMatchCapped) {
+      combined.set(k, wlt)
+    }
     return {
       byPop: mergeSnapshotWltWithParticipantsWhenStricter(
         cap,
-        fromSnapshot,
-        fromParticipants
+        combined,
+        fromParticipants,
+        popsFromMatchRounds
       ),
-      snapshotRound: Math.round(Number(chosen.roundNum))
+      leagueRoundBasis: cap
     }
   }
 
-  if ((ev.roundSnapshots ?? []).length > 0) {
-    return { byPop: new Map() }
+  if (fromMatchCapped.size > 0) {
+    const byPop = new Map<string, Wlt>(fromMatchCapped)
+    for (const [k, p] of fromParticipants) {
+      if (byPop.has(k)) continue
+      const gamesP = p.w + p.l + p.t
+      if (gamesP <= cap) byPop.set(k, p)
+    }
+    return { byPop, leagueRoundBasis: cap }
   }
 
-  return { byPop: mergeParticipantsByPop(ev) }
+  if ((ev.roundSnapshots ?? []).length > 0) {
+    return { byPop: new Map(), leagueRoundBasis: cap }
+  }
+
+  return { byPop: fromParticipants }
 }
 
 /** ¿Algún jugador tiene récord no nulo tras aplicar la misma lógica que la liga? */
@@ -284,7 +410,7 @@ function collectPlayerDetailsFromRecords(events: LeanEventForLeague[]): {
         ? ev.startsAt.toISOString()
         : new Date(ev.startsAt as unknown as string).toISOString()
 
-    const { byPop, snapshotRound } = leagueMergeSource(ev)
+    const { byPop, leagueRoundBasis } = leagueMergeSource(ev)
 
     for (const [k, rec] of byPop) {
       if (rec.w + rec.l + rec.t === 0) continue
@@ -302,7 +428,7 @@ function collectPlayerDetailsFromRecords(events: LeanEventForLeague[]): {
         losses: rec.l,
         ties: rec.t,
         points: pts,
-        leagueRoundBasis: snapshotRound
+        leagueRoundBasis
       }
       const list = playerDetails.get(k) ?? []
       list.push(detail)
@@ -378,8 +504,9 @@ function finalizeStandings(
 
 /**
  * Suma puntos de liga por récord W/L/T en cada torneo cerrado.
- * Con **tope de ronda** (`dashboardRoundCap`), solo cuenta el récord del snapshot
- * de la última ronda guardada que no supere ese tope (no suma rondas posteriores).
+ * Con **tope** (`dashboardRoundCap`), prioriza `participants.matchRounds` (rondas
+ * `1…N`); si no hay, el snapshot TDF a la ronda bajo tope, con la misma lógica
+ * que en el panel.
  */
 export function aggregateLeagueStandings(
   events: LeanEventForLeague[],
