@@ -48,7 +48,7 @@ export async function GET(
       state: 'close'
     })
       .select(
-        'title startsAt dashboardRoundCap roundSnapshots participants.displayName participants.popId participants.wins participants.losses participants.ties'
+        'title startsAt dashboardRoundCap roundSnapshots participants.displayName participants.popId participants.wins participants.losses participants.ties participants.matchRounds'
       )
       .sort({ startsAt: 1 })
       .lean()
