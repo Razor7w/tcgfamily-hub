@@ -21,6 +21,8 @@ export interface Mail {
   toRut?: string
   isRecived: boolean
   isRecivedInStore?: boolean
+  /** ISO cuando la tienda confirmó ingreso en tienda. */
+  receivedInStoreAt?: string | null
   observations?: string
   createdAt: string
   updatedAt: string

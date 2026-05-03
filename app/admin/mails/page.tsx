@@ -53,6 +53,12 @@ import {
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
 import { formatMailLogDateTime, getMailStatusChip } from '@/lib/mail-status'
 import { normalizeMailCodeForSearch } from '@/lib/mail-code-search'
+import {
+  type ElapsedBucketFilter,
+  getMailStoreWaitDays,
+  matchesStoreWaitBucket,
+  storeWaitChipProps
+} from '@/lib/mail-store-days'
 import { alpha } from '@mui/material/styles'
 
 function userLabel(u: User) {
@@ -60,26 +66,6 @@ function userLabel(u: User) {
   const email = u.email || '-'
   const rut = u.rut || '-'
   return `${name} (${email}) - ${rut}`
-}
-
-export function getElapsedDays(createdAt: string): number {
-  const created = new Date(createdAt).getTime()
-  const now = Date.now()
-  return Math.floor((now - created) / (24 * 60 * 60 * 1000))
-}
-
-function formatElapsed(days: number): string {
-  return days === 1 ? '1 día' : `${days} días`
-}
-
-export function getElapsedBadge(days: number): {
-  label: string
-  color: 'success' | 'warning' | 'error'
-} {
-  const label = formatElapsed(days)
-  if (days <= 7) return { label, color: 'success' }
-  if (days <= 14) return { label, color: 'warning' }
-  return { label, color: 'error' }
 }
 
 function mailUserId(ref: { _id: string } | string | null | undefined): string {
@@ -118,6 +104,8 @@ export default function MailsPage() {
   >('all')
   const [filterFromUser, setFilterFromUser] = useState<User | null>(null)
   const [filterToUser, setFilterToUser] = useState<User | null>(null)
+  /** Pendiente retiro en tienda: rangos por días desde ingreso a tienda. */
+  const [filterElapsed, setFilterElapsed] = useState<ElapsedBucketFilter>('all')
   const [page, setPage] = useState(1)
   const [mailToDelete, setMailToDelete] = useState<Mail | null>(null)
 
@@ -205,12 +193,26 @@ export default function MailsPage() {
     if (filterToUser) {
       list = list.filter(m => mailUserId(m.toUserId) === filterToUser.id)
     }
+    if (filterElapsed !== 'all') {
+      list = list.filter(m => {
+        const d = getMailStoreWaitDays(m)
+        if (d == null) return false
+        return matchesStoreWaitBucket(d, filterElapsed)
+      })
+    }
     return list
-  }, [allMails, searchId, filterStage, filterFromUser, filterToUser])
+  }, [
+    allMails,
+    searchId,
+    filterStage,
+    filterFromUser,
+    filterToUser,
+    filterElapsed
+  ])
 
   useEffect(() => {
     setPage(1)
-  }, [searchId, filterStage, filterFromUser, filterToUser])
+  }, [searchId, filterStage, filterFromUser, filterToUser, filterElapsed])
 
   const pageCount = Math.max(1, Math.ceil(mails.length / PAGE_SIZE))
 
@@ -636,6 +638,90 @@ export default function MailsPage() {
                 </ToggleButton>
               </ToggleButtonGroup>
             </Box>
+            <Box>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: 'block', mb: 0.75 }}
+              >
+                Antigüedad en tienda (pendiente de retiro · desde marcado{' '}
+                <strong>Recibido en tienda</strong>)
+              </Typography>
+              <ToggleButtonGroup
+                exclusive
+                value={filterElapsed}
+                onChange={(_, v) => v != null && setFilterElapsed(v)}
+                size="small"
+                sx={{
+                  flexWrap: 'wrap',
+                  '& .MuiToggleButton-root': {
+                    px: 1,
+                    py: 0.5,
+                    textTransform: 'none',
+                    fontWeight: 500
+                  }
+                }}
+              >
+                <ToggleButton value="all">Todos</ToggleButton>
+                <ToggleButton
+                  value="green"
+                  sx={{
+                    '&.Mui-selected': {
+                      bgcolor: theme => alpha(theme.palette.success.main, 0.28),
+                      color: 'success.dark',
+                      '&:hover': {
+                        bgcolor: theme =>
+                          alpha(theme.palette.success.main, 0.38)
+                      }
+                    }
+                  }}
+                >
+                  Verde · 0–7 días
+                </ToggleButton>
+                <ToggleButton
+                  value="yellow"
+                  sx={{
+                    '&.Mui-selected': {
+                      bgcolor: theme => alpha(theme.palette.warning.main, 0.38),
+                      color: 'warning.dark',
+                      '&:hover': {
+                        bgcolor: theme =>
+                          alpha(theme.palette.warning.main, 0.46)
+                      }
+                    }
+                  }}
+                >
+                  Amarillo · 8–14 días
+                </ToggleButton>
+                <ToggleButton
+                  value="orange"
+                  sx={{
+                    '&.Mui-selected': {
+                      bgcolor: alpha('#e65100', 0.32),
+                      color: '#bf360c',
+                      '&:hover': { bgcolor: alpha('#e65100', 0.42) }
+                    }
+                  }}
+                >
+                  Naranjo · 15–30 días
+                </ToggleButton>
+                <ToggleButton
+                  value="red"
+                  color="error"
+                  sx={{
+                    '&.Mui-selected': {
+                      bgcolor: theme => alpha(theme.palette.error.main, 0.26),
+                      color: 'error.dark',
+                      '&:hover': {
+                        bgcolor: theme => alpha(theme.palette.error.main, 0.38)
+                      }
+                    }
+                  }}
+                >
+                  Rojo · 31+ días
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
           </Stack>
         </Paper>
 
@@ -655,6 +741,7 @@ export default function MailsPage() {
               onClick={() => {
                 setSearchId('')
                 setFilterStage('all')
+                setFilterElapsed('all')
                 setFilterFromUser(null)
                 setFilterToUser(null)
               }}
@@ -676,8 +763,9 @@ export default function MailsPage() {
                   typeof mail.fromUserId === 'object' ? mail.fromUserId : null
                 const to =
                   typeof mail.toUserId === 'object' ? mail.toUserId : null
-                const days = getElapsedDays(mail.createdAt)
-                const elapsed = getElapsedBadge(days)
+                const waitDays = getMailStoreWaitDays(mail)
+                const waitChip =
+                  waitDays !== null ? storeWaitChipProps(waitDays) : null
                 const status = getMailStatusChip(mail)
                 return (
                   <Card
@@ -720,12 +808,24 @@ export default function MailsPage() {
                             size="small"
                             sx={{ fontWeight: 700 }}
                           />
-                          <Chip
-                            label={elapsed.label}
-                            color={elapsed.color}
-                            size="small"
-                            sx={{ fontWeight: 500 }}
-                          />
+                          {waitChip ? (
+                            <Tooltip title="Esperando retiro: días desde el ingreso confirmado en tienda">
+                              <Chip
+                                label={waitChip.label}
+                                {...(waitChip.color !== undefined
+                                  ? { color: waitChip.color }
+                                  : {})}
+                                size="small"
+                                sx={
+                                  waitChip.sx != null &&
+                                  typeof waitChip.sx === 'object' &&
+                                  !Array.isArray(waitChip.sx)
+                                    ? { fontWeight: 600, ...waitChip.sx }
+                                    : { fontWeight: 600 }
+                                }
+                              />
+                            </Tooltip>
+                          ) : null}
                         </Stack>
                       </Box>
                       <Stack spacing={0.25} sx={{ mb: 1 }}>
@@ -756,7 +856,9 @@ export default function MailsPage() {
                       </Typography>
                       <Typography variant="body2" sx={{ mb: 1.5 }}>
                         <strong>Para:</strong>{' '}
-                        {to ? `${to.name ?? '-'} (${to.rut ?? '-'})` : '-'}
+                        {to
+                          ? `${to.name ?? '-'} (${to.rut ?? '-'})`
+                          : `${mail.toRut} (No registrado en sistema)`}
                       </Typography>
                       <Divider sx={{ my: 1 }} />
                       <Box
