@@ -756,7 +756,9 @@ export default function MailsPage() {
                       </Typography>
                       <Typography variant="body2" sx={{ mb: 1.5 }}>
                         <strong>Para:</strong>{' '}
-                        {to ? `${to.name ?? '-'} (${to.rut ?? '-'})` : '-'}
+                        {to
+                          ? `${to.name ?? '-'} (${to.rut ?? '-'})`
+                          : `${mail.toRut} (No registrado en sistema)`}
                       </Typography>
                       <Divider sx={{ my: 1 }} />
                       <Box
