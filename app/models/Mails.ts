@@ -8,6 +8,8 @@ export interface IMail extends Document {
   toRut: string
   isRecived: boolean
   isRecivedInStore: boolean
+  /** Momento en que la tienda marcó como recibido en tienda (ancla para días esperando retiro). */
+  receivedInStoreAt?: Date | null
   observations?: string
 }
 
@@ -24,6 +26,7 @@ const MailSchema = new Schema<IMail>(
     toRut: { type: String, required: true, index: true },
     isRecived: { type: Boolean, default: false, required: true },
     isRecivedInStore: { type: Boolean, default: false, required: true },
+    receivedInStoreAt: { type: Date, default: undefined },
     observations: { type: String, default: '' }
   },
   {

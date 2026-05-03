@@ -84,6 +84,18 @@ export async function GET() {
     if (!gate.ok) return gate.response
     await connectDB()
 
+    // Datos legacy: anclar fecha de ingreso usando updatedAt cuando falte.
+    await Mail.updateMany(
+      {
+        isRecivedInStore: true,
+        $or: [
+          { receivedInStoreAt: { $exists: false } },
+          { receivedInStoreAt: null }
+        ]
+      },
+      [{ $set: { receivedInStoreAt: '$updatedAt' } }]
+    ).catch(() => undefined)
+
     const mails = await Mail.find({})
       .sort({ createdAt: -1 })
       .populate('fromUserId', 'name rut')
@@ -253,6 +265,8 @@ export async function POST(request: NextRequest) {
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
         const code = await generateNextMailCode()
+        const adminInStore =
+          Boolean(adminFullCreate) && Boolean(isRecivedInStore ?? false)
         const newMail = new Mail({
           code,
           fromUserId: resolvedFromUserId,
@@ -262,6 +276,7 @@ export async function POST(request: NextRequest) {
           isRecivedInStore: adminFullCreate
             ? (isRecivedInStore ?? false)
             : false,
+          ...(adminInStore ? { receivedInStoreAt: new Date() } : {}),
           observations: adminFullCreate
             ? normalizeObs(observations ?? '')
             : normalizeObs(observations)

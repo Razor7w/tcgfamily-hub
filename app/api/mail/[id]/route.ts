@@ -150,8 +150,13 @@ export async function PUT(
     const wasReceivedInStore = existing.isRecivedInStore
 
     if (typeof isRecived === 'boolean') existing.isRecived = isRecived
-    if (typeof isRecivedInStore === 'boolean')
+    if (typeof isRecivedInStore === 'boolean') {
       existing.isRecivedInStore = isRecivedInStore
+      if (isRecivedInStore === true && !wasReceivedInStore)
+        existing.receivedInStoreAt = new Date()
+      else if (isRecivedInStore === false && wasReceivedInStore)
+        existing.receivedInStoreAt = null
+    }
     if (observations !== undefined) existing.observations = observations ?? ''
 
     const becameReadyInStore =
