@@ -7,6 +7,8 @@ export interface IUser extends Document {
   email?: string
   emailVerified?: Date
   image?: string
+  /** Key del objeto en R2 para poder borrar/reemplazar. */
+  imageKey?: string
   /** Solo usuarios con contraseña local; nunca exponer en APIs. */
   passwordHash?: string
   credentialFailedAttempts?: number
@@ -31,6 +33,10 @@ const UserSchema = new Schema<IUser>(
     email: String,
     emailVerified: Date,
     image: String,
+    imageKey: {
+      type: String,
+      default: ''
+    },
     passwordHash: {
       type: String,
       select: false,

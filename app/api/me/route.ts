@@ -3,11 +3,32 @@ import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
 import { hashPassword, verifyPassword } from '@/lib/password-server'
+import { DeleteObjectCommand } from '@aws-sdk/client-s3'
+import { r2BucketName, r2Client, r2PublicBaseUrl } from '@/lib/r2'
 import {
   validatePasswordStrength,
   validateRegisterName
 } from '@/lib/password-rules'
 import { validatePopidOptional, popidForStorage } from '@/lib/rut-chile'
+
+function isR2KeyForUser(userId: string, key: string): boolean {
+  if (!userId || !key) return false
+  if (key.startsWith(`uploads/${userId}/`)) return true
+  // Legacy profile avatars
+  if (key.startsWith(`profileImages/${userId}/`)) return true
+  // Avatar/<userId>.<ext>
+  return (
+    key.startsWith(`Avatar/${userId}.`) &&
+    key.length > `Avatar/${userId}.`.length
+  )
+}
+
+function keyFromPublicUrl(url: string): string | null {
+  const base = r2PublicBaseUrl()
+  if (!url.startsWith(`${base}/`)) return null
+  const key = url.slice(base.length + 1)
+  return key || null
+}
 
 export async function GET() {
   try {
@@ -33,6 +54,7 @@ export async function GET() {
       name?: string
       email?: string
       image?: string
+      imageKey?: string
       rut?: string
       popid?: string
       phone?: string
@@ -45,6 +67,7 @@ export async function GET() {
       name: u.name ?? '',
       email: u.email ?? '',
       image: u.image ?? '',
+      imageKey: u.imageKey ?? '',
       rut: u.rut ?? '',
       popid: u.popid ?? '',
       phone: u.phone ?? '',
@@ -78,8 +101,15 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
     }
 
-    const { name, popid, currentPassword, newPassword, confirmNewPassword } =
-      body as Record<string, unknown>
+    const {
+      name,
+      popid,
+      currentPassword,
+      newPassword,
+      confirmNewPassword,
+      image,
+      imageKey
+    } = body as Record<string, unknown>
 
     await connectDB()
     const user = await User.findById(session.user.id).select('+passwordHash')
@@ -94,8 +124,9 @@ export async function PATCH(request: NextRequest) {
       typeof newPassword === 'string' && newPassword.length > 0
     const hasName = name !== undefined
     const hasPop = popid !== undefined
+    const hasImage = image !== undefined || imageKey !== undefined
 
-    if (!wantsPasswordChange && !hasName && !hasPop) {
+    if (!wantsPasswordChange && !hasName && !hasPop && !hasImage) {
       return NextResponse.json(
         { error: 'No hay cambios para guardar.' },
         { status: 400 }
@@ -159,15 +190,66 @@ export async function PATCH(request: NextRequest) {
       user.popid = popidForStorage(popStr)
     }
 
+    const oldImageKey: string =
+      typeof user.imageKey === 'string' ? user.imageKey : ''
+
+    if (hasImage) {
+      const imageStr = typeof image === 'string' ? image.trim() : ''
+      const imageKeyStr = typeof imageKey === 'string' ? imageKey.trim() : ''
+
+      if (!imageStr || !imageKeyStr) {
+        return NextResponse.json(
+          { error: 'Falta image o imageKey.' },
+          { status: 400 }
+        )
+      }
+
+      if (!isR2KeyForUser(session.user.id, imageKeyStr)) {
+        return NextResponse.json(
+          { error: 'imageKey inválido.' },
+          { status: 400 }
+        )
+      }
+
+      const derived = keyFromPublicUrl(imageStr)
+      if (derived !== imageKeyStr) {
+        return NextResponse.json(
+          { error: 'image e imageKey no coinciden.' },
+          { status: 400 }
+        )
+      }
+
+      user.image = imageStr
+      user.imageKey = imageKeyStr
+    }
+
     await user.save()
 
     const hasPassword = Boolean(user.passwordHash)
+
+    if (hasImage && oldImageKey && oldImageKey !== user.imageKey) {
+      if (isR2KeyForUser(session.user.id, oldImageKey)) {
+        try {
+          const s3 = r2Client()
+          await s3.send(
+            new DeleteObjectCommand({
+              Bucket: r2BucketName(),
+              Key: oldImageKey
+            })
+          )
+        } catch (e) {
+          console.error('R2 delete old profile image failed:', e)
+        }
+      }
+    }
 
     return NextResponse.json({
       ok: true,
       name: user.name ?? '',
       popid: user.popid ?? '',
-      hasPassword
+      hasPassword,
+      image: user.image ?? '',
+      imageKey: typeof user.imageKey === 'string' ? user.imageKey : ''
     })
   } catch (e) {
     console.error('PATCH /api/me:', e)
