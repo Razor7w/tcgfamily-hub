@@ -28,10 +28,10 @@ function safeExtFromContentType(contentType: string): string {
   return ''
 }
 
-function safeFolder(folder: unknown): 'uploads' | 'profileImages' {
+function safeFolder(folder: unknown): 'uploads' | 'Avatar' {
   if (typeof folder !== 'string') return 'uploads'
   const f = folder.trim()
-  if (f === 'profileImages') return 'profileImages'
+  if (f === 'Avatar') return 'Avatar'
   return 'uploads'
 }
 
@@ -81,7 +81,10 @@ export async function POST(request: NextRequest) {
 
     const ext = safeExtFromContentType(contentTypeStr) || 'bin'
     const baseFolder = safeFolder(folder)
-    const key = `${baseFolder}/${session.user.id}/${crypto.randomUUID()}.${ext}`
+    const key =
+      baseFolder === 'Avatar'
+        ? `Avatar/${session.user.id}.${ext}`
+        : `uploads/${session.user.id}/${crypto.randomUUID()}.${ext}`
 
     const bucket = r2BucketName()
     const s3 = r2Client()

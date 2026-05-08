@@ -20,8 +20,8 @@ export type R2ImageUploaderProps = {
   title?: string
   /** Límite de tamaño en MB (cliente). */
   maxSizeMb?: number
-  /** Carpeta base dentro del bucket (e.g. uploads, profileImages). */
-  folder?: 'uploads' | 'profileImages'
+  /** Carpeta base dentro del bucket (e.g. uploads, Avatar). */
+  folder?: 'uploads' | 'Avatar'
   /** Callback con la URL pública final. */
   onUploaded?: (publicUrl: string, key: string) => void
 }

@@ -13,9 +13,13 @@ import { validatePopidOptional, popidForStorage } from '@/lib/rut-chile'
 
 function isR2KeyForUser(userId: string, key: string): boolean {
   if (!userId || !key) return false
+  if (key.startsWith(`uploads/${userId}/`)) return true
+  // Legacy profile avatars
+  if (key.startsWith(`profileImages/${userId}/`)) return true
+  // Avatar/<userId>.<ext>
   return (
-    key.startsWith(`uploads/${userId}/`) ||
-    key.startsWith(`profileImages/${userId}/`)
+    key.startsWith(`Avatar/${userId}.`) &&
+    key.length > `Avatar/${userId}.`.length
   )
 }
 

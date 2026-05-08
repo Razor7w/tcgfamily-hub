@@ -58,7 +58,7 @@ function createUppyProfileImage({
         body: JSON.stringify({
           filename: file.name || 'profile-image',
           contentType,
-          folder: 'profileImages'
+          folder: 'Avatar'
         })
       })
 
