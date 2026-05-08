@@ -657,7 +657,7 @@ export default function PerfilPage() {
             <R2UppyProfileImageUploader
               name={me.name}
               currentImageUrl={me.image || ''}
-              maxSizeMb={10}
+              maxSizeMb={2}
               onUploaded={async (publicUrl, key) => {
                 await saveProfileImage(publicUrl, key)
                 setImageOpen(false)
@@ -687,7 +687,7 @@ export default function PerfilPage() {
             <R2UppyProfileImageUploader
               name={me.name}
               currentImageUrl={me.image || ''}
-              maxSizeMb={10}
+              maxSizeMb={2}
               onUploaded={async (publicUrl, key) => {
                 await saveProfileImage(publicUrl, key)
                 setImageOpen(false)
