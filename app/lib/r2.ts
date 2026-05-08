@@ -8,6 +8,19 @@ function requiredEnv(name: string): string {
   return v
 }
 
+/** Quita comillas envolventes si el valor se pegó como 'nombre' o "nombre" (p. ej. desde JSON). */
+function stripSurroundingQuotes(value: string): string {
+  const t = value.trim()
+  if (t.length >= 2) {
+    const a = t[0]
+    const b = t[t.length - 1]
+    if ((a === "'" && b === "'") || (a === '"' && b === '"')) {
+      return t.slice(1, -1).trim()
+    }
+  }
+  return t
+}
+
 export function r2Client(): S3Client {
   const accountId = requiredEnv('R2_ACCOUNT_ID')
   const accessKeyId = requiredEnv('R2_ACCESS_KEY_ID')
@@ -29,7 +42,7 @@ export function r2Client(): S3Client {
 }
 
 export function r2BucketName(): string {
-  return requiredEnv('R2_BUCKET_NAME')
+  return stripSurroundingQuotes(requiredEnv('R2_BUCKET_NAME'))
 }
 
 export function r2PublicBaseUrl(): string {
