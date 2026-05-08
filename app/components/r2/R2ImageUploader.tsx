@@ -94,8 +94,7 @@ export default function R2ImageUploader({
       const putRes = await fetch(uploadUrl, {
         method: 'PUT',
         headers: {
-          'content-type': file.type,
-          'cache-control': 'public, max-age=31536000, immutable'
+          'content-type': file.type
         },
         body: file
       })

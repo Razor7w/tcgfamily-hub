@@ -89,13 +89,15 @@ export async function POST(request: NextRequest) {
     const bucket = r2BucketName()
     const s3 = r2Client()
 
+    // Sin CacheControl en el objeto firmado: evita 403 en PUT desde el navegador
+    // con R2 cuando el header firmado no coincide con lo que envía el cliente.
+    // Cache del avatar: reglas en la CDN (p. ej. /Avatar/*).
     const uploadUrl = await getSignedUrl(
       s3,
       new PutObjectCommand({
         Bucket: bucket,
         Key: key,
-        ContentType: contentTypeStr,
-        CacheControl: 'public, max-age=31536000, immutable'
+        ContentType: contentTypeStr
       }),
       { expiresIn: 60 }
     )
