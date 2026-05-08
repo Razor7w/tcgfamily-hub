@@ -16,6 +16,12 @@ import InputAdornment from '@mui/material/InputAdornment'
 import IconButton from '@mui/material/IconButton'
 import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
+import Avatar from '@mui/material/Avatar'
+import Dialog from '@mui/material/Dialog'
+import DialogContent from '@mui/material/DialogContent'
+import Drawer from '@mui/material/Drawer'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
 import {
   getPasswordRuleChecks,
   isPasswordStrengthSatisfied,
@@ -25,11 +31,14 @@ import { validatePopidOptional } from '@/lib/rut-chile'
 import { onlyDigits } from '@/lib/rut-input'
 import CheckCircle from '@mui/icons-material/CheckCircle'
 import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked'
+import R2UppyProfileImageUploader from '@/components/r2/R2UppyProfileImageUploader'
 
 type MeResponse = {
   id: string
   name: string
   email: string
+  image: string
+  imageKey?: string
   rut: string
   popid: string
   phone: string
@@ -38,6 +47,8 @@ type MeResponse = {
 
 export default function PerfilPage() {
   const { data: session, status, update } = useSession()
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const [loading, setLoading] = useState(true)
   const [me, setMe] = useState<MeResponse | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -47,6 +58,9 @@ export default function PerfilPage() {
   const [profileMsg, setProfileMsg] = useState<string | null>(null)
   const [profileErr, setProfileErr] = useState<string | null>(null)
   const [savingProfile, setSavingProfile] = useState(false)
+
+  const [savingImage, setSavingImage] = useState(false)
+  const [imageOpen, setImageOpen] = useState(false)
 
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -165,6 +179,41 @@ export default function PerfilPage() {
     }
   }
 
+  async function saveProfileImage(publicUrl: string, key: string) {
+    setProfileErr(null)
+    setProfileMsg(null)
+    setSavingImage(true)
+    try {
+      const res = await fetch('/api/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: publicUrl, imageKey: key })
+      })
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string
+        image?: string
+        imageKey?: string
+      }
+      if (!res.ok) {
+        setProfileErr(data.error || 'No se pudo actualizar la foto.')
+        return
+      }
+      setMe(prev =>
+        prev
+          ? {
+              ...prev,
+              image: data.image ?? publicUrl,
+              imageKey: data.imageKey ?? key
+            }
+          : prev
+      )
+      setProfileMsg('Foto de perfil actualizada.')
+      await update({ picture: data.image ?? publicUrl })
+    } finally {
+      setSavingImage(false)
+    }
+  }
+
   async function savePassword(e: React.FormEvent) {
     e.preventDefault()
     setPwErr(null)
@@ -209,202 +258,330 @@ export default function PerfilPage() {
 
   if (loadError || !me) {
     return (
-      <Container maxWidth="sm" sx={{ py: 4 }}>
+      <Container maxWidth="md" sx={{ py: { xs: 2.5, md: 4 } }}>
         <Alert severity="error">{loadError || 'Sin datos'}</Alert>
       </Container>
     )
   }
 
   return (
-    <Container maxWidth="sm" sx={{ py: 3 }}>
-      <Typography variant="h4" component="h1" fontWeight={600} gutterBottom>
+    <Container maxWidth="md" sx={{ py: { xs: 2.5, md: 4 } }}>
+      <Typography
+        variant="h4"
+        component="h1"
+        sx={{
+          fontWeight: 900,
+          letterSpacing: '-0.03em',
+          textWrap: 'balance'
+        }}
+        gutterBottom
+      >
         Perfil
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        sx={{ mb: { xs: 2, md: 3 }, maxWidth: '72ch', textWrap: 'pretty' }}
+      >
         Modifica tu nombre y Pop ID. El correo y el RUT solo los puede cambiar
         un administrador; aquí siguen visibles.
       </Typography>
 
-      <Paper
-        component="form"
-        onSubmit={saveProfile}
-        elevation={2}
-        sx={{ p: 3, mb: 3 }}
+      <Box
+        sx={{
+          display: 'grid',
+          gap: { xs: 2, md: 2.5 },
+          gridTemplateColumns: { xs: '1fr', md: '1.35fr 1fr' },
+          alignItems: 'start'
+        }}
       >
-        <Typography variant="h6" gutterBottom>
-          Datos personales
-        </Typography>
-        {profileMsg ? (
-          <Alert
-            severity="success"
-            sx={{ mb: 2 }}
-            onClose={() => setProfileMsg(null)}
+        <Paper
+          component="form"
+          onSubmit={saveProfile}
+          elevation={2}
+          sx={{ p: { xs: 2, md: 3 }, borderRadius: 2 }}
+        >
+          <Typography
+            variant="h6"
+            gutterBottom
+            sx={{ fontWeight: 900, letterSpacing: '-0.02em' }}
           >
-            {profileMsg}
-          </Alert>
-        ) : null}
-        {profileErr ? (
-          <Alert
-            severity="error"
-            sx={{ mb: 2 }}
-            onClose={() => setProfileErr(null)}
-          >
-            {profileErr}
-          </Alert>
-        ) : null}
-        <Stack spacing={2}>
-          <TextField
-            label="Correo electrónico"
-            value={me.email}
-            disabled
-            fullWidth
-            helperText="Solo lectura. Contacta a un administrador para cambiarlo."
-          />
-          <TextField
-            label="RUT"
-            value={me.rut}
-            disabled
-            fullWidth
-            helperText="Solo lectura. Contacta a un administrador para cambiarlo."
-          />
-          <TextField
-            label="Nombre"
-            name="name"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            disabled={savingProfile}
-            required
-            fullWidth
-            inputProps={{ maxLength: 100 }}
-          />
-          <TextField
-            label="Pop ID"
-            name="popid"
-            value={popid}
-            onChange={e => setPopid(onlyDigits(e.target.value, 64))}
-            disabled={savingProfile}
-            fullWidth
-            helperText="Opcional. Solo números."
-            error={
-              Boolean(popid.trim()) && validatePopidOptional(popid) !== null
-            }
-            inputProps={{
-              maxLength: 64,
-              inputMode: 'numeric',
-              pattern: '[0-9]*'
-            }}
-          />
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={!canSaveProfile}
-            sx={{ alignSelf: 'flex-start', textTransform: 'none' }}
-          >
-            {savingProfile ? 'Guardando…' : 'Guardar datos'}
-          </Button>
-        </Stack>
-      </Paper>
-
-      <Paper elevation={2} sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Contraseña
-        </Typography>
-        {!me.hasPassword ? (
-          <Alert severity="info">
-            Iniciaste sesión con Google y no tienes contraseña local. Para usar
-            correo y contraseña, el administrador puede ayudarte o puedes
-            registrarte con correo si aún no tienes cuenta.
-          </Alert>
-        ) : (
-          <Box component="form" onSubmit={savePassword}>
-            {pwMsg ? (
-              <Alert
-                severity="success"
-                sx={{ mb: 2 }}
-                onClose={() => setPwMsg(null)}
-              >
-                {pwMsg}
-              </Alert>
-            ) : null}
-            {pwErr ? (
-              <Alert
-                severity="error"
-                sx={{ mb: 2 }}
-                onClose={() => setPwErr(null)}
-              >
-                {pwErr}
-              </Alert>
-            ) : null}
-            <Stack spacing={2}>
-              <TextField
-                label="Contraseña actual"
-                type={showCur ? 'text' : 'password'}
-                autoComplete="current-password"
-                value={currentPassword}
-                onChange={e => setCurrentPassword(e.target.value)}
-                disabled={savingPw}
-                fullWidth
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        aria-label={
-                          showCur ? 'Ocultar contraseña' : 'Mostrar contraseña'
-                        }
-                        onClick={() => setShowCur(v => !v)}
-                        edge="end"
-                      >
-                        {showCur ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  )
-                }}
-              />
-              <TextField
-                label="Nueva contraseña"
-                type={showNew ? 'text' : 'password'}
-                autoComplete="new-password"
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                disabled={savingPw}
-                fullWidth
-                inputProps={{ maxLength: 128 }}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        aria-label={
-                          showNew ? 'Ocultar contraseña' : 'Mostrar contraseña'
-                        }
-                        onClick={() => setShowNew(v => !v)}
-                        edge="end"
-                      >
-                        {showNew ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  )
-                }}
-              />
+            Datos personales
+          </Typography>
+          {profileMsg ? (
+            <Alert
+              severity="success"
+              sx={{ mb: 2 }}
+              onClose={() => setProfileMsg(null)}
+            >
+              {profileMsg}
+            </Alert>
+          ) : null}
+          {profileErr ? (
+            <Alert
+              severity="error"
+              sx={{ mb: 2 }}
+              onClose={() => setProfileErr(null)}
+            >
+              {profileErr}
+            </Alert>
+          ) : null}
+          <Stack spacing={2}>
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 900, mb: 1 }}>
+                Foto de perfil
+              </Typography>
               <Box
                 sx={{
-                  pl: 0.5,
-                  py: 1,
-                  px: 1.5,
-                  borderRadius: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 2,
+                  flexWrap: 'wrap',
+                  p: 1.5,
+                  borderRadius: 2,
                   bgcolor: 'action.hover'
                 }}
               >
-                <Typography
-                  variant="subtitle2"
-                  color="text.secondary"
-                  gutterBottom
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+                  <Avatar
+                    src={me.image || undefined}
+                    alt={me.name || 'Usuario'}
+                    sx={{ width: 44, height: 44 }}
+                  />
+                  <Box sx={{ display: 'grid', gap: 0.25 }}>
+                    <Typography sx={{ fontWeight: 900, lineHeight: 1.1 }}>
+                      {me.name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Se verá en el header y tu perfil.
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Button
+                  variant="contained"
+                  onClick={() => setImageOpen(true)}
+                  disabled={savingImage}
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 900,
+                    alignSelf: { xs: 'stretch', sm: 'center' }
+                  }}
                 >
-                  Requisitos de la nueva contraseña
-                </Typography>
-                <Box component="ul" sx={{ m: 0, pl: 0, listStyle: 'none' }}>
-                  {newPwChecks.map(rule => (
+                  Cambiar imagen de perfil
+                </Button>
+              </Box>
+            </Box>
+
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 2,
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }
+              }}
+            >
+              <TextField
+                label="Correo electrónico"
+                value={me.email}
+                disabled
+                fullWidth
+                helperText="Solo lectura. Contacta a un administrador para cambiarlo."
+              />
+              <TextField
+                label="RUT"
+                value={me.rut}
+                disabled
+                fullWidth
+                helperText="Solo lectura. Contacta a un administrador para cambiarlo."
+              />
+            </Box>
+
+            <TextField
+              label="Nombre"
+              name="name"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              disabled={savingProfile}
+              required
+              fullWidth
+              inputProps={{ maxLength: 100 }}
+            />
+            <TextField
+              label="Pop ID"
+              name="popid"
+              value={popid}
+              onChange={e => setPopid(onlyDigits(e.target.value, 64))}
+              disabled={savingProfile}
+              fullWidth
+              helperText="Opcional. Solo números."
+              error={
+                Boolean(popid.trim()) && validatePopidOptional(popid) !== null
+              }
+              inputProps={{
+                maxLength: 64,
+                inputMode: 'numeric',
+                pattern: '[0-9]*'
+              }}
+            />
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={!canSaveProfile || savingImage}
+              sx={{
+                alignSelf: { xs: 'stretch', sm: 'flex-start' },
+                textTransform: 'none',
+                fontWeight: 900
+              }}
+            >
+              {savingProfile ? 'Guardando…' : 'Guardar datos'}
+            </Button>
+          </Stack>
+        </Paper>
+
+        <Paper elevation={2} sx={{ p: { xs: 2, md: 3 }, borderRadius: 2 }}>
+          <Typography
+            variant="h6"
+            gutterBottom
+            sx={{ fontWeight: 900, letterSpacing: '-0.02em' }}
+          >
+            Contraseña
+          </Typography>
+          {!me.hasPassword ? (
+            <Alert severity="info">
+              Iniciaste sesión con Google y no tienes contraseña local. Para
+              usar correo y contraseña, el administrador puede ayudarte o puedes
+              registrarte con correo si aún no tienes cuenta.
+            </Alert>
+          ) : (
+            <Box component="form" onSubmit={savePassword}>
+              {pwMsg ? (
+                <Alert
+                  severity="success"
+                  sx={{ mb: 2 }}
+                  onClose={() => setPwMsg(null)}
+                >
+                  {pwMsg}
+                </Alert>
+              ) : null}
+              {pwErr ? (
+                <Alert
+                  severity="error"
+                  sx={{ mb: 2 }}
+                  onClose={() => setPwErr(null)}
+                >
+                  {pwErr}
+                </Alert>
+              ) : null}
+              <Stack spacing={2}>
+                <TextField
+                  label="Contraseña actual"
+                  type={showCur ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChange={e => setCurrentPassword(e.target.value)}
+                  disabled={savingPw}
+                  fullWidth
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label={
+                            showCur
+                              ? 'Ocultar contraseña'
+                              : 'Mostrar contraseña'
+                          }
+                          onClick={() => setShowCur(v => !v)}
+                          edge="end"
+                        >
+                          {showCur ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    )
+                  }}
+                />
+                <TextField
+                  label="Nueva contraseña"
+                  type={showNew ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  disabled={savingPw}
+                  fullWidth
+                  inputProps={{ maxLength: 128 }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label={
+                            showNew
+                              ? 'Ocultar contraseña'
+                              : 'Mostrar contraseña'
+                          }
+                          onClick={() => setShowNew(v => !v)}
+                          edge="end"
+                        >
+                          {showNew ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    )
+                  }}
+                />
+                <Box
+                  sx={{
+                    pl: 0.5,
+                    py: 1,
+                    px: 1.5,
+                    borderRadius: 1,
+                    bgcolor: 'action.hover'
+                  }}
+                >
+                  <Typography
+                    variant="subtitle2"
+                    color="text.secondary"
+                    gutterBottom
+                  >
+                    Requisitos de la nueva contraseña
+                  </Typography>
+                  <Box component="ul" sx={{ m: 0, pl: 0, listStyle: 'none' }}>
+                    {newPwChecks.map(rule => (
+                      <Box
+                        key={rule.key}
+                        component="li"
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: 1,
+                          py: 0.35
+                        }}
+                      >
+                        {rule.ok ? (
+                          <CheckCircle
+                            sx={{
+                              fontSize: 20,
+                              mt: '2px',
+                              color: 'success.main'
+                            }}
+                          />
+                        ) : (
+                          <RadioButtonUnchecked
+                            sx={{
+                              fontSize: 20,
+                              mt: '2px',
+                              color: 'action.disabled'
+                            }}
+                          />
+                        )}
+                        <Typography
+                          component="span"
+                          variant="body2"
+                          color={rule.ok ? 'success.dark' : 'text.secondary'}
+                        >
+                          {rule.label}
+                        </Typography>
+                      </Box>
+                    ))}
                     <Box
-                      key={rule.key}
                       component="li"
                       sx={{
                         display: 'flex',
@@ -413,7 +590,7 @@ export default function PerfilPage() {
                         py: 0.35
                       }}
                     >
-                      {rule.ok ? (
+                      {confirmPwOk ? (
                         <CheckCircle
                           sx={{
                             fontSize: 20,
@@ -433,67 +610,93 @@ export default function PerfilPage() {
                       <Typography
                         component="span"
                         variant="body2"
-                        color={rule.ok ? 'success.dark' : 'text.secondary'}
+                        color={confirmPwOk ? 'success.dark' : 'text.secondary'}
                       >
-                        {rule.label}
+                        La confirmación coincide con la nueva contraseña
                       </Typography>
                     </Box>
-                  ))}
-                  <Box
-                    component="li"
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: 1,
-                      py: 0.35
-                    }}
-                  >
-                    {confirmPwOk ? (
-                      <CheckCircle
-                        sx={{ fontSize: 20, mt: '2px', color: 'success.main' }}
-                      />
-                    ) : (
-                      <RadioButtonUnchecked
-                        sx={{
-                          fontSize: 20,
-                          mt: '2px',
-                          color: 'action.disabled'
-                        }}
-                      />
-                    )}
-                    <Typography
-                      component="span"
-                      variant="body2"
-                      color={confirmPwOk ? 'success.dark' : 'text.secondary'}
-                    >
-                      La confirmación coincide con la nueva contraseña
-                    </Typography>
                   </Box>
                 </Box>
-              </Box>
-              <TextField
-                label="Confirmar nueva contraseña"
-                type={showNew ? 'text' : 'password'}
-                autoComplete="new-password"
-                value={confirmNew}
-                onChange={e => setConfirmNew(e.target.value)}
-                disabled={savingPw}
-                fullWidth
-                inputProps={{ maxLength: 128 }}
-              />
-              <Divider />
-              <Button
-                type="submit"
-                variant="outlined"
-                disabled={!canSavePassword}
-                sx={{ alignSelf: 'flex-start', textTransform: 'none' }}
-              >
-                {savingPw ? 'Actualizando…' : 'Actualizar contraseña'}
-              </Button>
-            </Stack>
-          </Box>
-        )}
-      </Paper>
+                <TextField
+                  label="Confirmar nueva contraseña"
+                  type={showNew ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  value={confirmNew}
+                  onChange={e => setConfirmNew(e.target.value)}
+                  disabled={savingPw}
+                  fullWidth
+                  inputProps={{ maxLength: 128 }}
+                />
+                <Divider />
+                <Button
+                  type="submit"
+                  variant="outlined"
+                  disabled={!canSavePassword}
+                  sx={{
+                    alignSelf: { xs: 'stretch', sm: 'flex-start' },
+                    textTransform: 'none',
+                    fontWeight: 900
+                  }}
+                >
+                  {savingPw ? 'Actualizando…' : 'Actualizar contraseña'}
+                </Button>
+              </Stack>
+            </Box>
+          )}
+        </Paper>
+      </Box>
+
+      <Dialog
+        open={imageOpen && !isMobile}
+        onClose={() => setImageOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+          {me ? (
+            <R2UppyProfileImageUploader
+              name={me.name}
+              currentImageUrl={me.image || ''}
+              maxSizeMb={10}
+              onUploaded={async (publicUrl, key) => {
+                await saveProfileImage(publicUrl, key)
+                setImageOpen(false)
+              }}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Drawer
+        anchor="bottom"
+        open={imageOpen && isMobile}
+        onClose={() => setImageOpen(false)}
+        PaperProps={{
+          sx: {
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+            maxHeight: '92dvh'
+          }
+        }}
+      >
+        <Box sx={{ p: 2, pt: 1.5 }}>
+          <Typography sx={{ fontWeight: 900, letterSpacing: '-0.02em', mb: 1 }}>
+            Cambiar imagen de perfil
+          </Typography>
+          {me ? (
+            <R2UppyProfileImageUploader
+              name={me.name}
+              currentImageUrl={me.image || ''}
+              maxSizeMb={10}
+              onUploaded={async (publicUrl, key) => {
+                await saveProfileImage(publicUrl, key)
+                setImageOpen(false)
+              }}
+            />
+          ) : null}
+          <Box sx={{ height: 12 }} />
+        </Box>
+      </Drawer>
     </Container>
   )
 }
