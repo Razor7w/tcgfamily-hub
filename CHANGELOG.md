@@ -10,6 +10,23 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [0.9.4] - 2026-05-08
+
+### Añadido
+
+- **Perfil** (`/dashboard/perfil`): cambio de **foto de perfil** con subida directa a **Cloudflare R2** (presign), editor **Uppy** (recorte/rotar), previsualización tipo header y flujo compacto: botón **Cambiar imagen de perfil** con **modal** en escritorio y **drawer** en móvil.
+- **Usuario** (`User`): campo **`imageKey`** para asociar el objeto en R2 y poder borrar la imagen anterior al subir una nueva.
+- **API** `PATCH /api/me`: acepta **`image`** + **`imageKey`**; valida que la key pertenezca al usuario y elimina en R2 la foto previa cuando corresponde.
+
+### Cambiado
+
+- **Presign R2** (`POST /api/r2/presign`): carpeta de avatar **`Avatar`** y objeto **`Avatar/<userId>.<ext>`**; genérico **`uploads/<userId>/<uuid>.<ext>`** sin cambios de comportamiento.
+- **Perfil**: layout más ancho en escritorio (dos columnas con contraseña), texto de cabecera con ancho de lectura coherente.
+
+### Corregido
+
+- **R2UppyProfileImageUploader**: sincronización de previsualización sin `setState` innecesario en un `useEffect` (compatibilidad con reglas de React 19).
+
 ## [0.9.3] - 2026-04-23
 
 ### Añadido
@@ -354,4 +371,4 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 Línea base anterior en `package.json` antes de este changelog; el detalle de cambios queda en el historial de git.
 
-Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo _Keep a Changelog_ (`[Unreleased]: …/compare/v0.9.3…HEAD`, `[0.9.3]: …/compare/v0.9.2…v0.9.3`, `[0.9.2]: …/compare/v0.9.1…v0.9.2`, `[0.9.1]: …/compare/v0.9.0…v0.9.1`, `[0.9.0]: …/compare/v0.8.0…v0.9.0`, `[0.8.0]: …/compare/v0.7.0…v0.8.0`, `[0.7.0]: …/compare/v0.6.6…v0.7.0`, `[0.6.6]: …/compare/v0.6.5…v0.6.6`, `[0.6.5]: …/compare/v0.6.4…v0.6.5`, `[0.6.4]: …/compare/v0.6.3…v0.6.4`, `[0.6.3]: …/compare/v0.6.2…v0.6.3`, `[0.6.2]: …/compare/v0.6.1…v0.6.2`, `[0.6.1]: …/compare/v0.6.0…v0.6.1`, `[0.6.0]: …/compare/v0.5.5…v0.6.0`, `[0.5.5]: …/compare/v0.5.4…v0.5.5`, `[0.5.4]: …/compare/v0.5.3…v0.5.4`, `[0.5.3]: …/compare/v0.5.2…v0.5.3`, `[0.5.2]: …/compare/v0.5.1…v0.5.2`, `[0.5.1]: …/compare/v0.5.0…v0.5.1`, `[0.5.0]: …/compare/v0.4.6…v0.5.0`, `[0.4.6]: …/compare/v0.4.5…v0.4.6`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
+Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo _Keep a Changelog_ (`[Unreleased]: …/compare/v0.9.4…HEAD`, `[0.9.4]: …/compare/v0.9.3…v0.9.4`, `[0.9.3]: …/compare/v0.9.2…v0.9.3`, `[0.9.2]: …/compare/v0.9.1…v0.9.2`, `[0.9.1]: …/compare/v0.9.0…v0.9.1`, `[0.9.0]: …/compare/v0.8.0…v0.9.0`, `[0.8.0]: …/compare/v0.7.0…v0.8.0`, `[0.7.0]: …/compare/v0.6.6…v0.7.0`, `[0.6.6]: …/compare/v0.6.5…v0.6.6`, `[0.6.5]: …/compare/v0.6.4…v0.6.5`, `[0.6.4]: …/compare/v0.6.3…v0.6.4`, `[0.6.3]: …/compare/v0.6.2…v0.6.3`, `[0.6.2]: …/compare/v0.6.1…v0.6.2`, `[0.6.1]: …/compare/v0.6.0…v0.6.1`, `[0.6.0]: …/compare/v0.5.5…v0.6.0`, `[0.5.5]: …/compare/v0.5.4…v0.5.5`, `[0.5.4]: …/compare/v0.5.3…v0.5.4`, `[0.5.3]: …/compare/v0.5.2…v0.5.3`, `[0.5.2]: …/compare/v0.5.1…v0.5.2`, `[0.5.1]: …/compare/v0.5.0…v0.5.1`, `[0.5.0]: …/compare/v0.4.6…v0.5.0`, `[0.4.6]: …/compare/v0.4.5…v0.4.6`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
