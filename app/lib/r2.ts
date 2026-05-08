@@ -17,7 +17,14 @@ export function r2Client(): S3Client {
     region: 'auto',
     endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
     credentials: { accessKeyId, secretAccessKey },
-    forcePathStyle: true
+    forcePathStyle: true,
+    /**
+     * Evita incluir checksum CRC32 en URLs firmadas para PUT desde el navegador.
+     * Con el default (WHEN_SUPPORTED) el SDK añade query params de checksum que el
+     * cliente no envía → 403 y el navegador muestra error de CORS en la respuesta.
+     */
+    requestChecksumCalculation: 'WHEN_REQUIRED',
+    responseChecksumValidation: 'WHEN_REQUIRED'
   })
 }
 

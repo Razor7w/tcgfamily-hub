@@ -102,7 +102,7 @@ function createUppyProfileImage({
 export default function R2UppyProfileImageUploader({
   name,
   currentImageUrl,
-  maxSizeMb = 10,
+  maxSizeMb = 2,
   onUploaded
 }: R2UppyProfileImageUploaderProps) {
   const mountRef = useRef<HTMLDivElement>(null)
