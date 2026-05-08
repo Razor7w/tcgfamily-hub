@@ -74,8 +74,7 @@ function createUppyWithoutDashboard(): Uppy<R2Meta> {
         method: 'PUT' as const,
         url: data.uploadUrl,
         headers: {
-          'Content-Type': contentType,
-          'Cache-Control': 'public, max-age=31536000, immutable'
+          'Content-Type': contentType
         }
       }
     }
