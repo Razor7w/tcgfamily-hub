@@ -58,7 +58,7 @@ function ActionTile({
         borderRadius: 2.5,
         // Sin overflow hidden: en celdas estrechas el texto de varias líneas no se corta.
         overflow: 'visible',
-        minHeight: { xs: 68, sm: 72 },
+        minHeight: { xs: 56, sm: 64, md: 72 },
         touchAction: 'manipulation',
         transition:
           'transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s ease, border-color 0.22s ease, background-color 0.22s ease',
@@ -107,7 +107,7 @@ function ActionTile({
         justifyContent="flex-start"
         spacing={{ xs: 1.5, sm: 2 }}
         sx={{
-          p: { xs: 1.5, sm: 2, md: dense ? 1.75 : 2.25 },
+          p: { xs: 1.25, sm: 1.5, md: dense ? 1.75 : 2.25 },
           width: '100%',
           minHeight: 'inherit'
         }}
@@ -116,8 +116,8 @@ function ActionTile({
           data-qa="shortcut-icon"
           sx={{
             flexShrink: 0,
-            width: { xs: 44, sm: 48, md: dense ? 44 : 52 },
-            height: { xs: 44, sm: 48, md: dense ? 44 : 52 },
+            width: { xs: 40, sm: 44, md: dense ? 44 : 52 },
+            height: { xs: 40, sm: 44, md: dense ? 44 : 52 },
             borderRadius: 2,
             display: 'flex',
             alignItems: 'center',
@@ -142,9 +142,8 @@ function ActionTile({
             minWidth: 0,
             flex: 1,
             textAlign: 'left',
-            // Evita el fallo "Regi... correo" con columnas estrechas
-            wordBreak: 'break-word',
-            hyphens: 'auto',
+            overflowWrap: 'break-word',
+            hyphens: 'none',
             pr: 0.25
           }}
         >
@@ -159,8 +158,8 @@ function ActionTile({
               fontSize: dense
                 ? { xs: '0.9rem', sm: '0.92rem', md: '0.8rem' }
                 : { xs: '0.9rem', sm: '0.95rem' },
-              lineHeight: 1.3,
-              // Ellipsis solo en 3 columnas (md+), donde el ancho fijo de celda aplica
+              lineHeight: 1.25,
+              // Ellipsis solo en grid denso de 3 columnas (md+)
               ...(dense
                 ? {
                     overflow: { xs: 'visible', sm: 'visible', md: 'hidden' },
@@ -180,16 +179,16 @@ function ActionTile({
             component="span"
             color="text.secondary"
             sx={{
-              mt: 0.35,
-              lineHeight: 1.5,
+              mt: { xs: 0.25, sm: 0.35 },
+              lineHeight: 1.45,
               fontSize: {
                 xs: '0.75rem',
                 sm: dense ? '0.75rem' : '0.8125rem',
                 md: dense ? '0.7rem' : '0.8125rem'
               },
               fontWeight: 500,
-              display: '-webkit-box',
-              WebkitLineClamp: { xs: 3, sm: 3, md: dense ? 2 : 3 },
+              display: { xs: 'none', sm: '-webkit-box' },
+              WebkitLineClamp: { xs: 3, sm: 2, md: dense ? 2 : 3 },
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden'
             }}
@@ -263,7 +262,7 @@ export default function DashboardQuickActions({
       aria-labelledby="dashboard-quick-actions-heading"
       sx={{
         borderRadius: 2.5,
-        p: { xs: 1.5, sm: 2.5 },
+        p: { xs: 1.25, sm: 2, md: 2.5 },
         border: '1px solid',
         borderColor: t => alpha(t.palette.text.primary, 0.08),
         background: t =>
@@ -285,7 +284,7 @@ export default function DashboardQuickActions({
           fontWeight: 700,
           letterSpacing: { xs: '0.12em', sm: '0.1em' },
           display: 'block',
-          mb: { xs: 0.5, sm: 0.5 },
+          mb: { xs: 0.35, sm: 0.5 },
           fontSize: { xs: '0.7rem', sm: '0.75rem' },
           textTransform: 'none',
           color: 'text.primary',
@@ -298,7 +297,8 @@ export default function DashboardQuickActions({
         variant="body2"
         color="text.secondary"
         sx={{
-          mb: { xs: 1.5, sm: 2 },
+          display: { xs: 'none', sm: 'block' },
+          mb: { xs: 0, sm: 1.75, md: 2 },
           maxWidth: 480,
           lineHeight: 1.6,
           fontSize: { xs: '0.8125rem', sm: '0.875rem' },
@@ -313,20 +313,10 @@ export default function DashboardQuickActions({
       <Box
         sx={{
           display: 'grid',
-          // Con 3 atajos, dos columnas en móvil dejan celdas demasiado estrechas: una columna hasta md.
+          // Una columna en xs/sm: evita celdas tan estrechas que el texto se parte con guiones.
           gridTemplateColumns: {
-            xs:
-              tileCount === 1
-                ? 'minmax(0, 1fr)'
-                : tileCount === 3
-                  ? 'minmax(0, 1fr)'
-                  : 'repeat(2, minmax(0, 1fr))',
-            sm:
-              tileCount === 1
-                ? 'minmax(0, 1fr)'
-                : tileCount === 3
-                  ? 'minmax(0, 1fr)'
-                  : 'repeat(2, minmax(0, 1fr))',
+            xs: 'minmax(0, 1fr)',
+            sm: 'minmax(0, 1fr)',
             md:
               tileCount === 1
                 ? 'minmax(0, 1fr)'
@@ -334,8 +324,8 @@ export default function DashboardQuickActions({
                   ? 'repeat(2, minmax(0, 1fr))'
                   : 'repeat(3, minmax(0, 1fr))'
           },
-          columnGap: { xs: 1.25, sm: 2 },
-          rowGap: { xs: 1.25, sm: 2 }
+          columnGap: { xs: 0, sm: 0, md: 2 },
+          rowGap: { xs: 1, sm: 1.125, md: 2 }
         }}
       >
         {items.map(item => (
