@@ -35,6 +35,7 @@ import {
   FilterList
 } from '@mui/icons-material'
 import Link from 'next/link'
+import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
 import {
   AdminWeeklyEvent,
   type WeeklyEventState,
@@ -430,28 +431,30 @@ export default function AdminEventosPage() {
               >
                 Volver
               </Button>
-              <Box>
-                <Typography
-                  variant="h4"
-                  component="h1"
-                  sx={{
-                    fontWeight: 800,
-                    letterSpacing: '-0.03em',
-                    lineHeight: 1.15
-                  }}
-                >
-                  Eventos de la cartelera
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mt: 1, maxWidth: 520, lineHeight: 1.6 }}
-                >
-                  Torneos con precio o entrada gratuita, jornadas de intercambio
-                  y otros bloques. Lo publicado aquí aparece en el panel de los
-                  jugadores.
-                </Typography>
-              </Box>
+              <AdminStorePageHeading>
+                <Box>
+                  <Typography
+                    variant="h4"
+                    component="h1"
+                    sx={{
+                      fontWeight: 800,
+                      letterSpacing: '-0.03em',
+                      lineHeight: 1.15
+                    }}
+                  >
+                    Eventos de la cartelera
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 1, maxWidth: 520, lineHeight: 1.6 }}
+                  >
+                    Torneos con precio o entrada gratuita, jornadas de intercambio
+                    y otros bloques. Lo publicado aquí aparece en el panel de los
+                    jugadores.
+                  </Typography>
+                </Box>
+              </AdminStorePageHeading>
             </Stack>
             <Stack
               direction={{ xs: 'column', sm: 'row' }}

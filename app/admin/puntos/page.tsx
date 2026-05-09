@@ -12,6 +12,7 @@ import {
   Typography
 } from '@mui/material'
 import { ArrowBack, CloudUpload } from '@mui/icons-material'
+import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
 
 type ImportResult = {
   ok: boolean
@@ -86,17 +87,21 @@ export default function AdminPuntosPage() {
           >
             Volver
           </Button>
-          <Typography variant="h4" component="h1">
-            Importar puntos (CSV)
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Sube el reporte (CSV con punto y coma, mismo formato que el de
-            ejemplo). Se busca al usuario por RUT (todas las formas guardadas) o
-            por correo (minúsculas). Si vienen ambos, primero se intenta por RUT
-            (incluye filas solo con RUT) y, si no hay coincidencia, por correo.
-            Se sincronizan saldo, próximos puntos a vencer y fecha de
-            vencimiento. No se crean usuarios nuevos.
-          </Typography>
+          <AdminStorePageHeading>
+            <Stack spacing={1}>
+              <Typography variant="h4" component="h1">
+                Importar puntos (CSV)
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Sube el reporte (CSV con punto y coma, mismo formato que el de
+                ejemplo). Se busca al usuario por RUT (todas las formas
+                guardadas) o por correo (minúsculas). Si vienen ambos, primero se
+                intenta por RUT (incluye filas solo con RUT) y, si no hay
+                coincidencia, por correo. Se sincronizan saldo, próximos puntos a
+                vencer y fecha de vencimiento. No se crean usuarios nuevos.
+              </Typography>
+            </Stack>
+          </AdminStorePageHeading>
           <Box
             component="form"
             onSubmit={onSubmit}

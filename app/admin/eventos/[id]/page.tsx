@@ -33,6 +33,7 @@ import {
   UploadFile
 } from '@mui/icons-material'
 import TournamentTdfLoader from '@/components/admin/TournamentTdfLoader'
+import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
 import { WEEKLY_EVENT_PARTICIPANTS_MAX } from '@/lib/parse-pasted-event-flyer'
 import { popidForStorage } from '@/lib/rut-chile'
 import {
@@ -238,33 +239,35 @@ export default function AdminEventoDetailPage() {
                   alignItems={{ sm: 'flex-start' }}
                   justifyContent="space-between"
                 >
-                  <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Typography
-                      variant="h4"
-                      component="h1"
-                      sx={{
-                        fontWeight: 800,
-                        letterSpacing: '-0.03em',
-                        lineHeight: 1.15
-                      }}
-                    >
-                      {ev.title}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mt: 1.25, fontVariantNumeric: 'tabular-nums' }}
-                    >
-                      {new Date(ev.startsAt).toLocaleString('es-CL', {
-                        weekday: 'long',
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </Typography>
-                  </Box>
+                  <AdminStorePageHeading alignItems="flex-start">
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography
+                        variant="h4"
+                        component="h1"
+                        sx={{
+                          fontWeight: 800,
+                          letterSpacing: '-0.03em',
+                          lineHeight: 1.15
+                        }}
+                      >
+                        {ev.title}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mt: 1.25, fontVariantNumeric: 'tabular-nums' }}
+                      >
+                        {new Date(ev.startsAt).toLocaleString('es-CL', {
+                          weekday: 'long',
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </Typography>
+                    </Box>
+                  </AdminStorePageHeading>
                   {ev.kind === 'tournament' ? (
                     <Button
                       variant="outlined"

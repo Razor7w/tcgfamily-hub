@@ -2,22 +2,25 @@ import type { Types } from 'mongoose'
 import connectDB from '@/lib/mongodb'
 import StoreMembership from '@/models/StoreMembership'
 import User from '@/models/User'
-import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
 
-/** Admin legacy (`User.role`) o dueño explicito sobre la tienda primaria TCGFamily. */
+/**
+ * Quién puede actuar como “HQ” sobre **cualquier** tienda (listado completo, mutaciones
+ * globales, contexto dashboard en cualquier ubicación activa).
+ *
+ * - `User.role === 'admin'` (legacy).
+ * - **Cualquier** membresía `StoreMembership` con `role: 'owner'`: el rol owner no depende
+ *   de estar ligado a la tienda primaria; un owner asignado a una filial tiene el mismo
+ *   alcance global sobre todas las tiendas.
+ */
 export async function canManageStoresGlobally(userId: string): Promise<boolean> {
   await connectDB()
   const oid = userId.trim()
   const legacy = await User.findById(oid).select('role').lean<{ role?: string }>()
   if (legacy?.role === 'admin') return true
 
-  const primary = await memoPrimaryTcgfamilyStoreObjectId()
-  if (!primary) return false
-
   return Boolean(
     await StoreMembership.exists({
       userId: oid,
-      storeId: primary,
       role: 'owner'
     })
   )
@@ -54,7 +57,7 @@ export async function assertCanManageStoreMutation(
   )
 }
 
-/** Alta de `owner` en una tienda: sólo plaza global / HQ (evita que un dueño de filial nomine otros dueños globales fuera de su ámbito). */
+/** Alta de `owner` en una tienda: sólo quien ya tiene alcance global (admin legacy o cualquier membresía `owner`). */
 export async function canAssignOwnerMembership(userId: string): Promise<boolean> {
   return canManageStoresGlobally(userId)
 }

@@ -53,23 +53,51 @@ export async function GET(
         { status: 404 }
       )
     }
-    const storeOid = storeLean._id
+    const hintedStoreOid = storeLean._id
     const prim = await Store.findOne({ slug: DEFAULT_PRIMARY_STORE_SLUG })
       .select('_id')
       .lean<{ _id: mongoose.Types.ObjectId } | null>()
     const leagueScope = mongoFilterByStore(
-      storeOid,
+      hintedStoreOid,
       prim?._id ?? null
     ) as Record<string, unknown>
 
-    const leagueDoc = await League.findOne({
+    let leagueDoc = await League.findOne({
       slug,
       isActive: true,
       ...leagueScope
     }).lean()
+
+    /**
+     * En localhost el header suele anclar la tienda primaria (tcgfamily), pero la liga
+     * puede existir sólo en otra tienda (ej. tier0). Si no hay match, resolvemos por
+     * slug global y usamos el `storeId` del documento de liga para filtrar eventos.
+     */
+    if (!leagueDoc) {
+      const sameSlug = await League.find({ slug, isActive: true }).lean()
+      if (sameSlug.length === 1) {
+        leagueDoc = sameSlug[0]!
+      } else if (sameSlug.length > 1) {
+        return NextResponse.json(
+          {
+            error:
+              'Hay varias ligas con este slug en distintas tiendas; indica la tienda con ?storeSlug=',
+            code: 'ambiguous_league_slug'
+          },
+          { status: 400 }
+        )
+      }
+    }
+
     if (!leagueDoc) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     }
+
+    const sidRaw = leagueDoc.storeId
+    const effectiveStoreOid =
+      sidRaw != null
+        ? new mongoose.Types.ObjectId(sidRaw as mongoose.Types.ObjectId)
+        : prim?._id ?? hintedStoreOid
 
     const league = {
       _id: String(leagueDoc._id),
@@ -86,7 +114,7 @@ export async function GET(
     }
 
     const evScope = mongoFilterByStore(
-      storeOid,
+      effectiveStoreOid,
       prim?._id ?? null
     ) as Record<string, unknown>
     const events = await WeeklyEvent.find({

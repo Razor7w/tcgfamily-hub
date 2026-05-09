@@ -181,7 +181,7 @@ export default function Header() {
   const showStoreSwitcher =
     session?.user &&
     status === 'authenticated' &&
-    storeOptions.filter(s => s.id).length > 1
+    storeOptions.filter(s => s.id).length >= 1
 
   return (
     <AppBar position="static">
@@ -273,18 +273,7 @@ export default function Header() {
                       display="block"
                       sx={{ mb: 0.5 }}
                     >
-                      <strong>Vista dashboard:</strong> la tienda marcada
-                      muestra sólo sus eventos, correos y tu crédito en esa
-                      ubicación (se solicitan datos al cambiarla).
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      display="block"
-                    >
-                      {session?.user?.storeRole === 'store_admin'
-                        ? 'Como admin de tienda gestionás únicamente lo permitido sobre las ubicaciones donde te asignaron acceso.'
-                        : 'Como owner (HQ) cambiás acá para ver y operar contra la ubicación que necesitas en cada visita.'}
+                      <strong>Cambiar tienda</strong>
                     </Typography>
                   </Box>
                 </MenuItem>

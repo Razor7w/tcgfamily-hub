@@ -1,12 +1,17 @@
 /**
- * Otorga rol owner en StoreMembership sobre una tienda (por slug).
+ * Otorga rol `owner` en StoreMembership sobre una tienda (por slug).
+ *
+ * En la app, **cualquier** fila `StoreMembership` con `role: 'owner'` (en la tienda que sea)
+ * permite alcance global de tiendas (`canManageStoresGlobally`): no hace falta que sea la
+ * tienda primaria; una asignación en p. ej. `tier0` es suficiente para gestionar todas.
  *
  * Ejemplos:
  *   npx tsx --env-file=.env.local app/scripts/grant-store-owner.ts seba.carroza@gmail.com
  *   npx tsx --env-file=.env.local app/scripts/grant-store-owner.ts seba.carroza@gmail.com tcgfamily
+ *   npx tsx --env-file=.env.local app/scripts/grant-store-owner.ts seba.carroza@gmail.com tier0
  *
- * El usuario debe existir en `users`. Luego debe cerrar sesión y entrar de nuevo
- * en la app (o usar la UI de selección de tienda) para refrescar JWT.
+ * El usuario debe existir en `users`. Luego: cerrar sesión y entrar de nuevo (o /select-store)
+ * para refrescar JWT.
  */
 
 import mongoose from 'mongoose'
@@ -68,6 +73,9 @@ async function main() {
 
   console.info(
     `✓ ${emailNorm} ahora tiene rol owner en "${store.name}" (${store.slug}).`
+  )
+  console.info(
+    '  Con ese rol, puede operar sobre todas las tiendas activas (alcance HQ).'
   )
   console.info(
     '  Tras esto: cerrar sesión en la app y volver a entrar (o /select-store).'

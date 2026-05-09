@@ -17,7 +17,6 @@ import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import TextField from '@mui/material/TextField'
-import Autocomplete from '@mui/material/Autocomplete'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Checkbox from '@mui/material/Checkbox'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -25,7 +24,6 @@ import Alert from '@mui/material/Alert'
 import Snackbar from '@mui/material/Snackbar'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
-import AddIcon from '@mui/icons-material/Add'
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead'
 import MarkEmailUnreadIcon from '@mui/icons-material/MarkEmailUnread'
 import StorefrontIcon from '@mui/icons-material/Storefront'
@@ -44,12 +42,7 @@ import {
   type CreateMailData,
   type UpdateMailData
 } from '@/hooks/useMails'
-import {
-  useUsers,
-  useCreateUser,
-  type User,
-  type CreateUserData
-} from '@/hooks/useUsers'
+import { useCreateUser, type CreateUserData } from '@/hooks/useUsers'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
 import { formatMailLogDateTime, getMailStatusChip } from '@/lib/mail-status'
 import { normalizeMailCodeForSearch } from '@/lib/mail-code-search'
@@ -60,12 +53,11 @@ import {
   storeWaitChipProps
 } from '@/lib/mail-store-days'
 import { alpha } from '@mui/material/styles'
+import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
 
-function userLabel(u: User) {
-  const name = u.name || 'Sin nombre'
-  const email = u.email || '-'
-  const rut = u.rut || '-'
-  return `${name} (${email}) - ${rut}`
+/** ObjectId de Mongo como string (sin depender del endpoint `/api/users`). */
+function isLikelyMongoObjectId(v: string) {
+  return /^[a-f\d]{24}$/i.test(v.trim())
 }
 
 function mailUserId(ref: { _id: string } | string | null | undefined): string {
@@ -102,72 +94,18 @@ export default function MailsPage() {
   const [filterStage, setFilterStage] = useState<
     'all' | 'pending' | 'inStore' | 'retired'
   >('all')
-  const [filterFromUser, setFilterFromUser] = useState<User | null>(null)
-  const [filterToUser, setFilterToUser] = useState<User | null>(null)
   /** Pendiente retiro en tienda: rangos por días desde ingreso a tienda. */
   const [filterElapsed, setFilterElapsed] = useState<ElapsedBucketFilter>('all')
   const [page, setPage] = useState(1)
   const [mailToDelete, setMailToDelete] = useState<Mail | null>(null)
 
   const { data: mailsRes, isLoading, error } = useMails()
-  const { data: users = [], isLoading: usersLoading } = useUsers()
   const createMail = useCreateMail()
   const updateMail = useUpdateMail()
   const deleteMail = useDeleteMail()
   const createUser = useCreateUser()
 
   const allMails = useMemo(() => mailsRes?.mails ?? [], [mailsRes?.mails])
-
-  /** Usuarios registrados que aparecen como emisor en al menos un correo cargado. */
-  const filterFromOptions = useMemo(() => {
-    const ids = new Set<string>()
-    for (const m of allMails) {
-      const id = mailUserId(m.fromUserId)
-      if (id) ids.add(id)
-    }
-    return users
-      .filter(u => ids.has(u.id))
-      .sort((a, b) =>
-        (a.name || a.email || '').localeCompare(b.name || b.email || '', 'es', {
-          sensitivity: 'base'
-        })
-      )
-  }, [allMails, users])
-
-  /** Usuarios registrados que aparecen como receptor (toUserId) en al menos un correo. */
-  const filterToOptions = useMemo(() => {
-    const ids = new Set<string>()
-    for (const m of allMails) {
-      const id = mailUserId(m.toUserId)
-      if (id) ids.add(id)
-    }
-    return users
-      .filter(u => ids.has(u.id))
-      .sort((a, b) =>
-        (a.name || a.email || '').localeCompare(b.name || b.email || '', 'es', {
-          sensitivity: 'base'
-        })
-      )
-  }, [allMails, users])
-
-  /** Quitar filtro si ese usuario ya no figura en ningún correo (p. ej. tras borrar). */
-  useEffect(() => {
-    const ids = new Set<string>()
-    for (const m of allMails) {
-      const id = mailUserId(m.fromUserId)
-      if (id) ids.add(id)
-    }
-    setFilterFromUser(prev => (prev && !ids.has(prev.id) ? null : prev))
-  }, [allMails])
-
-  useEffect(() => {
-    const ids = new Set<string>()
-    for (const m of allMails) {
-      const id = mailUserId(m.toUserId)
-      if (id) ids.add(id)
-    }
-    setFilterToUser(prev => (prev && !ids.has(prev.id) ? null : prev))
-  }, [allMails])
 
   const mails = useMemo(() => {
     let list = allMails
@@ -187,12 +125,6 @@ export default function MailsPage() {
     } else if (filterStage === 'pending') {
       list = list.filter(m => !m.isRecived && !m.isRecivedInStore)
     }
-    if (filterFromUser) {
-      list = list.filter(m => mailUserId(m.fromUserId) === filterFromUser.id)
-    }
-    if (filterToUser) {
-      list = list.filter(m => mailUserId(m.toUserId) === filterToUser.id)
-    }
     if (filterElapsed !== 'all') {
       list = list.filter(m => {
         const d = getMailStoreWaitDays(m)
@@ -201,18 +133,11 @@ export default function MailsPage() {
       })
     }
     return list
-  }, [
-    allMails,
-    searchId,
-    filterStage,
-    filterFromUser,
-    filterToUser,
-    filterElapsed
-  ])
+  }, [allMails, searchId, filterStage, filterElapsed])
 
   useEffect(() => {
     setPage(1)
-  }, [searchId, filterStage, filterFromUser, filterToUser, filterElapsed])
+  }, [searchId, filterStage, filterElapsed])
 
   const pageCount = Math.max(1, Math.ceil(mails.length / PAGE_SIZE))
 
@@ -225,24 +150,11 @@ export default function MailsPage() {
     return mails.slice(start, start + PAGE_SIZE)
   }, [mails, page])
 
-  const fromOptions = useMemo(() => {
-    if (!formData.toUserId) return users
-    return users.filter(u => u.id !== formData.toUserId)
-  }, [users, formData.toUserId])
-
-  const toOptions = useMemo(() => {
-    if (!formData.fromUserId) return users
-    return users.filter(u => u.id !== formData.fromUserId)
-  }, [users, formData.fromUserId])
-
-  const fromValue = useMemo(
-    () => users.find(u => u.id === formData.fromUserId) ?? null,
-    [users, formData.fromUserId]
-  )
-  const toValue = useMemo(
-    () => users.find(u => u.id === formData.toUserId) ?? null,
-    [users, formData.toUserId]
-  )
+  const fromIdTrim = formData.fromUserId.trim()
+  const toIdTrim = formData.toUserId.trim()
+  const fromIdInvalid =
+    Boolean(fromIdTrim) && !isLikelyMongoObjectId(fromIdTrim)
+  const toIdInvalid = Boolean(toIdTrim) && !isLikelyMongoObjectId(toIdTrim)
 
   const handleOpenDialog = (mail?: Mail) => {
     if (mail) {
@@ -313,7 +225,9 @@ export default function MailsPage() {
         rut: rut.trim(),
         role: 'user'
       }
-      const created = (await createUser.mutateAsync(payload)) as User
+      const created = (await createUser.mutateAsync(payload)) as {
+        id?: string
+      }
       const id = created?.id
       if (!id) throw new Error('No se obtuvo ID del usuario creado')
       if (addUserFor === 'from') {
@@ -342,15 +256,28 @@ export default function MailsPage() {
   }
 
   const handleSave = async () => {
-    if (!formData.fromUserId || !formData.toUserId) {
+    if (!fromIdTrim || !toIdTrim) {
       setSnackbar({
         open: true,
-        message: 'Debes seleccionar remitente y destinatario',
+        message:
+          'Indica los IDs de remitente y destinatario (ObjectId de 24 caracteres)',
         severity: 'error'
       })
       return
     }
-    if (formData.fromUserId === formData.toUserId) {
+    if (
+      !isLikelyMongoObjectId(formData.fromUserId) ||
+      !isLikelyMongoObjectId(formData.toUserId)
+    ) {
+      setSnackbar({
+        open: true,
+        message:
+          'Los IDs deben ser ObjectId válidos (24 caracteres hexadecimales)',
+        severity: 'error'
+      })
+      return
+    }
+    if (formData.fromUserId.trim() === formData.toUserId.trim()) {
       setSnackbar({
         open: true,
         message: 'No puedes enviarte un correo a ti mismo',
@@ -362,8 +289,8 @@ export default function MailsPage() {
     try {
       if (editingMail) {
         const payload: UpdateMailData = {
-          fromUserId: formData.fromUserId,
-          toUserId: formData.toUserId,
+          fromUserId: formData.fromUserId.trim(),
+          toUserId: formData.toUserId.trim(),
           isRecived: formData.isRecived,
           isRecivedInStore: formData.isRecivedInStore,
           observations: formData.observations
@@ -379,8 +306,8 @@ export default function MailsPage() {
         })
       } else {
         await createMail.mutateAsync({
-          fromUserId: formData.fromUserId,
-          toUserId: formData.toUserId,
+          fromUserId: formData.fromUserId.trim(),
+          toUserId: formData.toUserId.trim(),
           isRecived: formData.isRecived,
           isRecivedInStore: formData.isRecivedInStore,
           observations: formData.observations
@@ -495,23 +422,21 @@ export default function MailsPage() {
           spacing={2}
           sx={{ mb: 3 }}
         >
-          <Box>
-            <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-              Gestión de correos
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Registro de envíos, ingreso en tienda y retiro. Usa los filtros
-              para priorizar pendientes.
-            </Typography>
-          </Box>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenDialog()}
-            sx={{ flexShrink: 0 }}
-          >
-            Nuevo correo
-          </Button>
+          <AdminStorePageHeading alignItems="center">
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
+                Gestión de correos
+              </Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.5 }}
+              >
+                Registro de envíos, ingreso en tienda y retiro; filtra por
+                código, etapa o antigüedad en tienda.
+              </Typography>
+            </Box>
+          </AdminStorePageHeading>
         </Stack>
 
         <Paper
@@ -541,68 +466,6 @@ export default function MailsPage() {
                 value={searchId}
                 onChange={e => setSearchId(e.target.value)}
                 sx={{ minWidth: 220 }}
-              />
-              <Autocomplete
-                size="small"
-                options={filterFromOptions}
-                value={filterFromUser}
-                onChange={(_, v) => setFilterFromUser(v)}
-                getOptionLabel={userLabel}
-                isOptionEqualToValue={(a, b) => a.id === b.id}
-                sx={{ minWidth: 260 }}
-                noOptionsText="Ningún remitente en los correos cargados"
-                renderInput={params => (
-                  <TextField
-                    {...params}
-                    label="Filtrar por remitente (De)"
-                    placeholder="Solo usuarios con correos como emisor"
-                  />
-                )}
-                filterOptions={(opts, { inputValue }) => {
-                  const v = inputValue.trim().toLowerCase()
-                  if (!v) return opts
-                  return opts.filter(
-                    u =>
-                      u.name?.toLowerCase().includes(v) ||
-                      u.email?.toLowerCase().includes(v) ||
-                      (u.rut &&
-                        u.rut
-                          .toLowerCase()
-                          .replace(/\D/g, '')
-                          .includes(v.replace(/\D/g, '')))
-                  )
-                }}
-              />
-              <Autocomplete
-                size="small"
-                options={filterToOptions}
-                value={filterToUser}
-                onChange={(_, v) => setFilterToUser(v)}
-                getOptionLabel={userLabel}
-                isOptionEqualToValue={(a, b) => a.id === b.id}
-                sx={{ minWidth: 260 }}
-                noOptionsText="Ningún destinatario en los correos cargados"
-                renderInput={params => (
-                  <TextField
-                    {...params}
-                    label="Filtrar por destinatario (Para)"
-                    placeholder="Solo usuarios con correos como receptor"
-                  />
-                )}
-                filterOptions={(opts, { inputValue }) => {
-                  const v = inputValue.trim().toLowerCase()
-                  if (!v) return opts
-                  return opts.filter(
-                    u =>
-                      u.name?.toLowerCase().includes(v) ||
-                      u.email?.toLowerCase().includes(v) ||
-                      (u.rut &&
-                        u.rut
-                          .toLowerCase()
-                          .replace(/\D/g, '')
-                          .includes(v.replace(/\D/g, '')))
-                  )
-                }}
               />
             </Box>
             <Box>
@@ -742,8 +605,6 @@ export default function MailsPage() {
                 setSearchId('')
                 setFilterStage('all')
                 setFilterElapsed('all')
-                setFilterFromUser(null)
-                setFilterToUser(null)
               }}
             >
               Restablecer filtros
@@ -1077,42 +938,39 @@ export default function MailsPage() {
               sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}
             >
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                <Autocomplete
-                  options={fromOptions}
-                  value={fromValue}
-                  getOptionLabel={userLabel}
-                  isOptionEqualToValue={(a, b) => a.id === b.id}
-                  loading={usersLoading}
-                  filterOptions={(opts, { inputValue }) => {
-                    const v = inputValue.trim().toLowerCase()
-                    if (!v) return opts
-                    return opts.filter(
-                      u =>
-                        u.name?.toLowerCase().includes(v) ||
-                        u.email?.toLowerCase().includes(v) ||
-                        (u.rut &&
-                          u.rut
-                            .toLowerCase()
-                            .replace(/\D/g, '')
-                            .includes(v.replace(/\D/g, '')))
-                    )
-                  }}
-                  onChange={(_, v) =>
-                    setFormData(prev => ({
-                      ...prev,
-                      fromUserId: v?.id ?? '',
-                      toUserId: v?.id === prev.toUserId ? '' : prev.toUserId
-                    }))
-                  }
-                  sx={{ flex: 1 }}
-                  renderInput={params => (
-                    <TextField
-                      {...params}
-                      label="Remitente (De)"
-                      placeholder="Buscar por nombre, email o RUT..."
-                    />
-                  )}
-                />
+                <Box sx={{ flex: 1 }}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="ID remitente (De)"
+                    placeholder="ObjectId usuario emisor · 24 hex"
+                    value={formData.fromUserId}
+                    onChange={e =>
+                      setFormData(prev => ({
+                        ...prev,
+                        fromUserId: e.target.value
+                      }))
+                    }
+                    error={fromIdInvalid}
+                    helperText={
+                      fromIdInvalid
+                        ? 'Debe ser un ObjectId válido de 24 caracteres'
+                        : undefined
+                    }
+                  />
+                  {editingMail &&
+                  typeof editingMail.fromUserId === 'object' &&
+                  editingMail.fromUserId ? (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ mt: 0.5, display: 'block' }}
+                    >
+                      En este correo: {editingMail.fromUserId.name ?? '—'} · RUT{' '}
+                      {editingMail.fromUserId.rut ?? '—'}
+                    </Typography>
+                  ) : null}
+                </Box>
                 <Button
                   variant="outlined"
                   size="small"
@@ -1230,43 +1088,48 @@ export default function MailsPage() {
               )}
 
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                <Autocomplete
-                  options={toOptions}
-                  value={toValue}
-                  getOptionLabel={userLabel}
-                  isOptionEqualToValue={(a, b) => a.id === b.id}
-                  loading={usersLoading}
-                  filterOptions={(opts, { inputValue }) => {
-                    const v = inputValue.trim().toLowerCase()
-                    if (!v) return opts
-                    return opts.filter(
-                      u =>
-                        u.name?.toLowerCase().includes(v) ||
-                        u.email?.toLowerCase().includes(v) ||
-                        (u.rut &&
-                          u.rut
-                            .toLowerCase()
-                            .replace(/\D/g, '')
-                            .includes(v.replace(/\D/g, '')))
-                    )
-                  }}
-                  onChange={(_, v) =>
-                    setFormData(prev => ({
-                      ...prev,
-                      toUserId: v?.id ?? '',
-                      fromUserId:
-                        v?.id === prev.fromUserId ? '' : prev.fromUserId
-                    }))
-                  }
-                  sx={{ flex: 1 }}
-                  renderInput={params => (
-                    <TextField
-                      {...params}
-                      label="Destinatario (Para)"
-                      placeholder="Buscar por nombre, email o RUT..."
-                    />
-                  )}
-                />
+                <Box sx={{ flex: 1 }}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="ID destinatario (Para)"
+                    placeholder="ObjectId usuario receptor · 24 hex"
+                    value={formData.toUserId}
+                    onChange={e =>
+                      setFormData(prev => ({
+                        ...prev,
+                        toUserId: e.target.value
+                      }))
+                    }
+                    error={toIdInvalid}
+                    helperText={
+                      toIdInvalid
+                        ? 'Debe ser un ObjectId válido de 24 caracteres'
+                        : undefined
+                    }
+                  />
+                  {editingMail &&
+                  editingMail.toUserId &&
+                  typeof editingMail.toUserId === 'object' &&
+                  editingMail.toUserId ? (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ mt: 0.5, display: 'block' }}
+                    >
+                      En este correo: {editingMail.toUserId.name ?? '—'} · RUT{' '}
+                      {editingMail.toUserId.rut ?? '—'}
+                    </Typography>
+                  ) : editingMail?.toRut ? (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ mt: 0.5, display: 'block' }}
+                    >
+                      RUT destinatario en correo: {editingMail.toRut}
+                    </Typography>
+                  ) : null}
+                </Box>
                 <Button
                   variant="outlined"
                   size="small"
@@ -1433,9 +1296,11 @@ export default function MailsPage() {
               disabled={
                 createMail.isPending ||
                 updateMail.isPending ||
-                !formData.fromUserId ||
-                !formData.toUserId ||
-                formData.fromUserId === formData.toUserId
+                !fromIdTrim ||
+                !toIdTrim ||
+                fromIdTrim === toIdTrim ||
+                !isLikelyMongoObjectId(fromIdTrim) ||
+                !isLikelyMongoObjectId(toIdTrim)
               }
             >
               {createMail.isPending || updateMail.isPending

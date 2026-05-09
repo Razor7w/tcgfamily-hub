@@ -26,6 +26,7 @@ import Divider from '@mui/material/Divider'
 import TextField from '@mui/material/TextField'
 import { alpha, type Theme } from '@mui/material/styles'
 import NextLink from 'next/link'
+import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
 import {
   useAdminConfiguracion,
   useUpdateDashboardModuleSettings,
@@ -723,31 +724,34 @@ export default function AdminConfiguracionPage() {
             boxShadow: '0 20px 40px -24px rgba(24, 24, 27, 0.12)'
           }}
         >
-          <Box>
-            <Typography
-              variant="h4"
-              component="h1"
-              sx={{
-                fontWeight: 800,
-                letterSpacing: '-0.03em',
-                lineHeight: 1.15
-              }}
-            >
-              Configuración
-            </Typography>
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ mt: 1, maxWidth: 620, lineHeight: 1.6 }}
-            >
-              Bloques del panel de jugadores en{' '}
-              <Link href="/dashboard" component={NextLink} fontWeight={600}>
-                /dashboard
-              </Link>{' '}
-              , límite diario de registro de correos por jugador y avisos por
-              correo (Resend) cuando un envío queda listo para retiro en tienda.
-            </Typography>
-          </Box>
+          <AdminStorePageHeading>
+            <Box>
+              <Typography
+                variant="h4"
+                component="h1"
+                sx={{
+                  fontWeight: 800,
+                  letterSpacing: '-0.03em',
+                  lineHeight: 1.15
+                }}
+              >
+                Configuración
+              </Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 1, maxWidth: 620, lineHeight: 1.6 }}
+              >
+                Bloques del panel de jugadores en{' '}
+                <Link href="/dashboard" component={NextLink} fontWeight={600}>
+                  /dashboard
+                </Link>{' '}
+                , límite diario de registro de correos por jugador y avisos por
+                correo (Resend) cuando un envío queda listo para retiro en
+                tienda.
+              </Typography>
+            </Box>
+          </AdminStorePageHeading>
         </Stack>
 
         {isPending ? (

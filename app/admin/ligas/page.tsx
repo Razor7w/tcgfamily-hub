@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Container from '@mui/material/Container'
@@ -190,33 +191,37 @@ export default function AdminLigasPage() {
               >
                 Volver a eventos
               </Button>
-              <Typography
-                variant="h4"
-                component="h1"
-                sx={{
-                  fontWeight: 800,
-                  letterSpacing: '-0.03em',
-                  lineHeight: 1.15
-                }}
-              >
-                Ligas (torneos oficiales)
-              </Typography>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mt: 1, maxWidth: 640, lineHeight: 1.6 }}
-              >
-                {LEAGUE_ADMIN_INTRO}
-              </Typography>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mt: 1, maxWidth: 640, lineHeight: 1.6 }}
-              >
-                Puntuación fija en la liga: victoria {LEAGUE_SCORE_WIN} pts,
-                empate {LEAGUE_SCORE_TIE} pt, derrota {LEAGUE_SCORE_LOSS} pts
-                (por récord W/L/T del participante en cada torneo).
-              </Typography>
+              <AdminStorePageHeading>
+                <Box>
+                  <Typography
+                    variant="h4"
+                    component="h1"
+                    sx={{
+                      fontWeight: 800,
+                      letterSpacing: '-0.03em',
+                      lineHeight: 1.15
+                    }}
+                  >
+                    Ligas (torneos oficiales)
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 1, maxWidth: 640, lineHeight: 1.6 }}
+                  >
+                    {LEAGUE_ADMIN_INTRO}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 1, maxWidth: 640, lineHeight: 1.6 }}
+                  >
+                    Puntuación fija en la liga: victoria {LEAGUE_SCORE_WIN} pts,
+                    empate {LEAGUE_SCORE_TIE} pt, derrota {LEAGUE_SCORE_LOSS} pts
+                    (por récord W/L/T del participante en cada torneo).
+                  </Typography>
+                </Box>
+              </AdminStorePageHeading>
             </Box>
             <Button
               variant="contained"

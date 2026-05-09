@@ -25,6 +25,7 @@ import {
 } from '@mui/material'
 import { invalidateStoreScopedDashboardQueries } from '@/lib/invalidate-store-scoped-queries'
 import { ArrowBack } from '@mui/icons-material'
+import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
 
 type StoreRow = {
   id: string
@@ -342,14 +343,18 @@ export default function AdminTiendasPage() {
           <Button component={Link} href="/dashboard" startIcon={<ArrowBack />}>
             Volver al panel
           </Button>
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>
-            Tiendas
-          </Typography>
-          <Typography color="text.secondary">
-            Alta de nuevas ubicaciones solamente desde TCGFamily HQ. En cada
-            tienda puedes subir marca y definir equipo (dueño o{' '}
-            <code style={{ margin: '0 2px' }}>store_admin</code>).
-          </Typography>
+          <AdminStorePageHeading>
+            <Stack spacing={1}>
+              <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                Tiendas
+              </Typography>
+              <Typography color="text.secondary">
+                Alta de nuevas ubicaciones solamente desde TCGFamily HQ. En cada
+                tienda puedes subir marca y definir equipo (dueño o{' '}
+                <code style={{ margin: '0 2px' }}>store_admin</code>).
+              </Typography>
+            </Stack>
+          </AdminStorePageHeading>
 
           {session?.user && contextStores.filter(s => s.id).length > 0 ? (
             <Stack

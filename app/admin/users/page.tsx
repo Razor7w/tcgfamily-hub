@@ -36,6 +36,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { alpha, useTheme } from '@mui/material/styles'
 import PeopleOutlined from '@mui/icons-material/PeopleOutlined'
+import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
 
 /** Evita que varios Select/Menu bloqueen el scroll del body a la vez en móvil (iOS/Safari). */
 const SELECT_MENU_PROPS = {
@@ -375,31 +376,33 @@ export default function UsersPageRefactored() {
         sx={{ py: { xs: 2, sm: 4 }, px: { xs: 1.5, sm: 2, md: 3 } }}
       >
         <Stack spacing={2} sx={{ mb: 3 }}>
-          <Stack
-            direction="row"
-            spacing={1.5}
-            alignItems="center"
-            flexWrap="wrap"
-          >
-            <PeopleOutlined color="primary" sx={{ fontSize: 40 }} />
-            <Box sx={{ minWidth: 0 }}>
-              <Typography
-                variant="h4"
-                component="h1"
-                sx={{ fontWeight: 700, lineHeight: 1.2 }}
-              >
-                Gestión de usuarios
-              </Typography>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mt: 0.5 }}
-              >
-                Alta, edición, importación CSV y consulta de puntos de tienda
-                por usuario.
-              </Typography>
-            </Box>
-          </Stack>
+          <AdminStorePageHeading alignItems="center">
+            <Stack
+              direction="row"
+              spacing={1.5}
+              alignItems="center"
+              flexWrap="wrap"
+            >
+              <PeopleOutlined color="primary" sx={{ fontSize: 40 }} />
+              <Box sx={{ minWidth: 0 }}>
+                <Typography
+                  variant="h4"
+                  component="h1"
+                  sx={{ fontWeight: 700, lineHeight: 1.2 }}
+                >
+                  Gestión de usuarios
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 0.5 }}
+                >
+                  Alta, edición, importación CSV y consulta de puntos de tienda
+                  por usuario.
+                </Typography>
+              </Box>
+            </Stack>
+          </AdminStorePageHeading>
 
           <Paper
             variant="outlined"
