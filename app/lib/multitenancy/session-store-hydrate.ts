@@ -24,7 +24,11 @@ type DashboardMembershipLean = Array<{
   role: StoreMembershipRole
 }>
 
-/** Reglas alineadas con GET /api/me/stores: staff sólo tiendas donde tiene membresía; usuario sin membresías = modo abierto sobre tiendas activas. */
+/**
+ * Reglas alineadas con GET /api/me/stores: listado = todas las tiendas activas;
+ * membresía da acceso explícito; usuario sin membresías = cualquier tienda activa;
+ * sólo `store_admin` (sin fila owner) = cualquier tienda activa como contexto dashboard.
+ */
 export async function evaluateDashboardStoreAccess(
   legacyRole: 'user' | 'admin',
   memberships: DashboardMembershipLean,
@@ -38,6 +42,23 @@ export async function evaluateDashboardStoreAccess(
     return true
   }
   if (globActiveIdSet?.has(storeOid.toString())) return true
+
+  /**
+   * Usuario con rol de staff sólo como `store_admin` en una o más tiendas: puede usar
+   * cualquier tienda activa como contexto del dashboard (listado alineado con GET /api/me/stores).
+   */
+  const onlyStoreAdminStaff =
+    memberships.length > 0 &&
+    memberships.every(m => m.role === 'store_admin') &&
+    globActiveIdSet === null
+  if (onlyStoreAdminStaff && legacyRole === 'user') {
+    const ok = await Store.exists({
+      _id: storeOid,
+      isActive: true
+    })
+    return Boolean(ok)
+  }
+
   if (
     memberships.length === 0 &&
     legacyRole === 'user' &&
@@ -226,10 +247,16 @@ export async function hydrateStoreContextInJwt(token: JWT): Promise<void> {
     token.activeStoreId = activeIdStr
   }
 
-  /** Staff en varias tiendas: mismo criterio que “tienda HQ” TCGFamily cuando aplica. */
+  /**
+   * Staff en varias tiendas: si tiene exactamente una asignación `store_admin`,
+   * esa es la tienda por defecto del dashboard (no la primaria/otra membresía).
+   */
   if (!activeIdStr && memberships.length > 1) {
+    const storeAdminOnly = memberships.filter(m => m.role === 'store_admin')
     let pickOid: mongoose.Types.ObjectId | null = null
-    if (primaryOid) {
+    if (storeAdminOnly.length === 1) {
+      pickOid = storeAdminOnly[0]!.storeId
+    } else if (primaryOid) {
       const hit = memberships.find(m => m.storeId.equals(primaryOid))
       if (hit) pickOid = hit.storeId
     }

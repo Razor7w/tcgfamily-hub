@@ -1,11 +1,13 @@
 /**
  * Migración inicial multitenant — ejecutar una vez por entorno (local/staging antes de prod):
- * `npx tsx app/scripts/bootstrap-multitenancy.ts`
+ * `npx tsx --env-file=.env.local app/scripts/bootstrap-multitenancy.ts`
  *
- * 1. Crea u obtiene la tienda `tcgfamily`.
+ * 1. Crea u obtiene la tienda primaria (`tcgfamily`, ver `DEFAULT_PRIMARY_STORE_SLUG`).
  * 2. Asigna `storeId` en documentos sin campo (WeeklyEvent, League, Mail).
  * 3. Fija `storeId` en DashboardModuleSettings global legacy.
- * 4. Otorga rol `owner` en StoreMembership para cada User con role `admin` legacy.
+ * 4. Garantiza `StoreMembership` con rol `owner` en esa tienda para cada `User.role === 'admin'`.
+ *    Cualquier membresía `owner` otorga alcance global de tiendas en runtime; aquí se ancla
+ *    en la primaria para alinear datos legacy y admins históricos.
  */
 
 import mongoose from 'mongoose'
@@ -70,12 +72,12 @@ async function bootstrap() {
     const uid = new mongoose.Types.ObjectId(String(a._id))
     await StoreMembership.updateOne(
       { userId: uid, storeId: storeOid },
-      { $setOnInsert: { role: 'owner' } },
+      { $set: { role: 'owner' } },
       { upsert: true }
     )
   }
   console.info(
-    `StoreMembership: garantizado rol owner para ${admins.length} usuario(s) admin legacy`
+    `StoreMembership: rol owner en ${DEFAULT_PRIMARY_STORE_SLUG} para ${admins.length} usuario(s) admin legacy (idempotente; re-ejecutar fuerza owner).`
   )
 
   const walletCursor = User.find({
