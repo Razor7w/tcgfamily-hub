@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import connectDB from '@/lib/mongodb'
-import { requireAdminSession } from '@/lib/api-auth'
+import { requireStoreOwnerSession } from '@/lib/api-auth'
 import {
   MAIL_REGISTER_DAILY_LIMIT,
   MAIL_REGISTER_DAILY_LIMIT_ADMIN_MAX
@@ -12,7 +12,7 @@ import {
   normalizeDashboardOrder,
   type DashboardModuleSettingsDTO
 } from '@/lib/dashboard-module-config'
-import DashboardModuleSettings from '@/models/DashboardModuleSettings'
+import { getDashboardDocForStore } from '@/lib/dashboard-settings-for-store'
 
 function readPickupNotifyEnabled(
   doc: {
@@ -32,33 +32,31 @@ function normalizeMailRegisterDailyLimit(raw: unknown): number {
 
 export async function GET() {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreOwnerSession()
     if (!gate.ok) return gate.response
 
     await connectDB()
-    const doc = await DashboardModuleSettings.findOne().lean()
-    const d = doc as {
+    const doc = await getDashboardDocForStore(gate.activeStoreOid.toString())
+    const plain = doc.toObject() as {
       visibility?: DashboardModuleSettingsDTO['visibility']
       order?: DashboardModuleSettingsDTO['order']
       shortcuts?: DashboardModuleSettingsDTO['shortcuts']
       resendNotifyPickupInStoreEnabled?: boolean
       mailRegisterDailyLimit?: number
-    } | null
-    const raw: Partial<DashboardModuleSettingsDTO> | null = d
-      ? {
-          visibility: d.visibility,
-          order: d.order,
-          shortcuts: d.shortcuts
-        }
-      : null
+    }
+    const raw: Partial<DashboardModuleSettingsDTO> | null = {
+      visibility: plain.visibility,
+      order: plain.order,
+      shortcuts: plain.shortcuts
+    }
 
     const settings = mergeDashboardSettings(raw)
     return NextResponse.json(
       {
         settings,
-        resendNotifyPickupInStoreEnabled: readPickupNotifyEnabled(d),
+        resendNotifyPickupInStoreEnabled: readPickupNotifyEnabled(plain),
         mailRegisterDailyLimit: normalizeMailRegisterDailyLimit(
-          d?.mailRegisterDailyLimit
+          plain.mailRegisterDailyLimit
         )
       },
       { status: 200 }
@@ -74,7 +72,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreOwnerSession()
     if (!gate.ok) return gate.response
 
     const body = await request.json()
@@ -145,10 +143,7 @@ export async function PUT(request: NextRequest) {
 
     await connectDB()
 
-    let doc = await DashboardModuleSettings.findOne()
-    if (!doc) {
-      doc = await DashboardModuleSettings.create({})
-    }
+    const doc = await getDashboardDocForStore(gate.activeStoreOid.toString())
 
     if (updatingDashboard && normalizedOrder) {
       doc.visibility = {

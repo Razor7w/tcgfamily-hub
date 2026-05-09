@@ -16,8 +16,12 @@ export default async function AuthLayout({
 }: AuthLayoutProps) {
   const session = await auth()
 
-  if (session && role === 'admin' && session.user.role !== 'admin') {
-    // Si el rol es admin pero el usuario no es admin, redirigir a la página principal
+  const staffOk =
+    session?.user.storeRole === 'owner' ||
+    session?.user.storeRole === 'store_admin'
+  // Panel staff: debe tener membresía/rol de tienda o seguir usando rol legacy sólo donde la sesión hidrate storeRole.
+
+  if (session && role === 'admin' && !staffOk) {
     redirect('/')
   }
 

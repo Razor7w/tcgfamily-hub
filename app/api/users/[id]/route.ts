@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdminSession } from '@/lib/api-auth'
+import { requireStoreOwnerSession } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
 import mongoose from 'mongoose'
@@ -10,6 +10,11 @@ import {
   validatePopidOptional
 } from '@/lib/rut-chile'
 import { getRutFieldError } from '@/lib/rut-input'
+import {
+  isoOrNull,
+  resolveStoreWalletForUser,
+  type LeanUserWallet
+} from '@/lib/store-credit-resolve'
 
 // GET - Obtener un usuario por ID
 export async function GET(
@@ -17,7 +22,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreOwnerSession()
     if (!gate.ok) return gate.response
 
     const { id } = await params
@@ -61,6 +66,12 @@ export async function GET(
       storePointsExpiryDate?: Date
     }
 
+    const w = resolveStoreWalletForUser(
+      userObj as LeanUserWallet,
+      gate.activeStoreOid,
+      gate.primaryStoreOid
+    )
+
     return NextResponse.json({
       id: userObj._id.toString(),
       name: userObj.name,
@@ -71,11 +82,9 @@ export async function GET(
       phone: userObj.phone || '',
       rut: userObj.rut || '',
       popid: userObj.popid || '',
-      storePoints: userObj.storePoints ?? 0,
-      storePointsExpiringNext: userObj.storePointsExpiringNext ?? 0,
-      storePointsExpiryDate: userObj.storePointsExpiryDate
-        ? new Date(userObj.storePointsExpiryDate).toISOString()
-        : null
+      storePoints: w.storePoints,
+      storePointsExpiringNext: w.storePointsExpiringNext,
+      storePointsExpiryDate: isoOrNull(w.storePointsExpiryDate)
     })
   } catch (error) {
     console.error('Error al obtener usuario:', error)
@@ -92,7 +101,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreOwnerSession()
     if (!gate.ok) return gate.response
 
     const { id } = await params
@@ -168,6 +177,12 @@ export async function PUT(
 
     await user.save()
 
+    const w = resolveStoreWalletForUser(
+      user.toObject() as LeanUserWallet,
+      gate.activeStoreOid,
+      gate.primaryStoreOid
+    )
+
     return NextResponse.json({
       id: user._id.toString(),
       name: user.name,
@@ -176,11 +191,9 @@ export async function PUT(
       phone: user.phone || '',
       rut: user.rut || '',
       popid: user.popid || '',
-      storePoints: user.storePoints ?? 0,
-      storePointsExpiringNext: user.storePointsExpiringNext ?? 0,
-      storePointsExpiryDate: user.storePointsExpiryDate
-        ? new Date(user.storePointsExpiryDate).toISOString()
-        : null
+      storePoints: w.storePoints,
+      storePointsExpiringNext: w.storePointsExpiringNext,
+      storePointsExpiryDate: isoOrNull(w.storePointsExpiryDate)
     })
   } catch (error) {
     console.error('Error al actualizar usuario:', error)
@@ -197,7 +210,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreOwnerSession()
     if (!gate.ok) return gate.response
 
     const { id } = await params

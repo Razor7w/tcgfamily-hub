@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import '@/models/League'
 import WeeklyEvent from '@/models/WeeklyEvent'
@@ -15,6 +14,9 @@ import {
   type TournamentStandingLean
 } from '@/lib/weekly-event-public'
 import { effectivePublicRoundNum } from '@/lib/dashboard-round-cap'
+import { requireSessionUserWithActiveStore } from '@/lib/api-auth'
+import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
+import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
 
 function publicLeagueFromLeanDoc(d: Record<string, unknown>): {
   name: string
@@ -146,10 +148,9 @@ function toPublicEvent(
 /** Lista eventos en un rango de fechas (para la vista semanal). Requiere sesión. */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const sg = await requireSessionUserWithActiveStore()
+    if (!sg.ok) return sg.response
+    const session = sg.session
 
     const userId = session.user.id
     const userPopId =
@@ -187,6 +188,11 @@ export async function GET(request: NextRequest) {
 
     await connectDB()
     const now = new Date()
+    const primary = await memoPrimaryTcgfamilyStoreObjectId()
+    const storeScope = mongoFilterByStore(
+      sg.activeStoreOid,
+      primary
+    ) as Record<string, unknown>
 
     const PAD_MS = 72 * 60 * 60 * 1000
     const queryRange =
@@ -196,11 +202,13 @@ export async function GET(request: NextRequest) {
               $gte: new Date(from.getTime() - PAD_MS),
               $lte: new Date(to.getTime() + PAD_MS)
             },
-            tournamentOrigin: { $ne: 'custom' }
+            tournamentOrigin: { $ne: 'custom' },
+            ...storeScope
           }
         : {
             startsAt: { $gte: from, $lte: to },
-            tournamentOrigin: { $ne: 'custom' }
+            tournamentOrigin: { $ne: 'custom' },
+            ...storeScope
           }
 
     let docs = await WeeklyEvent.find(queryRange)

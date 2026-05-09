@@ -1,6 +1,8 @@
 import mongoose, { Schema, Document, ObjectId } from 'mongoose'
 
 export interface IMail extends Document {
+  /** Alcance por tienda; legacy sin campo ⇒ tratado como tienda TCGFamily en runtime. */
+  storeId?: ObjectId
   code: string
   fromUserId: ObjectId
   toUserId?: ObjectId
@@ -15,7 +17,17 @@ export interface IMail extends Document {
 
 const MailSchema = new Schema<IMail>(
   {
-    code: { type: String, required: true, unique: true, index: true },
+    storeId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Store',
+      required: false,
+      index: true
+    },
+    code: {
+      type: String,
+      required: true,
+      unique: false
+    },
     fromUserId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     toUserId: {
       type: Schema.Types.ObjectId,
@@ -32,6 +44,27 @@ const MailSchema = new Schema<IMail>(
   {
     timestamps: true,
     strict: true
+  }
+)
+
+/** Una misma etiqueta visible `code` puede repetirse en otras tiendas; unicidad sólo dentro de cada tienda. */
+MailSchema.index(
+  { storeId: 1, code: 1 },
+  {
+    unique: true,
+    name: 'mails_storeId_code_unique',
+    partialFilterExpression: { storeId: { $exists: true, $ne: null } }
+  }
+)
+/** Correos legacy sin tienda persistida en el documento */
+MailSchema.index(
+  { code: 1 },
+  {
+    unique: true,
+    name: 'mails_legacy_missing_store_code_unique',
+    partialFilterExpression: {
+      $or: [{ storeId: { $exists: false } }, { storeId: null }]
+    }
   }
 )
 

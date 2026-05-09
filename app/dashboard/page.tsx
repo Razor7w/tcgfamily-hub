@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
@@ -9,6 +10,34 @@ import { alpha } from '@mui/material/styles'
 
 export default function DashboardPage() {
   const { data: session } = useSession()
+  const activeId = session?.user?.activeStoreId?.trim() ?? ''
+  const [activeStoreName, setActiveStoreName] = useState('')
+
+  useEffect(() => {
+    if (!activeId) {
+      setActiveStoreName('')
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/me/stores')
+        if (!res.ok) return
+        const data = (await res.json()) as {
+          stores?: Array<{ id?: string; name?: string }>
+        }
+        const rows = Array.isArray(data.stores) ? data.stores : []
+        const hit = rows.find(r => String(r.id) === activeId)
+        const n = typeof hit?.name === 'string' ? hit.name : ''
+        if (!cancelled) setActiveStoreName(n)
+      } catch {
+        if (!cancelled) setActiveStoreName('')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [activeId])
 
   return (
     <Box
@@ -19,9 +48,16 @@ export default function DashboardPage() {
       })}
     >
       <Container maxWidth="lg">
-        <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 4 }}>
-          Hola {session && session.user.name}
-        </Typography>
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h4" component="h1" gutterBottom>
+            Hola {session?.user?.name ?? ''}
+          </Typography>
+          {activeStoreName ? (
+            <Typography variant="subtitle1" color="text.secondary">
+              Estás en {activeStoreName}
+            </Typography>
+          ) : null}
+        </Box>
 
         <DashboardHomeContent />
       </Container>

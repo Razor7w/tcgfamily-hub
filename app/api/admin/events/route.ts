@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdminSession } from '@/lib/api-auth'
+import { requireStoreStaffSession } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import mongoose from 'mongoose'
 import { ADMIN_WEEKLY_EVENTS_ORIGIN_FILTER } from '@/lib/admin-weekly-event-access'
@@ -10,6 +10,7 @@ import WeeklyEvent, {
   type PokemonTournamentSubtype,
   type WeeklyEventState
 } from '@/models/WeeklyEvent'
+import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 
 const PRICE_MAX = 99_999_999
 const PARTICIPANTS_MAX = 2048
@@ -88,11 +89,18 @@ function serializeAdminParticipant(p: {
 
 export async function GET() {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreStaffSession()
     if (!gate.ok) return gate.response
 
     await connectDB()
-    const raw = await WeeklyEvent.find(ADMIN_WEEKLY_EVENTS_ORIGIN_FILTER)
+    const storeScope = mongoFilterByStore(
+      gate.activeStoreOid,
+      gate.primaryStoreOid ?? null
+    )
+    const raw = await WeeklyEvent.find({
+      ...ADMIN_WEEKLY_EVENTS_ORIGIN_FILTER,
+      ...(storeScope as Record<string, unknown>)
+    })
       .sort({ startsAt: 1 })
       .populate({ path: 'participants.userId', select: 'popid' })
       .populate({ path: 'leagueId', select: 'name slug' })
@@ -167,7 +175,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreStaffSession()
     if (!gate.ok) return gate.response
 
     const body = parseBody(await request.json().catch(() => null))
@@ -306,6 +314,11 @@ export async function POST(request: NextRequest) {
 
     await connectDB()
 
+    const storeScope = mongoFilterByStore(
+      gate.activeStoreOid,
+      gate.primaryStoreOid ?? null
+    ) as Record<string, unknown>
+
     let leagueOid: mongoose.Types.ObjectId | undefined = undefined
     if (
       kind === 'tournament' &&
@@ -318,14 +331,18 @@ export async function POST(request: NextRequest) {
           ? body.leagueId.trim()
           : String(body.leagueId)
       if (mongoose.Types.ObjectId.isValid(lid)) {
-        const lg = await League.findById(lid).select('_id').lean()
-        if (lg) {
-          leagueOid = new mongoose.Types.ObjectId(lid)
-        }
+        const lg = await League.findOne({
+          _id: new mongoose.Types.ObjectId(lid),
+          ...storeScope
+        })
+          .select('_id')
+          .lean()
+        if (lg) leagueOid = new mongoose.Types.ObjectId(lid)
       }
     }
 
     const doc = await WeeklyEvent.create({
+      storeId: gate.activeStoreOid,
       startsAt,
       title,
       tournamentOrigin: 'official',

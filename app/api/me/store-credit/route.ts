@@ -1,26 +1,32 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import mongoose from 'mongoose'
+import { requireSessionUserWithActiveStore } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
-import mongoose from 'mongoose'
+import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
+import {
+  isoOrNull,
+  resolveStoreWalletForUser,
+  type LeanUserWallet
+} from '@/lib/store-credit-resolve'
 
 export async function GET() {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireSessionUserWithActiveStore()
+    if (!gate.ok) return gate.response
 
     await connectDB()
-    let userId: mongoose.Types.ObjectId
+    let userOid: mongoose.Types.ObjectId
     try {
-      userId = new mongoose.Types.ObjectId(session.user.id)
+      userOid = new mongoose.Types.ObjectId(gate.session.user.id)
     } catch {
       return NextResponse.json({ error: 'Sesión inválida' }, { status: 400 })
     }
 
-    const user = await User.findById(userId)
-      .select('storePoints storePointsExpiringNext storePointsExpiryDate')
+    const user = await User.findById(userOid)
+      .select(
+        'storePoints storePointsExpiringNext storePointsExpiryDate storeCredits'
+      )
       .lean()
 
     if (!user || Array.isArray(user)) {
@@ -30,18 +36,17 @@ export async function GET() {
       )
     }
 
-    const u = user as {
-      storePoints?: number
-      storePointsExpiringNext?: number
-      storePointsExpiryDate?: Date
-    }
+    const primary = await memoPrimaryTcgfamilyStoreObjectId()
+    const w = resolveStoreWalletForUser(
+      user as LeanUserWallet,
+      gate.activeStoreOid,
+      primary
+    )
 
     return NextResponse.json({
-      storePoints: u.storePoints ?? 0,
-      storePointsExpiringNext: u.storePointsExpiringNext ?? 0,
-      storePointsExpiryDate: u.storePointsExpiryDate
-        ? new Date(u.storePointsExpiryDate).toISOString()
-        : null
+      storePoints: w.storePoints,
+      storePointsExpiringNext: w.storePointsExpiringNext,
+      storePointsExpiryDate: isoOrNull(w.storePointsExpiryDate)
     })
   } catch (error) {
     console.error('store-credit:', error)

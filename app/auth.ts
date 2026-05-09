@@ -10,6 +10,8 @@ import {
   validateEmailFormat,
   PASSWORD_TIMING_DUMMY_HASH
 } from '@/lib/password-rules'
+import { hydrateStoreContextInJwt } from '@/lib/multitenancy/session-store-hydrate'
+import mongoose from 'mongoose'
 import { createSlidingWindowLimiter } from '@/lib/auth-rate-limit'
 
 const credentialIpLimiter = createSlidingWindowLimiter({
@@ -139,7 +141,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (typeof s.popid === 'string') token.popid = s.popid
         if (typeof s.hasPassword === 'boolean')
           token.hasPassword = s.hasPassword
-        return token
+        const sid = s.activeStoreId
+        if (typeof sid === 'string') {
+          if (mongoose.Types.ObjectId.isValid(sid.trim())) {
+            token.activeStoreId = sid.trim()
+          }
+        }
       }
 
       if (user) {
@@ -183,6 +190,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.role = db.role === 'admin' ? 'admin' : 'user'
         }
       }
+      if (token.sub) {
+        try {
+          await hydrateStoreContextInJwt(token)
+        } catch {
+          token.activeStoreId = undefined
+          token.storeRole = undefined
+        }
+      }
       return token
     },
     async session({ session, token }) {
@@ -192,6 +207,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.rut = typeof token.rut === 'string' ? token.rut : ''
         session.user.popid = typeof token.popid === 'string' ? token.popid : ''
         session.user.hasPassword = Boolean(token.hasPassword)
+        session.user.activeStoreId =
+          typeof token.activeStoreId === 'string' &&
+          mongoose.Types.ObjectId.isValid(token.activeStoreId.trim())
+            ? token.activeStoreId.trim()
+            : null
+        const sr = token.storeRole
+        session.user.storeRole =
+          sr === 'owner' || sr === 'store_admin' ? sr : null
       }
       return session
     }

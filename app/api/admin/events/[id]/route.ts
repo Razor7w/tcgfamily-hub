@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import mongoose from 'mongoose'
-import { requireAdminSession } from '@/lib/api-auth'
+import { requireStoreStaffSession } from '@/lib/api-auth'
 import {
   ADMIN_WEEKLY_EVENTS_ORIGIN_FILTER,
   adminWeeklyEventForbiddenResponse
@@ -13,6 +13,8 @@ import WeeklyEvent, {
   type PokemonTournamentSubtype,
   type WeeklyEventState
 } from '@/models/WeeklyEvent'
+import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
+import { weeklyOfficialByIdForStaffGate } from '@/lib/multitenancy/staff-queries'
 
 const PRICE_MAX = 99_999_999
 const PARTICIPANTS_MAX = 2048
@@ -52,7 +54,7 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreStaffSession()
     if (!gate.ok) return gate.response
 
     const { id } = await context.params
@@ -66,7 +68,11 @@ export async function PATCH(
     }
 
     await connectDB()
-    const doc = await WeeklyEvent.findById(id)
+    const storeScope = mongoFilterByStore(
+      gate.activeStoreOid,
+      gate.primaryStoreOid ?? null
+    ) as Record<string, unknown>
+    const doc = await weeklyOfficialByIdForStaffGate(gate, id.trim())
     if (!doc) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     }
@@ -242,7 +248,12 @@ export async function PATCH(
             { status: 400 }
           )
         }
-        const lg = await League.findById(lid).select('_id').lean()
+        const lg = await League.findOne({
+          _id: new mongoose.Types.ObjectId(lid),
+          ...storeScope
+        })
+          .select('_id')
+          .lean()
         if (!lg) {
           return NextResponse.json(
             { error: 'Liga no encontrada' },
@@ -306,7 +317,7 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreStaffSession()
     if (!gate.ok) return gate.response
 
     const { id } = await context.params
@@ -315,9 +326,14 @@ export async function DELETE(
     }
 
     await connectDB()
+    const storeScope = mongoFilterByStore(
+      gate.activeStoreOid,
+      gate.primaryStoreOid ?? null
+    ) as Record<string, unknown>
     const res = await WeeklyEvent.findOneAndDelete({
       _id: id,
-      ...ADMIN_WEEKLY_EVENTS_ORIGIN_FILTER
+      ...(ADMIN_WEEKLY_EVENTS_ORIGIN_FILTER as Record<string, unknown>),
+      ...storeScope
     })
     if (!res) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 })

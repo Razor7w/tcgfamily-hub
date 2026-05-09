@@ -1,0 +1,18 @@
+# MongoDB local para desarrollo (sin auth; mismo puerto que .env.example).
+# Uso: docker compose up -d
+# Parar: docker compose down  (añade -v para borrar datos persistidos)
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: tcgfamily-mongo-local
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: tcgfamily-hub
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:

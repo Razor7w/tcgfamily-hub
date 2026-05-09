@@ -1,6 +1,13 @@
-import mongoose, { Schema, Document } from 'mongoose'
+import mongoose, { Schema, Document, Types } from 'mongoose'
 
 export type UserRole = 'user' | 'admin'
+
+export interface IUserStoreCreditSlice {
+  storeId: Types.ObjectId
+  storePoints: number
+  storePointsExpiringNext: number
+  storePointsExpiryDate?: Date
+}
 
 export interface IUser extends Document {
   name?: string
@@ -23,6 +30,8 @@ export interface IUser extends Document {
   storePointsExpiringNext: number
   /** Fecha de vencimiento del bloque más próximo (si aplica). */
   storePointsExpiryDate?: Date
+  /** Wallet por tienda (import CSV y UI usan tienda activa). */
+  storeCredits: IUserStoreCreditSlice[]
   accounts: mongoose.Types.ObjectId[]
   sessions: mongoose.Types.ObjectId[]
 }
@@ -78,6 +87,24 @@ const UserSchema = new Schema<IUser>(
     },
     storePointsExpiryDate: {
       type: Date
+    },
+    storeCredits: {
+      type: [
+        new Schema<IUserStoreCreditSlice>(
+          {
+            storeId: {
+              type: Schema.Types.ObjectId,
+              ref: 'Store',
+              required: true
+            },
+            storePoints: { type: Number, default: 0 },
+            storePointsExpiringNext: { type: Number, default: 0 },
+            storePointsExpiryDate: { type: Date, required: false }
+          },
+          { _id: false }
+        )
+      ],
+      default: []
     },
     accounts: [{ type: Schema.Types.ObjectId, ref: 'Account' }],
     sessions: [{ type: Schema.Types.ObjectId, ref: 'Session' }]

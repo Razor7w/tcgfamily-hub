@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useDashboardStoreQueryKey } from '@/hooks/use-dashboard-store-key'
 
 /**
  * Hooks para la API de mails (TanStack Query).
@@ -92,9 +93,10 @@ export function useMyMails(options?: UseMyMailsOptions) {
   const pendingOnly = options?.pendingOnly ?? false
   const inStoreOnly = options?.inStoreOnly ?? false
   const limit = options?.limit
+  const storeKey = useDashboardStoreQueryKey()
 
   return useQuery<{ mails: Mail[] }>({
-    queryKey: ['mails', 'me', { pendingOnly, inStoreOnly, limit }],
+    queryKey: ['mails', 'me', storeKey, { pendingOnly, inStoreOnly, limit }],
     queryFn: async () => {
       const params = new URLSearchParams()
       if (limit !== undefined) params.set('limit', String(limit))

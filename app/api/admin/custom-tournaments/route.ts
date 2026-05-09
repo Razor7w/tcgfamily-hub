@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAdminSession } from '@/lib/api-auth'
+import { requireStoreOwnerSession } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import {
   matchRecordFromRounds,
@@ -7,6 +7,7 @@ import {
 } from '@/lib/participant-match-round'
 import '@/models/User'
 import WeeklyEvent from '@/models/WeeklyEvent'
+import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 
 const LIST_MAX = 400
 
@@ -155,12 +156,20 @@ function serializeCustomTournament(doc: Record<string, unknown>) {
 
 export async function GET() {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreOwnerSession()
     if (!gate.ok) return gate.response
 
     await connectDB()
 
-    const raw = await WeeklyEvent.find({ tournamentOrigin: 'custom' })
+    const scope = mongoFilterByStore(
+      gate.activeStoreOid,
+      gate.primaryStoreOid ?? null
+    ) as Record<string, unknown>
+
+    const raw = await WeeklyEvent.find({
+      tournamentOrigin: 'custom',
+      ...scope
+    })
       .sort({ startsAt: -1 })
       .limit(LIST_MAX)
       .populate({ path: 'createdByUserId', select: 'name email' })

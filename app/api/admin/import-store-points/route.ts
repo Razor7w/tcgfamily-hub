@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import type { AnyBulkWriteOperation } from 'mongoose'
 import mongoose from 'mongoose'
-import { requireAdminSession } from '@/lib/api-auth'
+import { requireStoreStaffSession } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
+import { applyStoreCreditSlice } from '@/lib/store-credit-slice-write'
 import {
   canonicalRut,
   mapHeaderRow,
@@ -27,11 +27,11 @@ function lookupRutId(
 
 export const runtime = 'nodejs'
 
-const BULK_CHUNK = 500
+const WRITE_CHUNK = 80
 
 export async function POST(request: NextRequest) {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreStaffSession()
     if (!gate.ok) return gate.response
 
     const form = await request.formData()
@@ -138,53 +138,37 @@ export async function POST(request: NextRequest) {
       pending.set(id.toString(), { id, row })
     }
 
-    const ops: AnyBulkWriteOperation[] = []
-    for (const { id, row } of pending.values()) {
-      const update: {
-        $set: Record<string, unknown>
-        $unset?: Record<string, ''>
-      } = {
-        $set: {
-          storePoints: row.saldo,
-          storePointsExpiringNext: row.proximosVencer
-        }
-      }
-      if (row.expiry) {
-        update.$set.storePointsExpiryDate = row.expiry
-      } else {
-        update.$unset = { storePointsExpiryDate: '' }
-      }
-
-      ops.push({
-        updateOne: {
-          filter: { _id: id },
-          update
-        }
-      })
-    }
-
-    let matched = 0
-    let modified = 0
+    const entries = [...pending.values()]
+    const storeOid = gate.activeStoreOid
+    let updated = 0
     const errors: string[] = []
 
-    for (let i = 0; i < ops.length; i += BULK_CHUNK) {
-      const chunk = ops.slice(i, i + BULK_CHUNK)
+    for (let i = 0; i < entries.length; i += WRITE_CHUNK) {
+      const chunk = entries.slice(i, i + WRITE_CHUNK)
       try {
-        const res = await User.bulkWrite(chunk, { ordered: false })
-        matched += res.matchedCount
-        modified += res.modifiedCount
+        await Promise.all(
+          chunk.map(({ id, row }) =>
+            applyStoreCreditSlice(id, storeOid, {
+              saldo: row.saldo,
+              proximosVencer: row.proximosVencer,
+              expiry: row.expiry ?? null
+            })
+          )
+        )
+        updated += chunk.length
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
-        errors.push(`Lote ${i / BULK_CHUNK + 1}: ${msg}`)
+        errors.push(`Lote ${i / WRITE_CHUNK + 1}: ${msg}`)
         if (errors.length >= 20) break
       }
     }
 
     return NextResponse.json({
       ok: true,
+      storeId: storeOid.toString(),
       /** Filas resueltas a un usuario (correo y/o RUT del CSV coincide con la base). */
-      updated: matched,
-      modified,
+      updated,
+      modified: updated,
       skipped,
       /** Filas sin correo ni RUT válido en el CSV. */
       noIdentifierInCsv,

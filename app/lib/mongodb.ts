@@ -42,6 +42,20 @@ if (!global.mongoose) {
   global.mongoose = cached
 }
 
+let ensuredMailMongoIndexes = false
+
+async function ensureMailCollectionIndexes() {
+  if (ensuredMailMongoIndexes) return
+  if (process.env.DISABLE_MAIL_INDEX_SYNC === '1') return
+  try {
+    const Mail = (await import('@/models/Mails')).default
+    await Mail.syncIndexes()
+    ensuredMailMongoIndexes = true
+  } catch (e) {
+    console.error('[mongodb] Mail.syncIndexes falló:', e)
+  }
+}
+
 async function connectDB() {
   if (cached.conn) {
     return cached.conn
@@ -68,6 +82,7 @@ async function connectDB() {
 
   try {
     cached.conn = await cached.promise
+    await ensureMailCollectionIndexes()
   } catch (e) {
     cached.promise = null
     throw e

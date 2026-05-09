@@ -1,8 +1,10 @@
-import mongoose, { Schema, Document } from 'mongoose'
+import mongoose, { Schema, Document, Types } from 'mongoose'
 
 export interface ILeague extends Document {
+  /** Alcance multitenant (obligatorio tras migración bootstrap). */
+  storeId?: Types.ObjectId
   name: string
-  /** URL única: solo minúsculas, números y guiones. */
+  /** Slug único dentro de la tienda (`storeId`). */
   slug: string
   description: string
   /** Solo torneos Pokémon en tienda suelen usar ligas; reservado por si amplías. */
@@ -17,6 +19,14 @@ export interface ILeague extends Document {
 
 const LeagueSchema = new Schema<ILeague>(
   {
+    storeId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Store',
+      required: false,
+      index: true,
+      /** Sin storeId ⇒ legacy; tras migración siempre viene informado */
+      default: undefined
+    },
     name: { type: String, required: true, trim: true, maxlength: 200 },
     slug: {
       type: String,
@@ -25,8 +35,8 @@ const LeagueSchema = new Schema<ILeague>(
       lowercase: true,
       maxlength: 80,
       match: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-      index: true,
-      unique: true
+      /** Único compuesto `{ storeId, slug }`; ver índices al pie del schema. */
+      unique: false
     },
     description: { type: String, default: '', maxlength: 4000 },
     game: {
@@ -42,6 +52,15 @@ const LeagueSchema = new Schema<ILeague>(
     }
   },
   { timestamps: true, strict: true }
+)
+
+LeagueSchema.index({ storeId: 1, slug: 1 }, { unique: true, sparse: true })
+LeagueSchema.index(
+  { slug: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { storeId: { $exists: false } }
+  }
 )
 
 if (mongoose.models.League) {

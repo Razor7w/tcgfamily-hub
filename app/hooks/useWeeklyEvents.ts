@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useDashboardStoreQueryKey } from '@/hooks/use-dashboard-store-key'
 import {
   endOfWeekSunday,
   startOfWeekMonday,
@@ -67,6 +68,7 @@ export interface PublicWeeklyEvent {
 }
 
 export function useWeekEvents(weekAnchor: Date | null) {
+  const storeKey = useDashboardStoreQueryKey()
   const from = weekAnchor ? startOfWeekMonday(weekAnchor) : null
   const to = weekAnchor ? endOfWeekSunday(weekAnchor) : null
   const weekYmds = from !== null ? weekDayKeysFromMonday(from).join(',') : ''
@@ -74,6 +76,7 @@ export function useWeekEvents(weekAnchor: Date | null) {
   return useQuery<{ events: PublicWeeklyEvent[] }>({
     queryKey: [
       'weekly-events',
+      storeKey,
       from?.toISOString(),
       to?.toISOString(),
       weekYmds
@@ -99,8 +102,9 @@ export function useWeekEvents(weekAnchor: Date | null) {
 
 /** Todos los torneos en los que participas (más recientes primero; límite en servidor). */
 export function useMyTournamentsAllReport(enabled = true) {
+  const storeKey = useDashboardStoreQueryKey()
   return useQuery<{ tournaments: MyTournamentWeekItem[] }>({
-    queryKey: ['my-tournaments-all'],
+    queryKey: ['my-tournaments-all', storeKey],
     queryFn: async () => {
       const res = await fetch('/api/events/my-tournaments-all', {
         cache: 'no-store'
@@ -116,11 +120,17 @@ export function useMyTournamentsAllReport(enabled = true) {
 
 /** Torneos de la semana en los que participas (resumen informativo). */
 export function useMyTournamentsWeekReport(weekAnchor: Date | null) {
+  const storeKey = useDashboardStoreQueryKey()
   const from = weekAnchor ? startOfWeekMonday(weekAnchor) : null
   const to = weekAnchor ? endOfWeekSunday(weekAnchor) : null
 
   return useQuery<{ tournaments: MyTournamentWeekItem[] }>({
-    queryKey: ['my-tournaments-week', from?.toISOString(), to?.toISOString()],
+    queryKey: [
+      'my-tournaments-week',
+      storeKey,
+      from?.toISOString(),
+      to?.toISOString()
+    ],
     queryFn: async () => {
       if (!from || !to) {
         return { tournaments: [] }
@@ -141,8 +151,9 @@ export function useMyTournamentsWeekReport(weekAnchor: Date | null) {
 
 /** Últimos N torneos en los que participas (más recientes por fecha de inicio). */
 export function useMyRecentTournaments(limit = 2) {
+  const storeKey = useDashboardStoreQueryKey()
   return useQuery<{ tournaments: MyTournamentWeekItem[] }>({
-    queryKey: ['my-recent-tournaments', limit],
+    queryKey: ['my-recent-tournaments', storeKey, limit],
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: String(Math.max(1, Math.min(5, limit)))

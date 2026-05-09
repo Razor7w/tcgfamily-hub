@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
-import { requireAdminSession } from '@/lib/api-auth'
+import {
+  requireSessionUserWithActiveStore,
+  requireStoreStaffSession
+} from '@/lib/api-auth'
 import { sendMailPickupReadyEmail } from '@/lib/email/send-mail-pickup-ready'
 import { getResendNotifyPickupInStoreEnabled } from '@/lib/get-resend-notify-pickup-enabled'
 import connectDB from '@/lib/mongodb'
 import Mails from '@/models/Mails'
 import User from '@/models/User'
+import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
+import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
 import mongoose from 'mongoose'
 
 function parseMailId(id: string) {
@@ -41,10 +45,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const sg = await requireSessionUserWithActiveStore()
+    if (!sg.ok) return sg.response
+    const session = sg.session
 
     const { id } = await params
     await connectDB()
@@ -61,8 +64,21 @@ export async function GET(
       return NextResponse.json({ error: 'Mail no encontrado' }, { status: 404 })
     }
 
-    const isAdmin = session.user.role === 'admin'
-    if (!isAdmin) {
+    const primary = await memoPrimaryTcgfamilyStoreObjectId()
+    const scopedMatch = mongoFilterByStore(
+      sg.activeStoreOid,
+      primary
+    ) as Record<string, unknown>
+    const inStore = await Mails.exists({ _id: mailId, ...scopedMatch })
+    if (!inStore) {
+      return NextResponse.json({ error: 'Mail no encontrado' }, { status: 404 })
+    }
+
+    const isStaff =
+      session.user.storeRole === 'owner' ||
+      session.user.storeRole === 'store_admin'
+
+    if (!isStaff) {
       const sessionUserId = session.user.id as string | undefined
       if (!sessionUserId) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -95,7 +111,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreStaffSession()
     if (!gate.ok) return gate.response
 
     const { id } = await params
@@ -108,7 +124,11 @@ export async function PUT(
       )
     }
 
-    const existing = await Mails.findById(mailId)
+    const scoped = mongoFilterByStore(
+      gate.activeStoreOid,
+      gate.primaryStoreOid ?? null
+    ) as Record<string, unknown>
+    const existing = await Mails.findOne({ _id: mailId, ...scoped })
     if (!existing) {
       return NextResponse.json({ error: 'Mail no encontrado' }, { status: 404 })
     }
@@ -221,10 +241,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth()
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const sg = await requireSessionUserWithActiveStore()
+    if (!sg.ok) return sg.response
+    const session = sg.session
 
     const { id } = await params
     await connectDB()
@@ -236,13 +255,21 @@ export async function DELETE(
       )
     }
 
-    const existing = await Mails.findById(mailId)
+    const primary = await memoPrimaryTcgfamilyStoreObjectId()
+    const scoped = mongoFilterByStore(
+      sg.activeStoreOid,
+      primary
+    ) as Record<string, unknown>
+
+    const existing = await Mails.findOne({ _id: mailId, ...scoped })
     if (!existing) {
       return NextResponse.json({ error: 'Mail no encontrado' }, { status: 404 })
     }
 
-    const isAdmin = session.user.role === 'admin'
-    if (!isAdmin) {
+    const isStaff =
+      session.user.storeRole === 'owner' ||
+      session.user.storeRole === 'store_admin'
+    if (!isStaff) {
       const sessionUserId = session.user.id as string | undefined
       if (!sessionUserId) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })

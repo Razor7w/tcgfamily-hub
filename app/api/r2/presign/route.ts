@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import mongoose from 'mongoose'
 import { auth } from '@/auth'
 import { createSlidingWindowLimiter } from '@/lib/auth-rate-limit'
+import { assertCanManageStoreMutation } from '@/lib/store-admin-access'
+import { requireStoreOwnerSession } from '@/lib/api-auth'
 import { r2BucketName, r2Client, r2PublicBaseUrl } from '@/lib/r2'
 
 const presignLimiter = createSlidingWindowLimiter({
@@ -28,10 +31,11 @@ function safeExtFromContentType(contentType: string): string {
   return ''
 }
 
-function safeFolder(folder: unknown): 'uploads' | 'Avatar' {
+function safeFolder(folder: unknown): 'uploads' | 'Avatar' | 'store-branding' {
   if (typeof folder !== 'string') return 'uploads'
   const f = folder.trim()
   if (f === 'Avatar') return 'Avatar'
+  if (f === 'store-branding') return 'store-branding'
   return 'uploads'
 }
 
@@ -60,7 +64,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
     }
 
-    const { filename, contentType, folder } = body as Record<string, unknown>
+    const { filename, contentType, folder, storeId } = body as Record<
+      string,
+      unknown
+    >
     const filenameStr = typeof filename === 'string' ? filename.trim() : ''
     const contentTypeStr =
       typeof contentType === 'string' ? contentType.trim() : ''
@@ -81,10 +88,31 @@ export async function POST(request: NextRequest) {
 
     const ext = safeExtFromContentType(contentTypeStr) || 'bin'
     const baseFolder = safeFolder(folder)
-    const key =
-      baseFolder === 'Avatar'
-        ? `Avatar/${session.user.id}.${ext}`
-        : `uploads/${session.user.id}/${crypto.randomUUID()}.${ext}`
+    let key: string
+
+    if (baseFolder === 'Avatar') {
+      key = `Avatar/${session.user.id}.${ext}`
+    } else if (baseFolder === 'store-branding') {
+      const storeIdStr = typeof storeId === 'string' ? storeId.trim() : ''
+      if (!mongoose.Types.ObjectId.isValid(storeIdStr)) {
+        return NextResponse.json(
+          { error: 'Falta storeId válido para logo de tienda.' },
+          { status: 400 }
+        )
+      }
+      const gate = await requireStoreOwnerSession()
+      if (!gate.ok) return gate.response
+      const can = await assertCanManageStoreMutation(
+        gate.session.user!.id,
+        new mongoose.Types.ObjectId(storeIdStr)
+      )
+      if (!can) {
+        return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+      }
+      key = `store-branding/${storeIdStr}/${crypto.randomUUID()}.${ext}`
+    } else {
+      key = `uploads/${session.user.id}/${crypto.randomUUID()}.${ext}`
+    }
 
     const bucket = r2BucketName()
     const s3 = r2Client()

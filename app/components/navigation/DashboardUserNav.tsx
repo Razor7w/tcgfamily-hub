@@ -40,7 +40,13 @@ function isUnderDecklistNav(path: string) {
   )
 }
 
-export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
+export default function DashboardUserNav({
+  isAdmin,
+  isOwner
+}: {
+  isAdmin: boolean
+  isOwner: boolean
+}) {
   const pathname = usePathname() ?? ''
   const { visibility } = useDashboardModulesFromLayout()
   const [decklistOpen, setDecklistOpen] = useState(() =>
@@ -61,7 +67,7 @@ export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
     <Stack>
       <nav aria-label="main mailbox folders">
         <List>
-          {isAdmin && <AdminSidebarClient />}
+          {isAdmin && <AdminSidebarClient isOwner={isOwner} />}
           <ListItem disablePadding>
             <ListItemButton href="/dashboard">
               <ListItemIcon>

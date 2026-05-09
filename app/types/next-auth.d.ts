@@ -9,6 +9,10 @@ declare module 'next-auth' {
       rut: string
       popid: string
       hasPassword: boolean
+      /** Tienda activa (Mongo ObjectId como string). */
+      activeStoreId?: string | null
+      /** Rol de staff en la tienda activa (`null` si no aplica). */
+      storeRole?: 'owner' | 'store_admin' | null
     } & DefaultSession['user']
   }
 
@@ -26,5 +30,7 @@ declare module 'next-auth/jwt' {
     rut?: string
     popid?: string
     hasPassword?: boolean
+    activeStoreId?: string
+    storeRole?: 'owner' | 'store_admin'
   }
 }

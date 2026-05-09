@@ -1,8 +1,10 @@
-import mongoose, { Schema, type Document } from 'mongoose'
+import mongoose, { Schema, type Document, type Types } from 'mongoose'
 import type { DashboardModuleId } from '@/lib/dashboard-module-config'
 import { DEFAULT_DASHBOARD_ORDER } from '@/lib/dashboard-module-config'
 
 export interface IDashboardModuleSettings extends Document {
+  /** Una fila por tienda; legacy sin campo se trata como default en lectura. */
+  storeId?: Types.ObjectId
   visibility: {
     weeklyEvents: boolean
     recentPublicDecklists: boolean
@@ -26,6 +28,12 @@ export interface IDashboardModuleSettings extends Document {
 
 const DashboardModuleSettingsSchema = new Schema<IDashboardModuleSettings>(
   {
+    storeId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Store',
+      required: false,
+      default: undefined
+    },
     visibility: {
       weeklyEvents: { type: Boolean, default: true },
       recentPublicDecklists: { type: Boolean, default: true },
@@ -47,6 +55,11 @@ const DashboardModuleSettingsSchema = new Schema<IDashboardModuleSettings>(
     mailRegisterDailyLimit: { type: Number, default: 10, min: 1 }
   },
   { timestamps: true }
+)
+
+DashboardModuleSettingsSchema.index(
+  { storeId: 1 },
+  { unique: true, partialFilterExpression: { storeId: { $exists: true } } }
 )
 
 export default mongoose.models.DashboardModuleSettings ||

@@ -9,6 +9,7 @@ import {
   MilitaryTech,
   People,
   Settings,
+  Storefront,
   SportsEsports
 } from '@mui/icons-material'
 import {
@@ -20,7 +21,11 @@ import {
 } from '@mui/material'
 import { useState } from 'react'
 
-export default function AdminSidebarClient() {
+export default function AdminSidebarClient({
+  isOwner
+}: {
+  isOwner: boolean
+}) {
   const [open, setOpen] = useState(true)
 
   const handleClick = () => {
@@ -36,14 +41,22 @@ export default function AdminSidebarClient() {
         {open ? <ExpandLess /> : <ExpandMore />}
       </ListItemButton>
       <Collapse in={open} timeout="auto" unmountOnExit>
-        <List component="div" disablePadding>
-          <ListItemButton sx={{ pl: 4 }} href="/admin/users">
-            <ListItemIcon>
-              <People />
-            </ListItemIcon>
-            <ListItemText primary="Usuarios" />
-          </ListItemButton>
-        </List>
+        {isOwner ? (
+          <List component="div" disablePadding>
+            <ListItemButton sx={{ pl: 4 }} href="/admin/users">
+              <ListItemIcon>
+                <People />
+              </ListItemIcon>
+              <ListItemText primary="Usuarios" />
+            </ListItemButton>
+            <ListItemButton sx={{ pl: 4 }} href="/admin/tiendas">
+              <ListItemIcon>
+                <Storefront />
+              </ListItemIcon>
+              <ListItemText primary="Tiendas" />
+            </ListItemButton>
+          </List>
+        ) : null}
         <List component="div" disablePadding>
           <ListItemButton sx={{ pl: 4 }} href="/admin/eventos">
             <ListItemIcon>
@@ -52,14 +65,16 @@ export default function AdminSidebarClient() {
             <ListItemText primary="Eventos" />
           </ListItemButton>
         </List>
-        <List component="div" disablePadding>
-          <ListItemButton sx={{ pl: 4 }} href="/admin/torneos-custom">
-            <ListItemIcon>
-              <SportsEsports />
-            </ListItemIcon>
-            <ListItemText primary="Torneos custom" />
-          </ListItemButton>
-        </List>
+        {isOwner ? (
+          <List component="div" disablePadding>
+            <ListItemButton sx={{ pl: 4 }} href="/admin/torneos-custom">
+              <ListItemIcon>
+                <SportsEsports />
+              </ListItemIcon>
+              <ListItemText primary="Torneos custom" />
+            </ListItemButton>
+          </List>
+        ) : null}
         <List component="div" disablePadding>
           <ListItemButton sx={{ pl: 4 }} href="/admin/ligas">
             <ListItemIcon>
@@ -84,14 +99,16 @@ export default function AdminSidebarClient() {
             <ListItemText primary="Puntos (CSV)" />
           </ListItemButton>
         </List>
-        <List component="div" disablePadding>
-          <ListItemButton sx={{ pl: 4 }} href="/admin/configuracion">
-            <ListItemIcon>
-              <Settings />
-            </ListItemIcon>
-            <ListItemText primary="Configuración" />
-          </ListItemButton>
-        </List>
+        {isOwner ? (
+          <List component="div" disablePadding>
+            <ListItemButton sx={{ pl: 4 }} href="/admin/configuracion">
+              <ListItemIcon>
+                <Settings />
+              </ListItemIcon>
+              <ListItemText primary="Configuración" />
+            </ListItemButton>
+          </List>
+        ) : null}
       </Collapse>
     </>
   )
