@@ -703,13 +703,18 @@ function ResendPickupEmailCard({
 export default function AdminConfiguracionPage() {
   const { data: session } = useSession()
   const activeStoreId = session?.user?.activeStoreId?.trim()
-  const [activeStoreName, setActiveStoreName] = useState<string | null>(null)
+  const [resolvedStoreLabel, setResolvedStoreLabel] = useState<{
+    storeId: string
+    name: string | null
+  } | null>(null)
+
+  const activeStoreDisplayName =
+    !activeStoreId || resolvedStoreLabel?.storeId !== activeStoreId
+      ? null
+      : resolvedStoreLabel.name
 
   useEffect(() => {
-    if (!activeStoreId) {
-      setActiveStoreName(null)
-      return
-    }
+    if (!activeStoreId) return
     let cancelled = false
     ;(async () => {
       try {
@@ -720,11 +725,17 @@ export default function AdminConfiguracionPage() {
         }
         const rows = Array.isArray(data.stores) ? data.stores : []
         const hit = rows.find(r => String(r.id) === activeStoreId)
-        const name =
-          hit && typeof hit.name === 'string' ? hit.name.trim() : ''
-        if (!cancelled) setActiveStoreName(name || null)
+        const name = hit && typeof hit.name === 'string' ? hit.name.trim() : ''
+        if (!cancelled) {
+          setResolvedStoreLabel({
+            storeId: activeStoreId,
+            name: name || null
+          })
+        }
       } catch {
-        if (!cancelled) setActiveStoreName(null)
+        if (!cancelled) {
+          setResolvedStoreLabel({ storeId: activeStoreId, name: null })
+        }
       }
     })()
     return () => {
@@ -769,13 +780,13 @@ export default function AdminConfiguracionPage() {
               >
                 Configuración
               </Typography>
-              {activeStoreName ? (
+              {activeStoreDisplayName ? (
                 <Typography
                   variant="subtitle2"
                   color="text.secondary"
                   sx={{ mt: 0.75, fontWeight: 700 }}
                 >
-                  Tienda activa: {activeStoreName}
+                  Tienda activa: {activeStoreDisplayName}
                 </Typography>
               ) : null}
               <Typography

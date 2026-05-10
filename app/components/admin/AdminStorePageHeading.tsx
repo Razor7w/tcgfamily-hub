@@ -25,20 +25,23 @@ export function AdminStorePageHeading({
   ...rest
 }: AdminStorePageHeadingProps) {
   const { data: session, status } = useSession()
-  const [logoUrl, setLogoUrl] = useState('')
+  const [fetchedLogo, setFetchedLogo] = useState<{
+    storeId: string
+    url: string
+  } | null>(null)
   const showLogo =
     Boolean(showActiveStoreAvatar) || session?.user?.storeRole === 'store_admin'
+  const aid = session?.user?.activeStoreId?.trim() ?? ''
+
+  const resolvedLogoUrl =
+    !showLogo || status !== 'authenticated' || !aid
+      ? ''
+      : fetchedLogo?.storeId === aid
+        ? fetchedLogo.url
+        : ''
 
   useEffect(() => {
-    if (!showLogo || status !== 'authenticated') {
-      setLogoUrl('')
-      return
-    }
-    const aid = session?.user?.activeStoreId?.trim()
-    if (!aid) {
-      setLogoUrl('')
-      return
-    }
+    if (!showLogo || status !== 'authenticated' || !aid) return
     let cancelled = false
     ;(async () => {
       try {
@@ -50,15 +53,15 @@ export function AdminStorePageHeading({
         const rows = Array.isArray(data.stores) ? data.stores : []
         const hit = rows.find(r => String(r.id) === aid)
         const logo = typeof hit?.logoUrl === 'string' ? hit.logoUrl.trim() : ''
-        if (!cancelled) setLogoUrl(logo)
+        if (!cancelled) setFetchedLogo({ storeId: aid, url: logo })
       } catch {
-        if (!cancelled) setLogoUrl('')
+        if (!cancelled) setFetchedLogo({ storeId: aid, url: '' })
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [showLogo, showActiveStoreAvatar, session?.user?.activeStoreId, status])
+  }, [showLogo, status, aid])
 
   return (
     <Stack
@@ -74,7 +77,7 @@ export function AdminStorePageHeading({
       {showLogo ? (
         <Avatar
           variant="rounded"
-          src={logoUrl || undefined}
+          src={resolvedLogoUrl || undefined}
           alt=""
           sx={{
             width: { xs: 44, sm: 52 },

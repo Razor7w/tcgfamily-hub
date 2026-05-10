@@ -149,7 +149,6 @@ export async function requireSessionUserWithActiveStore(): Promise<
   | { ok: false; response: NextResponse }
 > {
   const session = await auth()
-  const uid = session?.user?.id
   const raw = session?.user as { activeStoreId?: string } | undefined
   const aid =
     typeof raw?.activeStoreId === 'string' &&

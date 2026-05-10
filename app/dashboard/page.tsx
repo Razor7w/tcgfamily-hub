@@ -11,27 +11,38 @@ import { alpha } from '@mui/material/styles'
 export default function DashboardPage() {
   const { data: session } = useSession()
   const activeId = session?.user?.activeStoreId?.trim() ?? ''
-  const [activeStoreName, setActiveStoreName] = useState('')
+  const [resolvedStoreName, setResolvedStoreName] = useState<{
+    storeId: string
+    name: string
+  } | null>(null)
+
+  const activeStoreLine =
+    activeId &&
+    resolvedStoreName?.storeId === activeId &&
+    resolvedStoreName.name
+      ? resolvedStoreName.name
+      : ''
 
   useEffect(() => {
-    if (!activeId) {
-      setActiveStoreName('')
-      return
-    }
+    if (!activeId) return
     let cancelled = false
     ;(async () => {
       try {
         const res = await fetch('/api/me/stores')
-        if (!res.ok) return
+        if (!res.ok || cancelled) return
         const data = (await res.json()) as {
           stores?: Array<{ id?: string; name?: string }>
         }
         const rows = Array.isArray(data.stores) ? data.stores : []
         const hit = rows.find(r => String(r.id) === activeId)
         const n = typeof hit?.name === 'string' ? hit.name : ''
-        if (!cancelled) setActiveStoreName(n)
+        if (!cancelled) {
+          setResolvedStoreName({ storeId: activeId, name: n })
+        }
       } catch {
-        if (!cancelled) setActiveStoreName('')
+        if (!cancelled) {
+          setResolvedStoreName({ storeId: activeId, name: '' })
+        }
       }
     })()
     return () => {
@@ -52,9 +63,9 @@ export default function DashboardPage() {
           <Typography variant="h4" component="h1" gutterBottom>
             Hola {session?.user?.name ?? ''}
           </Typography>
-          {activeStoreName ? (
+          {activeStoreLine ? (
             <Typography variant="subtitle1" color="text.secondary">
-              Estás en {activeStoreName}
+              Estás en {activeStoreLine}
             </Typography>
           ) : null}
         </Box>
