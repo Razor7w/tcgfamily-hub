@@ -217,8 +217,8 @@ export default function AdminLigasPage() {
                     sx={{ mt: 1, maxWidth: 640, lineHeight: 1.6 }}
                   >
                     Puntuación fija en la liga: victoria {LEAGUE_SCORE_WIN} pts,
-                    empate {LEAGUE_SCORE_TIE} pt, derrota {LEAGUE_SCORE_LOSS} pts
-                    (por récord W/L/T del participante en cada torneo).
+                    empate {LEAGUE_SCORE_TIE} pt, derrota {LEAGUE_SCORE_LOSS}{' '}
+                    pts (por récord W/L/T del participante en cada torneo).
                   </Typography>
                 </Box>
               </AdminStorePageHeading>

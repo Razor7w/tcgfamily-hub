@@ -36,10 +36,10 @@ async function generateNextMailCode(
   primaryStoreOid: mongoose.Types.ObjectId | null
 ) {
   const prefix = todayPrefix()
-  const scope = mongoFilterByStore(
-    activeStoreOid,
-    primaryStoreOid
-  ) as Record<string, unknown>
+  const scope = mongoFilterByStore(activeStoreOid, primaryStoreOid) as Record<
+    string,
+    unknown
+  >
   // Regex con prefijo fijo por día (no usar $gte/$lt sobre DD-MM-YYYY: el orden lexicográfico
   // no coincide con el orden de fechas entre meses/años).
   const last = await Mail.findOne({
@@ -305,10 +305,7 @@ export async function POST(request: NextRequest) {
     let lastError: unknown = null
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
-        const code = await generateNextMailCode(
-          activeStoreOid,
-          primaryStoreOid
-        )
+        const code = await generateNextMailCode(activeStoreOid, primaryStoreOid)
         const adminInStore =
           Boolean(adminFullCreate) && Boolean(isRecivedInStore ?? false)
         const newMail = new Mail({

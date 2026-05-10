@@ -12,10 +12,14 @@ import User from '@/models/User'
  *   de estar ligado a la tienda primaria; un owner asignado a una filial tiene el mismo
  *   alcance global sobre todas las tiendas.
  */
-export async function canManageStoresGlobally(userId: string): Promise<boolean> {
+export async function canManageStoresGlobally(
+  userId: string
+): Promise<boolean> {
   await connectDB()
   const oid = userId.trim()
-  const legacy = await User.findById(oid).select('role').lean<{ role?: string }>()
+  const legacy = await User.findById(oid)
+    .select('role')
+    .lean<{ role?: string }>()
   if (legacy?.role === 'admin') return true
 
   return Boolean(
@@ -58,7 +62,9 @@ export async function assertCanManageStoreMutation(
 }
 
 /** Alta de `owner` en una tienda: sólo quien ya tiene alcance global (admin legacy o cualquier membresía `owner`). */
-export async function canAssignOwnerMembership(userId: string): Promise<boolean> {
+export async function canAssignOwnerMembership(
+  userId: string
+): Promise<boolean> {
   return canManageStoresGlobally(userId)
 }
 

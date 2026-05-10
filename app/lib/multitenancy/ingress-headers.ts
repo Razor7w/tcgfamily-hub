@@ -5,11 +5,7 @@ export function publicStoreSlugFromHeaders(h: {
   get(name: string): string | null | undefined
 }): string | null {
   const raw = h.get('x-default-store-slug')
-  if (
-    raw == null ||
-    raw === '' ||
-    raw === STORE_SLUG_INGRESS_SENTINEL
-  ) {
+  if (raw == null || raw === '' || raw === STORE_SLUG_INGRESS_SENTINEL) {
     return null
   }
   return raw.trim().toLowerCase()

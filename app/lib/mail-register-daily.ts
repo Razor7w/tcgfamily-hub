@@ -168,10 +168,10 @@ export async function countMailsRegisteredTodayBySenderForStore(
     typeof fromUserId === 'string'
       ? new mongoose.Types.ObjectId(fromUserId)
       : fromUserId
-  const scope = mongoFilterByStore(
-    activeStoreOid,
-    primaryStoreOid
-  ) as Record<string, unknown>
+  const scope = mongoFilterByStore(activeStoreOid, primaryStoreOid) as Record<
+    string,
+    unknown
+  >
   return Mail.countDocuments({
     ...scope,
     fromUserId: oid,

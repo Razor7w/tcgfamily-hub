@@ -259,10 +259,10 @@ export async function DELETE(
     }
 
     const primary = await memoPrimaryTcgfamilyStoreObjectId()
-    const scoped = mongoFilterByStore(
-      sg.activeStoreOid,
-      primary
-    ) as Record<string, unknown>
+    const scoped = mongoFilterByStore(sg.activeStoreOid, primary) as Record<
+      string,
+      unknown
+    >
 
     const existing = await Mails.findOne({ _id: mailId, ...scoped })
     if (!existing) {

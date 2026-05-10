@@ -27,8 +27,7 @@ export function AdminStorePageHeading({
   const { data: session, status } = useSession()
   const [logoUrl, setLogoUrl] = useState('')
   const showLogo =
-    Boolean(showActiveStoreAvatar) ||
-    session?.user?.storeRole === 'store_admin'
+    Boolean(showActiveStoreAvatar) || session?.user?.storeRole === 'store_admin'
 
   useEffect(() => {
     if (!showLogo || status !== 'authenticated') {
@@ -66,7 +65,10 @@ export function AdminStorePageHeading({
       direction="row"
       spacing={spacing}
       alignItems={alignItems}
-      sx={[{ flex: 1, minWidth: 0 }, ...(Array.isArray(sx) ? sx : sx ? [sx] : [])]}
+      sx={[
+        { flex: 1, minWidth: 0 },
+        ...(Array.isArray(sx) ? sx : sx ? [sx] : [])
+      ]}
       {...rest}
     >
       {showLogo ? (

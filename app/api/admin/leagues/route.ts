@@ -46,7 +46,9 @@ export async function GET() {
       gate.activeStoreOid,
       gate.primaryStoreOid ?? null
     ) as Record<string, unknown>
-    const raw = await League.find({ ...scope }).sort({ name: 1 }).lean()
+    const raw = await League.find({ ...scope })
+      .sort({ name: 1 })
+      .lean()
     const leagues = raw.map(d => serializeLeague(d as Record<string, unknown>))
     return NextResponse.json({ leagues }, { status: 200 })
   } catch (error) {

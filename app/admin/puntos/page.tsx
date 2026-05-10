@@ -95,10 +95,10 @@ export default function AdminPuntosPage() {
               <Typography variant="body2" color="text.secondary">
                 Sube el reporte (CSV con punto y coma, mismo formato que el de
                 ejemplo). Se busca al usuario por RUT (todas las formas
-                guardadas) o por correo (minúsculas). Si vienen ambos, primero se
-                intenta por RUT (incluye filas solo con RUT) y, si no hay
-                coincidencia, por correo. Se sincronizan saldo, próximos puntos a
-                vencer y fecha de vencimiento. No se crean usuarios nuevos.
+                guardadas) o por correo (minúsculas). Si vienen ambos, primero
+                se intenta por RUT (incluye filas solo con RUT) y, si no hay
+                coincidencia, por correo. Se sincronizan saldo, próximos puntos
+                a vencer y fecha de vencimiento. No se crean usuarios nuevos.
               </Typography>
             </Stack>
           </AdminStorePageHeading>

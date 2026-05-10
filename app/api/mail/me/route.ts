@@ -33,10 +33,10 @@ export async function GET(request: Request) {
 
     await connectDB()
     const primary = await memoPrimaryTcgfamilyStoreObjectId()
-    const mailScope = mongoFilterByStore(
-      sg.activeStoreOid,
-      primary
-    ) as Record<string, unknown>
+    const mailScope = mongoFilterByStore(sg.activeStoreOid, primary) as Record<
+      string,
+      unknown
+    >
 
     const userId = session.user.id as string
     let uid: mongoose.Types.ObjectId

@@ -29,7 +29,8 @@ export async function GET(
     const uid = gate.session.user!.id
 
     const can = await assertCanManageStoreMutation(uid, oid)
-    if (!can) return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    if (!can)
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
 
     await connectDB()
     const m = await StoreMembership.find({ storeId: oid })
@@ -82,8 +83,7 @@ export async function POST(
     const role =
       body?.role === 'owner' || body?.role === 'store_admin' ? body.role : null
     let targetUserOid: mongoose.Types.ObjectId | null = null
-    const userIdRaw =
-      typeof body?.userId === 'string' ? body.userId.trim() : ''
+    const userIdRaw = typeof body?.userId === 'string' ? body.userId.trim() : ''
     if (userIdRaw && mongoose.Types.ObjectId.isValid(userIdRaw)) {
       targetUserOid = new mongoose.Types.ObjectId(userIdRaw)
     }
@@ -100,7 +100,10 @@ export async function POST(
         .select('_id')
         .lean<{ _id: mongoose.Types.ObjectId } | null>()
       if (!hit)
-        return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+        return NextResponse.json(
+          { error: 'Usuario no encontrado' },
+          { status: 404 }
+        )
       targetUserOid = hit._id
     }
 

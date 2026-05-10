@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireStoreStaffSession } from '@/lib/api-auth'
 import { adminWeeklyEventForbiddenResponse } from '@/lib/admin-weekly-event-access'
 import connectDB from '@/lib/mongodb'
-import WeeklyEvent from '@/models/WeeklyEvent'
 import { weeklyOfficialByIdForStaffGate } from '@/lib/multitenancy/staff-queries'
 import { popidForStorage } from '@/lib/rut-chile'
 

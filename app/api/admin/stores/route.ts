@@ -66,9 +66,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const name =
       typeof body?.name === 'string' ? body.name.trim().slice(0, 200) : ''
-    const slugOk = slugGuard(
-      typeof body?.slug === 'string' ? body.slug : ''
-    )
+    const slugOk = slugGuard(typeof body?.slug === 'string' ? body.slug : '')
     if (!name || !slugOk) {
       return NextResponse.json(
         {

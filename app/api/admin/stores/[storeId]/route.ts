@@ -40,7 +40,10 @@ export async function PATCH(
         { new: true }
       ).lean()
       if (!s) {
-        return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
+        return NextResponse.json(
+          { error: 'Tienda no encontrada' },
+          { status: 404 }
+        )
       }
       return NextResponse.json({
         id: s._id.toString(),
@@ -52,7 +55,8 @@ export async function PATCH(
     }
 
     const can = await assertCanManageStoreMutation(uid, oid)
-    if (!can) return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    if (!can)
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
 
     const patch: Partial<{
       name: string
@@ -84,7 +88,10 @@ export async function PATCH(
       { new: true }
     ).lean()
     if (!s) {
-      return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
+      return NextResponse.json(
+        { error: 'Tienda no encontrada' },
+        { status: 404 }
+      )
     }
 
     return NextResponse.json({

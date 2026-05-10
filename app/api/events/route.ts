@@ -189,10 +189,10 @@ export async function GET(request: NextRequest) {
     await connectDB()
     const now = new Date()
     const primary = await memoPrimaryTcgfamilyStoreObjectId()
-    const storeScope = mongoFilterByStore(
-      sg.activeStoreOid,
-      primary
-    ) as Record<string, unknown>
+    const storeScope = mongoFilterByStore(sg.activeStoreOid, primary) as Record<
+      string,
+      unknown
+    >
 
     const PAD_MS = 72 * 60 * 60 * 1000
     const queryRange =

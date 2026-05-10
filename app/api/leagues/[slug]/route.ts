@@ -97,7 +97,7 @@ export async function GET(
     const effectiveStoreOid =
       sidRaw != null
         ? new mongoose.Types.ObjectId(sidRaw as mongoose.Types.ObjectId)
-        : prim?._id ?? hintedStoreOid
+        : (prim?._id ?? hintedStoreOid)
 
     const league = {
       _id: String(leagueDoc._id),

@@ -21,11 +21,7 @@ import {
 } from '@mui/material'
 import { useState } from 'react'
 
-export default function AdminSidebarClient({
-  isOwner
-}: {
-  isOwner: boolean
-}) {
+export default function AdminSidebarClient({ isOwner }: { isOwner: boolean }) {
   const [open, setOpen] = useState(true)
 
   const handleClick = () => {

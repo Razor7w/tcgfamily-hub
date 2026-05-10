@@ -104,7 +104,9 @@ export async function GET() {
     return NextResponse.json({
       stores,
       mode:
-        fromMembership.length === 0 ? ('open' as const) : ('all_active' as const)
+        fromMembership.length === 0
+          ? ('open' as const)
+          : ('all_active' as const)
     })
   } catch (e) {
     console.error('GET /api/me/stores:', e)

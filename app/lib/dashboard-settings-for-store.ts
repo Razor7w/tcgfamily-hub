@@ -31,10 +31,7 @@ export async function getDashboardDocForStore(
   await connectDB()
   const filter = await scopedFilter(activeOid)
   let doc = await DashboardModuleSettings.findOne(filter)
-  if (
-    !doc &&
-    (await memoPrimaryTcgfamilyStoreObjectId())?.equals(activeOid)
-  ) {
+  if (!doc && (await memoPrimaryTcgfamilyStoreObjectId())?.equals(activeOid)) {
     doc = await DashboardModuleSettings.findOne({
       storeId: { $exists: false }
     })

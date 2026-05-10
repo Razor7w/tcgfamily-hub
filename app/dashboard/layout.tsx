@@ -20,8 +20,7 @@ export default async function DashboardLayout({
     session?.user.storeRole === 'owner' ||
     session?.user.storeRole === 'store_admin'
   const isOwner = session?.user.storeRole === 'owner'
-  const dashboardModules =
-    await loadDashboardModuleSettings(activeStoreMongoId)
+  const dashboardModules = await loadDashboardModuleSettings(activeStoreMongoId)
 
   return (
     <AuthLayout>

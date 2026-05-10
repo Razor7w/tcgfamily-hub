@@ -44,7 +44,9 @@ export async function loadDashboardModuleSettings(
   ) {
     const activeOid = new mongoose.Types.ObjectId(activeStoreMongoId.trim())
     const filter = await scopedFilter(activeOid)
-    docLean = (await DashboardModuleSettings.findOne(filter).lean()) as typeof docLean
+    docLean = (await DashboardModuleSettings.findOne(
+      filter
+    ).lean()) as typeof docLean
     if (!docLean) {
       docLean = (await DashboardModuleSettings.findOne({
         storeId: activeOid
