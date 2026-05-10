@@ -44,7 +44,7 @@ export const DASHBOARD_SECTION_COPY: Record<
   player: {
     title: 'Tu actividad como jugador',
     description:
-      'En Mi cuenta verás torneos, mazos públicos y estadísticas de tu perfil. La tienda activa define si ves cada bloque y en qué orden lo hacen en esta pantalla.'
+      'Torneos y estadísticas de tu perfil. Los últimos mazos públicos de la comunidad están en Inicio. La tienda activa define si ves cada bloque aquí y en qué orden.'
   }
 }
 
@@ -53,6 +53,56 @@ export function dashboardModuleIdsForScope(
   scope: DashboardModuleScope
 ): DashboardModuleId[] {
   return DASHBOARD_MODULE_IDS.filter(id => DASHBOARD_MODULE_SCOPE[id] === scope)
+}
+
+/**
+ * Módulos que no aparecen en la UI de configuración (/admin/configuracion);
+ * comportamiento fijo en el cliente (p. ej. siempre visible en Inicio).
+ */
+export function dashboardModuleIdsForAdminEditor(
+  scope: DashboardModuleScope
+): Exclude<DashboardModuleId, 'recentPublicDecklists'>[] {
+  return dashboardModuleIdsForScope(scope).filter(
+    (id): id is Exclude<DashboardModuleId, 'recentPublicDecklists'> =>
+      id !== 'recentPublicDecklists'
+  )
+}
+
+/** Orden jugador editable en admin (sin mazos públicos, fijos en Inicio). */
+export function playerOrderForAdminEditor(
+  persistedOrder: DashboardModuleId[]
+): Exclude<DashboardModuleId, 'recentPublicDecklists'>[] {
+  return splitDashboardOrder(persistedOrder).playerOrder.filter(
+    (id): id is Exclude<DashboardModuleId, 'recentPublicDecklists'> =>
+      id !== 'recentPublicDecklists'
+  )
+}
+
+/** Reconstituye el vector `order` completo tras guardar el editor admin. */
+export function composePersistedDashboardOrderFromAdminState(
+  storeOrder: DashboardModuleId[],
+  editablePlayerOrder: Exclude<
+    DashboardModuleId,
+    'recentPublicDecklists'
+  >[]
+): DashboardModuleId[] {
+  return canonicalizeDashboardOrder([
+    ...storeOrder,
+    'recentPublicDecklists',
+    ...editablePlayerOrder
+  ])
+}
+
+/** Visibilidad que admite configuración admin (sin módulos fijos en cliente). */
+export function configurableDashboardVisibilitySnapshot(
+  v: DashboardModuleVisibility
+): Omit<DashboardModuleVisibility, 'recentPublicDecklists'> {
+  const snap: Partial<DashboardModuleVisibility> = {}
+  for (const id of DASHBOARD_MODULE_IDS) {
+    if (id === 'recentPublicDecklists') continue
+    snap[id] = v[id]
+  }
+  return snap as Omit<DashboardModuleVisibility, 'recentPublicDecklists'>
 }
 
 /** Divide el orden persistido en dos listas (misma concatenación ↔ `mergeScopedDashboardOrders`). */
@@ -238,5 +288,12 @@ export function mergeDashboardSettings(
     ...DEFAULT_DASHBOARD_SHORTCUTS,
     ...partial?.shortcuts
   }
-  return { visibility, order: canonicalizeDashboardOrder(order), shortcuts }
+  return {
+    visibility: {
+      ...visibility,
+      recentPublicDecklists: true
+    },
+    order: canonicalizeDashboardOrder(order),
+    shortcuts
+  }
 }

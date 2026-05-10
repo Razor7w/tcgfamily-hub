@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { startTransition, useEffect, useState, type ReactNode } from 'react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import dynamic from 'next/dynamic'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -28,7 +29,6 @@ import WeeklyEventsSectionSkeleton from '@/components/events/WeeklyEventsSection
 import CardMails from '@/components/dashboard/CardMails'
 import MailFlowExplainer from '@/components/mails/MailFlowExplainer'
 import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
-import RecentPublicDecklistsHomeCard from '@/components/dashboard/RecentPublicDecklistsHomeCard'
 import DashboardStatisticsCard from '@/components/dashboard/DashboardStatisticsCard'
 import { useStoreCredit } from '@/hooks/useStoreCredit'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
@@ -36,6 +36,7 @@ import {
   orderModulesForScope,
   type DashboardModuleId
 } from '@/lib/dashboard-module-config'
+import { DEFAULT_PRIMARY_STORE_SLUG } from '@/lib/multitenancy/constants'
 
 const WeeklyEventsSection = dynamic(
   () => import('@/components/events/WeeklyEventsSection'),
@@ -53,6 +54,49 @@ export default function DashboardHomeContent({
   variant = 'tiendas'
 }: DashboardHomeContentProps) {
   const { visibility, order } = useDashboardModulesFromLayout()
+  const { data: session } = useSession()
+  const activeStoreId = session?.user?.activeStoreId?.trim() ?? ''
+  const [resolvedActiveStoreSlug, setResolvedActiveStoreSlug] = useState<
+    string | null
+  >(null)
+
+  useEffect(() => {
+    if (variant !== 'tiendas') {
+      startTransition(() => setResolvedActiveStoreSlug(null))
+      return
+    }
+    if (!activeStoreId) {
+      startTransition(() => setResolvedActiveStoreSlug(null))
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/me/stores')
+        if (!res.ok || cancelled) return
+        const data = (await res.json()) as {
+          stores?: Array<{ id?: string; slug?: string }>
+        }
+        const rows = Array.isArray(data.stores) ? data.stores : []
+        const hit = rows.find(r => String(r.id) === activeStoreId)
+        const slug =
+          typeof hit?.slug === 'string' ? hit.slug.trim().toLowerCase() : ''
+        if (!cancelled) {
+          startTransition(() => setResolvedActiveStoreSlug(slug || null))
+        }
+      } catch {
+        if (!cancelled) {
+          startTransition(() => setResolvedActiveStoreSlug(null))
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [activeStoreId, variant])
+
+  const isTcgFamilyStore =
+    resolvedActiveStoreSlug === DEFAULT_PRIMARY_STORE_SLUG
 
   const {
     data: credit,
@@ -90,10 +134,6 @@ export default function DashboardHomeContent({
 
   const weeklyEventsBlock = visibility.weeklyEvents ? (
     <WeeklyEventsSection />
-  ) : null
-
-  const recentPublicDecklistsBlock = visibility.recentPublicDecklists ? (
-    <RecentPublicDecklistsHomeCard />
   ) : null
 
   const myTournamentsBlock = visibility.myTournaments ? (
@@ -167,17 +207,23 @@ export default function DashboardHomeContent({
       <CardHeader
         avatar={<Storefront color="primary" />}
         title="Crédito de tienda"
-        subheader="TCG Family puntos (1 punto ≈ $1 en canje)"
+        subheader={
+          isTcgFamilyStore
+            ? 'TCG Family puntos (1 punto ≈ $1 en canje)'
+            : undefined
+        }
         slotProps={{ title: { variant: 'h6' } }}
         action={
-          <IconButton
-            aria-label="Información sobre los puntos de tienda"
-            onClick={() => setStorePointsInfoOpen(true)}
-            size="small"
-            color="primary"
-          >
-            <InfoOutlined />
-          </IconButton>
+          isTcgFamilyStore ? (
+            <IconButton
+              aria-label="Información sobre los puntos TCG Family"
+              onClick={() => setStorePointsInfoOpen(true)}
+              size="small"
+              color="primary"
+            >
+              <InfoOutlined />
+            </IconButton>
+          ) : undefined
         }
       />
       <CardContent sx={{ pt: 0 }}>
@@ -281,7 +327,7 @@ export default function DashboardHomeContent({
 
   const blocks: Record<DashboardModuleId, ReactNode> = {
     weeklyEvents: weeklyEventsBlock,
-    recentPublicDecklists: recentPublicDecklistsBlock,
+    recentPublicDecklists: null,
     myTournaments: myTournamentsBlock,
     statistics: statisticsBlock,
     mail: mailBlock,
@@ -289,7 +335,12 @@ export default function DashboardHomeContent({
   }
 
   const storeModuleIds = orderModulesForScope(order, visibility, 'store')
-  const playerModuleIds = orderModulesForScope(order, visibility, 'player')
+  /** Mazos públicos solo en Inicio (`/dashboard`), no en Mi cuenta. */
+  const playerModuleIds = orderModulesForScope(
+    order,
+    visibility,
+    'player'
+  ).filter(id => id !== 'recentPublicDecklists')
 
   const emptyCard = (copy: ReactNode) => (
     <Card
@@ -325,42 +376,44 @@ export default function DashboardHomeContent({
           ))}
         </Stack>
 
-        <Dialog
-          open={storePointsInfoOpen}
-          onClose={() => setStorePointsInfoOpen(false)}
-          maxWidth="sm"
-          fullWidth
-          aria-labelledby="store-points-info-title"
-        >
-          <DialogTitle id="store-points-info-title">
-            TCG Family puntos
-          </DialogTitle>
-          <DialogContent>
-            <Typography variant="body2" component="p" sx={{ mb: 2 }}>
-              Los TCG Family puntos, tienen equivalencia de $1 cada uno, se
-              obtienen al realizar compras por la web (1% del monto de la
-              compra), al &quot;sacrificar&quot; cartas en la tienda (solo en
-              días de intercambio que son informados previamente) y otros
-              métodos informados por los canales de la comunidad.
-            </Typography>
-            <Typography variant="body2" component="p" sx={{ mb: 2 }}>
-              Se debe tener un mínimo de 5000 puntos para poder canjearlos y
-              debe hacerse de forma presencial o coordinándolo por mensaje de
-              Instagram.
-            </Typography>
-            <Typography variant="body2" component="p">
-              Tienen vigencia de 1 año desde su generación.
-            </Typography>
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 2 }}>
-            <Button
-              onClick={() => setStorePointsInfoOpen(false)}
-              variant="contained"
-            >
-              Cerrar
-            </Button>
-          </DialogActions>
-        </Dialog>
+        {isTcgFamilyStore ? (
+          <Dialog
+            open={storePointsInfoOpen}
+            onClose={() => setStorePointsInfoOpen(false)}
+            maxWidth="sm"
+            fullWidth
+            aria-labelledby="store-points-info-title"
+          >
+            <DialogTitle id="store-points-info-title">
+              TCG Family puntos
+            </DialogTitle>
+            <DialogContent>
+              <Typography variant="body2" component="p" sx={{ mb: 2 }}>
+                Los TCG Family puntos, tienen equivalencia de $1 cada uno, se
+                obtienen al realizar compras por la web (1% del monto de la
+                compra), al &quot;sacrificar&quot; cartas en la tienda (solo en
+                días de intercambio que son informados previamente) y otros
+                métodos informados por los canales de la comunidad.
+              </Typography>
+              <Typography variant="body2" component="p" sx={{ mb: 2 }}>
+                Se debe tener un mínimo de 5000 puntos para poder canjearlos y
+                debe hacerse de forma presencial o coordinándolo por mensaje de
+                Instagram.
+              </Typography>
+              <Typography variant="body2" component="p">
+                Tienen vigencia de 1 año desde su generación.
+              </Typography>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2 }}>
+              <Button
+                onClick={() => setStorePointsInfoOpen(false)}
+                variant="contained"
+              >
+                Cerrar
+              </Button>
+            </DialogActions>
+          </Dialog>
+        ) : null}
 
         <RegisterMailDialog
           open={registerMailOpen}

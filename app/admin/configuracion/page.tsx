@@ -36,9 +36,11 @@ import {
   useUpdateResendPickupNotifySettings
 } from '@/hooks/useDashboardModules'
 import {
-  dashboardModuleIdsForScope,
+  composePersistedDashboardOrderFromAdminState,
+  configurableDashboardVisibilitySnapshot,
+  dashboardModuleIdsForAdminEditor,
   mergeDashboardSettings,
-  mergeScopedDashboardOrders,
+  playerOrderForAdminEditor,
   splitDashboardOrder,
   type DashboardModuleId,
   type DashboardModuleScope,
@@ -50,16 +52,29 @@ import {
   MAIL_REGISTER_DAILY_LIMIT_ADMIN_MAX
 } from '@/lib/mail-register-constants'
 
-const LABELS: Record<DashboardModuleId, string> = {
+type DashboardModuleConfigurableId = Exclude<
+  DashboardModuleId,
+  'recentPublicDecklists'
+>
+
+const CONFIGURABLE_MODULE_LABELS: Record<
+  DashboardModuleConfigurableId,
+  string
+> = {
   weeklyEvents: 'Eventos de la semana (calendario y preinscripción)',
-  recentPublicDecklists:
-    'Últimos mazos públicos (tarjeta en el inicio del dashboard)',
   myTournaments:
     'Mis torneos (resumen de participaciones, rondas y torneos custom)',
   statistics:
     'Estadísticas (récord y win rate por mazo, rivales en el detalle)',
   mail: 'Correo (últimos correos y registro)',
   storePoints: 'Crédito de tienda (puntos)'
+}
+
+function dashboardModuleAdminLabel(id: DashboardModuleId): string {
+  if (id === 'recentPublicDecklists') {
+    return 'Últimos mazos públicos'
+  }
+  return CONFIGURABLE_MODULE_LABELS[id]
 }
 
 const SCOPE_VISIBILITY_GROUP: Record<DashboardModuleScope, string> = {
@@ -114,7 +129,7 @@ function ScopedOrderPaper({
             }}
           >
             <Typography variant="body2" sx={{ flex: 1, fontWeight: 600 }}>
-              {LABELS[id]}
+              {dashboardModuleAdminLabel(id)}
             </Typography>
             <IconButton
               size="small"
@@ -146,27 +161,36 @@ function DashboardModulesEditor({
 }) {
   const update = useUpdateDashboardModuleSettings()
   const [visibility, setVisibility] = useState(initial.visibility)
-  const { storeOrder: initStore, playerOrder: initPlayer } =
-    splitDashboardOrder(initial.order)
+  const { storeOrder: initStore } = splitDashboardOrder(initial.order)
   const [storeOrder, setStoreOrder] = useState<DashboardModuleId[]>(initStore)
-  const [playerOrder, setPlayerOrder] =
-    useState<DashboardModuleId[]>(initPlayer)
+  const [playerOrder, setPlayerOrder] = useState<
+    DashboardModuleConfigurableId[]
+  >(() => playerOrderForAdminEditor(initial.order))
 
   const mergedOrder = useMemo(
-    () => mergeScopedDashboardOrders(storeOrder, playerOrder),
+    () => composePersistedDashboardOrderFromAdminState(storeOrder, playerOrder),
     [storeOrder, playerOrder]
   )
 
-  const dirty = useMemo(
-    () =>
-      JSON.stringify(visibility) !== JSON.stringify(initial.visibility) ||
-      JSON.stringify(mergedOrder) !== JSON.stringify(initial.order),
-    [initial, visibility, mergedOrder]
-  )
+  const dirty = useMemo(() => {
+    const initialEditablePlayer = playerOrderForAdminEditor(initial.order)
+    return (
+      JSON.stringify(configurableDashboardVisibilitySnapshot(visibility)) !==
+        JSON.stringify(
+          configurableDashboardVisibilitySnapshot(initial.visibility)
+        ) ||
+      JSON.stringify(storeOrder) !==
+        JSON.stringify(splitDashboardOrder(initial.order).storeOrder) ||
+      JSON.stringify(playerOrder) !== JSON.stringify(initialEditablePlayer)
+    )
+  }, [initial.order, initial.visibility, playerOrder, storeOrder, visibility])
 
   const handleSave = () => {
     const payload: DashboardModuleSettingsDTO = {
-      visibility,
+      visibility: {
+        ...visibility,
+        recentPublicDecklists: true
+      },
       order: mergedOrder,
       shortcuts: initial.shortcuts
     }
@@ -175,9 +199,9 @@ function DashboardModulesEditor({
 
   const resetFromInitial = () => {
     setVisibility(initial.visibility)
-    const { storeOrder: s, playerOrder: p } = splitDashboardOrder(initial.order)
+    const { storeOrder: s } = splitDashboardOrder(initial.order)
     setStoreOrder(s)
-    setPlayerOrder(p)
+    setPlayerOrder(playerOrderForAdminEditor(initial.order))
   }
 
   const scopeSequence: DashboardModuleScope[] = ['store', 'player']
@@ -215,7 +239,7 @@ function DashboardModulesEditor({
                 {SCOPE_VISIBILITY_GROUP[scope]}
               </Typography>
               <Stack spacing={0.5}>
-                {dashboardModuleIdsForScope(scope).map(id => (
+                {dashboardModuleIdsForAdminEditor(scope).map(id => (
                   <FormControlLabel
                     key={id}
                     control={
@@ -226,7 +250,7 @@ function DashboardModulesEditor({
                         }
                       />
                     }
-                    label={LABELS[id]}
+                    label={CONFIGURABLE_MODULE_LABELS[id]}
                   />
                 ))}
               </Stack>
@@ -259,9 +283,11 @@ function DashboardModulesEditor({
                 {SCOPE_ORDER_GROUP[scope]}
               </Typography>
               <ScopedOrderPaper
-                items={scope === 'store' ? storeOrder : playerOrder}
+                items={scope === 'store' ? storeOrder : [...playerOrder]}
                 onReorder={next =>
-                  scope === 'store' ? setStoreOrder(next) : setPlayerOrder(next)
+                  scope === 'store'
+                    ? setStoreOrder(next)
+                    : setPlayerOrder(next as DashboardModuleConfigurableId[])
                 }
               />
             </Box>

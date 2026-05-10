@@ -4,10 +4,6 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  BarChart,
-  Email,
-  EmojiEvents,
-  Event,
   ExpandLess,
   ExpandMore,
   Home,
@@ -33,7 +29,6 @@ import {
 import AppVersion from '@/components/AppVersion'
 import SignOutList from '@/components/auth/SignOutList'
 import AdminSidebarClient from '@/components/navigation/AdminSidebarClient'
-import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
 
 function isUnderDecklistNav(path: string) {
   return (
@@ -51,7 +46,6 @@ export default function DashboardUserNav({
   isOwner: boolean
 }) {
   const pathname = usePathname() ?? ''
-  const { visibility } = useDashboardModulesFromLayout()
   const [decklistOpen, setDecklistOpen] = useState(() =>
     isUnderDecklistNav(pathname)
   )
@@ -61,10 +55,6 @@ export default function DashboardUserNav({
       setDecklistOpen(true)
     })
   }, [pathname])
-  const showEvents = visibility.weeklyEvents
-  const showMyTournaments = visibility.myTournaments
-  const showStatistics = visibility.statistics
-  const showMail = visibility.mail
 
   return (
     <Stack>
@@ -107,46 +97,6 @@ export default function DashboardUserNav({
               <ListItemText primary="Mi cuenta" />
             </ListItemButton>
           </ListItem>
-          {showEvents ? (
-            <ListItem disablePadding>
-              <ListItemButton href="/dashboard/eventos">
-                <ListItemIcon>
-                  <Event />
-                </ListItemIcon>
-                <ListItemText primary="Eventos" />
-              </ListItemButton>
-            </ListItem>
-          ) : null}
-          {showMyTournaments ? (
-            <ListItem disablePadding>
-              <ListItemButton href="/dashboard/torneos-semana">
-                <ListItemIcon>
-                  <EmojiEvents />
-                </ListItemIcon>
-                <ListItemText primary="Mis torneos" />
-              </ListItemButton>
-            </ListItem>
-          ) : null}
-          {showStatistics ? (
-            <ListItem disablePadding>
-              <ListItemButton href="/dashboard/estadisticas">
-                <ListItemIcon>
-                  <BarChart />
-                </ListItemIcon>
-                <ListItemText primary="Estadísticas" />
-              </ListItemButton>
-            </ListItem>
-          ) : null}
-          {showMail ? (
-            <ListItem disablePadding>
-              <ListItemButton href="/dashboard/mail">
-                <ListItemIcon>
-                  <Email />
-                </ListItemIcon>
-                <ListItemText primary="Correo" />
-              </ListItemButton>
-            </ListItem>
-          ) : null}
           <ListItem disablePadding>
             <ListItemButton
               onClick={() => setDecklistOpen(s => !s)}

@@ -17,6 +17,7 @@ import { useSession } from 'next-auth/react'
 import ReportCustomTournamentDialog from '@/components/events/ReportCustomTournamentDialog'
 import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
 import DashboardQuickActions from '@/components/dashboard/DashboardQuickActions'
+import RecentPublicDecklistsHomeCard from '@/components/dashboard/RecentPublicDecklistsHomeCard'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
 
 export default function DashboardPage() {
@@ -67,9 +68,9 @@ export default function DashboardPage() {
           )}
         </Typography>
 
-        <Stack spacing={3} sx={{ maxWidth: 720 }}>
+        <Stack spacing={3}>
           {showQuickActions ? (
-            <>
+            <Box sx={{ maxWidth: 720 }}>
               <DashboardQuickActions
                 shortcuts={shortcuts}
                 subtitle="Toman la tienda seleccionada en la barra superior. Los bloques están en Tiendas."
@@ -79,22 +80,28 @@ export default function DashboardPage() {
                   router.push('/dashboard/decklist-pdf-torneo')
                 }
               />
-              <Typography
-                variant="overline"
-                color="text.secondary"
-                sx={{
-                  fontWeight: 700,
-                  letterSpacing: '0.08em',
-                  display: 'block',
-                  pt: 0.5
-                }}
-              >
-                Continuar en el panel
-              </Typography>
-            </>
+            </Box>
           ) : null}
 
-          <Stack spacing={2}>
+          <Box sx={{ maxWidth: { xs: '100%', md: 900 } }}>
+            <RecentPublicDecklistsHomeCard />
+          </Box>
+
+          <Typography
+            variant="overline"
+            color="text.secondary"
+            sx={{
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              display: 'block',
+              maxWidth: 720,
+              pt: 0.5
+            }}
+          >
+            Continuar en el panel
+          </Typography>
+
+          <Stack spacing={2} sx={{ maxWidth: 720 }}>
             <Card variant="outlined" sx={{ borderRadius: 3 }}>
               <CardActionArea component={Link} href="/dashboard/tiendas">
                 <CardContent
