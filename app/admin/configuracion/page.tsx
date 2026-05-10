@@ -83,7 +83,7 @@ const SCOPE_VISIBILITY_GROUP: Record<DashboardModuleScope, string> = {
 }
 
 const SCOPE_ORDER_GROUP: Record<DashboardModuleScope, string> = {
-  store: 'Orden en Tiendas (/dashboard/tiendas)',
+  store: 'Orden en Tiendas (/{slug})',
   player: 'Orden en Mi cuenta (/dashboard/mi-cuenta)'
 }
 
@@ -229,8 +229,8 @@ function DashboardModulesEditor({
           sx={{ mt: 0.5, mb: 2 }}
         >
           Los ajustes aplican a quienes usen esta tienda como contexto en el
-          header: los módulos de tienda viven en Tiendas (/dashboard/tiendas) y
-          los de jugador en Mi cuenta (/dashboard/mi-cuenta).
+          header: los módulos de tienda viven en Tiendas en la URL raíz (p. ej.
+          /tcgfamily) y los de jugador en Mi cuenta (/dashboard/mi-cuenta).
         </Typography>
         <Stack spacing={2.5} sx={{ mb: 3 }}>
           {scopeSequence.map(scope => (

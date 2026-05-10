@@ -192,8 +192,8 @@ export async function PUT(request: NextRequest) {
       shortcuts: dShortcuts
     })
 
+    revalidatePath('/', 'layout')
     revalidatePath('/dashboard', 'layout')
-    revalidatePath('/dashboard/tiendas')
     revalidatePath('/dashboard/mi-cuenta')
     revalidatePath('/dashboard/eventos')
     revalidatePath('/dashboard/torneos-semana')

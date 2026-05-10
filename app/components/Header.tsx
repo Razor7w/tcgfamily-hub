@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSession, signOut } from 'next-auth/react'
 import AppBar from '@mui/material/AppBar'
@@ -32,6 +32,7 @@ import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined'
 import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 import { invalidateStoreScopedDashboardQueries } from '@/lib/invalidate-store-scoped-queries'
+import { isStoreContextHubPath } from '@/lib/store-context-hub-path'
 import { useAppStore } from '@/store/useAppStore'
 
 const ACCOUNT_DRAWER_WIDTH = 300
@@ -45,6 +46,7 @@ type HeaderStorePick = {
 
 export default function Header() {
   const router = useRouter()
+  const pathname = usePathname()
   const queryClient = useQueryClient()
   const { data: session, status, update } = useSession()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
@@ -140,7 +142,7 @@ export default function Header() {
     return (activeStoreRow?.logoUrl ?? '').trim()
   })()
 
-  const pickStoreContext = async (storeId: string) => {
+  const pickStoreContext = async (storeId: string, slugPreferred?: string) => {
     if (!storeId || storeId === activeStoreId) {
       setStoreMenuEl(null)
       return
@@ -168,7 +170,14 @@ export default function Header() {
       })
       await invalidateStoreScopedDashboardQueries(queryClient)
       await loadMeStores()
-      router.refresh()
+      const slug =
+        (typeof slugPreferred === 'string' ? slugPreferred.trim() : '') ||
+        storeOptions.find(s => s.id === storeId)?.slug?.trim()
+      if (slug && isStoreContextHubPath(pathname ?? '')) {
+        router.replace(`/${slug}`)
+      } else {
+        router.refresh()
+      }
     } catch (e) {
       setStoreSwitchError(
         e instanceof Error ? e.message : 'No se pudo cambiar de tienda'
@@ -308,7 +317,7 @@ export default function Header() {
                       key={s.id}
                       selected={activeStoreId === s.id}
                       disabled={storeSwitchBusy}
-                      onClick={() => void pickStoreContext(s.id)}
+                      onClick={() => void pickStoreContext(s.id, s.slug)}
                     >
                       <Stack
                         direction="row"

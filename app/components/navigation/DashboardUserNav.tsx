@@ -27,6 +27,7 @@ import {
   Stack
 } from '@mui/material'
 import AppVersion from '@/components/AppVersion'
+import { isStoreContextHubPath } from '@/lib/store-context-hub-path'
 import SignOutList from '@/components/auth/SignOutList'
 import AdminSidebarClient from '@/components/navigation/AdminSidebarClient'
 
@@ -77,7 +78,10 @@ export default function DashboardUserNav({
             <ListItemButton
               component={Link}
               href="/dashboard/tiendas"
-              selected={pathname === '/dashboard/tiendas'}
+              selected={
+                pathname === '/dashboard/tiendas' ||
+                isStoreContextHubPath(pathname)
+              }
             >
               <ListItemIcon>
                 <Storefront />
