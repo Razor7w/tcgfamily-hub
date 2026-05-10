@@ -36,9 +36,12 @@ import {
   useUpdateResendPickupNotifySettings
 } from '@/hooks/useDashboardModules'
 import {
-  DASHBOARD_MODULE_IDS,
+  dashboardModuleIdsForScope,
   mergeDashboardSettings,
+  mergeScopedDashboardOrders,
+  splitDashboardOrder,
   type DashboardModuleId,
+  type DashboardModuleScope,
   type DashboardModuleSettingsDTO,
   type DashboardShortcutsVisibility
 } from '@/lib/dashboard-module-config'
@@ -59,6 +62,16 @@ const LABELS: Record<DashboardModuleId, string> = {
   storePoints: 'Crédito de tienda (puntos)'
 }
 
+const SCOPE_VISIBILITY_GROUP: Record<DashboardModuleScope, string> = {
+  store: 'Visibilidad — tienda activa',
+  player: 'Visibilidad — jugador'
+}
+
+const SCOPE_ORDER_GROUP: Record<DashboardModuleScope, string> = {
+  store: 'Orden en Inicio (/dashboard)',
+  player: 'Orden en Mi cuenta (/dashboard/mi-cuenta)'
+}
+
 function moveOrder(
   order: DashboardModuleId[],
   index: number,
@@ -71,6 +84,61 @@ function moveOrder(
   return next
 }
 
+function ScopedOrderPaper({
+  items,
+  onReorder
+}: {
+  items: DashboardModuleId[]
+  onReorder: (next: DashboardModuleId[]) => void
+}) {
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        borderRadius: 2,
+        overflow: 'hidden',
+        borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.1)
+      }}
+    >
+      <Stack divider={<Divider flexItem />}>
+        {items.map((id, index) => (
+          <Stack
+            key={id}
+            direction="row"
+            alignItems="center"
+            spacing={1}
+            sx={{
+              px: 2,
+              py: 1.5,
+              bgcolor: (t: Theme) => alpha(t.palette.text.primary, 0.02)
+            }}
+          >
+            <Typography variant="body2" sx={{ flex: 1, fontWeight: 600 }}>
+              {LABELS[id]}
+            </Typography>
+            <IconButton
+              size="small"
+              aria-label="Subir"
+              disabled={index === 0}
+              onClick={() => onReorder(moveOrder(items, index, -1))}
+            >
+              <ArrowUpward fontSize="small" />
+            </IconButton>
+            <IconButton
+              size="small"
+              aria-label="Bajar"
+              disabled={index === items.length - 1}
+              onClick={() => onReorder(moveOrder(items, index, 1))}
+            >
+              <ArrowDownward fontSize="small" />
+            </IconButton>
+          </Stack>
+        ))}
+      </Stack>
+    </Paper>
+  )
+}
+
 function DashboardModulesEditor({
   initial
 }: {
@@ -78,23 +146,41 @@ function DashboardModulesEditor({
 }) {
   const update = useUpdateDashboardModuleSettings()
   const [visibility, setVisibility] = useState(initial.visibility)
-  const [order, setOrder] = useState<DashboardModuleId[]>(initial.order)
+  const { storeOrder: initStore, playerOrder: initPlayer } =
+    splitDashboardOrder(initial.order)
+  const [storeOrder, setStoreOrder] = useState<DashboardModuleId[]>(initStore)
+  const [playerOrder, setPlayerOrder] =
+    useState<DashboardModuleId[]>(initPlayer)
+
+  const mergedOrder = useMemo(
+    () => mergeScopedDashboardOrders(storeOrder, playerOrder),
+    [storeOrder, playerOrder]
+  )
 
   const dirty = useMemo(
     () =>
       JSON.stringify(visibility) !== JSON.stringify(initial.visibility) ||
-      JSON.stringify(order) !== JSON.stringify(initial.order),
-    [initial, visibility, order]
+      JSON.stringify(mergedOrder) !== JSON.stringify(initial.order),
+    [initial, visibility, mergedOrder]
   )
 
   const handleSave = () => {
     const payload: DashboardModuleSettingsDTO = {
       visibility,
-      order,
+      order: mergedOrder,
       shortcuts: initial.shortcuts
     }
     update.mutate(payload)
   }
+
+  const resetFromInitial = () => {
+    setVisibility(initial.visibility)
+    const { storeOrder: s, playerOrder: p } = splitDashboardOrder(initial.order)
+    setStoreOrder(s)
+    setPlayerOrder(p)
+  }
+
+  const scopeSequence: DashboardModuleScope[] = ['store', 'player']
 
   return (
     <Card
@@ -111,22 +197,40 @@ function DashboardModulesEditor({
           color="text.secondary"
           sx={{ fontWeight: 800, letterSpacing: '0.12em' }}
         >
-          Visibilidad
+          Visibilidad por bloque
         </Typography>
-        <Stack sx={{ mt: 1.5, mb: 3 }} spacing={0.5}>
-          {DASHBOARD_MODULE_IDS.map(id => (
-            <FormControlLabel
-              key={id}
-              control={
-                <Checkbox
-                  checked={visibility[id]}
-                  onChange={e =>
-                    setVisibility(v => ({ ...v, [id]: e.target.checked }))
-                  }
-                />
-              }
-              label={LABELS[id]}
-            />
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ mt: 0.5, mb: 2 }}
+        >
+          Los ajustes aplican a quienes usen esta tienda como contexto en el
+          header: los módulos de tienda viven en Inicio (/dashboard) y los de
+          jugador en Mi cuenta (/dashboard/mi-cuenta).
+        </Typography>
+        <Stack spacing={2.5} sx={{ mb: 3 }}>
+          {scopeSequence.map(scope => (
+            <Box key={scope}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>
+                {SCOPE_VISIBILITY_GROUP[scope]}
+              </Typography>
+              <Stack spacing={0.5}>
+                {dashboardModuleIdsForScope(scope).map(id => (
+                  <FormControlLabel
+                    key={id}
+                    control={
+                      <Checkbox
+                        checked={visibility[id]}
+                        onChange={e =>
+                          setVisibility(v => ({ ...v, [id]: e.target.checked }))
+                        }
+                      />
+                    }
+                    label={LABELS[id]}
+                  />
+                ))}
+              </Stack>
+            </Box>
           ))}
         </Stack>
 
@@ -140,55 +244,29 @@ function DashboardModulesEditor({
         <Typography
           variant="body2"
           color="text.secondary"
-          sx={{ mt: 0.5, mb: 1.5 }}
+          sx={{ mt: 0.5, mb: 2 }}
         >
-          El primero de la lista queda arriba del todo en el dashboard.
+          Cada lista define el orden vertical en su pantalla (Inicio vs Mi
+          cuenta). En base de datos se guarda como una sola secuencia: primero
+          todos los ítems de tienda, luego todos los del jugador
+          (concatenación).
         </Typography>
 
-        <Paper
-          variant="outlined"
-          sx={{
-            borderRadius: 2,
-            overflow: 'hidden',
-            borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.1)
-          }}
-        >
-          <Stack divider={<Divider flexItem />}>
-            {order.map((id, index) => (
-              <Stack
-                key={id}
-                direction="row"
-                alignItems="center"
-                spacing={1}
-                sx={{
-                  px: 2,
-                  py: 1.5,
-                  bgcolor: (t: Theme) => alpha(t.palette.text.primary, 0.02)
-                }}
-              >
-                <Typography variant="body2" sx={{ flex: 1, fontWeight: 600 }}>
-                  {LABELS[id]}
-                </Typography>
-                <IconButton
-                  size="small"
-                  aria-label="Subir"
-                  disabled={index === 0}
-                  onClick={() => setOrder(o => moveOrder(o, index, -1))}
-                >
-                  <ArrowUpward fontSize="small" />
-                </IconButton>
-                <IconButton
-                  size="small"
-                  aria-label="Bajar"
-                  disabled={index === order.length - 1}
-                  onClick={() => setOrder(o => moveOrder(o, index, 1))}
-                >
-                  <ArrowDownward fontSize="small" />
-                </IconButton>
-              </Stack>
-            ))}
-          </Stack>
-        </Paper>
+        <Stack spacing={2.5}>
+          {scopeSequence.map(scope => (
+            <Box key={scope}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>
+                {SCOPE_ORDER_GROUP[scope]}
+              </Typography>
+              <ScopedOrderPaper
+                items={scope === 'store' ? storeOrder : playerOrder}
+                onReorder={next =>
+                  scope === 'store' ? setStoreOrder(next) : setPlayerOrder(next)
+                }
+              />
+            </Box>
+          ))}
+        </Stack>
 
         {update.isError ? (
           <Alert severity="error" sx={{ mt: 2 }}>
@@ -206,10 +284,7 @@ function DashboardModulesEditor({
         >
           <Button
             variant="outlined"
-            onClick={() => {
-              setVisibility(initial.visibility)
-              setOrder(initial.order)
-            }}
+            onClick={() => resetFromInitial()}
             disabled={!dirty || update.isPending}
           >
             Deshacer
@@ -795,10 +870,17 @@ export default function AdminConfiguracionPage() {
                 sx={{ mt: 1, maxWidth: 620, lineHeight: 1.6 }}
               >
                 Estos ajustes aplican solo a la tienda seleccionada en el menú
-                superior (misma que ves aquí arriba). Definen los bloques del
-                panel de jugadores en{' '}
+                superior (misma que ves aquí arriba). Los bloques de tienda en{' '}
                 <Link href="/dashboard" component={NextLink} fontWeight={600}>
-                  /dashboard
+                  Inicio
+                </Link>
+                , los de jugador en{' '}
+                <Link
+                  href="/dashboard/mi-cuenta"
+                  component={NextLink}
+                  fontWeight={600}
+                >
+                  Mi cuenta
                 </Link>
                 , el límite diario de registro de correos por jugador en esa
                 tienda y los avisos por correo (Resend) cuando un envío queda

@@ -10,7 +10,8 @@ export type StoreCredit = {
 }
 
 /** Una sola petición deduplicada (útil con React Strict Mode / re-montajes). */
-export function useStoreCredit() {
+export function useStoreCredit(options?: { enabled?: boolean }) {
+  const want = options?.enabled !== false
   const { data: session, status } = useSession()
   const sessUser = session?.user as { activeStoreId?: string } | undefined
   const activeStoreId =
@@ -27,6 +28,6 @@ export function useStoreCredit() {
       }
       return res.json()
     },
-    enabled: status === 'authenticated' && Boolean(activeStoreId)
+    enabled: want && status === 'authenticated' && Boolean(activeStoreId)
   })
 }

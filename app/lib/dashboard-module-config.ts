@@ -9,6 +9,95 @@ export const DASHBOARD_MODULE_IDS = [
 
 export type DashboardModuleId = (typeof DASHBOARD_MODULE_IDS)[number]
 
+/**
+ * Alcance del módulo en el modelo multi-tienda.
+ * - `store`: experiencia centrada en la tienda activa (JWT/contexto superior).
+ * - `player`: actividad y datos personales del usuario en el hub.
+ *
+ * Persistencia: sigue siendo un solo vector `order` en BD (`[...store, ...player]`);
+ * el layout del inicio muestra primero todos los bloques de tienda, luego todos los del jugador.
+ */
+export type DashboardModuleScope = 'store' | 'player'
+
+/** Metadatos fijos por módulo (no se guardan en Mongo). Actualizar al añadir un `DashboardModuleId` nuevo. */
+export const DASHBOARD_MODULE_SCOPE: Record<
+  DashboardModuleId,
+  DashboardModuleScope
+> = {
+  weeklyEvents: 'store',
+  recentPublicDecklists: 'player',
+  myTournaments: 'player',
+  statistics: 'player',
+  mail: 'store',
+  storePoints: 'store'
+}
+
+export const DASHBOARD_SECTION_COPY: Record<
+  DashboardModuleScope,
+  { title: string; description: string }
+> = {
+  store: {
+    title: 'En tu tienda activa',
+    description:
+      'Eventos locales, correo físico y puntos enlazados al contexto seleccionado en la barra superior.'
+  },
+  player: {
+    title: 'Tu actividad como jugador',
+    description:
+      'En Mi cuenta verás torneos, mazos públicos y estadísticas de tu perfil. La tienda activa define si ves cada bloque y en qué orden lo hacen en esta pantalla.'
+  }
+}
+
+/** IDs de cada alcance en el orden estable de concatenación `[store..., player...]`. */
+export function dashboardModuleIdsForScope(
+  scope: DashboardModuleScope
+): DashboardModuleId[] {
+  return DASHBOARD_MODULE_IDS.filter(id => DASHBOARD_MODULE_SCOPE[id] === scope)
+}
+
+/** Divide el orden persistido en dos listas (misma concatenación ↔ `mergeScopedDashboardOrders`). */
+export function splitDashboardOrder(order: DashboardModuleId[]): {
+  storeOrder: DashboardModuleId[]
+  playerOrder: DashboardModuleId[]
+} {
+  const storeOrder: DashboardModuleId[] = []
+  const playerOrder: DashboardModuleId[] = []
+  for (const id of order) {
+    if (DASHBOARD_MODULE_SCOPE[id] === 'store') storeOrder.push(id)
+    else playerOrder.push(id)
+  }
+  return { storeOrder, playerOrder }
+}
+
+export function mergeScopedDashboardOrders(
+  storeOrder: DashboardModuleId[],
+  playerOrder: DashboardModuleId[]
+): DashboardModuleId[] {
+  return [...storeOrder, ...playerOrder]
+}
+
+/**
+ * Orden persistido canónico para multi-tienda: subsecuencia `store` seguida de
+ * subsecuencia `player`, manteniendo el orden relativo dentro de cada alcance.
+ */
+export function canonicalizeDashboardOrder(
+  order: DashboardModuleId[]
+): DashboardModuleId[] {
+  const { storeOrder, playerOrder } = splitDashboardOrder(order)
+  return mergeScopedDashboardOrders(storeOrder, playerOrder)
+}
+
+/** Módulos visibles del alcance, respetando el orden dentro del vector `order` global. */
+export function orderModulesForScope(
+  order: DashboardModuleId[],
+  visibility: DashboardModuleVisibility,
+  scope: DashboardModuleScope
+): DashboardModuleId[] {
+  return order.filter(
+    id => visibility[id] && DASHBOARD_MODULE_SCOPE[id] === scope
+  )
+}
+
 export type DashboardModuleVisibility = Record<DashboardModuleId, boolean>
 
 export const DEFAULT_DASHBOARD_VISIBILITY: DashboardModuleVisibility = {
@@ -20,14 +109,12 @@ export const DEFAULT_DASHBOARD_VISIBILITY: DashboardModuleVisibility = {
   storePoints: true
 }
 
-export const DEFAULT_DASHBOARD_ORDER: DashboardModuleId[] = [
-  'weeklyEvents',
-  'recentPublicDecklists',
-  'myTournaments',
-  'statistics',
-  'mail',
-  'storePoints'
-]
+/** Orden canónico persistido: primero todos los `store`, luego todos los `player`. */
+export const DEFAULT_DASHBOARD_ORDER: DashboardModuleId[] =
+  mergeScopedDashboardOrders(
+    dashboardModuleIdsForScope('store'),
+    dashboardModuleIdsForScope('player')
+  )
 
 /** Accesos rápidos en la parte superior del inicio (/dashboard). */
 export type DashboardShortcutsVisibility = {
@@ -151,5 +238,5 @@ export function mergeDashboardSettings(
     ...DEFAULT_DASHBOARD_SHORTCUTS,
     ...partial?.shortcuts
   }
-  return { visibility, order, shortcuts }
+  return { visibility, order: canonicalizeDashboardOrder(order), shortcuts }
 }

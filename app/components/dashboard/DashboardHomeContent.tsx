@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
+import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import Box from '@mui/material/Box'
@@ -23,7 +24,6 @@ import {
   MarkunreadMailbox,
   Storefront
 } from '@mui/icons-material'
-import Link from 'next/link'
 import MyTournamentsHomeSection from '@/components/dashboard/MyTournamentsHomeSection'
 import WeeklyEventsSectionSkeleton from '@/components/events/WeeklyEventsSectionSkeleton'
 import ReportCustomTournamentDialog from '@/components/events/ReportCustomTournamentDialog'
@@ -35,14 +35,26 @@ import RecentPublicDecklistsHomeCard from '@/components/dashboard/RecentPublicDe
 import DashboardStatisticsCard from '@/components/dashboard/DashboardStatisticsCard'
 import { useStoreCredit } from '@/hooks/useStoreCredit'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
-import type { DashboardModuleId } from '@/lib/dashboard-module-config'
+import {
+  orderModulesForScope,
+  type DashboardModuleId
+} from '@/lib/dashboard-module-config'
 
 const WeeklyEventsSection = dynamic(
   () => import('@/components/events/WeeklyEventsSection'),
   { loading: () => <WeeklyEventsSectionSkeleton /> }
 )
 
-export default function DashboardHomeContent() {
+export type DashboardHomeVariant = 'inicio' | 'mi-cuenta'
+
+export type DashboardHomeContentProps = {
+  /** `inicio`: solo tienda + accesos rápidos. `mi-cuenta`: solo módulos de jugador. */
+  variant?: DashboardHomeVariant
+}
+
+export default function DashboardHomeContent({
+  variant = 'inicio'
+}: DashboardHomeContentProps) {
   const router = useRouter()
   const { visibility, order, shortcuts } = useDashboardModulesFromLayout()
 
@@ -52,7 +64,9 @@ export default function DashboardHomeContent() {
     isError: creditQueryError,
     refetch: refetchCredit,
     isFetching: creditFetching
-  } = useStoreCredit()
+  } = useStoreCredit({
+    enabled: variant === 'inicio'
+  })
 
   const creditError = creditQueryError
     ? 'No se pudieron cargar los puntos'
@@ -280,7 +294,8 @@ export default function DashboardHomeContent() {
     storePoints: storePointsBlock
   }
 
-  const visibleOrdered = order.filter(id => visibility[id])
+  const storeModuleIds = orderModulesForScope(order, visibility, 'store')
+  const playerModuleIds = orderModulesForScope(order, visibility, 'player')
 
   const showQuickActions =
     shortcuts.createMail ||
@@ -288,94 +303,145 @@ export default function DashboardHomeContent() {
     shortcuts.playPokemonDecklistPdf
 
   const quickActionsBlock = (
-    <DashboardQuickActions
-      shortcuts={shortcuts}
-      onRegisterMail={() => setRegisterMailOpen(true)}
-      onCreateCustomTournament={() => setCustomTournamentOpen(true)}
-      onPlayPokemonDecklistPdf={() =>
-        router.push('/dashboard/decklist-pdf-torneo')
-      }
-    />
+    <Stack spacing={1}>
+      <Typography
+        variant="overline"
+        color="text.secondary"
+        sx={{ fontWeight: 800 }}
+      >
+        Accesos rápidos · tienda activa
+      </Typography>
+      <Typography variant="caption" color="text.secondary" display="block">
+        Registro de correos, torneo custom y herramientas asociadas al contexto
+        que tienes en la barra superior.
+      </Typography>
+      <DashboardQuickActions
+        shortcuts={shortcuts}
+        onRegisterMail={() => setRegisterMailOpen(true)}
+        onCreateCustomTournament={() => setCustomTournamentOpen(true)}
+        onPlayPokemonDecklistPdf={() =>
+          router.push('/dashboard/decklist-pdf-torneo')
+        }
+      />
+    </Stack>
   )
 
-  if (visibleOrdered.length === 0 && !showQuickActions) {
-    return (
-      <Card
-        variant="outlined"
-        sx={{
-          borderRadius: 3,
-          borderColor: t => alpha(t.palette.text.primary, 0.1),
-          p: 3
-        }}
-      >
+  const emptyCard = (copy: ReactNode) => (
+    <Card
+      variant="outlined"
+      sx={{
+        borderRadius: 3,
+        borderColor: t => alpha(t.palette.text.primary, 0.1),
+        p: 3
+      }}
+    >
+      {typeof copy === 'string' ? (
         <Typography variant="body1" color="text.secondary">
-          No hay bloques activos en tu inicio. Si esto es un error, contacta a
-          la tienda.
+          {copy}
         </Typography>
-      </Card>
+      ) : (
+        copy
+      )}
+    </Card>
+  )
+
+  if (variant === 'inicio') {
+    if (storeModuleIds.length === 0 && !showQuickActions) {
+      return emptyCard(
+        'No hay bloques activos para la tienda en el inicio. Si esto es un error, contacta al administrador de la tienda.'
+      )
+    }
+
+    return (
+      <>
+        <Stack spacing={4}>
+          {showQuickActions ? quickActionsBlock : null}
+          <Stack spacing={3}>
+            {storeModuleIds.map(id => (
+              <Box key={id}>{blocks[id]}</Box>
+            ))}
+          </Stack>
+        </Stack>
+
+        <Dialog
+          open={storePointsInfoOpen}
+          onClose={() => setStorePointsInfoOpen(false)}
+          maxWidth="sm"
+          fullWidth
+          aria-labelledby="store-points-info-title"
+        >
+          <DialogTitle id="store-points-info-title">
+            TCG Family puntos
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" component="p" sx={{ mb: 2 }}>
+              Los TCG Family puntos, tienen equivalencia de $1 cada uno, se
+              obtienen al realizar compras por la web (1% del monto de la
+              compra), al &quot;sacrificar&quot; cartas en la tienda (solo en
+              días de intercambio que son informados previamente) y otros
+              métodos informados por los canales de la comunidad.
+            </Typography>
+            <Typography variant="body2" component="p" sx={{ mb: 2 }}>
+              Se debe tener un mínimo de 5000 puntos para poder canjearlos y
+              debe hacerse de forma presencial o coordinándolo por mensaje de
+              Instagram.
+            </Typography>
+            <Typography variant="body2" component="p">
+              Tienen vigencia de 1 año desde su generación.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button
+              onClick={() => setStorePointsInfoOpen(false)}
+              variant="contained"
+            >
+              Cerrar
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <RegisterMailDialog
+          open={registerMailOpen}
+          onClose={() => setRegisterMailOpen(false)}
+        />
+
+        <ReportCustomTournamentDialog
+          open={customTournamentOpen}
+          onClose={() => setCustomTournamentOpen(false)}
+          weekAnchor={weekAnchor}
+          onCreated={eventId => {
+            setCustomTournamentOpen(false)
+            router.push(`/dashboard/torneos-semana/${eventId}`)
+          }}
+        />
+      </>
+    )
+  }
+
+  if (playerModuleIds.length === 0) {
+    return emptyCard(
+      <>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+          No hay contenido aquí para la configuración actual de esta tienda (los
+          bloques pueden estar desactivados en administración).
+        </Typography>
+        <Button
+          component={Link}
+          href="/dashboard"
+          variant="outlined"
+          size="small"
+        >
+          Ir a Inicio (tienda)
+        </Button>
+      </>
     )
   }
 
   return (
-    <>
-      <Stack spacing={3}>
-        {quickActionsBlock}
-        {visibleOrdered.map(id => (
-          <Box key={id}>{blocks[id]}</Box>
-        ))}
-      </Stack>
-
-      <Dialog
-        open={storePointsInfoOpen}
-        onClose={() => setStorePointsInfoOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        aria-labelledby="store-points-info-title"
-      >
-        <DialogTitle id="store-points-info-title">
-          TCG Family puntos
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" component="p" sx={{ mb: 2 }}>
-            Los TCG Family puntos, tienen equivalencia de $1 cada uno, se
-            obtienen al realizar compras por la web (1% del monto de la compra),
-            al &quot;sacrificar&quot; cartas en la tienda (solo en días de
-            intercambio que son informados previamente) y otros métodos
-            informados por los canales de la comunidad.
-          </Typography>
-          <Typography variant="body2" component="p" sx={{ mb: 2 }}>
-            Se debe tener un mínimo de 5000 puntos para poder canjearlos y debe
-            hacerse de forma presencial o coordinándolo por mensaje de
-            Instagram.
-          </Typography>
-          <Typography variant="body2" component="p">
-            Tienen vigencia de 1 año desde su generación.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button
-            onClick={() => setStorePointsInfoOpen(false)}
-            variant="contained"
-          >
-            Cerrar
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <RegisterMailDialog
-        open={registerMailOpen}
-        onClose={() => setRegisterMailOpen(false)}
-      />
-
-      <ReportCustomTournamentDialog
-        open={customTournamentOpen}
-        onClose={() => setCustomTournamentOpen(false)}
-        weekAnchor={weekAnchor}
-        onCreated={eventId => {
-          setCustomTournamentOpen(false)
-          router.push(`/dashboard/torneos-semana/${eventId}`)
-        }}
-      />
-    </>
+    <Stack spacing={3}>
+      {playerModuleIds.map(id => (
+        <Box key={id}>{blocks[id]}</Box>
+      ))}
+    </Stack>
   )
 }

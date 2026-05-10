@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   BarChart,
@@ -12,6 +13,7 @@ import {
   Home,
   Layers,
   Person,
+  AccountCircleOutlined,
   Public,
   Style,
   ViewModule
@@ -69,11 +71,27 @@ export default function DashboardUserNav({
         <List>
           {isAdmin && <AdminSidebarClient isOwner={isOwner} />}
           <ListItem disablePadding>
-            <ListItemButton href="/dashboard">
+            <ListItemButton
+              component={Link}
+              href="/dashboard"
+              selected={pathname === '/dashboard'}
+            >
               <ListItemIcon>
                 <Home />
               </ListItemIcon>
               <ListItemText primary="Inicio" />
+            </ListItemButton>
+          </ListItem>
+          <ListItem disablePadding>
+            <ListItemButton
+              component={Link}
+              href="/dashboard/mi-cuenta"
+              selected={pathname === '/dashboard/mi-cuenta'}
+            >
+              <ListItemIcon>
+                <AccountCircleOutlined />
+              </ListItemIcon>
+              <ListItemText primary="Mi cuenta" />
             </ListItemButton>
           </ListItem>
           {showEvents ? (

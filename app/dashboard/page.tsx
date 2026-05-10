@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
+import MuiLink from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
 import { useSession } from 'next-auth/react'
 import DashboardHomeContent from '@/components/dashboard/DashboardHomeContent'
@@ -61,16 +63,36 @@ export default function DashboardPage() {
       <Container maxWidth="lg">
         <Box sx={{ mb: 4 }}>
           <Typography variant="h4" component="h1" gutterBottom>
-            Hola {session?.user?.name ?? ''}
+            Inicio
           </Typography>
-          {activeStoreLine ? (
-            <Typography variant="subtitle1" color="text.secondary">
-              Estás en {activeStoreLine}
-            </Typography>
-          ) : null}
+          <Typography
+            variant="subtitle1"
+            color="text.secondary"
+            sx={{ mb: 0.5 }}
+          >
+            Hola {session?.user?.name ?? ''}
+            {activeStoreLine ? ` · ${activeStoreLine}` : ''}
+          </Typography>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ maxWidth: 640 }}
+          >
+            Calendario, correos en tienda, puntos y accesos rápidos ligados al
+            contexto de tu tienda activa. Tu actividad como jugador está en{' '}
+            <MuiLink
+              component={Link}
+              href="/dashboard/mi-cuenta"
+              fontWeight={700}
+              underline="always"
+            >
+              Mi cuenta
+            </MuiLink>
+            .
+          </Typography>
         </Box>
 
-        <DashboardHomeContent />
+        <DashboardHomeContent variant="inicio" />
       </Container>
     </Box>
   )
