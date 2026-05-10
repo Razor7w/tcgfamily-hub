@@ -4,6 +4,7 @@ import type {
   DashboardShortcutsVisibility
 } from '@/lib/dashboard-module-config'
 import { MAIL_REGISTER_DAILY_LIMIT } from '@/lib/mail-register-constants'
+import { useDashboardStoreQueryKey } from '@/hooks/use-dashboard-store-key'
 
 export type AdminConfiguracionData = {
   settings: DashboardModuleSettingsDTO
@@ -11,10 +12,12 @@ export type AdminConfiguracionData = {
   mailRegisterDailyLimit: number
 }
 
-/** Configuración admin: bloques del dashboard + correo Resend (requiere rol admin). */
+/** Configuración admin: bloques del dashboard + correo Resend (requiere owner; alcance = tienda activa). */
 export function useAdminConfiguracion() {
+  const storeKey = useDashboardStoreQueryKey()
   return useQuery<AdminConfiguracionData>({
-    queryKey: ['admin', 'configuracion'],
+    queryKey: ['admin', 'configuracion', storeKey],
+    enabled: storeKey !== 'none',
     queryFn: async () => {
       const response = await fetch('/api/admin/configuracion')
       if (!response.ok) {

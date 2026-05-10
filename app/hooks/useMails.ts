@@ -140,10 +140,12 @@ export function useCreateMail() {
   })
 }
 
-/** Cuota de registros de correo del usuario para el día (hora Chile). */
+/** Cuota de registros de correo del usuario para el día (hora Chile), por tienda activa. */
 export function useMailRegisterQuota() {
+  const storeKey = useDashboardStoreQueryKey()
   return useQuery<MailRegisterQuota>({
-    queryKey: ['mail-register-quota'],
+    queryKey: ['mail-register-quota', storeKey],
+    enabled: storeKey !== 'none',
     queryFn: async () => {
       const response = await fetch('/api/mail/register-quota')
       if (!response.ok) {

@@ -4,7 +4,7 @@ import {
   requireStoreStaffSession
 } from '@/lib/api-auth'
 import { sendMailPickupReadyEmail } from '@/lib/email/send-mail-pickup-ready'
-import { getResendNotifyPickupInStoreEnabled } from '@/lib/get-resend-notify-pickup-enabled'
+import { getResendNotifyPickupInStoreEnabledForStore } from '@/lib/get-resend-notify-pickup-enabled'
 import connectDB from '@/lib/mongodb'
 import Mails from '@/models/Mails'
 import User from '@/models/User'
@@ -200,7 +200,10 @@ export async function PUT(
           : ''
       if (toEmail) {
         try {
-          const notifyEnabled = await getResendNotifyPickupInStoreEnabled()
+          const notifyEnabled =
+            await getResendNotifyPickupInStoreEnabledForStore(
+              gate.activeStoreOid.toString()
+            )
           if (notifyEnabled) {
             await sendMailPickupReadyEmail({
               to: toEmail,

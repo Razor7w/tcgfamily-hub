@@ -1,22 +1,26 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import { requireSessionUserWithActiveStore } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import {
-  countMailsRegisteredTodayBySender,
-  getMailRegisterDailyLimit
+  countMailsRegisteredTodayBySenderForStore,
+  getMailRegisterDailyLimitForStore
 } from '@/lib/mail-register-daily'
+import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
 
 export async function GET() {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireSessionUserWithActiveStore()
+    if (!gate.ok) return gate.response
 
     await connectDB()
+    const primary = await memoPrimaryTcgfamilyStoreObjectId()
     const [usedToday, limit] = await Promise.all([
-      countMailsRegisteredTodayBySender(session.user.id),
-      getMailRegisterDailyLimit()
+      countMailsRegisteredTodayBySenderForStore(
+        gate.session.user.id as string,
+        gate.activeStoreOid,
+        primary
+      ),
+      getMailRegisterDailyLimitForStore(gate.activeStoreOid.toString())
     ])
     const remaining = Math.max(0, limit - usedToday)
 

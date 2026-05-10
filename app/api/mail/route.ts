@@ -14,8 +14,8 @@ import {
   validate as validateRut
 } from 'rut.js'
 import {
-  countMailsRegisteredTodayBySender,
-  getMailRegisterDailyLimit
+  countMailsRegisteredTodayBySenderForStore,
+  getMailRegisterDailyLimitForStore
 } from '@/lib/mail-register-daily'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
@@ -283,8 +283,12 @@ export async function POST(request: NextRequest) {
 
     if (!adminFullCreate) {
       const [usedToday, dailyLimit] = await Promise.all([
-        countMailsRegisteredTodayBySender(session.user.id as string),
-        getMailRegisterDailyLimit()
+        countMailsRegisteredTodayBySenderForStore(
+          session.user.id as string,
+          activeStoreOid,
+          primaryStoreOid
+        ),
+        getMailRegisterDailyLimitForStore(activeStoreOid.toString())
       ])
       if (usedToday >= dailyLimit) {
         return NextResponse.json(

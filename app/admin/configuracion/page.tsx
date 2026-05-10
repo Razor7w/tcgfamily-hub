@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import ArrowDownward from '@mui/icons-material/ArrowDownward'
 import ArrowUpward from '@mui/icons-material/ArrowUpward'
 import MarkEmailReadOutlined from '@mui/icons-material/MarkEmailReadOutlined'
@@ -700,6 +701,37 @@ function ResendPickupEmailCard({
 }
 
 export default function AdminConfiguracionPage() {
+  const { data: session } = useSession()
+  const activeStoreId = session?.user?.activeStoreId?.trim()
+  const [activeStoreName, setActiveStoreName] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!activeStoreId) {
+      setActiveStoreName(null)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/me/stores')
+        if (!res.ok || cancelled) return
+        const data = (await res.json()) as {
+          stores?: Array<{ id?: string; name?: string }>
+        }
+        const rows = Array.isArray(data.stores) ? data.stores : []
+        const hit = rows.find(r => String(r.id) === activeStoreId)
+        const name =
+          hit && typeof hit.name === 'string' ? hit.name.trim() : ''
+        if (!cancelled) setActiveStoreName(name || null)
+      } catch {
+        if (!cancelled) setActiveStoreName(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [activeStoreId])
+
   const { data, dataUpdatedAt, isPending, isError, error, refetch } =
     useAdminConfiguracion()
 
@@ -724,7 +756,7 @@ export default function AdminConfiguracionPage() {
             boxShadow: '0 20px 40px -24px rgba(24, 24, 27, 0.12)'
           }}
         >
-          <AdminStorePageHeading>
+          <AdminStorePageHeading showActiveStoreAvatar>
             <Box>
               <Typography
                 variant="h4"
@@ -737,18 +769,29 @@ export default function AdminConfiguracionPage() {
               >
                 Configuración
               </Typography>
+              {activeStoreName ? (
+                <Typography
+                  variant="subtitle2"
+                  color="text.secondary"
+                  sx={{ mt: 0.75, fontWeight: 700 }}
+                >
+                  Tienda activa: {activeStoreName}
+                </Typography>
+              ) : null}
               <Typography
                 variant="body2"
                 color="text.secondary"
                 sx={{ mt: 1, maxWidth: 620, lineHeight: 1.6 }}
               >
-                Bloques del panel de jugadores en{' '}
+                Estos ajustes aplican solo a la tienda seleccionada en el menú
+                superior (misma que ves aquí arriba). Definen los bloques del
+                panel de jugadores en{' '}
                 <Link href="/dashboard" component={NextLink} fontWeight={600}>
                   /dashboard
-                </Link>{' '}
-                , límite diario de registro de correos por jugador y avisos por
-                correo (Resend) cuando un envío queda listo para retiro en
-                tienda.
+                </Link>
+                , el límite diario de registro de correos por jugador en esa
+                tienda y los avisos por correo (Resend) cuando un envío queda
+                listo para retiro en tienda.
               </Typography>
             </Box>
           </AdminStorePageHeading>

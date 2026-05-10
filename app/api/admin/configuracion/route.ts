@@ -181,7 +181,7 @@ export async function PUT(request: NextRequest) {
     await doc.save()
 
     if (updatingMailRegisterLimit) {
-      invalidateMailRegisterDailyLimitCache()
+      invalidateMailRegisterDailyLimitCache(gate.activeStoreOid.toString())
     }
 
     const dShortcuts = doc.shortcuts as

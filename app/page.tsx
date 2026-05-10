@@ -105,7 +105,7 @@ export default function LoginPage() {
             color="primary"
             textAlign="center"
           >
-            TCGFamily HUB
+            TCG Nexo
           </Typography>
           <Suspense fallback={null}>
             <LoginAlerts />

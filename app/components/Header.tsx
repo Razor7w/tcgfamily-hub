@@ -134,9 +134,10 @@ export default function Header() {
   }
 
   const activeStoreId = session?.user?.activeStoreId?.trim() || null
+  const activeStoreRow = storeOptions.find(s => s.id === activeStoreId)
+  const activeStoreName = (activeStoreRow?.name ?? '').trim()
   const activeStoreLogo = (() => {
-    const hit = storeOptions.find(s => s.id === activeStoreId)
-    return (hit?.logoUrl ?? '').trim()
+    return (activeStoreRow?.logoUrl ?? '').trim()
   })()
 
   const pickStoreContext = async (storeId: string) => {
@@ -209,51 +210,74 @@ export default function Header() {
             '&:hover': { opacity: 0.9 }
           }}
         >
-          TCGFamily HUB
+          TCG Nexo
         </Typography>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {showStoreSwitcher ? (
             <>
-              <Tooltip
-                title={
-                  session?.user?.storeRole === 'store_admin'
-                    ? 'Tienda del dashboard y permisos: eventos semanales, correos físicos y crédito sólo para la tienda indicada.'
-                    : 'Tienda para el dashboard (eventos semanales, correos físicos y crédito); en cada módulo admin operas contra la ubicación seleccionada.'
-                }
+              <Stack
+                direction="row"
+                alignItems="center"
+                spacing={1}
+                sx={{ minWidth: 0, mr: 0.25 }}
               >
-                <IconButton
-                  color="inherit"
-                  aria-haspopup="true"
-                  aria-expanded={Boolean(storeMenuEl)}
-                  aria-label="Cambiar tienda de contexto"
-                  disabled={storeSwitchBusy}
-                  onClick={e => setStoreMenuEl(e.currentTarget)}
-                  sx={{ p: activeStoreLogo ? 0.5 : 1 }}
+                {activeStoreName ? (
+                  <Typography
+                    variant="body2"
+                    component="span"
+                    noWrap
+                    sx={{
+                      display: { xs: 'none', sm: 'inline-block' },
+                      maxWidth: { sm: 220 },
+                      fontWeight: 600,
+                      color: 'inherit',
+                      opacity: 0.95
+                    }}
+                  >
+                    {activeStoreName}
+                  </Typography>
+                ) : null}
+                <Tooltip
+                  title={
+                    session?.user?.storeRole === 'store_admin'
+                      ? 'Tienda del dashboard y permisos: eventos semanales, correos físicos y crédito sólo para la tienda indicada.'
+                      : 'Tienda para el dashboard (eventos semanales, correos físicos y crédito).'
+                  }
                 >
-                  {activeStoreLogo ? (
-                    <Avatar
-                      variant="rounded"
-                      src={activeStoreLogo}
-                      alt=""
-                      sx={{
-                        width: 28,
-                        height: 28,
-                        bgcolor: 'rgba(255,255,255,0.22)',
-                        border: '1px solid rgba(255,255,255,0.35)',
-                        '& .MuiAvatar-img': {
-                          objectFit: 'contain',
-                          p: 0.25
-                        }
-                      }}
-                    >
-                      <StorefrontOutlinedIcon sx={{ fontSize: 18 }} />
-                    </Avatar>
-                  ) : (
-                    <StorefrontOutlinedIcon />
-                  )}
-                </IconButton>
-              </Tooltip>
+                  <IconButton
+                    color="inherit"
+                    aria-haspopup="true"
+                    aria-expanded={Boolean(storeMenuEl)}
+                    aria-label="Cambiar tienda de contexto"
+                    disabled={storeSwitchBusy}
+                    onClick={e => setStoreMenuEl(e.currentTarget)}
+                    sx={{ p: activeStoreLogo ? 0.5 : 1 }}
+                  >
+                    {activeStoreLogo ? (
+                      <Avatar
+                        variant="rounded"
+                        src={activeStoreLogo}
+                        alt=""
+                        sx={{
+                          width: 28,
+                          height: 28,
+                          bgcolor: 'rgba(255,255,255,0.22)',
+                          border: '1px solid rgba(255,255,255,0.35)',
+                          '& .MuiAvatar-img': {
+                            objectFit: 'contain',
+                            p: 0.25
+                          }
+                        }}
+                      >
+                        <StorefrontOutlinedIcon sx={{ fontSize: 18 }} />
+                      </Avatar>
+                    ) : (
+                      <StorefrontOutlinedIcon />
+                    )}
+                  </IconButton>
+                </Tooltip>
+              </Stack>
               <Menu
                 anchorEl={storeMenuEl}
                 open={Boolean(storeMenuEl)}

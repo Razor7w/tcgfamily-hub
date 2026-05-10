@@ -9,13 +9,16 @@ import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 
 export type AdminStorePageHeadingProps = {
   children: ReactNode
+  /** Si es true, muestra avatar/logo de la tienda activa también para owner (p. ej. configuración por tienda). */
+  showActiveStoreAvatar?: boolean
 } & Omit<StackProps, 'direction' | 'children'>
 
 /**
- * Para rol `store_admin`: muestra el logo de la tienda activa a la izquierda del bloque de título.
+ * Para rol `store_admin` o con `showActiveStoreAvatar`: logo de la tienda activa a la izquierda del título.
  */
 export function AdminStorePageHeading({
   children,
+  showActiveStoreAvatar = false,
   spacing = 2,
   alignItems = 'flex-start',
   sx,
@@ -23,7 +26,9 @@ export function AdminStorePageHeading({
 }: AdminStorePageHeadingProps) {
   const { data: session, status } = useSession()
   const [logoUrl, setLogoUrl] = useState('')
-  const showLogo = session?.user?.storeRole === 'store_admin'
+  const showLogo =
+    Boolean(showActiveStoreAvatar) ||
+    session?.user?.storeRole === 'store_admin'
 
   useEffect(() => {
     if (!showLogo || status !== 'authenticated') {
@@ -54,7 +59,7 @@ export function AdminStorePageHeading({
     return () => {
       cancelled = true
     }
-  }, [showLogo, session?.user?.activeStoreId, status])
+  }, [showLogo, showActiveStoreAvatar, session?.user?.activeStoreId, status])
 
   return (
     <Stack
