@@ -51,7 +51,7 @@ export default function SidebarLayout({
 
   if (isDesktop) {
     return (
-      <Grid container spacing={2}>
+      <Grid container spacing={0}>
         <Grid size={sidebarSize}>{sidebar}</Grid>
         <Grid size={contentSize}>{children}</Grid>
       </Grid>
