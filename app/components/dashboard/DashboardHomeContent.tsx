@@ -3,7 +3,6 @@
 import { useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { useRouter } from 'next/navigation'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -26,11 +25,9 @@ import {
 } from '@mui/icons-material'
 import MyTournamentsHomeSection from '@/components/dashboard/MyTournamentsHomeSection'
 import WeeklyEventsSectionSkeleton from '@/components/events/WeeklyEventsSectionSkeleton'
-import ReportCustomTournamentDialog from '@/components/events/ReportCustomTournamentDialog'
 import CardMails from '@/components/dashboard/CardMails'
 import MailFlowExplainer from '@/components/mails/MailFlowExplainer'
 import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
-import DashboardQuickActions from '@/components/dashboard/DashboardQuickActions'
 import RecentPublicDecklistsHomeCard from '@/components/dashboard/RecentPublicDecklistsHomeCard'
 import DashboardStatisticsCard from '@/components/dashboard/DashboardStatisticsCard'
 import { useStoreCredit } from '@/hooks/useStoreCredit'
@@ -45,18 +42,17 @@ const WeeklyEventsSection = dynamic(
   { loading: () => <WeeklyEventsSectionSkeleton /> }
 )
 
-export type DashboardHomeVariant = 'inicio' | 'mi-cuenta'
+export type DashboardHomeVariant = 'tiendas' | 'mi-cuenta'
 
 export type DashboardHomeContentProps = {
-  /** `inicio`: solo tienda + accesos rápidos. `mi-cuenta`: solo módulos de jugador. */
+  /** `tiendas`: solo módulos de tienda activa (accesos rápidos están en Inicio). */
   variant?: DashboardHomeVariant
 }
 
 export default function DashboardHomeContent({
-  variant = 'inicio'
+  variant = 'tiendas'
 }: DashboardHomeContentProps) {
-  const router = useRouter()
-  const { visibility, order, shortcuts } = useDashboardModulesFromLayout()
+  const { visibility, order } = useDashboardModulesFromLayout()
 
   const {
     data: credit,
@@ -65,7 +61,7 @@ export default function DashboardHomeContent({
     refetch: refetchCredit,
     isFetching: creditFetching
   } = useStoreCredit({
-    enabled: variant === 'inicio'
+    enabled: variant === 'tiendas'
   })
 
   const creditError = creditQueryError
@@ -83,8 +79,6 @@ export default function DashboardHomeContent({
 
   const [storePointsInfoOpen, setStorePointsInfoOpen] = useState(false)
   const [registerMailOpen, setRegisterMailOpen] = useState(false)
-  const [weekAnchor] = useState(() => new Date())
-  const [customTournamentOpen, setCustomTournamentOpen] = useState(false)
 
   const expiryLabel =
     credit?.storePointsExpiryDate &&
@@ -297,35 +291,6 @@ export default function DashboardHomeContent({
   const storeModuleIds = orderModulesForScope(order, visibility, 'store')
   const playerModuleIds = orderModulesForScope(order, visibility, 'player')
 
-  const showQuickActions =
-    shortcuts.createMail ||
-    shortcuts.createTournament ||
-    shortcuts.playPokemonDecklistPdf
-
-  const quickActionsBlock = (
-    <Stack spacing={1}>
-      <Typography
-        variant="overline"
-        color="text.secondary"
-        sx={{ fontWeight: 800 }}
-      >
-        Accesos rápidos · tienda activa
-      </Typography>
-      <Typography variant="caption" color="text.secondary" display="block">
-        Registro de correos, torneo custom y herramientas asociadas al contexto
-        que tienes en la barra superior.
-      </Typography>
-      <DashboardQuickActions
-        shortcuts={shortcuts}
-        onRegisterMail={() => setRegisterMailOpen(true)}
-        onCreateCustomTournament={() => setCustomTournamentOpen(true)}
-        onPlayPokemonDecklistPdf={() =>
-          router.push('/dashboard/decklist-pdf-torneo')
-        }
-      />
-    </Stack>
-  )
-
   const emptyCard = (copy: ReactNode) => (
     <Card
       variant="outlined"
@@ -345,22 +310,19 @@ export default function DashboardHomeContent({
     </Card>
   )
 
-  if (variant === 'inicio') {
-    if (storeModuleIds.length === 0 && !showQuickActions) {
+  if (variant === 'tiendas') {
+    if (storeModuleIds.length === 0) {
       return emptyCard(
-        'No hay bloques activos para la tienda en el inicio. Si esto es un error, contacta al administrador de la tienda.'
+        'No hay bloques activos para la tienda en Tiendas. Si esto es un error, contacta al administrador de la tienda.'
       )
     }
 
     return (
       <>
-        <Stack spacing={4}>
-          {showQuickActions ? quickActionsBlock : null}
-          <Stack spacing={3}>
-            {storeModuleIds.map(id => (
-              <Box key={id}>{blocks[id]}</Box>
-            ))}
-          </Stack>
+        <Stack spacing={3}>
+          {storeModuleIds.map(id => (
+            <Box key={id}>{blocks[id]}</Box>
+          ))}
         </Stack>
 
         <Dialog
@@ -404,16 +366,6 @@ export default function DashboardHomeContent({
           open={registerMailOpen}
           onClose={() => setRegisterMailOpen(false)}
         />
-
-        <ReportCustomTournamentDialog
-          open={customTournamentOpen}
-          onClose={() => setCustomTournamentOpen(false)}
-          weekAnchor={weekAnchor}
-          onCreated={eventId => {
-            setCustomTournamentOpen(false)
-            router.push(`/dashboard/torneos-semana/${eventId}`)
-          }}
-        />
       </>
     )
   }
@@ -427,11 +379,11 @@ export default function DashboardHomeContent({
         </Typography>
         <Button
           component={Link}
-          href="/dashboard"
+          href="/dashboard/tiendas"
           variant="outlined"
           size="small"
         >
-          Ir a Inicio (tienda)
+          Ir a Tiendas
         </Button>
       </>
     )

@@ -53,7 +53,8 @@ MailSchema.index(
   {
     unique: true,
     name: 'mails_storeId_code_unique',
-    partialFilterExpression: { storeId: { $exists: true, $ne: null } }
+    /** `$ne: null` no está permitido en partialFilterExpression (MongoDB 67). */
+    partialFilterExpression: { storeId: { $type: 'objectId' } }
   }
 )
 /** Correos legacy sin tienda persistida en el documento */
@@ -63,7 +64,10 @@ MailSchema.index(
     unique: true,
     name: 'mails_legacy_missing_store_code_unique',
     partialFilterExpression: {
-      $or: [{ storeId: { $exists: false } }, { storeId: null }]
+      $or: [
+        { storeId: { $exists: false } },
+        { storeId: { $type: 'null' } }
+      ]
     }
   }
 )

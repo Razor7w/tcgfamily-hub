@@ -194,6 +194,7 @@ export async function PUT(request: NextRequest) {
     })
 
     revalidatePath('/dashboard', 'layout')
+    revalidatePath('/dashboard/tiendas')
     revalidatePath('/dashboard/mi-cuenta')
     revalidatePath('/dashboard/eventos')
     revalidatePath('/dashboard/torneos-semana')

@@ -68,7 +68,7 @@ const SCOPE_VISIBILITY_GROUP: Record<DashboardModuleScope, string> = {
 }
 
 const SCOPE_ORDER_GROUP: Record<DashboardModuleScope, string> = {
-  store: 'Orden en Inicio (/dashboard)',
+  store: 'Orden en Tiendas (/dashboard/tiendas)',
   player: 'Orden en Mi cuenta (/dashboard/mi-cuenta)'
 }
 
@@ -205,8 +205,8 @@ function DashboardModulesEditor({
           sx={{ mt: 0.5, mb: 2 }}
         >
           Los ajustes aplican a quienes usen esta tienda como contexto en el
-          header: los módulos de tienda viven en Inicio (/dashboard) y los de
-          jugador en Mi cuenta (/dashboard/mi-cuenta).
+          header: los módulos de tienda viven en Tiendas (/dashboard/tiendas) y
+          los de jugador en Mi cuenta (/dashboard/mi-cuenta).
         </Typography>
         <Stack spacing={2.5} sx={{ mb: 3 }}>
           {scopeSequence.map(scope => (
@@ -246,7 +246,7 @@ function DashboardModulesEditor({
           color="text.secondary"
           sx={{ mt: 0.5, mb: 2 }}
         >
-          Cada lista define el orden vertical en su pantalla (Inicio vs Mi
+          Cada lista define el orden vertical en su pantalla (Tiendas vs Mi
           cuenta). En base de datos se guarda como una sola secuencia: primero
           todos los ítems de tienda, luego todos los del jugador
           (concatenación).
@@ -368,14 +368,14 @@ function DashboardShortcutsEditor({
               component="h2"
               sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}
             >
-              Accesos rápidos en el inicio
+              Accesos rápidos en Inicio
             </Typography>
             <Typography
               variant="body2"
               color="text.secondary"
               sx={{ mt: 0.75, lineHeight: 1.6 }}
             >
-              Botones en la parte superior de{' '}
+              Botones en{' '}
               <Link href="/dashboard" component={NextLink} fontWeight={600}>
                 /dashboard
               </Link>{' '}
@@ -871,8 +871,12 @@ export default function AdminConfiguracionPage() {
               >
                 Estos ajustes aplican solo a la tienda seleccionada en el menú
                 superior (misma que ves aquí arriba). Los bloques de tienda en{' '}
-                <Link href="/dashboard" component={NextLink} fontWeight={600}>
-                  Inicio
+                <Link
+                  href="/dashboard/tiendas"
+                  component={NextLink}
+                  fontWeight={600}
+                >
+                  Tiendas
                 </Link>
                 , los de jugador en{' '}
                 <Link

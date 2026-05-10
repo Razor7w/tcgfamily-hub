@@ -17,6 +17,8 @@ type DashboardQuickActionsProps = {
   onRegisterMail: () => void
   onCreateCustomTournament: () => void
   onPlayPokemonDecklistPdf: () => void
+  /** Si viene definido, sustituye el párrafo bajo «Accesos rápidos». */
+  subtitle?: string
 }
 
 type ActionItem = {
@@ -214,7 +216,8 @@ export default function DashboardQuickActions({
   shortcuts,
   onRegisterMail,
   onCreateCustomTournament,
-  onPlayPokemonDecklistPdf
+  onPlayPokemonDecklistPdf,
+  subtitle
 }: DashboardQuickActionsProps) {
   if (
     !shortcuts.createMail &&
@@ -255,6 +258,12 @@ export default function DashboardQuickActions({
 
   const tileCount = items.length
   const dense = tileCount === 3
+
+  const defaultSubtitle =
+    tileCount > 1
+      ? 'Atajos a lo que usas a menudo. El resto del panel sigue abajo.'
+      : 'Un atajo a una acción frecuente. El resto del panel sigue abajo.'
+  const bodyCopy = subtitle ?? defaultSubtitle
 
   return (
     <Box
@@ -305,9 +314,7 @@ export default function DashboardQuickActions({
           fontWeight: 500
         }}
       >
-        {tileCount > 1
-          ? 'Atajos a lo que usas a menudo. El resto del panel sigue abajo.'
-          : 'Un atajo a una acción frecuente. El resto del panel sigue abajo.'}
+        {bodyCopy}
       </Typography>
 
       <Box

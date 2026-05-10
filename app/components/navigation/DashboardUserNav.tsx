@@ -12,6 +12,7 @@ import {
   ExpandMore,
   Home,
   Layers,
+  Storefront,
   Person,
   AccountCircleOutlined,
   Public,
@@ -80,6 +81,18 @@ export default function DashboardUserNav({
                 <Home />
               </ListItemIcon>
               <ListItemText primary="Inicio" />
+            </ListItemButton>
+          </ListItem>
+          <ListItem disablePadding>
+            <ListItemButton
+              component={Link}
+              href="/dashboard/tiendas"
+              selected={pathname === '/dashboard/tiendas'}
+            >
+              <ListItemIcon>
+                <Storefront />
+              </ListItemIcon>
+              <ListItemText primary="Tiendas" />
             </ListItemButton>
           </ListItem>
           <ListItem disablePadding>

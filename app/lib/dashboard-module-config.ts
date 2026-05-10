@@ -116,7 +116,7 @@ export const DEFAULT_DASHBOARD_ORDER: DashboardModuleId[] =
     dashboardModuleIdsForScope('player')
   )
 
-/** Accesos rápidos en la parte superior del inicio (/dashboard). */
+/** Accesos rápidos en Inicio (/dashboard). */
 export type DashboardShortcutsVisibility = {
   createMail: boolean
   createTournament: boolean

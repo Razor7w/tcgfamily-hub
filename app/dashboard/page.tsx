@@ -1,54 +1,38 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import AccountCircleOutlined from '@mui/icons-material/AccountCircleOutlined'
+import Storefront from '@mui/icons-material/Storefront'
 import Box from '@mui/material/Box'
+import Card from '@mui/material/Card'
+import CardActionArea from '@mui/material/CardActionArea'
+import CardContent from '@mui/material/CardContent'
 import Container from '@mui/material/Container'
+import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import { useSession } from 'next-auth/react'
-import DashboardHomeContent from '@/components/dashboard/DashboardHomeContent'
 import { alpha } from '@mui/material/styles'
+import { useSession } from 'next-auth/react'
+import ReportCustomTournamentDialog from '@/components/events/ReportCustomTournamentDialog'
+import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
+import DashboardQuickActions from '@/components/dashboard/DashboardQuickActions'
+import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
 
 export default function DashboardPage() {
+  const router = useRouter()
   const { data: session } = useSession()
-  const activeId = session?.user?.activeStoreId?.trim() ?? ''
-  const [resolvedStoreName, setResolvedStoreName] = useState<{
-    storeId: string
-    name: string
-  } | null>(null)
+  const name = session?.user?.name?.trim() || 'jugador'
+  const { shortcuts } = useDashboardModulesFromLayout()
 
-  const activeStoreLine =
-    activeId &&
-    resolvedStoreName?.storeId === activeId &&
-    resolvedStoreName.name
-      ? resolvedStoreName.name
-      : ''
+  const [registerMailOpen, setRegisterMailOpen] = useState(false)
+  const [customTournamentOpen, setCustomTournamentOpen] = useState(false)
+  const [weekAnchor] = useState(() => new Date())
 
-  useEffect(() => {
-    if (!activeId) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetch('/api/me/stores')
-        if (!res.ok || cancelled) return
-        const data = (await res.json()) as {
-          stores?: Array<{ id?: string; name?: string }>
-        }
-        const rows = Array.isArray(data.stores) ? data.stores : []
-        const hit = rows.find(r => String(r.id) === activeId)
-        const n = typeof hit?.name === 'string' ? hit.name : ''
-        if (!cancelled) {
-          setResolvedStoreName({ storeId: activeId, name: n })
-        }
-      } catch {
-        if (!cancelled) {
-          setResolvedStoreName({ storeId: activeId, name: '' })
-        }
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [activeId])
+  const showQuickActions =
+    shortcuts.createMail ||
+    shortcuts.createTournament ||
+    shortcuts.playPokemonDecklistPdf
 
   return (
     <Box
@@ -59,21 +43,121 @@ export default function DashboardPage() {
       })}
     >
       <Container maxWidth="lg">
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            Inicio
-          </Typography>
-          <Typography
-            variant="subtitle1"
-            color="text.secondary"
-            sx={{ mb: 0.5 }}
-          >
-            Hola {session?.user?.name ?? ''}
-            {activeStoreLine ? ` · ${activeStoreLine}` : ''}
-          </Typography>
-        </Box>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Inicio
+        </Typography>
+        <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 2 }}>
+          Hola, {name}.
+        </Typography>
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ mb: showQuickActions ? 2 : 3, lineHeight: 1.7, maxWidth: 640 }}
+        >
+          {showQuickActions ? (
+            <>
+              Aquí están los accesos directos a lo que hagas más a menudo. Podés{' '}
+              seguir en Tiendas o en tu espacio personal.
+            </>
+          ) : (
+            <>
+              Elige si seguir en Tiendas con la tienda activa de la barra
+              superior o en Mi cuenta como jugador.
+            </>
+          )}
+        </Typography>
 
-        <DashboardHomeContent variant="inicio" />
+        <Stack spacing={3} sx={{ maxWidth: 720 }}>
+          {showQuickActions ? (
+            <>
+              <DashboardQuickActions
+                shortcuts={shortcuts}
+                subtitle="Toman la tienda seleccionada en la barra superior. Los bloques están en Tiendas."
+                onRegisterMail={() => setRegisterMailOpen(true)}
+                onCreateCustomTournament={() => setCustomTournamentOpen(true)}
+                onPlayPokemonDecklistPdf={() =>
+                  router.push('/dashboard/decklist-pdf-torneo')
+                }
+              />
+              <Typography
+                variant="overline"
+                color="text.secondary"
+                sx={{
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                  display: 'block',
+                  pt: 0.5
+                }}
+              >
+                Continuar en el panel
+              </Typography>
+            </>
+          ) : null}
+
+          <Stack spacing={2}>
+            <Card variant="outlined" sx={{ borderRadius: 3 }}>
+              <CardActionArea component={Link} href="/dashboard/tiendas">
+                <CardContent
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    py: 2.5
+                  }}
+                >
+                  <Storefront color="primary" sx={{ fontSize: 40 }} />
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={700}>
+                      Tiendas
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Eventos de la tienda activa, correo y puntos.
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </CardActionArea>
+            </Card>
+            <Card variant="outlined" sx={{ borderRadius: 3 }}>
+              <CardActionArea component={Link} href="/dashboard/mi-cuenta">
+                <CardContent
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    py: 2.5
+                  }}
+                >
+                  <AccountCircleOutlined
+                    color="primary"
+                    sx={{ fontSize: 40 }}
+                  />
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={700}>
+                      Mi cuenta
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Torneos, estadísticas y mazos enlazados a tu perfil.
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </CardActionArea>
+            </Card>
+          </Stack>
+        </Stack>
+
+        <RegisterMailDialog
+          open={registerMailOpen}
+          onClose={() => setRegisterMailOpen(false)}
+        />
+        <ReportCustomTournamentDialog
+          open={customTournamentOpen}
+          onClose={() => setCustomTournamentOpen(false)}
+          weekAnchor={weekAnchor}
+          onCreated={eventId => {
+            setCustomTournamentOpen(false)
+            router.push(`/dashboard/torneos-semana/${eventId}`)
+          }}
+        />
       </Container>
     </Box>
   )
