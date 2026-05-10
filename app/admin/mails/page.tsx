@@ -17,6 +17,7 @@ import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import TextField from '@mui/material/TextField'
+import Autocomplete from '@mui/material/Autocomplete'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Checkbox from '@mui/material/Checkbox'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -54,6 +55,17 @@ import {
 } from '@/lib/mail-store-days'
 import { alpha } from '@mui/material/styles'
 import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
+import {
+  buildDistinctMailUsersForFilters,
+  buildToRecipientOptions,
+  filterFromUserLabel,
+  filterToRecipientLabel,
+  mailMatchesToRecipientFilter,
+  participantSearchMatches,
+  toRecipientSearchMatches,
+  type FilterFromUser,
+  type FilterToRecipient
+} from '@/lib/mail-recipient-filter'
 
 /** ObjectId de Mongo como string (sin depender del endpoint `/api/users`). */
 function isLikelyMongoObjectId(v: string) {
@@ -96,6 +108,11 @@ export default function MailsPage() {
   >('all')
   /** Pendiente retiro en tienda: rangos por días desde ingreso a tienda. */
   const [filterElapsed, setFilterElapsed] = useState<ElapsedBucketFilter>('all')
+  const [filterFromUser, setFilterFromUser] = useState<FilterFromUser | null>(
+    null
+  )
+  const [filterToRecipient, setFilterToRecipient] =
+    useState<FilterToRecipient | null>(null)
   const [page, setPage] = useState(1)
   const [mailToDelete, setMailToDelete] = useState<Mail | null>(null)
 
@@ -106,6 +123,16 @@ export default function MailsPage() {
   const createUser = useCreateUser()
 
   const allMails = useMemo(() => mailsRes?.mails ?? [], [mailsRes?.mails])
+
+  const usersFromMails = useMemo(
+    () => buildDistinctMailUsersForFilters(allMails),
+    [allMails]
+  )
+
+  const toRecipientOptions = useMemo(
+    () => buildToRecipientOptions(allMails),
+    [allMails]
+  )
 
   const mails = useMemo(() => {
     let list = allMails
@@ -132,12 +159,27 @@ export default function MailsPage() {
         return matchesStoreWaitBucket(d, filterElapsed)
       })
     }
+    if (filterFromUser) {
+      list = list.filter(m => mailUserId(m.fromUserId) === filterFromUser.id)
+    }
+    if (filterToRecipient) {
+      list = list.filter(m =>
+        mailMatchesToRecipientFilter(m, filterToRecipient)
+      )
+    }
     return list
-  }, [allMails, searchId, filterStage, filterElapsed])
+  }, [
+    allMails,
+    searchId,
+    filterStage,
+    filterElapsed,
+    filterFromUser,
+    filterToRecipient
+  ])
 
   useEffect(() => {
     setPage(1)
-  }, [searchId, filterStage, filterElapsed])
+  }, [searchId, filterStage, filterElapsed, filterFromUser, filterToRecipient])
 
   const pageCount = Math.max(1, Math.ceil(mails.length / PAGE_SIZE))
 
@@ -433,7 +475,8 @@ export default function MailsPage() {
                 sx={{ mt: 0.5 }}
               >
                 Registro de envíos, ingreso en tienda y retiro; filtra por
-                código, etapa o antigüedad en tienda.
+                código, remitente/receptor (usuario o solo RUT), etapa o
+                antigüedad en tienda.
               </Typography>
             </Box>
           </AdminStorePageHeading>
@@ -465,7 +508,51 @@ export default function MailsPage() {
                 placeholder="Ej: 16-04-2026-001"
                 value={searchId}
                 onChange={e => setSearchId(e.target.value)}
-                sx={{ minWidth: 220 }}
+                sx={{ minWidth: { xs: '100%', sm: 220 } }}
+              />
+              <Autocomplete<FilterFromUser>
+                size="small"
+                options={usersFromMails}
+                value={filterFromUser}
+                onChange={(_, v) => setFilterFromUser(v)}
+                getOptionLabel={filterFromUserLabel}
+                isOptionEqualToValue={(a, b) => a.id === b.id}
+                sx={{
+                  minWidth: { xs: '100%', sm: 260 },
+                  flex: { md: '1 1 200px' }
+                }}
+                renderInput={params => (
+                  <TextField
+                    {...params}
+                    label="Remitente (de)"
+                    placeholder="Nombre o RUT"
+                  />
+                )}
+                filterOptions={(opts, { inputValue }) =>
+                  opts.filter(u => participantSearchMatches(inputValue, u))
+                }
+              />
+              <Autocomplete<FilterToRecipient>
+                size="small"
+                options={toRecipientOptions}
+                value={filterToRecipient}
+                onChange={(_, v) => setFilterToRecipient(v)}
+                getOptionLabel={filterToRecipientLabel}
+                isOptionEqualToValue={(a, b) => a.id === b.id}
+                sx={{
+                  minWidth: { xs: '100%', sm: 260 },
+                  flex: { md: '1 1 200px' }
+                }}
+                renderInput={params => (
+                  <TextField
+                    {...params}
+                    label="Destinatario (para)"
+                    placeholder="Nombre, RUT o sin cuenta"
+                  />
+                )}
+                filterOptions={(opts, { inputValue }) =>
+                  opts.filter(o => toRecipientSearchMatches(inputValue, o))
+                }
               />
             </Box>
             <Box>
@@ -605,6 +692,8 @@ export default function MailsPage() {
                 setSearchId('')
                 setFilterStage('all')
                 setFilterElapsed('all')
+                setFilterFromUser(null)
+                setFilterToRecipient(null)
               }}
             >
               Restablecer filtros
