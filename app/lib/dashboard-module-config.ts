@@ -81,10 +81,7 @@ export function playerOrderForAdminEditor(
 /** Reconstituye el vector `order` completo tras guardar el editor admin. */
 export function composePersistedDashboardOrderFromAdminState(
   storeOrder: DashboardModuleId[],
-  editablePlayerOrder: Exclude<
-    DashboardModuleId,
-    'recentPublicDecklists'
-  >[]
+  editablePlayerOrder: Exclude<DashboardModuleId, 'recentPublicDecklists'>[]
 ): DashboardModuleId[] {
   return canonicalizeDashboardOrder([
     ...storeOrder,
