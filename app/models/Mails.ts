@@ -63,9 +63,11 @@ MailSchema.index(
   {
     unique: true,
     name: 'mails_legacy_missing_store_code_unique',
-    partialFilterExpression: {
-      $or: [{ storeId: { $exists: false } }, { storeId: { $type: 'null' } }]
-    }
+    /**
+     * No usar `$exists: false` en partialFilterExpression (MongoDB 67 / CannotCreateIndex).
+     * Igualdad a `null` incluye campo ausente o valor null en el filtro del índice.
+     */
+    partialFilterExpression: { storeId: null }
   }
 )
 

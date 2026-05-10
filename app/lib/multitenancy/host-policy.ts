@@ -8,33 +8,13 @@ export function normalizedHostname(hostHeader: string | null): string {
   return hostHeader.split(':')[0]!.trim().toLowerCase()
 }
 
-/** Host donde el usuario debe elegir tienda explícita (no se asume TCGFamily sólo por el dominio). */
-export function hostRequiresExplicitStore(hostname: string): boolean {
-  if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1') {
-    return false
-  }
-  const h = hostname.toLowerCase()
-  return h === 'tcgnexo.cl' || h === 'www.tcgnexo.cl'
-}
-
 /**
- * Slug de tienda usado como contexto público cuando aún no hay JWT con `activeStoreId`
- * (o para anónimos en rutas legacy).
- *
- * `null` ⇒ no hay default desde el host (p. ej. tcgnexo.cl).
+ * Slug público efectivo para el hub (un solo dominio): la tienda primary
+ * o `MULTITENANCY_FALLBACK_PUBLIC_STORE_SLUG` si está definida.
+ * No hay variantes por hostname.
  */
-export function defaultPublicStoreSlugForHost(hostname: string): string | null {
-  if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1') {
-    return DEFAULT_PRIMARY_STORE_SLUG
-  }
-  if (hostRequiresExplicitStore(hostname)) {
-    return null
-  }
+export function defaultPublicStoreSlugForHost(): string {
   const override = process.env.MULTITENANCY_FALLBACK_PUBLIC_STORE_SLUG?.trim()
   if (override) return override
   return DEFAULT_PRIMARY_STORE_SLUG
-}
-
-export function hostNeedsStoreChoiceBeforeProtectedRoutes(hostname: string) {
-  return hostRequiresExplicitStore(hostname)
 }
