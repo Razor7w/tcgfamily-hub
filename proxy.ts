@@ -6,7 +6,7 @@ import { defaultPublicStoreSlugForHost } from '@/lib/multitenancy/host-policy'
  * Inyecta el slug de tienda por defecto para lecturas mediante
  * `publicStoreSlugFromHeaders`. Un solo dominio: siempre slug primary (o env).
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const slug = defaultPublicStoreSlugForHost()
 
   const reqHeaders = new Headers(request.headers)
