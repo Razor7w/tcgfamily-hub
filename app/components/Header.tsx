@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSession, signOut } from 'next-auth/react'
 import AppBar from '@mui/material/AppBar'
@@ -32,7 +32,7 @@ import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined'
 import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 import { invalidateStoreScopedDashboardQueries } from '@/lib/invalidate-store-scoped-queries'
-import { isStoreContextHubPath } from '@/lib/store-context-hub-path'
+import { shouldReplaceUrlWithActiveStoreSlug } from '@/lib/store-context-hub-path'
 import { useAppStore } from '@/store/useAppStore'
 
 const ACCOUNT_DRAWER_WIDTH = 300
@@ -46,7 +46,6 @@ type HeaderStorePick = {
 
 export default function Header() {
   const router = useRouter()
-  const pathname = usePathname()
   const queryClient = useQueryClient()
   const { data: session, status, update } = useSession()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
@@ -164,18 +163,44 @@ export default function Header() {
         )
       }
       const data = (await res.json()) as { activeStoreId?: string }
-      await update({
-        activeStoreId:
-          typeof data.activeStoreId === 'string' ? data.activeStoreId : storeId
-      })
-      await invalidateStoreScopedDashboardQueries(queryClient)
-      await loadMeStores()
-      const slug =
+      const nextActiveId =
+        typeof data.activeStoreId === 'string' ? data.activeStoreId : storeId
+
+      let slug =
         (typeof slugPreferred === 'string' ? slugPreferred.trim() : '') ||
         storeOptions.find(s => s.id === storeId)?.slug?.trim()
-      if (slug && isStoreContextHubPath(pathname ?? '')) {
+      if (!slug) {
+        try {
+          const mr = await fetch('/api/me/stores')
+          if (mr.ok) {
+            const j = (await mr.json()) as {
+              stores?: Array<{ id?: string; slug?: string }>
+            }
+            const rows = Array.isArray(j.stores) ? j.stores : []
+            const row = rows.find(r => String(r.id ?? '') === storeId)
+            slug = typeof row?.slug === 'string' ? row.slug.trim() : ''
+          }
+        } catch {
+          slug = ''
+        }
+      }
+
+      const pathForStoreUrl =
+        typeof window !== 'undefined' ? window.location.pathname : ''
+      const goToSlug =
+        !!slug && shouldReplaceUrlWithActiveStoreSlug(pathForStoreUrl)
+
+      // Navegar antes de actualizar la sesión en cliente: si seguimos en `/tier0` con
+      // sesión ya en otra tienda, el efecto de la página vieja POSTea tier0 y anula el cambio.
+      if (goToSlug) {
         router.replace(`/${slug}`)
-      } else {
+      }
+
+      await update({ activeStoreId: nextActiveId })
+      await invalidateStoreScopedDashboardQueries(queryClient)
+      await loadMeStores()
+
+      if (!goToSlug) {
         router.refresh()
       }
     } catch (e) {

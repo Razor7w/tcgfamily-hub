@@ -157,9 +157,9 @@ function StoreHubBody({
       })}
     >
       <Container maxWidth="lg">
-        <Box sx={{ mb: 4 }}>
+        <Box sx={{ mb: 2 }}>
           <Typography variant="h4" component="h1" gutterBottom>
-            Tiendas
+            {activeStoreLine ? `${activeStoreLine}` : ''}
           </Typography>
           <Typography
             variant="subtitle1"
@@ -167,7 +167,6 @@ function StoreHubBody({
             sx={{ mb: 0.5 }}
           >
             Hola {session?.user?.name ?? ''}
-            {activeStoreLine ? ` · ${activeStoreLine}` : ''}
           </Typography>
         </Box>
 
