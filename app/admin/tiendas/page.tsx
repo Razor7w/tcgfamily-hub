@@ -1,9 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { useQueryClient } from '@tanstack/react-query'
-import { useSession } from 'next-auth/react'
 import {
   Alert,
   alpha,
@@ -23,7 +20,6 @@ import {
   Divider,
   Snackbar
 } from '@mui/material'
-import { invalidateStoreScopedDashboardQueries } from '@/lib/invalidate-store-scoped-queries'
 import { ArrowBack } from '@mui/icons-material'
 import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
 
@@ -41,13 +37,6 @@ type StoresPayload = {
 }
 
 type MemRow = { userId: string; role: string; email: string; name: string }
-
-type MeStoreRow = {
-  id: string
-  name: string
-  slug: string
-  logoUrl?: string
-}
 
 async function patchStore(storeId: string, body: Record<string, unknown>) {
   const res = await fetch(`/api/admin/stores/${storeId}`, {
@@ -98,9 +87,6 @@ async function uploadStoreLogo(storeId: string, file: File) {
 }
 
 export default function AdminTiendasPage() {
-  const router = useRouter()
-  const queryClient = useQueryClient()
-  const { data: session, status, update } = useSession()
   const [payload, setPayload] = useState<StoresPayload | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [toast, setToast] = useState<{
@@ -118,8 +104,6 @@ export default function AdminTiendasPage() {
   const [addEmail, setAddEmail] = useState('')
   const [addRole, setAddRole] = useState<'owner' | 'store_admin'>('store_admin')
   const [savingMembership, setSavingMembership] = useState<string | null>(null)
-  const [contextStores, setContextStores] = useState<MeStoreRow[]>([])
-  const [contextBusy, setContextBusy] = useState(false)
 
   const load = useCallback(async () => {
     setMessage(null)
@@ -140,78 +124,6 @@ export default function AdminTiendasPage() {
   useEffect(() => {
     void load()
   }, [load])
-
-  useEffect(() => {
-    if (status !== 'authenticated') {
-      setContextStores([])
-      return
-    }
-    let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetch('/api/me/stores')
-        if (!res.ok || cancelled) return
-        const data = await res.json()
-        const rows = Array.isArray(data.stores) ? data.stores : []
-        if (!cancelled) {
-          setContextStores(
-            rows.map((r: MeStoreRow) => ({
-              id: String(r.id),
-              name: String(r.name),
-              slug: String(r.slug ?? ''),
-              logoUrl: typeof r.logoUrl === 'string' ? r.logoUrl : ''
-            }))
-          )
-        }
-      } catch {
-        if (!cancelled) setContextStores([])
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [status])
-
-  const activeContextStoreId =
-    typeof session?.user?.activeStoreId === 'string'
-      ? session.user.activeStoreId.trim()
-      : ''
-
-  const switchActiveStore = async (storeId: string) => {
-    if (!storeId || storeId === activeContextStoreId) return
-    setContextBusy(true)
-    setMessage(null)
-    try {
-      const res = await fetch('/api/me/active-store', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storeId })
-      })
-      const data = await res.json().catch(() => null)
-      if (!res.ok) {
-        throw new Error(
-          typeof data?.error === 'string'
-            ? data.error
-            : 'No se pudo cambiar la tienda activa'
-        )
-      }
-      await update({
-        activeStoreId:
-          typeof data?.activeStoreId === 'string' ? data.activeStoreId : storeId
-      })
-      await invalidateStoreScopedDashboardQueries(queryClient)
-      router.refresh()
-      await load()
-      setToast({
-        sev: 'success',
-        msg: 'Tienda actual: datos del dashboard refrescados (eventos y créditos).'
-      })
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'Error al cambiar de tienda')
-    } finally {
-      setContextBusy(false)
-    }
-  }
 
   const fetchMembershipsForStore = async (storeId: string) => {
     setMemLoading(storeId)
@@ -351,121 +263,16 @@ export default function AdminTiendasPage() {
               <Typography color="text.secondary">
                 Alta de nuevas ubicaciones solamente desde TCGFamily HQ. En cada
                 tienda puedes subir marca y definir equipo (dueño o{' '}
-                <code style={{ margin: '0 2px' }}>store_admin</code>).
+                <code style={{ margin: '0 2px' }}>store_admin</code>). El
+                contexto de tienda en el panel lo elige cada usuario desde el
+                ícono de tienda del encabezado o desde{' '}
+                <Link href="/dashboard/perfil" underline="hover">
+                  Perfil
+                </Link>
+                .
               </Typography>
             </Stack>
           </AdminStorePageHeading>
-
-          {session?.user && contextStores.filter(s => s.id).length > 0 ? (
-            <Stack
-              spacing={1}
-              sx={{
-                p: 2,
-                borderRadius: 2,
-                border: 1,
-                borderColor: 'divider',
-                bgcolor: 'background.paper'
-              }}
-            >
-              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                Tienda del dashboard (eventos, correos físicos, crédito)
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Al elegir una ubicación el <strong>panel /dashboard</strong>{' '}
-                pide de nuevo los <strong>eventos de la semana</strong>, los{' '}
-                <strong>correos físicos</strong> y el <strong>crédito</strong>{' '}
-                sólo de esa tienda. El <strong>panel /admin</strong> usa el
-                mismo contexto (mismas cabeceras de sesión); cámbiala aquí o con
-                el icono de tienda del header.
-              </Typography>
-              <FormControl fullWidth size="small" disabled={contextBusy}>
-                <InputLabel>Tienda activa</InputLabel>
-                <Select
-                  label="Tienda activa"
-                  value={
-                    activeContextStoreId &&
-                    contextStores.some(s => s.id === activeContextStoreId)
-                      ? activeContextStoreId
-                      : (contextStores[0]?.id ?? '')
-                  }
-                  onChange={e => void switchActiveStore(String(e.target.value))}
-                >
-                  {contextStores
-                    .filter(s => s.id)
-                    .map(s => (
-                      <MenuItem key={s.id} value={s.id}>
-                        <Stack
-                          direction="row"
-                          spacing={1.5}
-                          alignItems="center"
-                        >
-                          {(() => {
-                            const lo = (s.logoUrl ?? '').trim()
-                            return (
-                              <Avatar
-                                variant="rounded"
-                                alt=""
-                                {...(lo
-                                  ? {
-                                      src: lo,
-                                      children: undefined
-                                    }
-                                  : {
-                                      src: undefined,
-                                      children: (
-                                        (s.slug || '?').slice(0, 2) || '?'
-                                      ).toUpperCase()
-                                    })}
-                                sx={{
-                                  width: 28,
-                                  height: 28,
-                                  fontSize: 12,
-                                  bgcolor: lo ? 'action.hover' : undefined,
-                                  '& .MuiAvatar-img': {
-                                    objectFit: 'contain',
-                                    transform: lo ? 'scale(0.9)' : undefined
-                                  }
-                                }}
-                              />
-                            )
-                          })()}
-                          <span>
-                            {s.name}{' '}
-                            <Typography
-                              component="span"
-                              variant="caption"
-                              color="text.secondary"
-                              sx={{ ml: 0.5 }}
-                            >
-                              ({s.slug})
-                            </Typography>
-                          </span>
-                        </Stack>
-                      </MenuItem>
-                    ))}
-                </Select>
-              </FormControl>
-              {session.user.storeRole === 'owner' ||
-              payload?.canCreateStores ? (
-                <Typography variant="caption" color="text.secondary">
-                  <strong>Owner / HQ:</strong> en cada momento elige qué
-                  ubicación quieres consultar o sobre la que vas a actuar en los
-                  módulos; no se acumulan vistas de varias tiendas a la vez.
-                </Typography>
-              ) : session.user.storeRole === 'store_admin' ? (
-                <Typography variant="caption" color="text.secondary">
-                  <strong>Admin de tienda:</strong> tus permisos sólo aplican a
-                  las ubicaciones asignadas; no podrás editar datos fuera de ese
-                  alcance.
-                </Typography>
-              ) : contextStores.filter(s => s.id).length > 1 ? (
-                <Typography variant="caption" color="text.secondary">
-                  Con acceso a varias tiendas elige aquí la vista para el
-                  dashboard.
-                </Typography>
-              ) : null}
-            </Stack>
-          ) : null}
 
           {message ? (
             <Alert severity="error" onClose={() => setMessage(null)}>

@@ -160,9 +160,12 @@ export async function hydrateStoreContextInJwt(token: JWT): Promise<void> {
   if (!userId) return
 
   await connectDB()
-  const dbUser = await User.findById(userId).select('role').lean<{
-    role?: 'user' | 'admin'
-  } | null>()
+  const dbUser = await User.findById(userId)
+    .select('role defaultStoreId')
+    .lean<{
+      role?: 'user' | 'admin'
+      defaultStoreId?: mongoose.Types.ObjectId | null
+    } | null>()
   const legacyRole: 'user' | 'admin' =
     dbUser?.role === 'admin' ? 'admin' : 'user'
 
@@ -208,6 +211,21 @@ export async function hydrateStoreContextInJwt(token: JWT): Promise<void> {
   } else {
     activeIdStr = ''
     token.activeStoreId = undefined
+  }
+
+  if (!activeIdStr && dbUser?.defaultStoreId) {
+    const defOid = dbUser.defaultStoreId
+    const okDef = await evaluateDashboardStoreAccess(
+      legacyRole,
+      memberships,
+      globActiveIdSet,
+      primaryOid,
+      defOid
+    )
+    if (okDef) {
+      activeIdStr = defOid.toString()
+      token.activeStoreId = activeIdStr
+    }
   }
 
   const ingressSlug = await peekIngressSlug()

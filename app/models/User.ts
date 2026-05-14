@@ -24,6 +24,8 @@ export interface IUser extends Document {
   phone: string
   rut: string
   popid: string
+  /** Tienda preferida al iniciar sesión (si sigue accesible). `null` = sin preferencia. */
+  defaultStoreId?: Types.ObjectId | null
   /** Puntos / crédito de tienda (columna Saldo del reporte). */
   storePoints: number
   /** Próximos puntos a vencer. */
@@ -76,6 +78,11 @@ const UserSchema = new Schema<IUser>(
     popid: {
       type: String,
       default: ''
+    },
+    defaultStoreId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Store',
+      required: false
     },
     storePoints: {
       type: Number,

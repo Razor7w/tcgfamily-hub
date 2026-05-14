@@ -12,6 +12,10 @@ import Alert from '@mui/material/Alert'
 import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
 import CircularProgress from '@mui/material/CircularProgress'
+import FormControl from '@mui/material/FormControl'
+import InputLabel from '@mui/material/InputLabel'
+import Select from '@mui/material/Select'
+import MenuItem from '@mui/material/MenuItem'
 import InputAdornment from '@mui/material/InputAdornment'
 import IconButton from '@mui/material/IconButton'
 import Visibility from '@mui/icons-material/Visibility'
@@ -43,7 +47,10 @@ type MeResponse = {
   popid: string
   phone: string
   hasPassword: boolean
+  defaultStoreId: string | null
 }
+
+type StoreOption = { id: string; name: string }
 
 export default function PerfilPage() {
   const { data: session, status, update } = useSession()
@@ -55,6 +62,9 @@ export default function PerfilPage() {
 
   const [name, setName] = useState('')
   const [popid, setPopid] = useState('')
+  const [defaultStoreId, setDefaultStoreId] = useState('')
+  const [storeOptions, setStoreOptions] = useState<StoreOption[]>([])
+  const [storesLoading, setStoresLoading] = useState(false)
   const [profileMsg, setProfileMsg] = useState<string | null>(null)
   const [profileErr, setProfileErr] = useState<string | null>(null)
   const [savingProfile, setSavingProfile] = useState(false)
@@ -85,6 +95,7 @@ export default function PerfilPage() {
           setMe(data)
           setName(data.name)
           setPopid(data.popid)
+          setDefaultStoreId(data.defaultStoreId?.trim() ?? '')
           setLoadError(null)
         }
       } catch {
@@ -97,6 +108,42 @@ export default function PerfilPage() {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    if (status !== 'authenticated') {
+      setStoreOptions([])
+      return
+    }
+    ;(async () => {
+      setStoresLoading(true)
+      try {
+        const res = await fetch('/api/me/stores')
+        if (!res.ok || cancelled) return
+        const data = (await res.json()) as {
+          stores?: Array<{ id?: string; name?: string }>
+        }
+        const rows = Array.isArray(data.stores) ? data.stores : []
+        const opts = rows
+          .map(r => ({
+            id: String(r.id ?? '').trim(),
+            name: String(r.name ?? '').trim()
+          }))
+          .filter(r => r.id)
+          .sort((a, b) =>
+            a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
+          )
+        if (!cancelled) setStoreOptions(opts)
+      } catch {
+        if (!cancelled) setStoreOptions([])
+      } finally {
+        if (!cancelled) setStoresLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [status])
 
   const newPwChecks = useMemo(
     () => getPasswordRuleChecks(newPassword),
@@ -115,10 +162,14 @@ export default function PerfilPage() {
     if (!me || savingProfile) return false
     if (validateRegisterName(name) !== null) return false
     if (validatePopidOptional(popid) !== null) return false
+    const prevDefault = (me.defaultStoreId ?? '').trim()
+    const nextDefault = defaultStoreId.trim()
     return (
-      name.trim() !== me.name.trim() || popid.trim() !== (me.popid || '').trim()
+      name.trim() !== me.name.trim() ||
+      popid.trim() !== (me.popid || '').trim() ||
+      prevDefault !== nextDefault
     )
-  }, [me, name, popid, savingProfile])
+  }, [me, name, popid, defaultStoreId, savingProfile])
 
   const canSavePassword = useMemo(() => {
     if (!me?.hasPassword || savingPw) return false
@@ -146,12 +197,17 @@ export default function PerfilPage() {
       const res = await fetch('/api/me', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), popid })
+        body: JSON.stringify({
+          name: name.trim(),
+          popid,
+          defaultStoreId: defaultStoreId.trim() || null
+        })
       })
       const data = (await res.json().catch(() => ({}))) as {
         error?: string
         name?: string
         popid?: string
+        defaultStoreId?: string | null
       }
       if (!res.ok) {
         setProfileErr(data.error || 'No se pudo guardar.')
@@ -162,10 +218,17 @@ export default function PerfilPage() {
           ? {
               ...prev,
               name: data.name ?? prev.name,
-              popid: data.popid ?? prev.popid
+              popid: data.popid ?? prev.popid,
+              defaultStoreId:
+                data.defaultStoreId !== undefined
+                  ? data.defaultStoreId
+                  : prev.defaultStoreId
             }
           : prev
       )
+      if (data.defaultStoreId !== undefined) {
+        setDefaultStoreId((data.defaultStoreId ?? '').trim())
+      }
       setProfileMsg('Datos actualizados.')
       await update({
         name: data.name ?? name.trim(),
@@ -283,8 +346,8 @@ export default function PerfilPage() {
         color="text.secondary"
         sx={{ mb: { xs: 2, md: 3 }, maxWidth: '72ch', textWrap: 'pretty' }}
       >
-        Modifica tu nombre y Pop ID. El correo y el RUT solo los puede cambiar
-        un administrador; aquí siguen visibles.
+        Modifica tu nombre, Pop ID y tienda predeterminada. El correo y el RUT
+        solo los puede cambiar un administrador; aquí siguen visibles.
       </Typography>
 
       <Box
@@ -424,6 +487,43 @@ export default function PerfilPage() {
                 pattern: '[0-9]*'
               }}
             />
+            <FormControl fullWidth disabled={savingProfile || storesLoading}>
+              <InputLabel id="perfil-default-store-label">
+                Tienda predeterminada
+              </InputLabel>
+              <Select
+                labelId="perfil-default-store-label"
+                id="perfil-default-store"
+                label="Tienda predeterminada"
+                value={defaultStoreId}
+                onChange={e =>
+                  setDefaultStoreId(String(e.target.value ?? '').trim())
+                }
+              >
+                <MenuItem value="">
+                  <em>Automática (según contexto al iniciar sesión)</em>
+                </MenuItem>
+                {defaultStoreId &&
+                !storeOptions.some(s => s.id === defaultStoreId) ? (
+                  <MenuItem value={defaultStoreId}>
+                    Tienda guardada (sin acceso actual)
+                  </MenuItem>
+                ) : null}
+                {storeOptions.map(s => (
+                  <MenuItem key={s.id} value={s.id}>
+                    {s.name || s.id}
+                  </MenuItem>
+                ))}
+              </Select>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mt: 0.75, display: 'block', maxWidth: '72ch' }}
+              >
+                Se usa al entrar si aún no elegiste otra tienda en el selector
+                del encabezado. Solo aparecen tiendas a las que tenés acceso.
+              </Typography>
+            </FormControl>
             <Button
               type="submit"
               variant="contained"
