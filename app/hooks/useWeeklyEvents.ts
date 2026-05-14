@@ -585,8 +585,9 @@ export interface AdminWeeklyEvent {
 }
 
 export function useAdminEvents() {
+  const storeKey = useDashboardStoreQueryKey()
   return useQuery<{ events: AdminWeeklyEvent[] }>({
-    queryKey: ['admin-weekly-events'],
+    queryKey: ['admin-weekly-events', storeKey],
     queryFn: async () => {
       const res = await fetch('/api/admin/events')
       if (!res.ok) {
@@ -996,8 +997,9 @@ export function useAdminCustomTournaments() {
 }
 
 export function useAdminLeagues() {
+  const storeKey = useDashboardStoreQueryKey()
   return useQuery<{ leagues: AdminLeague[] }>({
-    queryKey: ['admin-leagues'],
+    queryKey: ['admin-leagues', storeKey],
     queryFn: async () => {
       const res = await fetch('/api/admin/leagues')
       if (!res.ok) {

@@ -68,8 +68,9 @@ export interface UpdateMailData {
 
 // Hook para obtener todos los mails (admin)
 export function useMails() {
+  const storeKey = useDashboardStoreQueryKey()
   return useQuery<{ mails: Mail[] }>({
-    queryKey: ['mails'],
+    queryKey: ['mails', storeKey],
     queryFn: async () => {
       const response = await fetch('/api/mail')
       if (!response.ok) {
@@ -205,6 +206,7 @@ export function useGetMailById(mailId: string | null) {
 // Hook para actualizar un mail por ID
 export function useUpdateMail() {
   const queryClient = useQueryClient()
+  const storeKey = useDashboardStoreQueryKey()
 
   return useMutation({
     mutationFn: async ({
@@ -229,7 +231,7 @@ export function useUpdateMail() {
       return res.mail as Mail
     },
     onSuccess: (updatedMail, variables) => {
-      queryClient.setQueryData<{ mails: Mail[] }>(['mails'], old => {
+      queryClient.setQueryData<{ mails: Mail[] }>(['mails', storeKey], old => {
         if (!old?.mails) return old
         return {
           mails: old.mails.map(m =>
