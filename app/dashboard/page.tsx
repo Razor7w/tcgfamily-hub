@@ -70,7 +70,7 @@ export default function DashboardPage() {
 
         <Stack spacing={3}>
           {showQuickActions ? (
-            <Box sx={{ maxWidth: 720 }}>
+            <Box sx={{ maxWidth: { xs: '100%', sm: 960 } }}>
               <DashboardQuickActions
                 shortcuts={shortcuts}
                 subtitle="Toman la tienda seleccionada en la barra superior. Los bloques están en Tiendas."
@@ -83,7 +83,7 @@ export default function DashboardPage() {
             </Box>
           ) : null}
 
-          <Box sx={{ maxWidth: { xs: '100%', md: 900 } }}>
+          <Box sx={{ maxWidth: { xs: '100%', sm: 960 } }}>
             <RecentPublicDecklistsHomeCard />
           </Box>
 
@@ -94,14 +94,14 @@ export default function DashboardPage() {
               fontWeight: 700,
               letterSpacing: '0.08em',
               display: 'block',
-              maxWidth: 720,
+              maxWidth: { xs: '100%', sm: 960 },
               pt: 0.5
             }}
           >
             Continuar en el panel
           </Typography>
 
-          <Stack spacing={2} sx={{ maxWidth: 720 }}>
+          <Stack spacing={2} sx={{ maxWidth: { xs: '100%', sm: 960 } }}>
             <Card variant="outlined" sx={{ borderRadius: 3 }}>
               <CardActionArea component={Link} href="/dashboard/tiendas">
                 <CardContent

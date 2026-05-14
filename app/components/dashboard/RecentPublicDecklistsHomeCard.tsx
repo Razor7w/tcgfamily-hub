@@ -101,7 +101,7 @@ export default function RecentPublicDecklistsHomeCard() {
           '& .MuiCardHeader-action': { alignSelf: 'center', mt: 0 }
         }}
       />
-      <CardContent sx={{ pt: 0, pb: 2.5, px: { xs: 2, sm: 2.5 } }}>
+      <CardContent sx={{ pt: 0, pb: 3, px: { xs: 2, sm: 2.5 } }}>
         {isPending ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
             <CircularProgress size={28} />
@@ -127,6 +127,7 @@ export default function RecentPublicDecklistsHomeCard() {
                 xs: '1fr',
                 sm: 'repeat(2, minmax(0, 1fr))'
               },
+              alignItems: 'stretch',
               gap: { xs: 1.5, sm: 2 },
               p: 0,
               m: 0,
@@ -143,16 +144,25 @@ export default function RecentPublicDecklistsHomeCard() {
                 <Box
                   component="li"
                   key={row.id}
-                  sx={{ minWidth: 0, display: 'flex' }}
+                  sx={{
+                    minWidth: 0,
+                    display: 'flex',
+                    height: '100%',
+                    width: '100%'
+                  }}
                 >
                   <ButtonBase
                     component={Link}
                     href={`/dashboard/decklists/publicos/${row.id}`}
                     sx={{
                       width: '100%',
+                      height: '100%',
+                      minHeight: { xs: 0, sm: 88 },
                       borderRadius: 2.5,
                       textAlign: 'left',
-                      display: 'block',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'stretch',
                       border: '1px solid',
                       borderColor: 'divider',
                       bgcolor: t =>
@@ -186,7 +196,9 @@ export default function RecentPublicDecklistsHomeCard() {
                         p: { xs: 1.75, sm: 2 },
                         alignItems: 'center',
                         width: '100%',
-                        minWidth: 0
+                        flex: 1,
+                        minWidth: 0,
+                        minHeight: 0
                       }}
                     >
                       <Avatar
@@ -210,17 +222,17 @@ export default function RecentPublicDecklistsHomeCard() {
                           size={34}
                         />
                       </Box>
-                      <Stack spacing={0.35} sx={{ minWidth: 0, flex: 1 }}>
+                      <Stack spacing={0.35} sx={{ minWidth: 0, flex: 1, py: 0.25 }}>
                         <Typography
                           variant="subtitle2"
                           sx={{
                             fontWeight: 800,
                             letterSpacing: '-0.02em',
-                            lineHeight: 1.25,
+                            lineHeight: 1.35,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             display: '-webkit-box',
-                            WebkitLineClamp: 2,
+                            WebkitLineClamp: 3,
                             WebkitBoxOrient: 'vertical'
                           }}
                         >
