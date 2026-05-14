@@ -9,6 +9,8 @@ declare module 'next-auth' {
       rut: string
       popid: string
       hasPassword: boolean
+      /** Preferencia de tienda (ObjectId hex). `null` si aún no definida. */
+      defaultStoreId?: string | null
       /** Tienda activa (Mongo ObjectId como string). */
       activeStoreId?: string | null
       /** Rol de staff en la tienda activa (`null` si no aplica). */
@@ -32,5 +34,7 @@ declare module 'next-auth/jwt' {
     hasPassword?: boolean
     activeStoreId?: string
     storeRole?: 'owner' | 'store_admin'
+    /** Preferencia de tienda (ObjectId hex). Cadena vacía = sin preferencia en JWT. */
+    defaultStoreId?: string
   }
 }

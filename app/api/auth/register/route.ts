@@ -16,6 +16,7 @@ import {
 } from '@/lib/rut-chile'
 import { getRutFieldError } from '@/lib/rut-input'
 import { createSlidingWindowLimiter } from '@/lib/auth-rate-limit'
+import { resolveValidSignupStoreObjectId } from '@/lib/signup-default-store.server'
 
 const registerIpLimiter = createSlidingWindowLimiter({
   max: 10,
@@ -58,7 +59,8 @@ export async function POST(request: NextRequest) {
       password,
       confirmPassword,
       rut,
-      popid
+      popid,
+      defaultStoreId: defaultStoreField
     } = body as Record<string, unknown>
 
     const nameStr = typeof name === 'string' ? name : ''
@@ -68,6 +70,8 @@ export async function POST(request: NextRequest) {
       typeof confirmPassword === 'string' ? confirmPassword : ''
     const rutStr = typeof rut === 'string' ? rut : ''
     const popidStr = typeof popid === 'string' ? popid : ''
+    const defaultStoreStr =
+      typeof defaultStoreField === 'string' ? defaultStoreField : ''
 
     if (passwordStr !== confirmStr) {
       return NextResponse.json(
@@ -100,6 +104,11 @@ export async function POST(request: NextRequest) {
     const passErr = validatePasswordStrength(passwordStr)
     if (passErr) {
       return NextResponse.json({ error: passErr }, { status: 400 })
+    }
+
+    const storeResolved = await resolveValidSignupStoreObjectId(defaultStoreStr)
+    if (!storeResolved.ok) {
+      return NextResponse.json({ error: storeResolved.error }, { status: 400 })
     }
 
     await connectDB()
@@ -139,6 +148,7 @@ export async function POST(request: NextRequest) {
       existing.phone = existing.phone || ''
       existing.rut = rutStored
       existing.popid = popidForStorage(popidStr)
+      existing.defaultStoreId = storeResolved.objectId
       await existing.save()
       return NextResponse.json({ ok: true }, { status: 200 })
     }
@@ -152,6 +162,7 @@ export async function POST(request: NextRequest) {
       phone: '',
       rut: rutStored,
       popid: popidForStorage(popidStr),
+      defaultStoreId: storeResolved.objectId,
       accounts: [],
       sessions: []
     })

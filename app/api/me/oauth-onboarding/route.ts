@@ -9,9 +9,11 @@ import {
   validatePopidOptional
 } from '@/lib/rut-chile'
 import { getRutFieldError } from '@/lib/rut-input'
+import { resolveValidSignupStoreObjectId } from '@/lib/signup-default-store.server'
 
 /**
- * Completar RUT/Pop ID tras primer acceso con Google (usuarios sin RUT en BD).
+ * Completar RUT, Pop ID y tienda de preferencia tras primer acceso con Google
+ * (usuarios sin RUT o sin defaultStoreId en BD).
  */
 export async function POST(request: NextRequest) {
   try {
@@ -31,13 +33,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
     }
 
-    const { rut, popid } = body as Record<string, unknown>
+    const {
+      rut,
+      popid,
+      defaultStoreId: defaultStoreField
+    } = body as Record<string, unknown>
     const rutStr = typeof rut === 'string' ? rut : ''
     const popidStr = typeof popid === 'string' ? popid : ''
+    const defaultStoreStr =
+      typeof defaultStoreField === 'string' ? defaultStoreField : ''
 
     await connectDB()
     const user = await User.findById(session.user.id).select(
-      '+passwordHash rut popid'
+      '+passwordHash rut popid defaultStoreId'
     )
     if (!user) {
       return NextResponse.json(
@@ -56,6 +64,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: popidErr }, { status: 400 })
     }
 
+    const storeResolved = await resolveValidSignupStoreObjectId(defaultStoreStr)
+    if (!storeResolved.ok) {
+      return NextResponse.json({ error: storeResolved.error }, { status: 400 })
+    }
+
     const rutStored = rutForStorage(rutStr)
     const variants = rutMatchVariants(rutStored)
     const existingRut = await User.findOne({
@@ -71,12 +84,14 @@ export async function POST(request: NextRequest) {
 
     user.rut = rutStored
     user.popid = popidForStorage(popidStr)
+    user.defaultStoreId = storeResolved.objectId
     await user.save()
 
     return NextResponse.json({
       ok: true,
       rut: user.rut,
-      popid: user.popid ?? ''
+      popid: user.popid ?? '',
+      defaultStoreId: String(storeResolved.objectId)
     })
   } catch (e) {
     console.error('oauth-onboarding:', e)

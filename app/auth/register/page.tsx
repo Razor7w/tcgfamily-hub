@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -29,6 +29,9 @@ import {
 } from '@/lib/password-rules'
 import { validatePopidOptional } from '@/lib/rut-chile'
 import { formatRutOnBlur, getRutFieldError, onlyDigits } from '@/lib/rut-input'
+import PublicStoreSelectField, {
+  type PublicStoreOption
+} from '@/components/auth/PublicStoreSelectField'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -41,6 +44,37 @@ export default function RegisterPage() {
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [stores, setStores] = useState<PublicStoreOption[]>([])
+  const [storesLoading, setStoresLoading] = useState(true)
+  const [defaultStoreId, setDefaultStoreId] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setStoresLoading(true)
+      try {
+        const res = await fetch('/api/public/stores')
+        const data = (await res.json().catch(() => ({}))) as {
+          stores?: PublicStoreOption[]
+        }
+        const list = Array.isArray(data.stores) ? data.stores : []
+        if (!cancelled) setStores(list)
+      } finally {
+        if (!cancelled) setStoresLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (stores.length === 0) return
+    const ids = new Set(stores.map(s => s.id))
+    setDefaultStoreId(prev =>
+      prev.trim() && ids.has(prev.trim()) ? prev : stores[0]!.id
+    )
+  }, [stores])
 
   const passwordRuleChecks = useMemo(
     () => getPasswordRuleChecks(password),
@@ -70,6 +104,9 @@ export default function RegisterPage() {
 
   const canSubmit = useMemo(() => {
     if (loading) return false
+    if (storesLoading || stores.length === 0) return false
+    const sid = defaultStoreId.trim()
+    if (!sid || !stores.some(s => s.id === sid)) return false
     if (validateRegisterName(name) !== null) return false
     if (validateEmailFormat(emailNormalized) !== null) return false
     if (getRutFieldError(rut, true) !== null) return false
@@ -77,7 +114,18 @@ export default function RegisterPage() {
     if (!isPasswordStrengthSatisfied(password)) return false
     if (!passwordsMatch) return false
     return true
-  }, [loading, name, emailNormalized, rut, popid, password, passwordsMatch])
+  }, [
+    loading,
+    storesLoading,
+    stores,
+    defaultStoreId,
+    name,
+    emailNormalized,
+    rut,
+    popid,
+    password,
+    passwordsMatch
+  ])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -119,6 +167,12 @@ export default function RegisterPage() {
       return
     }
 
+    const sid = defaultStoreId.trim()
+    if (!sid || !stores.some(s => s.id === sid)) {
+      setError('Debes elegir una tienda de preferencia.')
+      return
+    }
+
     setLoading(true)
     try {
       const res = await fetch('/api/auth/register', {
@@ -130,7 +184,8 @@ export default function RegisterPage() {
           rut: formatRutOnBlur(rut),
           popid,
           password,
-          confirmPassword: confirm
+          confirmPassword: confirm,
+          defaultStoreId: sid
         })
       })
       const data = (await res.json().catch(() => ({}))) as { error?: string }
@@ -278,6 +333,16 @@ export default function RegisterPage() {
                 inputMode: 'numeric',
                 pattern: '[0-9]*'
               }}
+            />
+            <PublicStoreSelectField
+              value={defaultStoreId}
+              onChange={setDefaultStoreId}
+              options={stores}
+              loading={storesLoading}
+              disabled={loading}
+              required
+              labelId="register-default-store-label"
+              selectId="register-default-store"
             />
             <TextField
               label="Contraseña"

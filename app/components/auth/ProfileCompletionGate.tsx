@@ -7,21 +7,35 @@ function needsRutCompletion(rut: string | undefined) {
   return !rut?.trim()
 }
 
+function hasDefaultStorePref(
+  defaultStoreId: string | null | undefined
+): boolean {
+  return (
+    typeof defaultStoreId === 'string' &&
+    /^[a-f0-9]{24}$/i.test(defaultStoreId.trim())
+  )
+}
+
 export default function ProfileCompletionGate() {
   const { data: session, status, update } = useSession()
 
-  // OAuth sin contraseña: solo mostrar si falta RUT en la sesión (viene de la BD al loguear).
-  // No usar localStorage: falla entre subdominios/dispositivos y el RUT ya guardado no lo refleja.
+  // OAuth sin contraseña: modal si falta RUT o tienda de preferencia en sesión.
   const open =
     status === 'authenticated' &&
     session?.user &&
     !session.user.hasPassword &&
-    needsRutCompletion(session.user.rut)
+    (needsRutCompletion(session.user.rut) ||
+      !hasDefaultStorePref(session.user.defaultStoreId))
 
-  async function handleComplete(data: { rut: string; popid: string }) {
+  async function handleComplete(data: {
+    rut: string
+    popid: string
+    defaultStoreId: string
+  }) {
     await update({
       rut: data.rut,
-      popid: data.popid
+      popid: data.popid,
+      defaultStoreId: data.defaultStoreId
     })
   }
 
@@ -33,6 +47,7 @@ export default function ProfileCompletionGate() {
       onComplete={handleComplete}
       initialRut={session.user.rut}
       initialPopid={session.user.popid}
+      initialDefaultStoreId={session.user.defaultStoreId}
     />
   )
 }
