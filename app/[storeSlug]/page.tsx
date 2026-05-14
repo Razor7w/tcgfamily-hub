@@ -10,6 +10,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import DashboardHomeContent from '@/components/dashboard/DashboardHomeContent'
 import { invalidateStoreScopedDashboardQueries } from '@/lib/invalidate-store-scoped-queries'
+import { fetchMeStores, meStoresQueryKey } from '@/hooks/useMeStores'
 
 function normSlug(s: string) {
   return s.trim().toLowerCase()
@@ -67,11 +68,11 @@ function StoreHubBody({
 
     ;(async () => {
       try {
-        const res = await fetch('/api/me/stores')
-        if (!res.ok || cancelled) return
-        const data = (await res.json()) as {
-          stores?: Array<{ id?: string; name?: string; slug?: string }>
-        }
+        const uid = String(session.user.id)
+        const data = await queryClient.ensureQueryData({
+          queryKey: meStoresQueryKey(uid),
+          queryFn: fetchMeStores
+        })
         const rows = Array.isArray(data.stores) ? data.stores : []
 
         const hit = rows.find(

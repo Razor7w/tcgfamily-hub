@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { useSession } from 'next-auth/react'
 import Avatar from '@mui/material/Avatar'
 import Box from '@mui/material/Box'
 import Stack, { type StackProps } from '@mui/material/Stack'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
+import { useMeStores } from '@/hooks/useMeStores'
 
 export type AdminStorePageHeadingProps = {
   children: ReactNode
@@ -25,43 +26,16 @@ export function AdminStorePageHeading({
   ...rest
 }: AdminStorePageHeadingProps) {
   const { data: session, status } = useSession()
-  const [fetchedLogo, setFetchedLogo] = useState<{
-    storeId: string
-    url: string
-  } | null>(null)
+  const { data: meStoresLogo } = useMeStores()
   const showLogo =
     Boolean(showActiveStoreAvatar) || session?.user?.storeRole === 'store_admin'
   const aid = session?.user?.activeStoreId?.trim() ?? ''
 
-  const resolvedLogoUrl =
-    !showLogo || status !== 'authenticated' || !aid
-      ? ''
-      : fetchedLogo?.storeId === aid
-        ? fetchedLogo.url
-        : ''
-
-  useEffect(() => {
-    if (!showLogo || status !== 'authenticated' || !aid) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetch('/api/me/stores')
-        if (!res.ok || cancelled) return
-        const data = (await res.json()) as {
-          stores?: Array<{ id?: string; logoUrl?: string }>
-        }
-        const rows = Array.isArray(data.stores) ? data.stores : []
-        const hit = rows.find(r => String(r.id) === aid)
-        const logo = typeof hit?.logoUrl === 'string' ? hit.logoUrl.trim() : ''
-        if (!cancelled) setFetchedLogo({ storeId: aid, url: logo })
-      } catch {
-        if (!cancelled) setFetchedLogo({ storeId: aid, url: '' })
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [showLogo, status, aid])
+  const resolvedLogoUrl = useMemo(() => {
+    if (!showLogo || status !== 'authenticated' || !aid) return ''
+    const hit = (meStoresLogo?.stores ?? []).find(r => String(r.id) === aid)
+    return typeof hit?.logoUrl === 'string' ? hit.logoUrl.trim() : ''
+  }, [showLogo, status, aid, meStoresLogo?.stores])
 
   return (
     <Stack

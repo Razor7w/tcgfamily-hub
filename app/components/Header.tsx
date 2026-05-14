@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
@@ -32,6 +32,7 @@ import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined'
 import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 import { invalidateStoreScopedDashboardQueries } from '@/lib/invalidate-store-scoped-queries'
+import { useMeStores } from '@/hooks/useMeStores'
 import { shouldReplaceUrlWithActiveStoreSlug } from '@/lib/store-context-hub-path'
 import { useAppStore } from '@/store/useAppStore'
 
@@ -51,7 +52,16 @@ export default function Header() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [accountDrawerOpen, setAccountDrawerOpen] = useState(false)
   const [storeMenuEl, setStoreMenuEl] = useState<null | HTMLElement>(null)
-  const [storeOptions, setStoreOptions] = useState<HeaderStorePick[]>([])
+  const { data: meStoresRes } = useMeStores()
+  const storeOptions = useMemo<HeaderStorePick[]>(() => {
+    const rows = meStoresRes?.stores ?? []
+    return rows.map(r => ({
+      id: String(r.id ?? ''),
+      name: String(r.name ?? ''),
+      slug: String(r.slug ?? ''),
+      logoUrl: typeof r.logoUrl === 'string' ? r.logoUrl : ''
+    }))
+  }, [meStoresRes?.stores])
   const [storeSwitchBusy, setStoreSwitchBusy] = useState(false)
   const [storeSwitchError, setStoreSwitchError] = useState<string | null>(null)
   const muiTheme = useTheme()
@@ -79,40 +89,6 @@ export default function Header() {
   }, [desktopQuery])
   const toggleSidebar = useAppStore(s => s.toggleSidebar)
 
-  const loadMeStores = useCallback(async () => {
-    if (status !== 'authenticated') {
-      setStoreOptions([])
-      return
-    }
-    try {
-      const res = await fetch('/api/me/stores')
-      if (!res.ok) return
-      const data = await res.json()
-      const rows = Array.isArray(data.stores) ? data.stores : []
-      setStoreOptions(
-        rows.map(
-          (r: {
-            id?: string
-            name?: string
-            slug?: string
-            logoUrl?: string
-          }) => ({
-            id: String(r.id ?? ''),
-            name: String(r.name ?? ''),
-            slug: String(r.slug ?? ''),
-            logoUrl: typeof r.logoUrl === 'string' ? r.logoUrl : ''
-          })
-        )
-      )
-    } catch {
-      setStoreOptions([])
-    }
-  }, [status])
-
-  useEffect(() => {
-    void loadMeStores()
-  }, [loadMeStores])
-
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget)
   }
@@ -131,6 +107,7 @@ export default function Header() {
   const handleLogout = async () => {
     handleClose()
     closeAccountDrawer()
+    queryClient.removeQueries({ queryKey: ['me', 'stores'] })
     await signOut({ callbackUrl: '/' })
   }
 
@@ -170,19 +147,8 @@ export default function Header() {
         (typeof slugPreferred === 'string' ? slugPreferred.trim() : '') ||
         storeOptions.find(s => s.id === storeId)?.slug?.trim()
       if (!slug) {
-        try {
-          const mr = await fetch('/api/me/stores')
-          if (mr.ok) {
-            const j = (await mr.json()) as {
-              stores?: Array<{ id?: string; slug?: string }>
-            }
-            const rows = Array.isArray(j.stores) ? j.stores : []
-            const row = rows.find(r => String(r.id ?? '') === storeId)
-            slug = typeof row?.slug === 'string' ? row.slug.trim() : ''
-          }
-        } catch {
-          slug = ''
-        }
+        const row = storeOptions.find(s => s.id === storeId)
+        slug = row?.slug?.trim() ?? ''
       }
 
       const pathForStoreUrl =
@@ -198,7 +164,6 @@ export default function Header() {
 
       await update({ activeStoreId: nextActiveId })
       await invalidateStoreScopedDashboardQueries(queryClient)
-      await loadMeStores()
 
       if (!goToSlug) {
         router.refresh()

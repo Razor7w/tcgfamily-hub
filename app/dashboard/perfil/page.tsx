@@ -36,6 +36,7 @@ import { onlyDigits } from '@/lib/rut-input'
 import CheckCircle from '@mui/icons-material/CheckCircle'
 import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked'
 import R2UppyProfileImageUploader from '@/components/r2/R2UppyProfileImageUploader'
+import { useMeStores } from '@/hooks/useMeStores'
 
 type MeResponse = {
   id: string
@@ -63,8 +64,11 @@ export default function PerfilPage() {
   const [name, setName] = useState('')
   const [popid, setPopid] = useState('')
   const [defaultStoreId, setDefaultStoreId] = useState('')
-  const [storeOptions, setStoreOptions] = useState<StoreOption[]>([])
-  const [storesLoading, setStoresLoading] = useState(false)
+  const {
+    data: meStoresPayload,
+    isPending: storesQueryPending,
+    isError: storesQueryError
+  } = useMeStores()
   const [profileMsg, setProfileMsg] = useState<string | null>(null)
   const [profileErr, setProfileErr] = useState<string | null>(null)
   const [savingProfile, setSavingProfile] = useState(false)
@@ -109,42 +113,21 @@ export default function PerfilPage() {
     }
   }, [])
 
-  useEffect(() => {
-    let cancelled = false
-    if (status !== 'authenticated') {
-      setStoreOptions([])
-      return
-    }
-    ;(async () => {
-      setStoresLoading(true)
-      try {
-        const res = await fetch('/api/me/stores')
-        if (!res.ok || cancelled) return
-        const data = (await res.json()) as {
-          stores?: Array<{ id?: string; name?: string }>
-        }
-        const rows = Array.isArray(data.stores) ? data.stores : []
-        const opts = rows
-          .map(r => ({
-            id: String(r.id ?? '').trim(),
-            name: String(r.name ?? '').trim()
-          }))
-          .filter(r => r.id)
-          .sort((a, b) =>
-            a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
-          )
-        if (!cancelled) setStoreOptions(opts)
-      } catch {
-        if (!cancelled) setStoreOptions([])
-      } finally {
-        if (!cancelled) setStoresLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [status])
+  const storeOptions = useMemo((): StoreOption[] => {
+    const rows = meStoresPayload?.stores ?? []
+    return rows
+      .map(r => ({
+        id: String(r.id ?? '').trim(),
+        name: String(r.name ?? '').trim()
+      }))
+      .filter(r => r.id)
+      .sort((a, b) =>
+        a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
+      )
+  }, [meStoresPayload?.stores])
 
+  const storesLoading =
+    status === 'authenticated' && storesQueryPending && !storesQueryError
   /** Siempre una tienda de la lista: corrige vacío / guardado inválido. */
   useEffect(() => {
     if (storeOptions.length === 0) return

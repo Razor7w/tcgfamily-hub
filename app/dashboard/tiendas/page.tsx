@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
+import { useMeStores } from '@/hooks/useMeStores'
 
 /**
  * Puente cliente hacia el hub de la tienda activa (`/[slug]`).
@@ -15,6 +16,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 export default function DashboardTiendasBridgePage() {
   const router = useRouter()
   const { data: session, status } = useSession()
+  const { data: meStoresPayload, isSuccess } = useMeStores()
 
   useEffect(() => {
     if (status === 'loading') return
@@ -30,35 +32,24 @@ export default function DashboardTiendasBridgePage() {
       return
     }
 
-    let cancelled = false
+    if (!isSuccess || !meStoresPayload) return
 
-    ;(async () => {
-      try {
-        const res = await fetch('/api/me/stores')
-        if (!res.ok || cancelled) {
-          router.replace('/dashboard')
-          return
-        }
-        const data = (await res.json()) as {
-          stores?: Array<{ id?: string; slug?: string }>
-        }
-        const rows = Array.isArray(data.stores) ? data.stores : []
-        const hit = rows.find(r => String(r.id ?? '') === aid)
-        const slug = typeof hit?.slug === 'string' ? hit.slug.trim() : ''
-        if (!slug || cancelled) {
-          router.replace('/dashboard')
-          return
-        }
-        router.replace(`/${encodeURIComponent(slug)}`)
-      } catch {
-        if (!cancelled) router.replace('/dashboard')
-      }
-    })()
-
-    return () => {
-      cancelled = true
+    const rows = meStoresPayload.stores ?? []
+    const hit = rows.find(r => String(r.id ?? '') === aid)
+    const slug = typeof hit?.slug === 'string' ? hit.slug.trim() : ''
+    if (!slug) {
+      router.replace('/dashboard')
+      return
     }
-  }, [router, session?.user?.id, session?.user?.activeStoreId, status])
+    router.replace(`/${encodeURIComponent(slug)}`)
+  }, [
+    isSuccess,
+    meStoresPayload,
+    router,
+    session?.user?.activeStoreId,
+    session?.user?.id,
+    status
+  ])
 
   return (
     <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>

@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useStoreHubHref } from '@/hooks/useStoreHubHref'
+import { useMeStores } from '@/hooks/useMeStores'
 import ArrowDownward from '@mui/icons-material/ArrowDownward'
 import ArrowUpward from '@mui/icons-material/ArrowUpward'
 import MarkEmailReadOutlined from '@mui/icons-material/MarkEmailReadOutlined'
@@ -804,47 +805,17 @@ function ResendPickupEmailCard({
 
 export default function AdminConfiguracionPage() {
   const { data: session } = useSession()
+  const { data: meStoresForLabel } = useMeStores()
   const storeHubHref = useStoreHubHref()
   const activeStoreId = session?.user?.activeStoreId?.trim()
-  const [resolvedStoreLabel, setResolvedStoreLabel] = useState<{
-    storeId: string
-    name: string | null
-  } | null>(null)
 
-  const activeStoreDisplayName =
-    !activeStoreId || resolvedStoreLabel?.storeId !== activeStoreId
-      ? null
-      : resolvedStoreLabel.name
-
-  useEffect(() => {
-    if (!activeStoreId) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetch('/api/me/stores')
-        if (!res.ok || cancelled) return
-        const data = (await res.json()) as {
-          stores?: Array<{ id?: string; name?: string }>
-        }
-        const rows = Array.isArray(data.stores) ? data.stores : []
-        const hit = rows.find(r => String(r.id) === activeStoreId)
-        const name = hit && typeof hit.name === 'string' ? hit.name.trim() : ''
-        if (!cancelled) {
-          setResolvedStoreLabel({
-            storeId: activeStoreId,
-            name: name || null
-          })
-        }
-      } catch {
-        if (!cancelled) {
-          setResolvedStoreLabel({ storeId: activeStoreId, name: null })
-        }
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [activeStoreId])
+  const activeStoreDisplayName = useMemo(() => {
+    if (!activeStoreId) return null
+    const rows = meStoresForLabel?.stores ?? []
+    const hit = rows.find(r => String(r.id) === activeStoreId)
+    const name = hit && typeof hit.name === 'string' ? hit.name.trim() : ''
+    return name || null
+  }, [activeStoreId, meStoresForLabel?.stores])
 
   const { data, dataUpdatedAt, isPending, isError, error, refetch } =
     useAdminConfiguracion()

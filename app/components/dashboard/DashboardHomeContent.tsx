@@ -1,6 +1,6 @@
 'use client'
 
-import { startTransition, useEffect, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import dynamic from 'next/dynamic'
@@ -32,6 +32,7 @@ import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
 import DashboardStatisticsCard from '@/components/dashboard/DashboardStatisticsCard'
 import { useStoreCredit } from '@/hooks/useStoreCredit'
 import { useStoreHubHref } from '@/hooks/useStoreHubHref'
+import { useMeStores } from '@/hooks/useMeStores'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
 import {
   orderModulesForScope,
@@ -62,46 +63,18 @@ export default function DashboardHomeContent({
 }: DashboardHomeContentProps) {
   const { visibility, order } = useDashboardModulesFromLayout()
   const { data: session } = useSession()
+  const { data: meStoresData } = useMeStores()
   const storeHubHref = useStoreHubHref()
   const activeStoreId = session?.user?.activeStoreId?.trim() ?? ''
-  const [resolvedActiveStoreSlug, setResolvedActiveStoreSlug] = useState<
-    string | null
-  >(null)
 
-  useEffect(() => {
-    if (variant !== 'tiendas') {
-      startTransition(() => setResolvedActiveStoreSlug(null))
-      return
-    }
-    if (!activeStoreId) {
-      startTransition(() => setResolvedActiveStoreSlug(null))
-      return
-    }
-    let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetch('/api/me/stores')
-        if (!res.ok || cancelled) return
-        const data = (await res.json()) as {
-          stores?: Array<{ id?: string; slug?: string }>
-        }
-        const rows = Array.isArray(data.stores) ? data.stores : []
-        const hit = rows.find(r => String(r.id) === activeStoreId)
-        const slug =
-          typeof hit?.slug === 'string' ? hit.slug.trim().toLowerCase() : ''
-        if (!cancelled) {
-          startTransition(() => setResolvedActiveStoreSlug(slug || null))
-        }
-      } catch {
-        if (!cancelled) {
-          startTransition(() => setResolvedActiveStoreSlug(null))
-        }
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [activeStoreId, variant])
+  const resolvedActiveStoreSlug = useMemo(() => {
+    if (variant !== 'tiendas' || !activeStoreId) return null
+    const rows = meStoresData?.stores ?? []
+    const hit = rows.find(r => String(r.id) === activeStoreId)
+    const slug =
+      typeof hit?.slug === 'string' ? hit.slug.trim().toLowerCase() : ''
+    return slug || null
+  }, [variant, activeStoreId, meStoresData?.stores])
 
   const isTcgFamilyStore =
     resolvedActiveStoreSlug === DEFAULT_PRIMARY_STORE_SLUG
