@@ -303,8 +303,7 @@ export function mergeDashboardSettings(
     ...DEFAULT_DASHBOARD_VISIBILITY,
     ...partial?.visibility
   }
-  let order =
-    normalizeDashboardOrder(partial?.order) ??
+  let order = normalizeDashboardOrder(partial?.order) ??
     migrateFiveModuleOrder(partial?.order) ??
     migrateFourModuleOrder(partial?.order) ??
     migrateLegacyDashboardOrder(partial?.order) ?? [...DEFAULT_DASHBOARD_ORDER]
