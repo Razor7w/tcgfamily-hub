@@ -31,6 +31,7 @@ import MailFlowExplainer from '@/components/mails/MailFlowExplainer'
 import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
 import DashboardStatisticsCard from '@/components/dashboard/DashboardStatisticsCard'
 import { useStoreCredit } from '@/hooks/useStoreCredit'
+import { useStoreHubHref } from '@/hooks/useStoreHubHref'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
 import {
   orderModulesForScope,
@@ -48,13 +49,20 @@ export type DashboardHomeVariant = 'tiendas' | 'mi-cuenta'
 export type DashboardHomeContentProps = {
   /** `tiendas`: solo módulos de tienda activa (accesos rápidos están en Inicio). */
   variant?: DashboardHomeVariant
+  /**
+   * Hub `/[slug]`: mientras la sesión alinea `activeStoreId` con la URL, en false.
+   * Debe montarse siempre el mismo árbol de hooks; no condicionar el montaje en el padre.
+   */
+  hubReady?: boolean
 }
 
 export default function DashboardHomeContent({
-  variant = 'tiendas'
+  variant = 'tiendas',
+  hubReady = true
 }: DashboardHomeContentProps) {
   const { visibility, order } = useDashboardModulesFromLayout()
   const { data: session } = useSession()
+  const storeHubHref = useStoreHubHref()
   const activeStoreId = session?.user?.activeStoreId?.trim() ?? ''
   const [resolvedActiveStoreSlug, setResolvedActiveStoreSlug] = useState<
     string | null
@@ -105,7 +113,7 @@ export default function DashboardHomeContent({
     refetch: refetchCredit,
     isFetching: creditFetching
   } = useStoreCredit({
-    enabled: variant === 'tiendas'
+    enabled: variant === 'tiendas' && hubReady
   })
 
   const creditError = creditQueryError
@@ -361,6 +369,14 @@ export default function DashboardHomeContent({
     </Card>
   )
 
+  if (variant === 'tiendas' && !hubReady) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+        <CircularProgress aria-label="Cargando vista de tienda" />
+      </Box>
+    )
+  }
+
   if (variant === 'tiendas') {
     if (storeModuleIds.length === 0) {
       return emptyCard(
@@ -432,7 +448,7 @@ export default function DashboardHomeContent({
         </Typography>
         <Button
           component={Link}
-          href="/dashboard/tiendas"
+          href={storeHubHref}
           variant="outlined"
           size="small"
         >

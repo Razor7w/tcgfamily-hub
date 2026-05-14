@@ -28,6 +28,7 @@ import {
 } from '@mui/material'
 import AppVersion from '@/components/AppVersion'
 import { isStoreContextHubPath } from '@/lib/store-context-hub-path'
+import { useStoreHubHref } from '@/hooks/useStoreHubHref'
 import SignOutList from '@/components/auth/SignOutList'
 import AdminSidebarClient from '@/components/navigation/AdminSidebarClient'
 
@@ -47,6 +48,7 @@ export default function DashboardUserNav({
   isOwner: boolean
 }) {
   const pathname = usePathname() ?? ''
+  const storeHubHref = useStoreHubHref()
   const [decklistOpen, setDecklistOpen] = useState(() =>
     isUnderDecklistNav(pathname)
   )
@@ -77,7 +79,7 @@ export default function DashboardUserNav({
           <ListItem disablePadding>
             <ListItemButton
               component={Link}
-              href="/dashboard/tiendas"
+              href={storeHubHref}
               selected={
                 pathname === '/dashboard/tiendas' ||
                 isStoreContextHubPath(pathname)

@@ -19,10 +19,12 @@ import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
 import DashboardQuickActions from '@/components/dashboard/DashboardQuickActions'
 import RecentPublicDecklistsHomeCard from '@/components/dashboard/RecentPublicDecklistsHomeCard'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
+import { useStoreHubHref } from '@/hooks/useStoreHubHref'
 
 export default function DashboardPage() {
   const router = useRouter()
   const { data: session } = useSession()
+  const storeHubHref = useStoreHubHref()
   const name = session?.user?.name?.trim() || 'jugador'
   const { shortcuts } = useDashboardModulesFromLayout()
 
@@ -103,7 +105,7 @@ export default function DashboardPage() {
 
           <Stack spacing={2} sx={{ maxWidth: { xs: '100%', sm: 960 } }}>
             <Card variant="outlined" sx={{ borderRadius: 3 }}>
-              <CardActionArea component={Link} href="/dashboard/tiendas">
+              <CardActionArea component={Link} href={storeHubHref}>
                 <CardContent
                   sx={{
                     display: 'flex',

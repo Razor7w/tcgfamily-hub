@@ -1,24 +1,68 @@
-import mongoose from 'mongoose'
-import { redirect } from 'next/navigation'
-import { auth } from '@/auth'
-import connectDB from '@/lib/mongodb'
-import Store from '@/models/Store'
+'use client'
 
-export default async function TiendasLegacyRedirect() {
-  const session = await auth()
-  const aid = session?.user?.activeStoreId?.trim()
-  if (!aid || !mongoose.Types.ObjectId.isValid(aid)) {
-    redirect('/dashboard')
-  }
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
+import Box from '@mui/material/Box'
+import CircularProgress from '@mui/material/CircularProgress'
 
-  await connectDB()
-  const doc = await Store.findById(aid).select('slug').lean<{
-    slug?: string
-  }>()
-  const slug = typeof doc?.slug === 'string' ? doc.slug.trim() : ''
-  if (!slug) {
-    redirect('/dashboard')
-  }
+/**
+ * Puente cliente hacia el hub de la tienda activa (`/[slug]`).
+ * Antes era un Server Component que solo `redirect()`; en navegación SPA eso
+ * a veces dejaba el segmento sin árbol estable y disparaba errores de hooks
+ * en el layout. Este componente siempre ejecuta el mismo orden de hooks.
+ */
+export default function DashboardTiendasBridgePage() {
+  const router = useRouter()
+  const { data: session, status } = useSession()
 
-  redirect(`/${encodeURIComponent(slug)}`)
+  useEffect(() => {
+    if (status === 'loading') return
+
+    if (!session?.user?.id) {
+      router.replace('/')
+      return
+    }
+
+    const aid = session.user.activeStoreId?.trim() ?? ''
+    if (!aid) {
+      router.replace('/dashboard')
+      return
+    }
+
+    let cancelled = false
+
+    ;(async () => {
+      try {
+        const res = await fetch('/api/me/stores')
+        if (!res.ok || cancelled) {
+          router.replace('/dashboard')
+          return
+        }
+        const data = (await res.json()) as {
+          stores?: Array<{ id?: string; slug?: string }>
+        }
+        const rows = Array.isArray(data.stores) ? data.stores : []
+        const hit = rows.find(r => String(r.id ?? '') === aid)
+        const slug = typeof hit?.slug === 'string' ? hit.slug.trim() : ''
+        if (!slug || cancelled) {
+          router.replace('/dashboard')
+          return
+        }
+        router.replace(`/${encodeURIComponent(slug)}`)
+      } catch {
+        if (!cancelled) router.replace('/dashboard')
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [router, session?.user?.id, session?.user?.activeStoreId, status])
+
+  return (
+    <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
+      <CircularProgress aria-label="Abriendo vista de tienda" />
+    </Box>
+  )
 }

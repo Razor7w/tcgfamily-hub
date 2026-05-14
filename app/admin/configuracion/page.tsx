@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { useStoreHubHref } from '@/hooks/useStoreHubHref'
 import ArrowDownward from '@mui/icons-material/ArrowDownward'
 import ArrowUpward from '@mui/icons-material/ArrowUpward'
 import MarkEmailReadOutlined from '@mui/icons-material/MarkEmailReadOutlined'
@@ -803,6 +804,7 @@ function ResendPickupEmailCard({
 
 export default function AdminConfiguracionPage() {
   const { data: session } = useSession()
+  const storeHubHref = useStoreHubHref()
   const activeStoreId = session?.user?.activeStoreId?.trim()
   const [resolvedStoreLabel, setResolvedStoreLabel] = useState<{
     storeId: string
@@ -898,7 +900,7 @@ export default function AdminConfiguracionPage() {
                 Estos ajustes aplican solo a la tienda seleccionada en el menú
                 superior (misma que ves aquí arriba). Los bloques de tienda en{' '}
                 <Link
-                  href="/dashboard/tiendas"
+                  href={storeHubHref}
                   component={NextLink}
                   fontWeight={600}
                 >

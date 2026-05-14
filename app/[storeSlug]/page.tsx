@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
-import CircularProgress from '@mui/material/CircularProgress'
 import { alpha } from '@mui/material/styles'
 import { useParams, useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
@@ -146,7 +145,7 @@ function StoreHubBody({
       ? resolvedStoreName.name
       : ''
 
-  const showLoader = status === 'loading' || !hubReady
+  const hubContentReady = status !== 'loading' && hubReady
 
   return (
     <Box
@@ -170,13 +169,10 @@ function StoreHubBody({
           </Typography>
         </Box>
 
-        {showLoader ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-            <CircularProgress aria-label="Cargando vista de tienda" />
-          </Box>
-        ) : (
-          <DashboardHomeContent variant="tiendas" />
-        )}
+        <DashboardHomeContent
+          variant="tiendas"
+          hubReady={hubContentReady}
+        />
       </Container>
     </Box>
   )
