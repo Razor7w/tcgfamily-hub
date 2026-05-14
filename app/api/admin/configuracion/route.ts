@@ -117,6 +117,7 @@ export async function PUT(request: NextRequest) {
     if (updatingDashboard) {
       if (
         typeof vis.weeklyEvents !== 'boolean' ||
+        typeof vis.leagues !== 'boolean' ||
         typeof vis.myTournaments !== 'boolean' ||
         typeof vis.statistics !== 'boolean' ||
         typeof vis.mail !== 'boolean' ||
@@ -147,6 +148,7 @@ export async function PUT(request: NextRequest) {
     if (updatingDashboard && normalizedOrder) {
       doc.visibility = {
         weeklyEvents: vis.weeklyEvents,
+        leagues: vis.leagues,
         recentPublicDecklists: true,
         myTournaments: vis.myTournaments,
         statistics: vis.statistics,
@@ -200,6 +202,7 @@ export async function PUT(request: NextRequest) {
     revalidatePath('/dashboard/mail')
     revalidatePath('/dashboard/mail/registrar-multiples')
     revalidatePath('/dashboard/estadisticas')
+    revalidatePath('/admin/ligas')
 
     return NextResponse.json(
       {

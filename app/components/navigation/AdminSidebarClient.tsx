@@ -25,9 +25,11 @@ import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContex
 export default function AdminSidebarClient({ isOwner }: { isOwner: boolean }) {
   const { visibility } = useDashboardModulesFromLayout()
   const showWeeklyEvents = visibility.weeklyEvents
+  const showLeagues = visibility.leagues
   const showMail = visibility.mail
   const showStorePoints = visibility.storePoints
-  const hasStoreStaffNav = showWeeklyEvents || showMail || showStorePoints
+  const hasStoreStaffNav =
+    showWeeklyEvents || showLeagues || showMail || showStorePoints
 
   const [open, setOpen] = useState(true)
 
@@ -85,7 +87,7 @@ export default function AdminSidebarClient({ isOwner }: { isOwner: boolean }) {
             </ListItemButton>
           </List>
         ) : null}
-        {showWeeklyEvents ? (
+        {showLeagues ? (
           <List component="div" disablePadding>
             <ListItemButton sx={{ pl: 4 }} href="/admin/ligas">
               <ListItemIcon>

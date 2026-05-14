@@ -1,5 +1,6 @@
 export const DASHBOARD_MODULE_IDS = [
   'weeklyEvents',
+  'leagues',
   'recentPublicDecklists',
   'myTournaments',
   'statistics',
@@ -25,6 +26,7 @@ export const DASHBOARD_MODULE_SCOPE: Record<
   DashboardModuleScope
 > = {
   weeklyEvents: 'store',
+  leagues: 'store',
   recentPublicDecklists: 'player',
   myTournaments: 'player',
   statistics: 'player',
@@ -39,7 +41,7 @@ export const DASHBOARD_SECTION_COPY: Record<
   store: {
     title: 'En tu tienda activa',
     description:
-      'Eventos locales, correo físico y puntos enlazados al contexto seleccionado en la barra superior.'
+      'Eventos locales, ligas, correo físico y puntos enlazados al contexto seleccionado en la barra superior.'
   },
   player: {
     title: 'Tu actividad como jugador',
@@ -149,6 +151,7 @@ export type DashboardModuleVisibility = Record<DashboardModuleId, boolean>
 
 export const DEFAULT_DASHBOARD_VISIBILITY: DashboardModuleVisibility = {
   weeklyEvents: true,
+  leagues: true,
   recentPublicDecklists: true,
   myTournaments: true,
   statistics: true,
@@ -270,6 +273,29 @@ function migrateLegacyDashboardOrder(raw: unknown): DashboardModuleId[] | null {
   return next as DashboardModuleId[]
 }
 
+/**
+ * Orden guardado antes de existir `leagues`: permutación válida de 6 IDs.
+ * Inserta `leagues` justo después de `weeklyEvents`.
+ */
+function insertLeaguesIfMissingIntoOrder(
+  order: DashboardModuleId[]
+): DashboardModuleId[] {
+  if (order.includes('leagues')) return order
+  const missing = DASHBOARD_MODULE_IDS.filter(id => !order.includes(id))
+  if (
+    missing.length !== 1 ||
+    missing[0] !== 'leagues' ||
+    order.length !== DASHBOARD_MODULE_IDS.length - 1
+  ) {
+    return order
+  }
+  const idx = order.indexOf('weeklyEvents')
+  if (idx < 0) return order
+  const next = [...order]
+  next.splice(idx + 1, 0, 'leagues')
+  return next
+}
+
 export function mergeDashboardSettings(
   partial: Partial<DashboardModuleSettingsDTO> | null | undefined
 ): DashboardModuleSettingsDTO {
@@ -277,10 +303,12 @@ export function mergeDashboardSettings(
     ...DEFAULT_DASHBOARD_VISIBILITY,
     ...partial?.visibility
   }
-  const order = normalizeDashboardOrder(partial?.order) ??
+  let order =
+    normalizeDashboardOrder(partial?.order) ??
     migrateFiveModuleOrder(partial?.order) ??
     migrateFourModuleOrder(partial?.order) ??
     migrateLegacyDashboardOrder(partial?.order) ?? [...DEFAULT_DASHBOARD_ORDER]
+  order = insertLeaguesIfMissingIntoOrder(order)
   const shortcuts: DashboardShortcutsVisibility = {
     ...DEFAULT_DASHBOARD_SHORTCUTS,
     ...partial?.shortcuts

@@ -8,7 +8,7 @@ export default function AdminLigasLayout({
   children: React.ReactNode
 }) {
   return (
-    <DashboardModuleRouteGate moduleId="weeklyEvents">
+    <DashboardModuleRouteGate moduleId="leagues">
       {children}
     </DashboardModuleRouteGate>
   )

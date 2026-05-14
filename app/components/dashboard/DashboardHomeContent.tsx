@@ -308,6 +308,7 @@ export default function DashboardHomeContent({
 
   const blocks: Record<DashboardModuleId, ReactNode> = {
     weeklyEvents: weeklyEventsBlock,
+    leagues: null,
     recentPublicDecklists: null,
     myTournaments: myTournamentsBlock,
     statistics: statisticsBlock,
@@ -316,6 +317,9 @@ export default function DashboardHomeContent({
   }
 
   const storeModuleIds = orderModulesForScope(order, visibility, 'store')
+  const storeModuleIdsForRender = storeModuleIds.filter(
+    id => blocks[id] != null
+  )
   /** Mazos públicos solo en Inicio (`/dashboard`), no en Mi cuenta. */
   const playerModuleIds = orderModulesForScope(
     order,
@@ -351,7 +355,7 @@ export default function DashboardHomeContent({
   }
 
   if (variant === 'tiendas') {
-    if (storeModuleIds.length === 0) {
+    if (storeModuleIdsForRender.length === 0) {
       return emptyCard(
         'No hay bloques activos para la tienda en Tiendas. Si esto es un error, contacta al administrador de la tienda.'
       )
@@ -360,7 +364,7 @@ export default function DashboardHomeContent({
     return (
       <>
         <Stack spacing={3}>
-          {storeModuleIds.map(id => (
+          {storeModuleIdsForRender.map(id => (
             <Box key={id}>{blocks[id]}</Box>
           ))}
         </Stack>

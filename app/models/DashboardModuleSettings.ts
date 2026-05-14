@@ -7,6 +7,7 @@ export interface IDashboardModuleSettings extends Document {
   storeId?: Types.ObjectId
   visibility: {
     weeklyEvents: boolean
+    leagues: boolean
     recentPublicDecklists: boolean
     myTournaments: boolean
     statistics: boolean
@@ -36,6 +37,7 @@ const DashboardModuleSettingsSchema = new Schema<IDashboardModuleSettings>(
     },
     visibility: {
       weeklyEvents: { type: Boolean, default: true },
+      leagues: { type: Boolean, default: true },
       recentPublicDecklists: { type: Boolean, default: true },
       myTournaments: { type: Boolean, default: true },
       statistics: { type: Boolean, default: true },

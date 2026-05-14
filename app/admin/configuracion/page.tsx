@@ -64,6 +64,7 @@ const CONFIGURABLE_MODULE_LABELS: Record<
   string
 > = {
   weeklyEvents: 'Eventos de la semana (calendario y preinscripción)',
+  leagues: 'Ligas (puntuación y temporadas en tienda)',
   myTournaments:
     'Mis torneos (resumen de participaciones, rondas y torneos custom)',
   statistics:
