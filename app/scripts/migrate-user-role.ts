@@ -69,10 +69,7 @@ async function migrateUserRoles() {
     )
     const def = await User.updateMany(
       {
-        $or: [
-          { defaultStoreId: { $exists: false } },
-          { defaultStoreId: null }
-        ]
+        $or: [{ defaultStoreId: { $exists: false } }, { defaultStoreId: null }]
       },
       { $set: { defaultStoreId: storeOid } }
     )

@@ -169,10 +169,7 @@ function StoreHubBody({
           </Typography>
         </Box>
 
-        <DashboardHomeContent
-          variant="tiendas"
-          hubReady={hubContentReady}
-        />
+        <DashboardHomeContent variant="tiendas" hubReady={hubContentReady} />
       </Container>
     </Box>
   )

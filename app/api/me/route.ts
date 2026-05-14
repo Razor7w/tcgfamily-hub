@@ -65,8 +65,7 @@ export async function GET() {
       defaultStoreId?: mongoose.Types.ObjectId | null
     }
 
-    const defSid =
-      u.defaultStoreId != null ? u.defaultStoreId.toString() : null
+    const defSid = u.defaultStoreId != null ? u.defaultStoreId.toString() : null
 
     return NextResponse.json({
       id: u._id.toString(),

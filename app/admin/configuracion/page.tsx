@@ -899,11 +899,7 @@ export default function AdminConfiguracionPage() {
               >
                 Estos ajustes aplican solo a la tienda seleccionada en el menú
                 superior (misma que ves aquí arriba). Los bloques de tienda en{' '}
-                <Link
-                  href={storeHubHref}
-                  component={NextLink}
-                  fontWeight={600}
-                >
+                <Link href={storeHubHref} component={NextLink} fontWeight={600}>
                   Tiendas
                 </Link>
                 , los de jugador en{' '}

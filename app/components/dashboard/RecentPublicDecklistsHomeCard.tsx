@@ -222,7 +222,10 @@ export default function RecentPublicDecklistsHomeCard() {
                           size={34}
                         />
                       </Box>
-                      <Stack spacing={0.35} sx={{ minWidth: 0, flex: 1, py: 0.25 }}>
+                      <Stack
+                        spacing={0.35}
+                        sx={{ minWidth: 0, flex: 1, py: 0.25 }}
+                      >
                         <Typography
                           variant="subtitle2"
                           sx={{
