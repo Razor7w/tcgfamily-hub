@@ -145,6 +145,19 @@ export default function PerfilPage() {
     }
   }, [status])
 
+  /** Siempre una tienda de la lista: corrige vacío / guardado inválido. */
+  useEffect(() => {
+    if (storeOptions.length === 0) return
+    const ids = new Set(storeOptions.map(s => s.id))
+    setDefaultStoreId(prev => {
+      const saved = (me?.defaultStoreId ?? '').trim()
+      if (saved && ids.has(saved)) return saved
+      const cur = prev.trim()
+      if (cur && ids.has(cur)) return prev
+      return storeOptions[0]!.id
+    })
+  }, [me?.defaultStoreId, storeOptions])
+
   const newPwChecks = useMemo(
     () => getPasswordRuleChecks(newPassword),
     [newPassword]
@@ -162,14 +175,21 @@ export default function PerfilPage() {
     if (!me || savingProfile) return false
     if (validateRegisterName(name) !== null) return false
     if (validatePopidOptional(popid) !== null) return false
+    const sid = defaultStoreId.trim()
+    if (
+      storeOptions.length > 0 &&
+      (!sid || !storeOptions.some(s => s.id === sid))
+    ) {
+      return false
+    }
     const prevDefault = (me.defaultStoreId ?? '').trim()
-    const nextDefault = defaultStoreId.trim()
+    const nextDefault = sid
     return (
       name.trim() !== me.name.trim() ||
       popid.trim() !== (me.popid || '').trim() ||
       prevDefault !== nextDefault
     )
-  }, [me, name, popid, defaultStoreId, savingProfile])
+  }, [me, name, popid, defaultStoreId, savingProfile, storeOptions])
 
   const canSavePassword = useMemo(() => {
     if (!me?.hasPassword || savingPw) return false
@@ -192,6 +212,14 @@ export default function PerfilPage() {
       setProfileErr(popErr)
       return
     }
+    const sid = defaultStoreId.trim()
+    if (
+      !sid ||
+      (storeOptions.length > 0 && !storeOptions.some(s => s.id === sid))
+    ) {
+      setProfileErr('Elegí una tienda predeterminada de la lista.')
+      return
+    }
     setSavingProfile(true)
     try {
       const res = await fetch('/api/me', {
@@ -200,7 +228,7 @@ export default function PerfilPage() {
         body: JSON.stringify({
           name: name.trim(),
           popid,
-          defaultStoreId: defaultStoreId.trim() || null
+          defaultStoreId: sid
         })
       })
       const data = (await res.json().catch(() => ({}))) as {
@@ -346,8 +374,9 @@ export default function PerfilPage() {
         color="text.secondary"
         sx={{ mb: { xs: 2, md: 3 }, maxWidth: '72ch', textWrap: 'pretty' }}
       >
-        Modifica tu nombre, Pop ID y tienda predeterminada. El correo y el RUT
-        solo los puede cambiar un administrador; aquí siguen visibles.
+        Modifica tu nombre, Pop ID y tienda predeterminada (si tenés tiendas
+        disponibles, tenés que elegir una). El correo y el RUT solo los puede
+        cambiar un administrador; aquí siguen visibles.
       </Typography>
 
       <Box
@@ -487,7 +516,13 @@ export default function PerfilPage() {
                 pattern: '[0-9]*'
               }}
             />
-            <FormControl fullWidth disabled={savingProfile || storesLoading}>
+            <FormControl
+              fullWidth
+              required
+              disabled={
+                savingProfile || storesLoading || storeOptions.length === 0
+              }
+            >
               <InputLabel id="perfil-default-store-label">
                 Tienda predeterminada
               </InputLabel>
@@ -500,15 +535,6 @@ export default function PerfilPage() {
                   setDefaultStoreId(String(e.target.value ?? '').trim())
                 }
               >
-                <MenuItem value="">
-                  <em>Automática (según contexto al iniciar sesión)</em>
-                </MenuItem>
-                {defaultStoreId &&
-                !storeOptions.some(s => s.id === defaultStoreId) ? (
-                  <MenuItem value={defaultStoreId}>
-                    Tienda guardada (sin acceso actual)
-                  </MenuItem>
-                ) : null}
                 {storeOptions.map(s => (
                   <MenuItem key={s.id} value={s.id}>
                     {s.name || s.id}
@@ -520,8 +546,9 @@ export default function PerfilPage() {
                 color="text.secondary"
                 sx={{ mt: 0.75, display: 'block', maxWidth: '72ch' }}
               >
-                Se usa al entrar si aún no elegiste otra tienda en el selector
-                del encabezado. Solo aparecen tiendas a las que tenés acceso.
+                {storeOptions.length === 0
+                  ? 'No hay tiendas disponibles para tu cuenta. Cuando tengas acceso, elegí una aquí.'
+                  : 'Obligatoria: se usa al iniciar sesión si no elegiste otra en el encabezado. Solo aparecen tiendas a las que tenés acceso.'}
               </Typography>
             </FormControl>
             <Button

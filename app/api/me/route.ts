@@ -210,8 +210,15 @@ export async function PATCH(request: NextRequest) {
 
     if (hasDefaultStore) {
       if (defaultStoreId === null || defaultStoreId === '') {
-        user.set('defaultStoreId', null)
-      } else if (typeof defaultStoreId === 'string') {
+        return NextResponse.json(
+          {
+            error:
+              'Tenés que indicar una tienda predeterminada (no puede quedar vacía).'
+          },
+          { status: 400 }
+        )
+      }
+      if (typeof defaultStoreId === 'string') {
         const sid = defaultStoreId.trim()
         if (!mongoose.Types.ObjectId.isValid(sid)) {
           return NextResponse.json(
