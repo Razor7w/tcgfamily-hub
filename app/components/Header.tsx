@@ -39,7 +39,7 @@ import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import CheckIcon from '@mui/icons-material/Check'
-import { invalidateStoreScopedDashboardQueries } from '@/lib/invalidate-store-scoped-queries'
+import { setHubActiveStoreHeaderSync } from '@/lib/active-store-hub-sync-flag'
 import { useMeStores } from '@/hooks/useMeStores'
 import { shouldRewriteStoreHubUrlAfterStoreSwitch } from '@/lib/store-context-hub-path'
 import { useAppStore } from '@/store/useAppStore'
@@ -454,6 +454,8 @@ export default function Header() {
       const nextActiveId =
         typeof data.activeStoreId === 'string' ? data.activeStoreId : storeId
 
+      setHubActiveStoreHeaderSync(nextActiveId)
+
       let slug =
         (typeof slugPreferred === 'string' ? slugPreferred.trim() : '') ||
         storeOptions.find(s => s.id === storeId)?.slug?.trim()
@@ -476,7 +478,8 @@ export default function Header() {
       }
 
       await update({ activeStoreId: nextActiveId })
-      await invalidateStoreScopedDashboardQueries(queryClient)
+      // Cambiar tienda ya actualiza TanStack Query (queryKey usa activeStoreId); invalidar
+      // también refetchaba y duplicaba /api/events, /api/mail/me, etc.
 
       // Re-ejecutar layouts servidor (p. ej. DashboardRouteLayout → sidebar según storeRole).
       // Si ya navegamos por slug, la página hub suele tener activeStoreId alineado y no llama

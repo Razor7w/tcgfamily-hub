@@ -1,6 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query'
 
-/** Tras POST /api/me/active-store: refrescar vistas del dashboard acotadas a tienda. */
+/** Refetch masivo por prefijo de queryKey (evitar tras cambio de tienda si las keys incluyen activeStoreId: duplica peticiones). */
 export async function invalidateStoreScopedDashboardQueries(
   qc: QueryClient
 ): Promise<void> {

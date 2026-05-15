@@ -9,7 +9,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import DashboardHomeContent from '@/components/dashboard/DashboardHomeContent'
-import { invalidateStoreScopedDashboardQueries } from '@/lib/invalidate-store-scoped-queries'
+import { consumeHubActiveStoreHeaderSync } from '@/lib/active-store-hub-sync-flag'
 import { fetchMeStores, meStoresQueryKey } from '@/hooks/useMeStores'
 
 function normSlug(s: string) {
@@ -99,7 +99,12 @@ function StoreHubBody({
           name: typeof hit.name === 'string' ? hit.name : ''
         })
 
+        if (cancelled) return
+
         if (hid !== activeId) {
+          if (consumeHubActiveStoreHeaderSync(hid)) {
+            return
+          }
           const sr = await fetch('/api/me/active-store', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -114,7 +119,6 @@ function StoreHubBody({
             activeStoreId:
               typeof body.activeStoreId === 'string' ? body.activeStoreId : hid
           })
-          await invalidateStoreScopedDashboardQueries(queryClient)
           router.refresh()
           return
         }

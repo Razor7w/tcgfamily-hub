@@ -67,6 +67,9 @@ export default function DashboardHomeContent({
   const storeHubHref = useStoreHubHref()
   const activeStoreId = session?.user?.activeStoreId?.trim() ?? ''
 
+  /** Hub `/[slug]`: no montar hooks con `useDashboardStoreQueryKey` hasta que JWT = URL. */
+  const deferStoreScopedHome = variant === 'tiendas' && !hubReady
+
   const resolvedActiveStoreSlug = useMemo(() => {
     if (variant !== 'tiendas' || !activeStoreId) return null
     const rows = meStoresData?.stores ?? []
@@ -114,11 +117,21 @@ export default function DashboardHomeContent({
     })
 
   const weeklyEventsBlock = visibility.weeklyEvents ? (
-    <WeeklyEventsSection />
+    deferStoreScopedHome ? (
+      <WeeklyEventsSectionSkeleton />
+    ) : (
+      <WeeklyEventsSection />
+    )
   ) : null
 
   const myTournamentsBlock = visibility.myTournaments ? (
-    <MyTournamentsHomeSection showPageHeading={false} />
+    deferStoreScopedHome ? (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+        <CircularProgress size={28} aria-label="Cargando torneos" />
+      </Box>
+    ) : (
+      <MyTournamentsHomeSection showPageHeading={false} />
+    )
   ) : null
 
   const statisticsBlock = visibility.statistics ? (
@@ -178,7 +191,13 @@ export default function DashboardHomeContent({
       </Box>
       <CardContent sx={{ pt: 2 }}>
         <MailFlowExplainer variant="compact" />
-        <CardMails />
+        {deferStoreScopedHome ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress size={28} aria-label="Cargando correos" />
+          </Box>
+        ) : (
+          <CardMails />
+        )}
       </CardContent>
     </Card>
   ) : null

@@ -1,10 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { invalidateStoreScopedDashboardQueries } from '@/lib/invalidate-store-scoped-queries'
 import { useMeStores } from '@/hooks/useMeStores'
 import {
   Alert,
@@ -25,7 +23,6 @@ type StoreOption = {
 
 export default function SelectStorePage() {
   const router = useRouter()
-  const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const nextPath = searchParams.get('next') || '/dashboard'
   const { status, update } = useSession()
@@ -65,7 +62,6 @@ export default function SelectStorePage() {
       await update({
         activeStoreId: data.activeStoreId as string
       })
-      await invalidateStoreScopedDashboardQueries(queryClient)
       router.replace(nextPath.startsWith('/') ? nextPath : `/${nextPath}`)
     } catch (e: unknown) {
       setChooseError(String(e instanceof Error ? e.message : e))
