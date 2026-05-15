@@ -946,6 +946,12 @@ export type PublicLeagueResponse = {
     description: string
     countBestEvents: number | null
   }
+  /** Tienda a la que pertenece la liga (scoping de datos). */
+  store: {
+    name: string
+    slug: string
+    logoUrl: string
+  } | null
   tournaments: {
     _id: string
     title: string

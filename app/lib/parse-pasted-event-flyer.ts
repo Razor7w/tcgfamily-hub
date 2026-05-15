@@ -6,11 +6,11 @@
 export const WEEKLY_EVENT_PARTICIPANTS_MAX = 2048
 
 /** Plantilla de ejemplo para el modal «Pegar evento» en admin. */
-export const DEFAULT_PASTE_EVENT_FLYER_TEMPLATE = `Torneo ESTANDAR TCG Family
+export const DEFAULT_PASTE_EVENT_FLYER_TEMPLATE = `Torneo Estándar
 SABADO 18 DE ABRIL 17:00
 Rondas BO3 según cantidad de participantes
 Valor $3.000
-1/2 Sobre al pozo de Equilibrio Perfecto por jugador inscrito.
+1/2 Sobre al pozo por jugador inscrito.
 Sobre de Liga para el top 50% (máx 8)
 Lugar: Av. Valparaiso 1195, Local 3
 Cupos 16`

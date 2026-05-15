@@ -113,6 +113,26 @@ export async function GET(
             : null
     }
 
+    const storeLeanPub = await Store.findById(effectiveStoreOid)
+      .select('name slug logoUrl')
+      .lean<{ name: string; slug: string; logoUrl?: string } | null>()
+    const storePub = storeLeanPub
+      ? {
+          name:
+            typeof storeLeanPub.name === 'string'
+              ? storeLeanPub.name.trim()
+              : '',
+          slug:
+            typeof storeLeanPub.slug === 'string'
+              ? storeLeanPub.slug.trim()
+              : '',
+          logoUrl:
+            typeof storeLeanPub.logoUrl === 'string'
+              ? storeLeanPub.logoUrl.trim()
+              : ''
+        }
+      : null
+
     const evScope = mongoFilterByStore(
       effectiveStoreOid,
       prim?._id ?? null
@@ -156,6 +176,7 @@ export async function GET(
     return NextResponse.json(
       {
         league,
+        store: storePub,
         tournaments: tournamentSummaries,
         standings,
         chartTop

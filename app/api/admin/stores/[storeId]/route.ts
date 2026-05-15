@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import mongoose from 'mongoose'
+import { DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { requireStoreOwnerSession } from '@/lib/api-auth'
 import {
   assertCanManageStoreMutation,
   canManageStoresGlobally
 } from '@/lib/store-admin-access'
 import connectDB from '@/lib/mongodb'
+import { isR2StoreBrandingKeyForStore } from '@/lib/r2-store-branding-key'
+import { r2BucketName, r2Client } from '@/lib/r2'
 import Store from '@/models/Store'
 
 export const runtime = 'nodejs'
@@ -82,6 +85,12 @@ export async function PATCH(
     }
 
     await connectDB()
+    const prev = await Store.findById(oid)
+      .select('logoKey')
+      .lean<{ logoKey?: string } | null>()
+    const oldLogoKey =
+      typeof prev?.logoKey === 'string' ? prev.logoKey.trim() : ''
+
     const s = await Store.findOneAndUpdate(
       { _id: oid },
       { $set: patch },
@@ -92,6 +101,27 @@ export async function PATCH(
         { error: 'Tienda no encontrada' },
         { status: 404 }
       )
+    }
+
+    const newLogoKey =
+      typeof patch.logoKey === 'string' ? patch.logoKey.trim() : ''
+    if (
+      newLogoKey &&
+      oldLogoKey &&
+      oldLogoKey !== newLogoKey &&
+      isR2StoreBrandingKeyForStore(storeId, oldLogoKey)
+    ) {
+      try {
+        const s3 = r2Client()
+        await s3.send(
+          new DeleteObjectCommand({
+            Bucket: r2BucketName(),
+            Key: oldLogoKey
+          })
+        )
+      } catch (e) {
+        console.error('R2 delete old store branding failed:', e)
+      }
     }
 
     return NextResponse.json({
