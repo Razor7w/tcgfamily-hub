@@ -52,23 +52,6 @@ export default function DashboardPage() {
         <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 2 }}>
           Hola, {name}.
         </Typography>
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{ mb: showQuickActions ? 2 : 3, lineHeight: 1.7, maxWidth: 640 }}
-        >
-          {showQuickActions ? (
-            <>
-              Aquí están los accesos directos a lo que hagas más a menudo. Podés{' '}
-              seguir en Tiendas o en tu espacio personal.
-            </>
-          ) : (
-            <>
-              Elige si seguir en Tiendas con la tienda activa de la barra
-              superior o en Mi cuenta como jugador.
-            </>
-          )}
-        </Typography>
 
         <Stack spacing={3}>
           {showQuickActions ? (

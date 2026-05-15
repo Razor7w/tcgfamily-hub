@@ -41,7 +41,7 @@ import SearchIcon from '@mui/icons-material/Search'
 import CheckIcon from '@mui/icons-material/Check'
 import { invalidateStoreScopedDashboardQueries } from '@/lib/invalidate-store-scoped-queries'
 import { useMeStores } from '@/hooks/useMeStores'
-import { shouldReplaceUrlWithActiveStoreSlug } from '@/lib/store-context-hub-path'
+import { shouldRewriteStoreHubUrlAfterStoreSwitch } from '@/lib/store-context-hub-path'
 import { useAppStore } from '@/store/useAppStore'
 
 const ACCOUNT_DRAWER_WIDTH = 300
@@ -464,8 +464,10 @@ export default function Header() {
 
       const pathForStoreUrl =
         typeof window !== 'undefined' ? window.location.pathname : ''
-      const goToSlug =
-        !!slug && shouldReplaceUrlWithActiveStoreSlug(pathForStoreUrl)
+      const goToSlug = shouldRewriteStoreHubUrlAfterStoreSwitch(
+        pathForStoreUrl,
+        slug
+      )
 
       // Navegar antes de actualizar la sesión en cliente: si seguimos en `/tier0` con
       // sesión ya en otra tienda, el efecto de la página vieja POSTea tier0 y anula el cambio.

@@ -26,16 +26,20 @@ export function isStoreContextHubPath(
 }
 
 /**
- * Tras cambiar la tienda en el header: navegar al slug en la URL cuando el usuario
- * está ya en ese hub (`/tcgfamily`) o en equiv. “inicio de panel” donde la URL no
- * refleja aún la tienda (`/dashboard`, `/dashboard/tiendas`).
- * Si está en otros módulos (`/dashboard/mail`, …) solo refresca datos en la misma ruta.
+ * Tras cambiar tienda desde el header: solo reescribe la URL cuando estamos en el hub
+ * `/{slug}` de **otra** tienda. Así `/dashboard` y cualquier `/dashboard/...` se mantienen;
+ * `/tcgfamily` con nueva tienda `otra` navega a `/otra`.
  */
-export function shouldReplaceUrlWithActiveStoreSlug(
-  pathname: string | null | undefined
+export function shouldRewriteStoreHubUrlAfterStoreSwitch(
+  pathname: string | null | undefined,
+  selectedStoreSlug: string | null | undefined
 ): boolean {
   const p = pathname ?? ''
-  if (isStoreContextHubPath(p)) return true
-  if (p === '/dashboard' || p === '/dashboard/tiendas') return true
-  return false
+  if (!isStoreContextHubPath(p)) return false
+  const next =
+    typeof selectedStoreSlug === 'string' ? selectedStoreSlug.trim() : ''
+  if (!next) return false
+  const seg = p.split('/').filter(Boolean)[0] ?? ''
+  if (!seg) return false
+  return seg.toLowerCase() !== next.toLowerCase()
 }
