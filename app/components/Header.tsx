@@ -165,9 +165,10 @@ export default function Header() {
       await update({ activeStoreId: nextActiveId })
       await invalidateStoreScopedDashboardQueries(queryClient)
 
-      if (!goToSlug) {
-        router.refresh()
-      }
+      // Re-ejecutar layouts servidor (p. ej. DashboardRouteLayout → sidebar según storeRole).
+      // Si ya navegamos por slug, la página hub suele tener activeStoreId alineado y no llama
+      // router.refresh(); sin esto el menú queda con isAdmin/isOwner de la sesión anterior.
+      router.refresh()
     } catch (e) {
       setStoreSwitchError(
         e instanceof Error ? e.message : 'No se pudo cambiar de tienda'
