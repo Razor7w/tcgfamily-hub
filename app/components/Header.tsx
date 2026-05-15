@@ -22,7 +22,13 @@ import ListItemText from '@mui/material/ListItemText'
 import Tooltip from '@mui/material/Tooltip'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
-import { useTheme } from '@mui/material'
+import Dialog from '@mui/material/Dialog'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
+import TextField from '@mui/material/TextField'
+import InputAdornment from '@mui/material/InputAdornment'
+import LinearProgress from '@mui/material/LinearProgress'
+import { alpha, useTheme } from '@mui/material/styles'
 import LogoutIcon from '@mui/icons-material/Logout'
 import AccountCircleIcon from '@mui/icons-material/AccountCircle'
 import CloseIcon from '@mui/icons-material/Close'
@@ -31,6 +37,8 @@ import PersonIcon from '@mui/icons-material/Person'
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined'
 import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
+import SearchIcon from '@mui/icons-material/Search'
+import CheckIcon from '@mui/icons-material/Check'
 import { invalidateStoreScopedDashboardQueries } from '@/lib/invalidate-store-scoped-queries'
 import { useMeStores } from '@/hooks/useMeStores'
 import { shouldReplaceUrlWithActiveStoreSlug } from '@/lib/store-context-hub-path'
@@ -45,13 +53,309 @@ type HeaderStorePick = {
   logoUrl: string
 }
 
+function storeMatchesFilter(store: HeaderStorePick, raw: string) {
+  const q = raw.trim().toLowerCase()
+  if (!q) return true
+  const hay = `${store.name} ${store.slug}`.toLowerCase()
+  return hay.includes(q)
+}
+
+function StorePickerPanel({
+  stores,
+  activeStoreId,
+  busy,
+  onPick,
+  sheet
+}: {
+  stores: HeaderStorePick[]
+  activeStoreId: string | null
+  busy: boolean
+  onPick: (store: HeaderStorePick) => void
+  /** True: lista ocupa el alto restante del bottom sheet */
+  sheet?: boolean
+}) {
+  const theme = useTheme()
+  const mode = theme.palette.mode
+  const [filter, setFilter] = useState('')
+  const filtered = useMemo(
+    () => stores.filter(s => storeMatchesFilter(s, filter)),
+    [stores, filter]
+  )
+
+  const listSx = sheet
+    ? {
+        flex: 1,
+        minHeight: 0,
+        overflowY: 'auto' as const,
+        px: 0,
+        pb: 1,
+        pt: 0.75,
+        scrollbarGutter: 'stable' as const
+      }
+    : {
+        maxHeight: 'min(52vh, 440px)',
+        overflowY: 'auto' as const,
+        px: 0,
+        pb: 1,
+        pt: 0.75,
+        scrollbarGutter: 'stable' as const
+      }
+
+  /** Curva alineada con app/theme/theme.ts (botones) */
+  const easeOutExpo = 'cubic-bezier(0.16, 1, 0.3, 1)'
+  const txSurface = `background-color 280ms ${easeOutExpo}, border-color 280ms ${easeOutExpo}, box-shadow 280ms ${easeOutExpo}`
+  const txTap = `transform 200ms ${easeOutExpo}`
+
+  const primaryMain = theme.palette.primary.main
+  const primaryDark = theme.palette.primary.dark
+  const rowBorder =
+    mode === 'dark'
+      ? alpha(theme.palette.common.white, 0.12)
+      : alpha(theme.palette.text.primary, 0.12)
+  const rowBg =
+    mode === 'dark' ? theme.palette.background.paper : theme.palette.grey[50]
+  const searchBg =
+    mode === 'dark'
+      ? alpha(theme.palette.common.white, 0.06)
+      : alpha(theme.palette.text.primary, 0.045)
+
+  return (
+    <Stack spacing={2} sx={sheet ? { flex: 1, minHeight: 0 } : undefined}>
+      {busy ? (
+        <LinearProgress
+          color="primary"
+          sx={{
+            height: 3,
+            borderRadius: 999,
+            flexShrink: 0,
+            bgcolor: alpha(primaryMain, 0.12)
+          }}
+        />
+      ) : (
+        <Box sx={{ height: 3, flexShrink: 0 }} aria-hidden />
+      )}
+      <TextField
+        size="small"
+        fullWidth
+        placeholder="Buscar por nombre o slug"
+        value={filter}
+        onChange={e => setFilter(e.target.value)}
+        disabled={busy}
+        sx={{
+          flexShrink: 0,
+          '& .MuiOutlinedInput-root': {
+            borderRadius: 999,
+            bgcolor: searchBg,
+            transition: txSurface,
+            '& fieldset': {
+              borderWidth: '1px',
+              borderColor: rowBorder
+            },
+            '&:hover fieldset': {
+              borderColor:
+                mode === 'dark'
+                  ? alpha(theme.palette.common.white, 0.18)
+                  : alpha(theme.palette.text.primary, 0.18)
+            },
+            '&.Mui-focused fieldset': {
+              borderWidth: '1px',
+              borderColor: primaryMain
+            },
+            '&.Mui-focused': {
+              bgcolor:
+                mode === 'dark'
+                  ? alpha(primaryMain, 0.09)
+                  : alpha(primaryMain, 0.06),
+              boxShadow: `inset 0 0 0 1px ${alpha(primaryMain, 0.35)}`
+            }
+          },
+          '& .MuiInputBase-input': {
+            fontWeight: 500,
+            letterSpacing: '-0.012em',
+            fontSize: '0.9375rem',
+            '&::placeholder': {
+              color: theme.palette.text.secondary,
+              opacity: 0.65
+            }
+          },
+          '& .MuiInputBase-input.Mui-disabled': {
+            WebkitTextFillColor: theme.palette.text.disabled
+          }
+        }}
+        aria-label="Filtrar tiendas por nombre o slug"
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon
+                sx={{
+                  fontSize: 20,
+                  color: 'text.secondary',
+                  opacity: 0.55
+                }}
+              />
+            </InputAdornment>
+          )
+        }}
+      />
+      <Box sx={listSx}>
+        {filtered.length === 0 ? (
+          <Stack alignItems="center" spacing={1.5} sx={{ py: 5, px: 2 }}>
+            <StorefrontOutlinedIcon
+              sx={{
+                fontSize: 42,
+                color: 'text.disabled',
+                opacity: 0.45
+              }}
+              aria-hidden
+            />
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                textAlign: 'center',
+                maxWidth: 280,
+                textWrap: 'balance',
+                lineHeight: 1.55,
+                fontWeight: 500
+              }}
+            >
+              No hay tiendas que coincidan con tu búsqueda.
+            </Typography>
+          </Stack>
+        ) : (
+          filtered.map(store => {
+            const selected = activeStoreId === store.id
+            return (
+              <ListItemButton
+                key={store.id}
+                selected={selected}
+                disableRipple
+                disabled={busy}
+                onClick={() => onPick(store)}
+                alignItems="center"
+                sx={{
+                  borderRadius: '12px',
+                  py: 1.375,
+                  px: 1.375,
+                  mb: 1.125,
+                  gap: 1.5,
+                  bgcolor: rowBg,
+                  border: '1px solid',
+                  borderColor: rowBorder,
+                  boxShadow: 'none',
+                  transition: `${txSurface}, ${txTap}`,
+                  transform: 'translateZ(0)',
+                  scrollMarginBottom: 10,
+                  '&.Mui-selected': {
+                    bgcolor:
+                      mode === 'dark'
+                        ? alpha(primaryMain, 0.14)
+                        : alpha(primaryMain, 0.085),
+                    borderColor: alpha(
+                      primaryMain,
+                      mode === 'dark' ? 0.45 : 0.32
+                    ),
+                    boxShadow: `inset 4px 0 0 ${primaryDark}`
+                  },
+                  '&.Mui-selected:hover': {
+                    bgcolor:
+                      mode === 'dark'
+                        ? alpha(primaryMain, 0.18)
+                        : alpha(primaryMain, 0.1),
+                    borderColor: alpha(primaryMain, 0.4)
+                  },
+                  '&:hover:not(.Mui-selected)': {
+                    bgcolor:
+                      mode === 'dark'
+                        ? alpha(theme.palette.common.white, 0.05)
+                        : alpha(theme.palette.text.primary, 0.035),
+                    borderColor:
+                      mode === 'dark'
+                        ? alpha(theme.palette.common.white, 0.16)
+                        : alpha(theme.palette.text.primary, 0.16)
+                  },
+                  '&:active': {
+                    transform: 'scale(0.99)'
+                  },
+                  '&.Mui-focusVisible': {
+                    outline: `2px solid ${alpha(primaryMain, 0.65)}`,
+                    outlineOffset: 2
+                  },
+                  '&.Mui-disabled': {
+                    opacity: 0.5
+                  }
+                }}
+              >
+                <Avatar
+                  src={(store.logoUrl ?? '').trim() || undefined}
+                  alt={`Logo ${store.name}`}
+                  sx={{
+                    width: 46,
+                    height: 46,
+                    flexShrink: 0,
+                    bgcolor:
+                      mode === 'dark'
+                        ? alpha(theme.palette.common.white, 0.08)
+                        : alpha(theme.palette.text.primary, 0.06),
+                    border: 'none',
+                    transition: txSurface,
+                    '& .MuiAvatar-img': { objectFit: 'contain', p: 0.35 }
+                  }}
+                >
+                  <StorefrontOutlinedIcon
+                    sx={{
+                      fontSize: 22,
+                      color: 'text.secondary',
+                      opacity: 0.45
+                    }}
+                  />
+                </Avatar>
+                <ListItemText
+                  sx={{ flex: '1 1 auto', minWidth: 0, my: 0 }}
+                  primary={store.name}
+                  secondary={store.slug}
+                  primaryTypographyProps={{
+                    variant: 'body1',
+                    fontWeight: 700,
+                    letterSpacing: '-0.02em',
+                    lineHeight: 1.3,
+                    color: 'text.primary',
+                    noWrap: true
+                  }}
+                  secondaryTypographyProps={{
+                    variant: 'body2',
+                    fontWeight: 400,
+                    color: 'text.secondary',
+                    noWrap: true,
+                    sx: { mt: 0.125, opacity: 0.92 }
+                  }}
+                />
+                {selected ? (
+                  <CheckIcon
+                    sx={{
+                      flexShrink: 0,
+                      fontSize: 22,
+                      color: primaryMain
+                    }}
+                  />
+                ) : null}
+              </ListItemButton>
+            )
+          })
+        )}
+      </Box>
+    </Stack>
+  )
+}
+
 export default function Header() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const { data: session, status, update } = useSession()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [accountDrawerOpen, setAccountDrawerOpen] = useState(false)
-  const [storeMenuEl, setStoreMenuEl] = useState<null | HTMLElement>(null)
+  const [storePickerOpen, setStorePickerOpen] = useState(false)
+  const [storePickerKey, setStorePickerKey] = useState(0)
   const { data: meStoresRes } = useMeStores()
   const storeOptions = useMemo<HeaderStorePick[]>(() => {
     const rows = meStoresRes?.stores ?? []
@@ -118,9 +422,16 @@ export default function Header() {
     return (activeStoreRow?.logoUrl ?? '').trim()
   })()
 
+  const closeStorePicker = () => setStorePickerOpen(false)
+
+  const openStorePicker = () => {
+    setStorePickerKey(k => k + 1)
+    setStorePickerOpen(true)
+  }
+
   const pickStoreContext = async (storeId: string, slugPreferred?: string) => {
     if (!storeId || storeId === activeStoreId) {
-      setStoreMenuEl(null)
+      closeStorePicker()
       return
     }
     setStoreSwitchError(null)
@@ -175,7 +486,7 @@ export default function Header() {
       )
     } finally {
       setStoreSwitchBusy(false)
-      setStoreMenuEl(null)
+      closeStorePicker()
     }
   }
 
@@ -183,6 +494,11 @@ export default function Header() {
     session?.user &&
     status === 'authenticated' &&
     storeOptions.filter(s => s.id).length >= 1
+
+  const storeOptionsWithId = useMemo(
+    () => storeOptions.filter(s => s.id),
+    [storeOptions]
+  )
 
   return (
     <AppBar position="static">
@@ -247,11 +563,11 @@ export default function Header() {
                 >
                   <IconButton
                     color="inherit"
-                    aria-haspopup="true"
-                    aria-expanded={Boolean(storeMenuEl)}
+                    aria-haspopup="dialog"
+                    aria-expanded={storePickerOpen}
                     aria-label="Cambiar tienda de contexto"
                     disabled={storeSwitchBusy}
-                    onClick={e => setStoreMenuEl(e.currentTarget)}
+                    onClick={() => openStorePicker()}
                     sx={{ p: activeStoreLogo ? 0.5 : 1 }}
                   >
                     {activeStoreLogo ? (
@@ -278,72 +594,229 @@ export default function Header() {
                   </IconButton>
                 </Tooltip>
               </Stack>
-              <Menu
-                anchorEl={storeMenuEl}
-                open={Boolean(storeMenuEl)}
-                onClose={() => !storeSwitchBusy && setStoreMenuEl(null)}
-                disableScrollLock
-                slotProps={{
-                  paper: { sx: { maxHeight: 'min(70vh, 420px)' } }
-                }}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-              >
-                <MenuItem disabled dense sx={{ opacity: '1!important' }}>
-                  <Box sx={{ maxWidth: 300, py: 0.25, whiteSpace: 'normal' }}>
+              {storePickerOpen && isDesktop ? (
+                <Dialog
+                  open
+                  fullWidth
+                  maxWidth="sm"
+                  disableScrollLock
+                  onClose={() => !storeSwitchBusy && closeStorePicker()}
+                  aria-labelledby="store-picker-dialog-title"
+                  slotProps={{
+                    backdrop: {
+                      sx: {
+                        backgroundColor: alpha(
+                          muiTheme.palette.common.black,
+                          muiTheme.palette.mode === 'dark' ? 0.52 : 0.28
+                        ),
+                        backdropFilter: 'blur(8px)',
+                        WebkitBackdropFilter: 'blur(8px)'
+                      }
+                    },
+                    paper: {
+                      sx: {
+                        borderRadius: '22px',
+                        maxHeight: 'min(88vh, 560px)',
+                        overflow: 'hidden',
+                        border: `1px solid ${alpha(muiTheme.palette.text.primary, muiTheme.palette.mode === 'dark' ? 0.12 : 0.08)}`,
+                        boxShadow:
+                          muiTheme.palette.mode === 'dark'
+                            ? `0 28px 56px ${alpha('#000', 0.45)}, inset 0 1px 0 ${alpha(muiTheme.palette.common.white, 0.06)}`
+                            : `0 24px 48px -14px ${alpha('#18181b', 0.12)}, inset 0 1px 0 ${alpha('#fff', 0.65)}`
+                      }
+                    }
+                  }}
+                >
+                  <DialogTitle
+                    id="store-picker-dialog-title"
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 1,
+                      py: 1.5,
+                      pl: 2,
+                      pr: 2,
+                      borderBottom: `1px solid ${alpha(muiTheme.palette.text.primary, muiTheme.palette.mode === 'dark' ? 0.1 : 0.08)}`,
+                      bgcolor: muiTheme.palette.background.paper
+                    }}
+                  >
                     <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      display="block"
-                      sx={{ mb: 0.5 }}
+                      variant="h6"
+                      component="span"
+                      sx={{
+                        fontSize: '1.0625rem',
+                        fontWeight: 700,
+                        letterSpacing: '-0.025em',
+                        lineHeight: 1.25
+                      }}
                     >
-                      <strong>Cambiar tienda</strong>
+                      Cambiar tienda
                     </Typography>
-                  </Box>
-                </MenuItem>
-                {storeOptions
-                  .filter(s => s.id)
-                  .map(s => (
-                    <MenuItem
-                      key={s.id}
-                      selected={activeStoreId === s.id}
+                    <IconButton
+                      aria-label="cerrar"
                       disabled={storeSwitchBusy}
-                      onClick={() => void pickStoreContext(s.id, s.slug)}
+                      onClick={() => closeStorePicker()}
+                      sx={{
+                        transition: muiTheme.transitions.create(
+                          ['background-color', 'transform'],
+                          { duration: 200 }
+                        ),
+                        '&:hover': {
+                          bgcolor: alpha(muiTheme.palette.text.primary, 0.06)
+                        },
+                        '&:active': { transform: 'scale(0.94)' }
+                      }}
                     >
-                      <Stack
-                        direction="row"
-                        spacing={1.25}
-                        alignItems="center"
-                        sx={{ width: '100%', py: 0.25 }}
-                      >
-                        <Avatar
-                          variant="rounded"
-                          src={(s.logoUrl ?? '').trim() || undefined}
-                          alt=""
-                          sx={{
-                            width: 32,
-                            height: 32,
-                            flexShrink: 0,
-                            '& .MuiAvatar-img': {
-                              objectFit: 'contain',
-                              p: 0.25
-                            }
-                          }}
-                        >
-                          <StorefrontOutlinedIcon sx={{ fontSize: 18 }} />
-                        </Avatar>
-                        <ListItemText
-                          primaryTypographyProps={{
-                            variant: 'body2',
-                            fontWeight: activeStoreId === s.id ? 700 : undefined
-                          }}
-                          primary={s.name}
-                          secondary={s.slug}
-                        />
-                      </Stack>
-                    </MenuItem>
-                  ))}
-              </Menu>
+                      <CloseIcon />
+                    </IconButton>
+                  </DialogTitle>
+                  <DialogContent
+                    sx={{
+                      pt: 2,
+                      pb: 2.5,
+                      px: { xs: 2, sm: 2.25 },
+                      display: 'flex',
+                      flexDirection: 'column',
+                      overflow: 'hidden',
+                      bgcolor: muiTheme.palette.background.paper
+                    }}
+                  >
+                    <StorePickerPanel
+                      key={storePickerKey}
+                      stores={storeOptionsWithId}
+                      activeStoreId={activeStoreId}
+                      busy={storeSwitchBusy}
+                      onPick={s => void pickStoreContext(s.id, s.slug)}
+                    />
+                  </DialogContent>
+                </Dialog>
+              ) : null}
+              {storePickerOpen && !isDesktop ? (
+                <Drawer
+                  anchor="bottom"
+                  open
+                  onClose={() => !storeSwitchBusy && closeStorePicker()}
+                  disableScrollLock
+                  ModalProps={{ keepMounted: true }}
+                  slotProps={{
+                    backdrop: {
+                      sx: {
+                        backgroundColor: alpha(
+                          muiTheme.palette.common.black,
+                          muiTheme.palette.mode === 'dark' ? 0.48 : 0.26
+                        ),
+                        backdropFilter: 'blur(8px)',
+                        WebkitBackdropFilter: 'blur(8px)'
+                      }
+                    },
+                    paper: {
+                      sx: {
+                        width: '100%',
+                        maxWidth: '100%',
+                        borderTopLeftRadius: 22,
+                        borderTopRightRadius: 22,
+                        maxHeight: 'min(88vh, 620px)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden',
+                        boxSizing: 'border-box',
+                        bgcolor: muiTheme.palette.background.paper,
+                        borderTop: `1px solid ${alpha(muiTheme.palette.text.primary, muiTheme.palette.mode === 'dark' ? 0.12 : 0.08)}`,
+                        boxShadow:
+                          muiTheme.palette.mode === 'dark'
+                            ? `0 -16px 44px ${alpha('#000', 0.42)}, inset 0 1px 0 ${alpha(muiTheme.palette.common.white, 0.05)}`
+                            : `0 -14px 40px ${alpha('#18181b', 0.1)}, inset 0 1px 0 ${alpha('#fff', 0.55)}`
+                      }
+                    }
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      pt: 1.25,
+                      pb: 0.25,
+                      flexShrink: 0
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 40,
+                        height: 5,
+                        borderRadius: 999,
+                        bgcolor: alpha(
+                          muiTheme.palette.text.primary,
+                          muiTheme.palette.mode === 'dark' ? 0.18 : 0.14
+                        )
+                      }}
+                      aria-hidden
+                    />
+                  </Box>
+                  <Toolbar
+                    variant="dense"
+                    disableGutters
+                    sx={{
+                      minHeight: 48,
+                      pl: 2,
+                      pr: 2.5,
+                      gap: 1,
+                      flexShrink: 0,
+                      justifyContent: 'space-between',
+                      borderBottom: `1px solid ${alpha(muiTheme.palette.text.primary, muiTheme.palette.mode === 'dark' ? 0.1 : 0.08)}`,
+                      bgcolor: muiTheme.palette.background.paper
+                    }}
+                  >
+                    <Typography
+                      variant="subtitle1"
+                      sx={{
+                        fontWeight: 700,
+                        letterSpacing: '-0.025em'
+                      }}
+                    >
+                      Cambiar tienda
+                    </Typography>
+                    <IconButton
+                      aria-label="cerrar"
+                      disabled={storeSwitchBusy}
+                      onClick={() => closeStorePicker()}
+                      sx={{
+                        transition: muiTheme.transitions.create(
+                          ['background-color', 'transform'],
+                          { duration: 200 }
+                        ),
+                        '&:hover': {
+                          bgcolor: alpha(muiTheme.palette.text.primary, 0.06)
+                        },
+                        '&:active': { transform: 'scale(0.94)' }
+                      }}
+                    >
+                      <CloseIcon />
+                    </IconButton>
+                  </Toolbar>
+                  <Box
+                    sx={{
+                      flex: 1,
+                      minHeight: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      px: 2,
+                      pt: 2,
+                      pb: 'max(16px, env(safe-area-inset-bottom))',
+                      bgcolor: muiTheme.palette.background.paper
+                    }}
+                  >
+                    <StorePickerPanel
+                      key={storePickerKey}
+                      sheet
+                      stores={storeOptionsWithId}
+                      activeStoreId={activeStoreId}
+                      busy={storeSwitchBusy}
+                      onPick={s => void pickStoreContext(s.id, s.slug)}
+                    />
+                  </Box>
+                </Drawer>
+              ) : null}
             </>
           ) : null}
           <Tooltip
