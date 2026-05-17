@@ -16,7 +16,7 @@ import Link from 'next/link'
 import { DecklistSpritePair } from '@/components/decklist/DecklistPokemonSlotPickers'
 import { useRecentPublicDecklists } from '@/hooks/useSavedDecklists'
 
-const PREVIEW_LIMIT = 3
+const PREVIEW_LIMIT = 4
 
 export default function RecentPublicDecklistsHomeCard() {
   const {

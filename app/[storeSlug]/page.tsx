@@ -9,6 +9,8 @@ import { useParams, useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import DashboardHomeContent from '@/components/dashboard/DashboardHomeContent'
+import StoreHubRightRail from '@/components/dashboard/StoreHubRightRail'
+import DashboardPageWithRightRail from '@/components/layouts/DashboardPageWithRightRail'
 import { consumeHubActiveStoreHeaderSync } from '@/lib/active-store-hub-sync-flag'
 import { fetchMeStores, meStoresQueryKey } from '@/hooks/useMeStores'
 
@@ -160,22 +162,38 @@ function StoreHubBody({
         py: 4
       })}
     >
-      <Container maxWidth="lg">
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            {activeStoreLine ? `${activeStoreLine}` : ''}
-          </Typography>
-          <Typography
-            variant="subtitle1"
-            color="text.secondary"
-            sx={{ mb: 0.5 }}
-          >
-            Hola {session?.user?.name ?? ''}
-          </Typography>
-        </Box>
+      <DashboardPageWithRightRail
+        rail={
+          <StoreHubRightRail
+            storeSlug={normalizedParam}
+            hubReady={hubContentReady}
+          />
+        }
+      >
+        <Container
+          maxWidth={false}
+          sx={{
+            px: { xs: 2, sm: 3 },
+            width: '100%',
+            maxWidth: { lg: 920 }
+          }}
+        >
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="h4" component="h1" gutterBottom>
+              {activeStoreLine ? `${activeStoreLine}` : ''}
+            </Typography>
+            <Typography
+              variant="subtitle1"
+              color="text.secondary"
+              sx={{ mb: 0.5 }}
+            >
+              Hola {session?.user?.name ?? ''}
+            </Typography>
+          </Box>
 
-        <DashboardHomeContent variant="tiendas" hubReady={hubContentReady} />
-      </Container>
+          <DashboardHomeContent variant="tiendas" hubReady={hubContentReady} />
+        </Container>
+      </DashboardPageWithRightRail>
     </Box>
   )
 }

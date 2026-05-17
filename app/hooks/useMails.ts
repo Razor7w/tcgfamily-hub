@@ -87,6 +87,7 @@ export type UseMyMailsOptions = {
   /** Solo correos que ya están recibidos en tienda (isRecivedInStore: true). */
   inStoreOnly?: boolean
   limit?: number
+  enabled?: boolean
 }
 
 // Hook para obtener mails del usuario actual (receptor / toUserId)
@@ -94,10 +95,12 @@ export function useMyMails(options?: UseMyMailsOptions) {
   const pendingOnly = options?.pendingOnly ?? false
   const inStoreOnly = options?.inStoreOnly ?? false
   const limit = options?.limit
+  const enabled = options?.enabled !== false
   const storeKey = useDashboardStoreQueryKey()
 
   return useQuery<{ mails: Mail[] }>({
     queryKey: ['mails', 'me', storeKey, { pendingOnly, inStoreOnly, limit }],
+    enabled,
     queryFn: async () => {
       const params = new URLSearchParams()
       if (limit !== undefined) params.set('limit', String(limit))
