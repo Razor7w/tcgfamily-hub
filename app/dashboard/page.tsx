@@ -16,7 +16,7 @@ import { alpha } from '@mui/material/styles'
 import { useSession } from 'next-auth/react'
 import ReportCustomTournamentDialog from '@/components/events/ReportCustomTournamentDialog'
 import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
-import DashboardHomeRightRail from '@/components/dashboard/DashboardHomeRightRail'
+import DashboardSuggestionRail from '@/components/dashboard/DashboardSuggestionRail'
 import DashboardQuickActions from '@/components/dashboard/DashboardQuickActions'
 import RecentPublicDecklistsHomeCard from '@/components/dashboard/RecentPublicDecklistsHomeCard'
 import DashboardPageWithRightRail from '@/components/layouts/DashboardPageWithRightRail'
@@ -47,7 +47,7 @@ export default function DashboardPage() {
         py: 4
       })}
     >
-      <DashboardPageWithRightRail rail={<DashboardHomeRightRail />}>
+      <DashboardPageWithRightRail rail={<DashboardSuggestionRail />}>
         <Container
           maxWidth={false}
           sx={{
