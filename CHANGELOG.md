@@ -10,6 +10,29 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [1.0.0] - 2026-05-16
+
+Primera versión estable **TCG Nexo** con soporte multitienda.
+
+### Añadido
+
+- **Multitienda**: tiendas con slug, membresías (`owner` / `store_admin` / jugador), **tienda activa** en sesión y selector en el encabezado; crédito de tienda (**puntos**) por `storeId` en `storeCredits`.
+- **Hub de tienda** (`/{storeSlug}`): calendario semanal, panel lateral (último torneo cerrado, correos listos), datos públicos (web, Instagram, dirección) y drawer **Más info** en móvil.
+- **Dashboard** renovado: accesos rápidos, carril derecho con **sugerencias** (un mensaje por usuario), layout con scroll horizontal en móvil para el panel lateral.
+- **Tours guiados** (react-joyride): recorrido en **Inicio** y en el **hub de tienda**; tooltip personalizado y scroll del carril alineado en móvil.
+- **Admin por tienda**: módulos acotados a la tienda activa (eventos, ligas, correo, puntos CSV, configuración); página **Sugerencias** (solo owner); cabecera con logo de tienda activa.
+- **API** `GET /api/admin/suggestions`, importación de puntos con slice por tienda activa, último torneo finalizado en el hub.
+
+### Cambiado
+
+- Marca y copy hacia **TCG Nexo**; navegación móvil inferior y proxy de slug por tienda por defecto.
+- Registro y onboarding OAuth alineados con tienda por defecto del usuario.
+
+### Corregido
+
+- Sincronización de **tienda activa** al cambiar tienda en el hub (evita POST con `storeId` desfasado y título vacío).
+- Posicionamiento del tour en móvil tras scroll horizontal del panel lateral; scroll al inicio en el paso de sugerencias.
+
 ## [0.9.4] - 2026-05-08
 
 ### Añadido
@@ -371,4 +394,7 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 Línea base anterior en `package.json` antes de este changelog; el detalle de cambios queda en el historial de git.
 
-Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo _Keep a Changelog_ (`[Unreleased]: …/compare/v0.9.4…HEAD`, `[0.9.4]: …/compare/v0.9.3…v0.9.4`, `[0.9.3]: …/compare/v0.9.2…v0.9.3`, `[0.9.2]: …/compare/v0.9.1…v0.9.2`, `[0.9.1]: …/compare/v0.9.0…v0.9.1`, `[0.9.0]: …/compare/v0.8.0…v0.9.0`, `[0.8.0]: …/compare/v0.7.0…v0.8.0`, `[0.7.0]: …/compare/v0.6.6…v0.7.0`, `[0.6.6]: …/compare/v0.6.5…v0.6.6`, `[0.6.5]: …/compare/v0.6.4…v0.6.5`, `[0.6.4]: …/compare/v0.6.3…v0.6.4`, `[0.6.3]: …/compare/v0.6.2…v0.6.3`, `[0.6.2]: …/compare/v0.6.1…v0.6.2`, `[0.6.1]: …/compare/v0.6.0…v0.6.1`, `[0.6.0]: …/compare/v0.5.5…v0.6.0`, `[0.5.5]: …/compare/v0.5.4…v0.5.5`, `[0.5.4]: …/compare/v0.5.3…v0.5.4`, `[0.5.3]: …/compare/v0.5.2…v0.5.3`, `[0.5.2]: …/compare/v0.5.1…v0.5.2`, `[0.5.1]: …/compare/v0.5.0…v0.5.1`, `[0.5.0]: …/compare/v0.4.6…v0.5.0`, `[0.4.6]: …/compare/v0.4.5…v0.4.6`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
+[Unreleased]: https://github.com/Razor7w/tcgfamily-hub/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Razor7w/tcgfamily-hub/compare/v0.9.4...v1.0.0
+
+Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo _Keep a Changelog_ (`[Unreleased]: …/compare/v1.0.0…HEAD`, `[1.0.0]: …/compare/v0.9.4…v1.0.0`, `[0.9.4]: …/compare/v0.9.3…v0.9.4`, `[0.9.3]: …/compare/v0.9.2…v0.9.3`, `[0.9.2]: …/compare/v0.9.1…v0.9.2`, `[0.9.1]: …/compare/v0.9.0…v0.9.1`, `[0.9.0]: …/compare/v0.8.0…v0.9.0`, `[0.8.0]: …/compare/v0.7.0…v0.8.0`, `[0.7.0]: …/compare/v0.6.6…v0.7.0`, `[0.6.6]: …/compare/v0.6.5…v0.6.6`, `[0.6.5]: …/compare/v0.6.4…v0.6.5`, `[0.6.4]: …/compare/v0.6.3…v0.6.4`, `[0.6.3]: …/compare/v0.6.2…v0.6.3`, `[0.6.2]: …/compare/v0.6.1…v0.6.2`, `[0.6.1]: …/compare/v0.6.0…v0.6.1`, `[0.6.0]: …/compare/v0.5.5…v0.6.0`, `[0.5.5]: …/compare/v0.5.4…v0.5.5`, `[0.5.4]: …/compare/v0.5.3…v0.5.4`, `[0.5.3]: …/compare/v0.5.2…v0.5.3`, `[0.5.2]: …/compare/v0.5.1…v0.5.2`, `[0.5.1]: …/compare/v0.5.0…v0.5.1`, `[0.5.0]: …/compare/v0.4.6…v0.5.0`, `[0.4.6]: …/compare/v0.4.5…v0.4.6`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).
