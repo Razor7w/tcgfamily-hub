@@ -36,7 +36,7 @@ export default function NuevoDecklistPage() {
   const router = useRouter()
   const createDeck = useCreateSavedDecklist()
 
-  /** `null` = usar nombre automático desde sprites; string = texto del usuario */
+  /** `null` = seguir nombre automático desde sprites; `''` = el usuario borró el campo (no rellenar otra vez); texto = nombre editado */
   const [nameManual, setNameManual] = useState<string | null>(null)
   const [deckText, setDeckText] = useState('')
   const [slot1, setSlot1] = useState<PokemonSpeciesOption | null>(null)
@@ -64,12 +64,8 @@ export default function NuevoDecklistPage() {
   }, [router])
 
   const autoName = deckNameFromSlots(slot1, slot2)
-  const nameFieldValue =
-    nameManual !== null && nameManual.trim() !== '' ? nameManual : autoName
-  const resolvedName =
-    nameManual !== null && nameManual.trim() !== ''
-      ? nameManual.trim()
-      : autoName
+  const nameFieldValue = nameManual === null ? autoName : nameManual
+  const resolvedName = nameManual === null ? autoName.trim() : nameManual.trim()
 
   const handleSlot1Change = (v: PokemonSpeciesOption | null) => {
     setSlot1(v)
@@ -276,10 +272,10 @@ export default function NuevoDecklistPage() {
                   onChange={e => {
                     const v = e.target.value
                     if (!v.trim()) {
-                      setNameManual(null)
-                    } else {
-                      setNameManual(v)
+                      setNameManual('')
+                      return
                     }
+                    setNameManual(v)
                   }}
                   required
                   fullWidth
@@ -299,9 +295,6 @@ export default function NuevoDecklistPage() {
                           theme.palette.mode === 'dark'
                             ? alpha(theme.palette.common.white, 0.06)
                             : alpha(theme.palette.secondary.main, 0.06)
-                      },
-                      '&.Mui-focused': {
-                        boxShadow: `0 0 0 3px ${alpha(theme.palette.secondary.main, 0.22)}`
                       }
                     }
                   }}

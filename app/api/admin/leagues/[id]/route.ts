@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdminSession } from '@/lib/api-auth'
+import mongoose from 'mongoose'
+import { requireStoreStaffSession } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import WeeklyEvent from '@/models/WeeklyEvent'
 import League from '@/models/League'
+import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 
 function parseBody(body: unknown) {
   if (typeof body !== 'object' || body === null) return null
@@ -41,7 +43,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreStaffSession()
     if (!gate.ok) return gate.response
 
     const { id } = await context.params
@@ -50,7 +52,14 @@ export async function GET(
     }
 
     await connectDB()
-    const doc = await League.findById(id).lean()
+    const leagueScope = mongoFilterByStore(
+      gate.activeStoreOid,
+      gate.primaryStoreOid ?? null
+    ) as Record<string, unknown>
+    const doc = await League.findOne({
+      _id: new mongoose.Types.ObjectId(id.trim()),
+      ...leagueScope
+    }).lean()
     if (!doc) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     }
@@ -73,7 +82,7 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreStaffSession()
     if (!gate.ok) return gate.response
 
     const { id } = await context.params
@@ -87,7 +96,14 @@ export async function PATCH(
     }
 
     await connectDB()
-    const doc = await League.findById(id)
+    const leagueScope = mongoFilterByStore(
+      gate.activeStoreOid,
+      gate.primaryStoreOid ?? null
+    ) as Record<string, unknown>
+    const doc = await League.findOne({
+      _id: new mongoose.Types.ObjectId(id.trim()),
+      ...leagueScope
+    })
     if (!doc) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     }
@@ -167,7 +183,7 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreStaffSession()
     if (!gate.ok) return gate.response
 
     const { id } = await context.params
@@ -176,7 +192,14 @@ export async function DELETE(
     }
 
     await connectDB()
-    const inUse = await WeeklyEvent.exists({ leagueId: id })
+    const evScope = mongoFilterByStore(
+      gate.activeStoreOid,
+      gate.primaryStoreOid ?? null
+    ) as Record<string, unknown>
+    const inUse = await WeeklyEvent.exists({
+      leagueId: new mongoose.Types.ObjectId(id.trim()),
+      ...evScope
+    })
     if (inUse) {
       return NextResponse.json(
         {
@@ -187,7 +210,13 @@ export async function DELETE(
       )
     }
 
-    const res = await League.findByIdAndDelete(id)
+    const res = await League.findOneAndDelete({
+      _id: new mongoose.Types.ObjectId(id.trim()),
+      ...(mongoFilterByStore(
+        gate.activeStoreOid,
+        gate.primaryStoreOid ?? null
+      ) as Record<string, unknown>)
+    })
     if (!res) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     }

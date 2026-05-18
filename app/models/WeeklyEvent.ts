@@ -93,6 +93,8 @@ export interface IWeeklyParticipant {
 export type TournamentOrigin = 'official' | 'custom'
 
 export interface IWeeklyEvent extends Document {
+  /** Tienda dueña del evento (Torneos oficiales y custom tras migración). */
+  storeId?: Types.ObjectId
   startsAt: Date
   title: string
   kind: WeeklyEventKind
@@ -264,6 +266,13 @@ const ParticipantSchema = new Schema<IWeeklyParticipant>(
 
 const WeeklyEventSchema = new Schema<IWeeklyEvent>(
   {
+    storeId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Store',
+      required: false,
+      index: true,
+      default: undefined
+    },
     startsAt: { type: Date, required: true, index: true },
     title: { type: String, required: true, trim: true },
     tournamentOrigin: {

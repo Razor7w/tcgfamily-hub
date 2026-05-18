@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdminSession } from '@/lib/api-auth'
+import { requireStoreOwnerSession } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
+import {
+  isoOrNull,
+  resolveStoreWalletForUser,
+  type LeanUserWallet
+} from '@/lib/store-credit-resolve'
 import { normalizeEmail, validateEmailFormat } from '@/lib/password-rules'
 import {
   popidForStorage,
@@ -13,7 +18,7 @@ import { getRutFieldError } from '@/lib/rut-input'
 // GET - Listar todos los usuarios
 export async function GET() {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreOwnerSession()
     if (!gate.ok) return gate.response
 
     await connectDB()
@@ -21,6 +26,8 @@ export async function GET() {
       .select('-accounts -sessions -passwordHash')
       .sort({ createdAt: -1 })
       .lean()
+
+    const primary = gate.primaryStoreOid
 
     const usersWithId = users.map(user => {
       // Type assertion para el objeto lean
@@ -39,6 +46,12 @@ export async function GET() {
         storePointsExpiryDate?: Date
       }
 
+      const w = resolveStoreWalletForUser(
+        userObj as LeanUserWallet,
+        gate.activeStoreOid,
+        primary
+      )
+
       return {
         id: userObj._id.toString(),
         name: userObj.name,
@@ -49,11 +62,9 @@ export async function GET() {
         phone: userObj.phone || '',
         rut: userObj.rut || '',
         popid: userObj.popid || '',
-        storePoints: userObj.storePoints ?? 0,
-        storePointsExpiringNext: userObj.storePointsExpiringNext ?? 0,
-        storePointsExpiryDate: userObj.storePointsExpiryDate
-          ? new Date(userObj.storePointsExpiryDate).toISOString()
-          : null
+        storePoints: w.storePoints,
+        storePointsExpiringNext: w.storePointsExpiringNext,
+        storePointsExpiryDate: isoOrNull(w.storePointsExpiryDate)
       }
     })
 
@@ -70,7 +81,7 @@ export async function GET() {
 // POST - Crear un nuevo usuario
 export async function POST(request: NextRequest) {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreOwnerSession()
     if (!gate.ok) return gate.response
 
     const body = await request.json()

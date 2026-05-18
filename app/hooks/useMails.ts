@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useDashboardStoreQueryKey } from '@/hooks/use-dashboard-store-key'
 
 /**
  * Hooks para la API de mails (TanStack Query).
@@ -67,8 +68,9 @@ export interface UpdateMailData {
 
 // Hook para obtener todos los mails (admin)
 export function useMails() {
+  const storeKey = useDashboardStoreQueryKey()
   return useQuery<{ mails: Mail[] }>({
-    queryKey: ['mails'],
+    queryKey: ['mails', storeKey],
     queryFn: async () => {
       const response = await fetch('/api/mail')
       if (!response.ok) {
@@ -85,6 +87,7 @@ export type UseMyMailsOptions = {
   /** Solo correos que ya están recibidos en tienda (isRecivedInStore: true). */
   inStoreOnly?: boolean
   limit?: number
+  enabled?: boolean
 }
 
 // Hook para obtener mails del usuario actual (receptor / toUserId)
@@ -92,9 +95,12 @@ export function useMyMails(options?: UseMyMailsOptions) {
   const pendingOnly = options?.pendingOnly ?? false
   const inStoreOnly = options?.inStoreOnly ?? false
   const limit = options?.limit
+  const enabled = options?.enabled !== false
+  const storeKey = useDashboardStoreQueryKey()
 
   return useQuery<{ mails: Mail[] }>({
-    queryKey: ['mails', 'me', { pendingOnly, inStoreOnly, limit }],
+    queryKey: ['mails', 'me', storeKey, { pendingOnly, inStoreOnly, limit }],
+    enabled,
     queryFn: async () => {
       const params = new URLSearchParams()
       if (limit !== undefined) params.set('limit', String(limit))
@@ -138,10 +144,12 @@ export function useCreateMail() {
   })
 }
 
-/** Cuota de registros de correo del usuario para el día (hora Chile). */
+/** Cuota de registros de correo del usuario para el día (hora Chile), por tienda activa. */
 export function useMailRegisterQuota() {
+  const storeKey = useDashboardStoreQueryKey()
   return useQuery<MailRegisterQuota>({
-    queryKey: ['mail-register-quota'],
+    queryKey: ['mail-register-quota', storeKey],
+    enabled: storeKey !== 'none',
     queryFn: async () => {
       const response = await fetch('/api/mail/register-quota')
       if (!response.ok) {
@@ -201,6 +209,7 @@ export function useGetMailById(mailId: string | null) {
 // Hook para actualizar un mail por ID
 export function useUpdateMail() {
   const queryClient = useQueryClient()
+  const storeKey = useDashboardStoreQueryKey()
 
   return useMutation({
     mutationFn: async ({
@@ -225,7 +234,7 @@ export function useUpdateMail() {
       return res.mail as Mail
     },
     onSuccess: (updatedMail, variables) => {
-      queryClient.setQueryData<{ mails: Mail[] }>(['mails'], old => {
+      queryClient.setQueryData<{ mails: Mail[] }>(['mails', storeKey], old => {
         if (!old?.mails) return old
         return {
           mails: old.mails.map(m =>

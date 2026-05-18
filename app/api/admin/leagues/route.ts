@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
-import { requireAdminSession } from '@/lib/api-auth'
+import { requireStoreStaffSession } from '@/lib/api-auth'
+import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import League from '@/models/League'
 
 function parseBody(body: unknown) {
@@ -37,11 +38,17 @@ function serializeLeague(doc: Record<string, unknown>) {
 
 export async function GET() {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreStaffSession()
     if (!gate.ok) return gate.response
 
     await connectDB()
-    const raw = await League.find().sort({ name: 1 }).lean()
+    const scope = mongoFilterByStore(
+      gate.activeStoreOid,
+      gate.primaryStoreOid ?? null
+    ) as Record<string, unknown>
+    const raw = await League.find({ ...scope })
+      .sort({ name: 1 })
+      .lean()
     const leagues = raw.map(d => serializeLeague(d as Record<string, unknown>))
     return NextResponse.json({ leagues }, { status: 200 })
   } catch (error) {
@@ -55,7 +62,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreStaffSession()
     if (!gate.ok) return gate.response
 
     const body = parseBody(await request.json().catch(() => null))
@@ -105,6 +112,7 @@ export async function POST(request: NextRequest) {
 
     await connectDB()
     const doc = await League.create({
+      storeId: gate.activeStoreOid,
       name,
       slug: slugRaw,
       description,

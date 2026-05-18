@@ -17,6 +17,7 @@ import { alpha } from '@mui/material/styles'
 import { clean } from 'rut.js'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
 import { useMailRegisterQuota, type MailRegisterQuota } from '@/hooks/useMails'
+import { useDashboardStoreQueryKey } from '@/hooks/use-dashboard-store-key'
 
 const OBS_MAX = 2000
 /** Máximo de filas en el formulario (la cuota diaria puede ser menor). */
@@ -60,6 +61,7 @@ function normalizeRutKey(input: string): string {
 export default function RegisterMultipleMailsForm() {
   const router = useRouter()
   const queryClient = useQueryClient()
+  const storeKey = useDashboardStoreQueryKey()
   const batchProgressAnchorRef = useRef<HTMLDivElement>(null)
   const [submittingBatch, setSubmittingBatch] = useState(false)
   const [batchTotal, setBatchTotal] = useState(0)
@@ -177,7 +179,7 @@ export default function RegisterMultipleMailsForm() {
     let fresh: MailRegisterQuota
     try {
       fresh = await queryClient.fetchQuery({
-        queryKey: ['mail-register-quota'],
+        queryKey: ['mail-register-quota', storeKey],
         queryFn: fetchMailRegisterQuota
       })
     } catch {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import connectDB from '@/lib/mongodb'
-import { requireAdminSession } from '@/lib/api-auth'
+import { requireStoreOwnerSession } from '@/lib/api-auth'
 import {
   MAIL_REGISTER_DAILY_LIMIT,
   MAIL_REGISTER_DAILY_LIMIT_ADMIN_MAX
@@ -12,7 +12,7 @@ import {
   normalizeDashboardOrder,
   type DashboardModuleSettingsDTO
 } from '@/lib/dashboard-module-config'
-import DashboardModuleSettings from '@/models/DashboardModuleSettings'
+import { getDashboardDocForStore } from '@/lib/dashboard-settings-for-store'
 
 function readPickupNotifyEnabled(
   doc: {
@@ -32,33 +32,31 @@ function normalizeMailRegisterDailyLimit(raw: unknown): number {
 
 export async function GET() {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreOwnerSession()
     if (!gate.ok) return gate.response
 
     await connectDB()
-    const doc = await DashboardModuleSettings.findOne().lean()
-    const d = doc as {
+    const doc = await getDashboardDocForStore(gate.activeStoreOid.toString())
+    const plain = doc.toObject() as {
       visibility?: DashboardModuleSettingsDTO['visibility']
       order?: DashboardModuleSettingsDTO['order']
       shortcuts?: DashboardModuleSettingsDTO['shortcuts']
       resendNotifyPickupInStoreEnabled?: boolean
       mailRegisterDailyLimit?: number
-    } | null
-    const raw: Partial<DashboardModuleSettingsDTO> | null = d
-      ? {
-          visibility: d.visibility,
-          order: d.order,
-          shortcuts: d.shortcuts
-        }
-      : null
+    }
+    const raw: Partial<DashboardModuleSettingsDTO> | null = {
+      visibility: plain.visibility,
+      order: plain.order,
+      shortcuts: plain.shortcuts
+    }
 
     const settings = mergeDashboardSettings(raw)
     return NextResponse.json(
       {
         settings,
-        resendNotifyPickupInStoreEnabled: readPickupNotifyEnabled(d),
+        resendNotifyPickupInStoreEnabled: readPickupNotifyEnabled(plain),
         mailRegisterDailyLimit: normalizeMailRegisterDailyLimit(
-          d?.mailRegisterDailyLimit
+          plain.mailRegisterDailyLimit
         )
       },
       { status: 200 }
@@ -74,7 +72,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreOwnerSession()
     if (!gate.ok) return gate.response
 
     const body = await request.json()
@@ -119,7 +117,7 @@ export async function PUT(request: NextRequest) {
     if (updatingDashboard) {
       if (
         typeof vis.weeklyEvents !== 'boolean' ||
-        typeof vis.recentPublicDecklists !== 'boolean' ||
+        typeof vis.leagues !== 'boolean' ||
         typeof vis.myTournaments !== 'boolean' ||
         typeof vis.statistics !== 'boolean' ||
         typeof vis.mail !== 'boolean' ||
@@ -145,15 +143,13 @@ export async function PUT(request: NextRequest) {
 
     await connectDB()
 
-    let doc = await DashboardModuleSettings.findOne()
-    if (!doc) {
-      doc = await DashboardModuleSettings.create({})
-    }
+    const doc = await getDashboardDocForStore(gate.activeStoreOid.toString())
 
     if (updatingDashboard && normalizedOrder) {
       doc.visibility = {
         weeklyEvents: vis.weeklyEvents,
-        recentPublicDecklists: vis.recentPublicDecklists,
+        leagues: vis.leagues,
+        recentPublicDecklists: true,
         myTournaments: vis.myTournaments,
         statistics: vis.statistics,
         mail: vis.mail,
@@ -186,7 +182,7 @@ export async function PUT(request: NextRequest) {
     await doc.save()
 
     if (updatingMailRegisterLimit) {
-      invalidateMailRegisterDailyLimitCache()
+      invalidateMailRegisterDailyLimitCache(gate.activeStoreOid.toString())
     }
 
     const dShortcuts = doc.shortcuts as
@@ -198,12 +194,15 @@ export async function PUT(request: NextRequest) {
       shortcuts: dShortcuts
     })
 
+    revalidatePath('/', 'layout')
     revalidatePath('/dashboard', 'layout')
+    revalidatePath('/dashboard/mi-cuenta')
     revalidatePath('/dashboard/eventos')
     revalidatePath('/dashboard/torneos-semana')
     revalidatePath('/dashboard/mail')
     revalidatePath('/dashboard/mail/registrar-multiples')
     revalidatePath('/dashboard/estadisticas')
+    revalidatePath('/admin/ligas')
 
     return NextResponse.json(
       {

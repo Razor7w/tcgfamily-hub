@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import mongoose from 'mongoose'
-import { auth } from '@/auth'
+import { requireSessionUserWithActiveStore } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import { parseManualPlacementBody } from '@/lib/manual-placement'
 import { normalizeParticipantDeckPokemonSlugs } from '@/lib/participant-deck-pokemon'
@@ -17,10 +17,9 @@ const TITLE_MAX = 200
  */
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const sg = await requireSessionUserWithActiveStore()
+    if (!sg.ok) return sg.response
+    const session = sg.session
 
     let body: unknown
     try {
@@ -160,6 +159,7 @@ export async function POST(request: NextRequest) {
     }
 
     const doc = await WeeklyEvent.create({
+      storeId: sg.activeStoreOid,
       startsAt,
       title,
       location: '',

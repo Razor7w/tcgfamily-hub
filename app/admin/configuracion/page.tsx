@@ -1,6 +1,9 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { useStoreHubHref } from '@/hooks/useStoreHubHref'
+import { useMeStores } from '@/hooks/useMeStores'
 import ArrowDownward from '@mui/icons-material/ArrowDownward'
 import ArrowUpward from '@mui/icons-material/ArrowUpward'
 import MarkEmailReadOutlined from '@mui/icons-material/MarkEmailReadOutlined'
@@ -26,6 +29,7 @@ import Divider from '@mui/material/Divider'
 import TextField from '@mui/material/TextField'
 import { alpha, type Theme } from '@mui/material/styles'
 import NextLink from 'next/link'
+import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
 import {
   useAdminConfiguracion,
   useUpdateDashboardModuleSettings,
@@ -34,9 +38,14 @@ import {
   useUpdateResendPickupNotifySettings
 } from '@/hooks/useDashboardModules'
 import {
-  DASHBOARD_MODULE_IDS,
+  composePersistedDashboardOrderFromAdminState,
+  configurableDashboardVisibilitySnapshot,
+  dashboardModuleIdsForAdminEditor,
   mergeDashboardSettings,
+  playerOrderForAdminEditor,
+  splitDashboardOrder,
   type DashboardModuleId,
+  type DashboardModuleScope,
   type DashboardModuleSettingsDTO,
   type DashboardShortcutsVisibility
 } from '@/lib/dashboard-module-config'
@@ -45,16 +54,40 @@ import {
   MAIL_REGISTER_DAILY_LIMIT_ADMIN_MAX
 } from '@/lib/mail-register-constants'
 
-const LABELS: Record<DashboardModuleId, string> = {
+type DashboardModuleConfigurableId = Exclude<
+  DashboardModuleId,
+  'recentPublicDecklists'
+>
+
+const CONFIGURABLE_MODULE_LABELS: Record<
+  DashboardModuleConfigurableId,
+  string
+> = {
   weeklyEvents: 'Eventos de la semana (calendario y preinscripción)',
-  recentPublicDecklists:
-    'Últimos mazos públicos (tarjeta en el inicio del dashboard)',
+  leagues: 'Ligas (puntuación y temporadas en tienda)',
   myTournaments:
     'Mis torneos (resumen de participaciones, rondas y torneos custom)',
   statistics:
     'Estadísticas (récord y win rate por mazo, rivales en el detalle)',
   mail: 'Correo (últimos correos y registro)',
   storePoints: 'Crédito de tienda (puntos)'
+}
+
+function dashboardModuleAdminLabel(id: DashboardModuleId): string {
+  if (id === 'recentPublicDecklists') {
+    return 'Últimos mazos públicos'
+  }
+  return CONFIGURABLE_MODULE_LABELS[id]
+}
+
+const SCOPE_VISIBILITY_GROUP: Record<DashboardModuleScope, string> = {
+  store: 'Visibilidad — tienda activa',
+  player: 'Visibilidad — jugador'
+}
+
+const SCOPE_ORDER_GROUP: Record<DashboardModuleScope, string> = {
+  store: 'Orden en Tiendas (/{slug})',
+  player: 'Orden en Mi cuenta (/dashboard/mi-cuenta)'
 }
 
 function moveOrder(
@@ -69,6 +102,61 @@ function moveOrder(
   return next
 }
 
+function ScopedOrderPaper({
+  items,
+  onReorder
+}: {
+  items: DashboardModuleId[]
+  onReorder: (next: DashboardModuleId[]) => void
+}) {
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        borderRadius: 2,
+        overflow: 'hidden',
+        borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.1)
+      }}
+    >
+      <Stack divider={<Divider flexItem />}>
+        {items.map((id, index) => (
+          <Stack
+            key={id}
+            direction="row"
+            alignItems="center"
+            spacing={1}
+            sx={{
+              px: 2,
+              py: 1.5,
+              bgcolor: (t: Theme) => alpha(t.palette.text.primary, 0.02)
+            }}
+          >
+            <Typography variant="body2" sx={{ flex: 1, fontWeight: 600 }}>
+              {dashboardModuleAdminLabel(id)}
+            </Typography>
+            <IconButton
+              size="small"
+              aria-label="Subir"
+              disabled={index === 0}
+              onClick={() => onReorder(moveOrder(items, index, -1))}
+            >
+              <ArrowUpward fontSize="small" />
+            </IconButton>
+            <IconButton
+              size="small"
+              aria-label="Bajar"
+              disabled={index === items.length - 1}
+              onClick={() => onReorder(moveOrder(items, index, 1))}
+            >
+              <ArrowDownward fontSize="small" />
+            </IconButton>
+          </Stack>
+        ))}
+      </Stack>
+    </Paper>
+  )
+}
+
 function DashboardModulesEditor({
   initial
 }: {
@@ -76,23 +164,50 @@ function DashboardModulesEditor({
 }) {
   const update = useUpdateDashboardModuleSettings()
   const [visibility, setVisibility] = useState(initial.visibility)
-  const [order, setOrder] = useState<DashboardModuleId[]>(initial.order)
+  const { storeOrder: initStore } = splitDashboardOrder(initial.order)
+  const [storeOrder, setStoreOrder] = useState<DashboardModuleId[]>(initStore)
+  const [playerOrder, setPlayerOrder] = useState<
+    DashboardModuleConfigurableId[]
+  >(() => playerOrderForAdminEditor(initial.order))
 
-  const dirty = useMemo(
-    () =>
-      JSON.stringify(visibility) !== JSON.stringify(initial.visibility) ||
-      JSON.stringify(order) !== JSON.stringify(initial.order),
-    [initial, visibility, order]
+  const mergedOrder = useMemo(
+    () => composePersistedDashboardOrderFromAdminState(storeOrder, playerOrder),
+    [storeOrder, playerOrder]
   )
+
+  const dirty = useMemo(() => {
+    const initialEditablePlayer = playerOrderForAdminEditor(initial.order)
+    return (
+      JSON.stringify(configurableDashboardVisibilitySnapshot(visibility)) !==
+        JSON.stringify(
+          configurableDashboardVisibilitySnapshot(initial.visibility)
+        ) ||
+      JSON.stringify(storeOrder) !==
+        JSON.stringify(splitDashboardOrder(initial.order).storeOrder) ||
+      JSON.stringify(playerOrder) !== JSON.stringify(initialEditablePlayer)
+    )
+  }, [initial.order, initial.visibility, playerOrder, storeOrder, visibility])
 
   const handleSave = () => {
     const payload: DashboardModuleSettingsDTO = {
-      visibility,
-      order,
+      visibility: {
+        ...visibility,
+        recentPublicDecklists: true
+      },
+      order: mergedOrder,
       shortcuts: initial.shortcuts
     }
     update.mutate(payload)
   }
+
+  const resetFromInitial = () => {
+    setVisibility(initial.visibility)
+    const { storeOrder: s } = splitDashboardOrder(initial.order)
+    setStoreOrder(s)
+    setPlayerOrder(playerOrderForAdminEditor(initial.order))
+  }
+
+  const scopeSequence: DashboardModuleScope[] = ['store', 'player']
 
   return (
     <Card
@@ -109,22 +224,40 @@ function DashboardModulesEditor({
           color="text.secondary"
           sx={{ fontWeight: 800, letterSpacing: '0.12em' }}
         >
-          Visibilidad
+          Visibilidad por bloque
         </Typography>
-        <Stack sx={{ mt: 1.5, mb: 3 }} spacing={0.5}>
-          {DASHBOARD_MODULE_IDS.map(id => (
-            <FormControlLabel
-              key={id}
-              control={
-                <Checkbox
-                  checked={visibility[id]}
-                  onChange={e =>
-                    setVisibility(v => ({ ...v, [id]: e.target.checked }))
-                  }
-                />
-              }
-              label={LABELS[id]}
-            />
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ mt: 0.5, mb: 2 }}
+        >
+          Los ajustes aplican a quienes usen esta tienda como contexto en el
+          header: los módulos de tienda viven en Tiendas en la URL raíz (p. ej.
+          /tcgfamily) y los de jugador en Mi cuenta (/dashboard/mi-cuenta).
+        </Typography>
+        <Stack spacing={2.5} sx={{ mb: 3 }}>
+          {scopeSequence.map(scope => (
+            <Box key={scope}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>
+                {SCOPE_VISIBILITY_GROUP[scope]}
+              </Typography>
+              <Stack spacing={0.5}>
+                {dashboardModuleIdsForAdminEditor(scope).map(id => (
+                  <FormControlLabel
+                    key={id}
+                    control={
+                      <Checkbox
+                        checked={visibility[id]}
+                        onChange={e =>
+                          setVisibility(v => ({ ...v, [id]: e.target.checked }))
+                        }
+                      />
+                    }
+                    label={CONFIGURABLE_MODULE_LABELS[id]}
+                  />
+                ))}
+              </Stack>
+            </Box>
           ))}
         </Stack>
 
@@ -138,55 +271,31 @@ function DashboardModulesEditor({
         <Typography
           variant="body2"
           color="text.secondary"
-          sx={{ mt: 0.5, mb: 1.5 }}
+          sx={{ mt: 0.5, mb: 2 }}
         >
-          El primero de la lista queda arriba del todo en el dashboard.
+          Cada lista define el orden vertical en su pantalla (Tiendas vs Mi
+          cuenta). En base de datos se guarda como una sola secuencia: primero
+          todos los ítems de tienda, luego todos los del jugador
+          (concatenación).
         </Typography>
 
-        <Paper
-          variant="outlined"
-          sx={{
-            borderRadius: 2,
-            overflow: 'hidden',
-            borderColor: (t: Theme) => alpha(t.palette.text.primary, 0.1)
-          }}
-        >
-          <Stack divider={<Divider flexItem />}>
-            {order.map((id, index) => (
-              <Stack
-                key={id}
-                direction="row"
-                alignItems="center"
-                spacing={1}
-                sx={{
-                  px: 2,
-                  py: 1.5,
-                  bgcolor: (t: Theme) => alpha(t.palette.text.primary, 0.02)
-                }}
-              >
-                <Typography variant="body2" sx={{ flex: 1, fontWeight: 600 }}>
-                  {LABELS[id]}
-                </Typography>
-                <IconButton
-                  size="small"
-                  aria-label="Subir"
-                  disabled={index === 0}
-                  onClick={() => setOrder(o => moveOrder(o, index, -1))}
-                >
-                  <ArrowUpward fontSize="small" />
-                </IconButton>
-                <IconButton
-                  size="small"
-                  aria-label="Bajar"
-                  disabled={index === order.length - 1}
-                  onClick={() => setOrder(o => moveOrder(o, index, 1))}
-                >
-                  <ArrowDownward fontSize="small" />
-                </IconButton>
-              </Stack>
-            ))}
-          </Stack>
-        </Paper>
+        <Stack spacing={2.5}>
+          {scopeSequence.map(scope => (
+            <Box key={scope}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>
+                {SCOPE_ORDER_GROUP[scope]}
+              </Typography>
+              <ScopedOrderPaper
+                items={scope === 'store' ? storeOrder : [...playerOrder]}
+                onReorder={next =>
+                  scope === 'store'
+                    ? setStoreOrder(next)
+                    : setPlayerOrder(next as DashboardModuleConfigurableId[])
+                }
+              />
+            </Box>
+          ))}
+        </Stack>
 
         {update.isError ? (
           <Alert severity="error" sx={{ mt: 2 }}>
@@ -204,10 +313,7 @@ function DashboardModulesEditor({
         >
           <Button
             variant="outlined"
-            onClick={() => {
-              setVisibility(initial.visibility)
-              setOrder(initial.order)
-            }}
+            onClick={() => resetFromInitial()}
             disabled={!dirty || update.isPending}
           >
             Deshacer
@@ -291,14 +397,14 @@ function DashboardShortcutsEditor({
               component="h2"
               sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}
             >
-              Accesos rápidos en el inicio
+              Accesos rápidos en Inicio
             </Typography>
             <Typography
               variant="body2"
               color="text.secondary"
               sx={{ mt: 0.75, lineHeight: 1.6 }}
             >
-              Botones en la parte superior de{' '}
+              Botones en{' '}
               <Link href="/dashboard" component={NextLink} fontWeight={600}>
                 /dashboard
               </Link>{' '}
@@ -699,6 +805,19 @@ function ResendPickupEmailCard({
 }
 
 export default function AdminConfiguracionPage() {
+  const { data: session } = useSession()
+  const { data: meStoresForLabel } = useMeStores()
+  const storeHubHref = useStoreHubHref()
+  const activeStoreId = session?.user?.activeStoreId?.trim()
+
+  const activeStoreDisplayName = useMemo(() => {
+    if (!activeStoreId) return null
+    const rows = meStoresForLabel?.stores ?? []
+    const hit = rows.find(r => String(r.id) === activeStoreId)
+    const name = hit && typeof hit.name === 'string' ? hit.name.trim() : ''
+    return name || null
+  }, [activeStoreId, meStoresForLabel?.stores])
+
   const { data, dataUpdatedAt, isPending, isError, error, refetch } =
     useAdminConfiguracion()
 
@@ -723,31 +842,52 @@ export default function AdminConfiguracionPage() {
             boxShadow: '0 20px 40px -24px rgba(24, 24, 27, 0.12)'
           }}
         >
-          <Box>
-            <Typography
-              variant="h4"
-              component="h1"
-              sx={{
-                fontWeight: 800,
-                letterSpacing: '-0.03em',
-                lineHeight: 1.15
-              }}
-            >
-              Configuración
-            </Typography>
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ mt: 1, maxWidth: 620, lineHeight: 1.6 }}
-            >
-              Bloques del panel de jugadores en{' '}
-              <Link href="/dashboard" component={NextLink} fontWeight={600}>
-                /dashboard
-              </Link>{' '}
-              , límite diario de registro de correos por jugador y avisos por
-              correo (Resend) cuando un envío queda listo para retiro en tienda.
-            </Typography>
-          </Box>
+          <AdminStorePageHeading showActiveStoreAvatar>
+            <Box>
+              <Typography
+                variant="h4"
+                component="h1"
+                sx={{
+                  fontWeight: 800,
+                  letterSpacing: '-0.03em',
+                  lineHeight: 1.15
+                }}
+              >
+                Configuración
+              </Typography>
+              {activeStoreDisplayName ? (
+                <Typography
+                  variant="subtitle2"
+                  color="text.secondary"
+                  sx={{ mt: 0.75, fontWeight: 700 }}
+                >
+                  Tienda activa: {activeStoreDisplayName}
+                </Typography>
+              ) : null}
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 1, maxWidth: 620, lineHeight: 1.6 }}
+              >
+                Estos ajustes aplican solo a la tienda seleccionada en el menú
+                superior (misma que ves aquí arriba). Los bloques de tienda en{' '}
+                <Link href={storeHubHref} component={NextLink} fontWeight={600}>
+                  Tiendas
+                </Link>
+                , los de jugador en{' '}
+                <Link
+                  href="/dashboard/mi-cuenta"
+                  component={NextLink}
+                  fontWeight={600}
+                >
+                  Mi cuenta
+                </Link>
+                , el límite diario de registro de correos por jugador en esa
+                tienda y los avisos por correo (Resend) cuando un envío queda
+                listo para retiro en tienda.
+              </Typography>
+            </Box>
+          </AdminStorePageHeading>
         </Stack>
 
         {isPending ? (
@@ -771,10 +911,6 @@ export default function AdminConfiguracionPage() {
               key={`dash-${dataUpdatedAt}`}
               initial={mergeDashboardSettings(data.settings)}
             />
-            <DashboardShortcutsEditor
-              key={`shortcuts-${dataUpdatedAt}`}
-              initial={mergeDashboardSettings(data.settings).shortcuts}
-            />
             <MailRegisterDailyLimitCard
               key={`mail-limit-${dataUpdatedAt}`}
               initialLimit={data.mailRegisterDailyLimit}
@@ -783,6 +919,10 @@ export default function AdminConfiguracionPage() {
               key={`email-${dataUpdatedAt}`}
               initialEnabled={data.resendNotifyPickupInStoreEnabled}
             />
+            <DashboardShortcutsEditor
+              key={`shortcuts-${dataUpdatedAt}`}
+              initial={mergeDashboardSettings(data.settings).shortcuts}
+            />
           </Stack>
         ) : (
           <Stack spacing={3}>
@@ -790,15 +930,15 @@ export default function AdminConfiguracionPage() {
               key="defaults"
               initial={mergeDashboardSettings(null)}
             />
-            <DashboardShortcutsEditor
-              key="shortcuts-defaults"
-              initial={mergeDashboardSettings(null).shortcuts}
-            />
             <MailRegisterDailyLimitCard
               key="mail-limit-defaults"
               initialLimit={MAIL_REGISTER_DAILY_LIMIT}
             />
             <ResendPickupEmailCard key="email-defaults" initialEnabled />
+            <DashboardShortcutsEditor
+              key="shortcuts-defaults"
+              initial={mergeDashboardSettings(null).shortcuts}
+            />
           </Stack>
         )}
       </Container>

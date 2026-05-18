@@ -16,6 +16,8 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Button from '@mui/material/Button'
+import Avatar from '@mui/material/Avatar'
+import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 import { alpha, useTheme, type Theme } from '@mui/material/styles'
 import { useParams } from 'next/navigation'
 import Header from '@/components/Header'
@@ -94,6 +96,68 @@ export default function LigaPublicPage() {
             </Alert>
           ) : data ? (
             <>
+              {data.store?.name ? (
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  spacing={1.75}
+                  sx={{
+                    alignSelf: 'flex-start',
+                    py: { xs: 0.75, sm: 1 },
+                    px: { xs: 1.25, sm: 1.5 },
+                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor: theme =>
+                      alpha(theme.palette.text.primary, 0.1),
+                    bgcolor: theme => alpha(theme.palette.primary.main, 0.04)
+                  }}
+                >
+                  <Avatar
+                    variant="rounded"
+                    src={
+                      typeof data.store.logoUrl === 'string' &&
+                      data.store.logoUrl.trim()
+                        ? data.store.logoUrl.trim()
+                        : undefined
+                    }
+                    alt=""
+                    sx={{
+                      width: { xs: 44, sm: 48 },
+                      height: { xs: 44, sm: 48 },
+                      bgcolor: t => alpha(t.palette.text.primary, 0.06),
+                      border: '1px solid',
+                      borderColor: theme => alpha(theme.palette.divider, 1),
+                      '& img': { objectFit: 'contain', p: 0.75 }
+                    }}
+                  >
+                    <StorefrontOutlinedIcon sx={{ fontSize: 26 }} aria-hidden />
+                  </Avatar>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography
+                      variant="overline"
+                      color="text.secondary"
+                      sx={{ lineHeight: 1.25, letterSpacing: 0.08 }}
+                    >
+                      Liga de tienda
+                    </Typography>
+                    <Typography
+                      variant="subtitle1"
+                      component="span"
+                      sx={{
+                        fontWeight: 800,
+                        lineHeight: 1.35,
+                        display: 'block',
+                        mt: 0.25,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {data.store.name}
+                    </Typography>
+                  </Box>
+                </Stack>
+              ) : null}
               <Box>
                 <Typography
                   variant="h4"

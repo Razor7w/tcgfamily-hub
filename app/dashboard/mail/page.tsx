@@ -47,6 +47,17 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import { useDeleteMail, type Mail } from '@/hooks/useMails'
 import DashboardModuleRouteGate from '@/components/dashboard/DashboardModuleRouteGate'
+import {
+  buildDistinctMailUsersForFilters,
+  buildToRecipientOptions,
+  filterFromUserLabel,
+  filterToRecipientLabel,
+  mailMatchesToRecipientFilter,
+  participantSearchMatches,
+  toRecipientSearchMatches,
+  type FilterFromUser,
+  type FilterToRecipient
+} from '@/lib/mail-recipient-filter'
 
 /** Correos por página en la lista en tarjetas. */
 const MAIL_PAGE_SIZE = 8
@@ -75,12 +86,6 @@ function mailUserId(ref: { _id: string } | string): string {
   return typeof ref === 'object' ? ref._id : String(ref)
 }
 
-type FilterUser = { id: string; name: string; rut: string }
-
-function filterUserLabel(u: FilterUser) {
-  return `${u.name || 'Sin nombre'} (${u.rut || '-'})`
-}
-
 const SlideUpTransition = forwardRef(function SlideUpTransition(
   props: TransitionProps & { children: ReactElement },
   ref: ForwardedRef<unknown>
@@ -93,13 +98,14 @@ type MailFilterStatus = 'all' | 'notInStore' | 'inStore' | 'retired'
 type MailFiltersPanelProps = {
   searchId: string
   setSearchId: (v: string) => void
-  filterFromUser: FilterUser | null
-  setFilterFromUser: (v: FilterUser | null) => void
-  filterToUser: FilterUser | null
-  setFilterToUser: (v: FilterUser | null) => void
+  filterFromUser: FilterFromUser | null
+  setFilterFromUser: (v: FilterFromUser | null) => void
+  filterToRecipient: FilterToRecipient | null
+  setFilterToRecipient: (v: FilterToRecipient | null) => void
   filterStatus: MailFilterStatus
   setFilterStatus: (v: MailFilterStatus) => void
-  usersFromMails: FilterUser[]
+  usersFromMails: FilterFromUser[]
+  toRecipientOptions: FilterToRecipient[]
 }
 
 function MailFiltersPanel({
@@ -107,11 +113,12 @@ function MailFiltersPanel({
   setSearchId,
   filterFromUser,
   setFilterFromUser,
-  filterToUser,
-  setFilterToUser,
+  filterToRecipient,
+  setFilterToRecipient,
   filterStatus,
   setFilterStatus,
-  usersFromMails
+  usersFromMails,
+  toRecipientOptions
 }: MailFiltersPanelProps) {
   return (
     <Stack spacing={2}>
@@ -133,12 +140,12 @@ function MailFiltersPanel({
             flex: { md: '0 0 auto' }
           }}
         />
-        <Autocomplete<FilterUser>
+        <Autocomplete<FilterFromUser>
           size="small"
           options={usersFromMails}
           value={filterFromUser}
           onChange={(_, v) => setFilterFromUser(v)}
-          getOptionLabel={filterUserLabel}
+          getOptionLabel={filterFromUserLabel}
           isOptionEqualToValue={(a, b) => a.id === b.id}
           sx={{
             minWidth: { xs: '100%', sm: 260 },
@@ -151,26 +158,16 @@ function MailFiltersPanel({
               placeholder="Nombre o RUT"
             />
           )}
-          filterOptions={(opts, { inputValue }) => {
-            const v = inputValue.trim().toLowerCase()
-            if (!v) return opts
-            return opts.filter(
-              u =>
-                u.name?.toLowerCase().includes(v) ||
-                (u.rut &&
-                  u.rut
-                    .toLowerCase()
-                    .replace(/\D/g, '')
-                    .includes(v.replace(/\D/g, '')))
-            )
-          }}
+          filterOptions={(opts, { inputValue }) =>
+            opts.filter(u => participantSearchMatches(inputValue, u))
+          }
         />
-        <Autocomplete<FilterUser>
+        <Autocomplete<FilterToRecipient>
           size="small"
-          options={usersFromMails}
-          value={filterToUser}
-          onChange={(_, v) => setFilterToUser(v)}
-          getOptionLabel={filterUserLabel}
+          options={toRecipientOptions}
+          value={filterToRecipient}
+          onChange={(_, v) => setFilterToRecipient(v)}
+          getOptionLabel={filterToRecipientLabel}
           isOptionEqualToValue={(a, b) => a.id === b.id}
           sx={{
             minWidth: { xs: '100%', sm: 260 },
@@ -180,22 +177,12 @@ function MailFiltersPanel({
             <TextField
               {...params}
               label="Destinatario (para)"
-              placeholder="Nombre o RUT"
+              placeholder="Nombre, RUT o sin cuenta"
             />
           )}
-          filterOptions={(opts, { inputValue }) => {
-            const v = inputValue.trim().toLowerCase()
-            if (!v) return opts
-            return opts.filter(
-              u =>
-                u.name?.toLowerCase().includes(v) ||
-                (u.rut &&
-                  u.rut
-                    .toLowerCase()
-                    .replace(/\D/g, '')
-                    .includes(v.replace(/\D/g, '')))
-            )
-          }}
+          filterOptions={(opts, { inputValue }) =>
+            opts.filter(o => toRecipientSearchMatches(inputValue, o))
+          }
         />
       </Stack>
 
@@ -526,8 +513,11 @@ function DashboardMailPageContent() {
   const [filterStatus, setFilterStatus] = useState<
     'all' | 'notInStore' | 'inStore' | 'retired'
   >('all')
-  const [filterFromUser, setFilterFromUser] = useState<FilterUser | null>(null)
-  const [filterToUser, setFilterToUser] = useState<FilterUser | null>(null)
+  const [filterFromUser, setFilterFromUser] = useState<FilterFromUser | null>(
+    null
+  )
+  const [filterToRecipient, setFilterToRecipient] =
+    useState<FilterToRecipient | null>(null)
   const [filtersModalOpen, setFiltersModalOpen] = useState(false)
 
   const theme = useTheme()
@@ -536,29 +526,15 @@ function DashboardMailPageContent() {
   const { data: mailsRes, isLoading, error } = useMyMails()
   const allMails = useMemo(() => mailsRes?.mails ?? [], [mailsRes?.mails])
 
-  const usersFromMails = useMemo(() => {
-    const map = new Map<string, FilterUser>()
-    for (const m of allMails) {
-      const from = m.fromUserId
-      const to = m.toUserId
-      const fId = mailUserId(from)
-      const tId = to ? mailUserId(to) : null
-      if (!map.has(fId))
-        map.set(fId, {
-          id: fId,
-          name:
-            (typeof from === 'object' ? from.name : undefined) ?? 'Sin nombre',
-          rut: (typeof from === 'object' ? from.rut : undefined) ?? ''
-        })
-      if (to && tId && !map.has(tId))
-        map.set(tId, {
-          id: tId,
-          name: (typeof to === 'object' ? to.name : undefined) ?? 'Sin nombre',
-          rut: (typeof to === 'object' ? to.rut : undefined) ?? ''
-        })
-    }
-    return Array.from(map.values())
-  }, [allMails])
+  const usersFromMails = useMemo(
+    () => buildDistinctMailUsersForFilters(allMails),
+    [allMails]
+  )
+
+  const toRecipientOptions = useMemo(
+    () => buildToRecipientOptions(allMails),
+    [allMails]
+  )
 
   const mails = useMemo(() => {
     let list = allMails
@@ -575,23 +551,25 @@ function DashboardMailPageContent() {
       list = list.filter(m => Boolean(m.isRecivedInStore) && !m.isRecived)
     else if (filterStatus === 'notInStore')
       list = list.filter(m => !m.isRecivedInStore && !m.isRecived)
-    if (filterFromUser)
+    if (filterFromUser) {
       list = list.filter(m => mailUserId(m.fromUserId) === filterFromUser.id)
-    if (filterToUser)
+    }
+    if (filterToRecipient) {
       list = list.filter(m =>
-        m.toUserId ? mailUserId(m.toUserId) === filterToUser.id : false
+        mailMatchesToRecipientFilter(m, filterToRecipient)
       )
+    }
     return list
-  }, [allMails, searchId, filterStatus, filterFromUser, filterToUser])
+  }, [allMails, searchId, filterStatus, filterFromUser, filterToRecipient])
 
   const activeFilterCount = useMemo(() => {
     let n = 0
     if (searchId.trim()) n += 1
     if (filterFromUser) n += 1
-    if (filterToUser) n += 1
+    if (filterToRecipient) n += 1
     if (filterStatus !== 'all') n += 1
     return n
-  }, [searchId, filterFromUser, filterToUser, filterStatus])
+  }, [searchId, filterFromUser, filterToRecipient, filterStatus])
 
   const mailListFilterKey = useMemo(
     () =>
@@ -599,9 +577,9 @@ function DashboardMailPageContent() {
         searchId,
         filterStatus,
         filterFromUser?.id ?? '',
-        filterToUser?.id ?? ''
+        filterToRecipient?.id ?? ''
       ].join('\0'),
-    [searchId, filterStatus, filterFromUser, filterToUser]
+    [searchId, filterStatus, filterFromUser, filterToRecipient]
   )
 
   const [listPage, setListPage] = useState(1)
@@ -845,11 +823,12 @@ function DashboardMailPageContent() {
               setSearchId={setSearchId}
               filterFromUser={filterFromUser}
               setFilterFromUser={setFilterFromUser}
-              filterToUser={filterToUser}
-              setFilterToUser={setFilterToUser}
+              filterToRecipient={filterToRecipient}
+              setFilterToRecipient={setFilterToRecipient}
               filterStatus={filterStatus}
               setFilterStatus={setFilterStatus}
               usersFromMails={usersFromMails}
+              toRecipientOptions={toRecipientOptions}
             />
           </Paper>
         </Box>
@@ -913,11 +892,12 @@ function DashboardMailPageContent() {
               setSearchId={setSearchId}
               filterFromUser={filterFromUser}
               setFilterFromUser={setFilterFromUser}
-              filterToUser={filterToUser}
-              setFilterToUser={setFilterToUser}
+              filterToRecipient={filterToRecipient}
+              setFilterToRecipient={setFilterToRecipient}
               filterStatus={filterStatus}
               setFilterStatus={setFilterStatus}
               usersFromMails={usersFromMails}
+              toRecipientOptions={toRecipientOptions}
             />
           </DialogContent>
           <DialogActions
@@ -938,7 +918,7 @@ function DashboardMailPageContent() {
           >
             {(searchId ||
               filterFromUser ||
-              filterToUser ||
+              filterToRecipient ||
               filterStatus !== 'all') && (
               <Button
                 variant="text"
@@ -946,7 +926,7 @@ function DashboardMailPageContent() {
                 onClick={() => {
                   setSearchId('')
                   setFilterFromUser(null)
-                  setFilterToUser(null)
+                  setFilterToRecipient(null)
                   setFilterStatus('all')
                 }}
               >
@@ -981,14 +961,14 @@ function DashboardMailPageContent() {
           </Typography>
           {(searchId ||
             filterFromUser ||
-            filterToUser ||
+            filterToRecipient ||
             filterStatus !== 'all') && (
             <Button
               size="small"
               onClick={() => {
                 setSearchId('')
                 setFilterFromUser(null)
-                setFilterToUser(null)
+                setFilterToRecipient(null)
                 setFilterStatus('all')
               }}
             >

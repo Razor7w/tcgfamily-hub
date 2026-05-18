@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import mongoose from 'mongoose'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
@@ -10,6 +11,7 @@ import {
   validateRegisterName
 } from '@/lib/password-rules'
 import { validatePopidOptional, popidForStorage } from '@/lib/rut-chile'
+import { canUserActivateDashboardStore } from '@/lib/multitenancy/session-store-hydrate'
 
 function isR2KeyForUser(userId: string, key: string): boolean {
   if (!userId || !key) return false
@@ -60,7 +62,10 @@ export async function GET() {
       phone?: string
       role?: string
       passwordHash?: string
+      defaultStoreId?: mongoose.Types.ObjectId | null
     }
+
+    const defSid = u.defaultStoreId != null ? u.defaultStoreId.toString() : null
 
     return NextResponse.json({
       id: u._id.toString(),
@@ -72,7 +77,8 @@ export async function GET() {
       popid: u.popid ?? '',
       phone: u.phone ?? '',
       role: u.role ?? 'user',
-      hasPassword: Boolean(u.passwordHash)
+      hasPassword: Boolean(u.passwordHash),
+      defaultStoreId: defSid
     })
   } catch (e) {
     console.error('GET /api/me:', e)
@@ -108,7 +114,8 @@ export async function PATCH(request: NextRequest) {
       newPassword,
       confirmNewPassword,
       image,
-      imageKey
+      imageKey,
+      defaultStoreId
     } = body as Record<string, unknown>
 
     await connectDB()
@@ -125,8 +132,18 @@ export async function PATCH(request: NextRequest) {
     const hasName = name !== undefined
     const hasPop = popid !== undefined
     const hasImage = image !== undefined || imageKey !== undefined
+    const hasDefaultStore = Object.prototype.hasOwnProperty.call(
+      body as object,
+      'defaultStoreId'
+    )
 
-    if (!wantsPasswordChange && !hasName && !hasPop && !hasImage) {
+    if (
+      !wantsPasswordChange &&
+      !hasName &&
+      !hasPop &&
+      !hasImage &&
+      !hasDefaultStore
+    ) {
       return NextResponse.json(
         { error: 'No hay cambios para guardar.' },
         { status: 400 }
@@ -190,6 +207,44 @@ export async function PATCH(request: NextRequest) {
       user.popid = popidForStorage(popStr)
     }
 
+    if (hasDefaultStore) {
+      if (defaultStoreId === null || defaultStoreId === '') {
+        return NextResponse.json(
+          {
+            error:
+              'Tenés que indicar una tienda predeterminada (no puede quedar vacía).'
+          },
+          { status: 400 }
+        )
+      }
+      if (typeof defaultStoreId === 'string') {
+        const sid = defaultStoreId.trim()
+        if (!mongoose.Types.ObjectId.isValid(sid)) {
+          return NextResponse.json(
+            { error: 'Tienda predeterminada inválida.' },
+            { status: 400 }
+          )
+        }
+        const oid = new mongoose.Types.ObjectId(sid)
+        const allowed = await canUserActivateDashboardStore(
+          session.user.id,
+          oid
+        )
+        if (!allowed) {
+          return NextResponse.json(
+            { error: 'No tenés acceso a esa tienda.' },
+            { status: 403 }
+          )
+        }
+        user.defaultStoreId = oid
+      } else {
+        return NextResponse.json(
+          { error: 'defaultStoreId inválido.' },
+          { status: 400 }
+        )
+      }
+    }
+
     const oldImageKey: string =
       typeof user.imageKey === 'string' ? user.imageKey : ''
 
@@ -243,13 +298,19 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
+    const defOut =
+      user.defaultStoreId != null
+        ? (user.defaultStoreId as mongoose.Types.ObjectId).toString()
+        : null
+
     return NextResponse.json({
       ok: true,
       name: user.name ?? '',
       popid: user.popid ?? '',
       hasPassword,
       image: user.image ?? '',
-      imageKey: typeof user.imageKey === 'string' ? user.imageKey : ''
+      imageKey: typeof user.imageKey === 'string' ? user.imageKey : '',
+      defaultStoreId: defOut
     })
   } catch (e) {
     console.error('PATCH /api/me:', e)

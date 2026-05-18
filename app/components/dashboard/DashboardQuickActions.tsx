@@ -17,6 +17,8 @@ type DashboardQuickActionsProps = {
   onRegisterMail: () => void
   onCreateCustomTournament: () => void
   onPlayPokemonDecklistPdf: () => void
+  /** Si viene definido, sustituye el párrafo bajo «Accesos rápidos». */
+  subtitle?: string
 }
 
 type ActionItem = {
@@ -156,21 +158,14 @@ function ActionTile({
               display: 'block',
               textWrap: 'balance',
               fontSize: dense
-                ? { xs: '0.9rem', sm: '0.92rem', md: '0.8rem' }
+                ? { xs: '0.9rem', sm: '0.95rem', md: '0.95rem' }
                 : { xs: '0.9rem', sm: '0.95rem' },
-              lineHeight: 1.25,
-              // Ellipsis solo en grid denso de 3 columnas (md+)
-              ...(dense
-                ? {
-                    overflow: { xs: 'visible', sm: 'visible', md: 'hidden' },
-                    textOverflow: { xs: 'clip', sm: 'clip', md: 'ellipsis' },
-                    whiteSpace: { xs: 'normal', sm: 'normal', md: 'nowrap' }
-                  }
-                : {
-                    overflow: 'visible',
-                    textOverflow: 'clip',
-                    whiteSpace: 'normal'
-                  })
+              lineHeight: 1.3,
+              overflow: 'visible',
+              textOverflow: 'clip',
+              whiteSpace: 'normal',
+              overflowWrap: 'break-word',
+              wordBreak: 'break-word'
             }}
           >
             {title}
@@ -214,7 +209,8 @@ export default function DashboardQuickActions({
   shortcuts,
   onRegisterMail,
   onCreateCustomTournament,
-  onPlayPokemonDecklistPdf
+  onPlayPokemonDecklistPdf,
+  subtitle
 }: DashboardQuickActionsProps) {
   if (
     !shortcuts.createMail &&
@@ -255,6 +251,12 @@ export default function DashboardQuickActions({
 
   const tileCount = items.length
   const dense = tileCount === 3
+
+  const defaultSubtitle =
+    tileCount > 1
+      ? 'Atajos a lo que usas a menudo. El resto del panel sigue abajo.'
+      : 'Un atajo a una acción frecuente. El resto del panel sigue abajo.'
+  const bodyCopy = subtitle ?? defaultSubtitle
 
   return (
     <Box
@@ -305,9 +307,7 @@ export default function DashboardQuickActions({
           fontWeight: 500
         }}
       >
-        {tileCount > 1
-          ? 'Atajos a lo que usas a menudo. El resto del panel sigue abajo.'
-          : 'Un atajo a una acción frecuente. El resto del panel sigue abajo.'}
+        {bodyCopy}
       </Typography>
 
       <Box
@@ -324,7 +324,7 @@ export default function DashboardQuickActions({
                   ? 'repeat(2, minmax(0, 1fr))'
                   : 'repeat(3, minmax(0, 1fr))'
           },
-          columnGap: { xs: 0, sm: 0, md: 2 },
+          columnGap: { xs: 0, sm: 1.5, md: 2 },
           rowGap: { xs: 1, sm: 1.125, md: 2 }
         }}
       >

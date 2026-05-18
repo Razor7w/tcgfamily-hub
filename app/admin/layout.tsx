@@ -1,3 +1,4 @@
+import { auth } from '@/auth'
 import AuthLayout from '@/components/auth/AuthLayout'
 import Header from '@/components/Header'
 import SidebarLayout from '@/components/layouts/SidebarLayout'
@@ -10,13 +11,22 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const dashboardModules = await loadDashboardModuleSettings()
+  const session = await auth()
+  const activeStoreMongoId =
+    typeof session?.user.activeStoreId === 'string'
+      ? session.user.activeStoreId
+      : null
+  const dashboardModules = await loadDashboardModuleSettings(activeStoreMongoId)
+
+  const isOwner = session?.user.storeRole === 'owner'
 
   return (
     <AuthLayout role="admin">
       <Header />
       <DashboardModulesProvider settings={dashboardModules}>
-        <SidebarLayout sidebar={<DashboardSidebar isAdmin={true} />}>
+        <SidebarLayout
+          sidebar={<DashboardSidebar isAdmin={true} isOwner={isOwner} />}
+        >
           {children}
         </SidebarLayout>
       </DashboardModulesProvider>

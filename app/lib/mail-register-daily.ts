@@ -1,7 +1,8 @@
 import mongoose from 'mongoose'
 import connectDB from '@/lib/mongodb'
 import Mail from '@/models/Mails'
-import DashboardModuleSettings from '@/models/DashboardModuleSettings'
+import { getDashboardDocForStore } from '@/lib/dashboard-settings-for-store'
+import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import {
   MAIL_REGISTER_DAILY_LIMIT,
   MAIL_REGISTER_DAILY_LIMIT_ADMIN_MAX
@@ -9,24 +10,28 @@ import {
 
 export { MAIL_REGISTER_DAILY_LIMIT } from '@/lib/mail-register-constants'
 
-/** Límite desde admin: cache en memoria para no leer `DashboardModuleSettings` en cada request. */
+/** Límite desde admin: cache en memoria por tienda (configurable en /admin/configuracion). */
 const MAIL_LIMIT_CACHE_MS = 60_000
-let mailRegisterLimitMemo: { value: number; until: number } | null = null
+const mailRegisterLimitMemo = new Map<
+  string,
+  { value: number; until: number }
+>()
 
 /**
- * Límite vigente (configurable en /admin/configuracion). Requiere BD conectada.
+ * Límite vigente para la tienda activa (mismo documento que `/admin/configuracion`).
  */
-export async function getMailRegisterDailyLimit(): Promise<number> {
+export async function getMailRegisterDailyLimitForStore(
+  storeMongoId: string
+): Promise<number> {
   const now = Date.now()
-  if (mailRegisterLimitMemo && now < mailRegisterLimitMemo.until) {
-    return mailRegisterLimitMemo.value
+  const memo = mailRegisterLimitMemo.get(storeMongoId)
+  if (memo && now < memo.until) {
+    return memo.value
   }
 
   await connectDB()
-  const doc = await DashboardModuleSettings.findOne()
-    .select('mailRegisterDailyLimit')
-    .lean<{ mailRegisterDailyLimit?: number } | null>()
-  const n = doc?.mailRegisterDailyLimit
+  const doc = await getDashboardDocForStore(storeMongoId)
+  const n = doc.mailRegisterDailyLimit
   let value: number
   if (typeof n === 'number' && Number.isFinite(n)) {
     const rounded = Math.round(n)
@@ -34,13 +39,24 @@ export async function getMailRegisterDailyLimit(): Promise<number> {
   } else {
     value = MAIL_REGISTER_DAILY_LIMIT
   }
-  mailRegisterLimitMemo = { value, until: now + MAIL_LIMIT_CACHE_MS }
+  mailRegisterLimitMemo.set(storeMongoId, {
+    value,
+    until: now + MAIL_LIMIT_CACHE_MS
+  })
   return value
 }
 
-/** Llamar tras actualizar el límite en admin para no servir un valor cacheado. */
-export function invalidateMailRegisterDailyLimitCache(): void {
-  mailRegisterLimitMemo = null
+/**
+ * Tras actualizar el límite en admin: invalida cache para esa tienda, o todas si omites el id.
+ */
+export function invalidateMailRegisterDailyLimitCache(
+  storeMongoId?: string
+): void {
+  if (storeMongoId) {
+    mailRegisterLimitMemo.delete(storeMongoId)
+  } else {
+    mailRegisterLimitMemo.clear()
+  }
 }
 
 const CHILE_TZ = 'America/Santiago'
@@ -139,15 +155,25 @@ export function getChileCalendarDayRangeUtc(reference = new Date()): {
   return range
 }
 
-export async function countMailsRegisteredTodayBySender(
-  fromUserId: string | mongoose.Types.ObjectId
+/**
+ * Registros del día (Chile) del emisor **en la tienda activa** (mismo alcance que el POST de mails).
+ */
+export async function countMailsRegisteredTodayBySenderForStore(
+  fromUserId: string | mongoose.Types.ObjectId,
+  activeStoreOid: mongoose.Types.ObjectId,
+  primaryStoreOid: mongoose.Types.ObjectId | null
 ): Promise<number> {
   const { start, endExclusive } = getChileCalendarDayRangeUtc()
   const oid =
     typeof fromUserId === 'string'
       ? new mongoose.Types.ObjectId(fromUserId)
       : fromUserId
+  const scope = mongoFilterByStore(activeStoreOid, primaryStoreOid) as Record<
+    string,
+    unknown
+  >
   return Mail.countDocuments({
+    ...scope,
     fromUserId: oid,
     createdAt: { $gte: start, $lt: endExclusive }
   })

@@ -1,17 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  BarChart,
-  Email,
-  EmojiEvents,
-  Event,
   ExpandLess,
   ExpandMore,
   Home,
   Layers,
+  Storefront,
   Person,
+  AccountCircleOutlined,
   Public,
   Style,
   ViewModule
@@ -28,9 +27,10 @@ import {
   Stack
 } from '@mui/material'
 import AppVersion from '@/components/AppVersion'
+import { isStoreContextHubPath } from '@/lib/store-context-hub-path'
+import { useStoreHubHref } from '@/hooks/useStoreHubHref'
 import SignOutList from '@/components/auth/SignOutList'
 import AdminSidebarClient from '@/components/navigation/AdminSidebarClient'
-import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
 
 function isUnderDecklistNav(path: string) {
   return (
@@ -40,9 +40,15 @@ function isUnderDecklistNav(path: string) {
   )
 }
 
-export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
+export default function DashboardUserNav({
+  isAdmin,
+  isOwner
+}: {
+  isAdmin: boolean
+  isOwner: boolean
+}) {
   const pathname = usePathname() ?? ''
-  const { visibility } = useDashboardModulesFromLayout()
+  const storeHubHref = useStoreHubHref()
   const [decklistOpen, setDecklistOpen] = useState(() =>
     isUnderDecklistNav(pathname)
   )
@@ -52,64 +58,51 @@ export default function DashboardUserNav({ isAdmin }: { isAdmin: boolean }) {
       setDecklistOpen(true)
     })
   }, [pathname])
-  const showEvents = visibility.weeklyEvents
-  const showMyTournaments = visibility.myTournaments
-  const showStatistics = visibility.statistics
-  const showMail = visibility.mail
 
   return (
     <Stack>
       <nav aria-label="main mailbox folders">
-        <List>
-          {isAdmin && <AdminSidebarClient />}
+        <List data-tour="dashboard-main-nav">
+          {isAdmin && <AdminSidebarClient isOwner={isOwner} />}
           <ListItem disablePadding>
-            <ListItemButton href="/dashboard">
+            <ListItemButton
+              component={Link}
+              href="/dashboard"
+              selected={pathname === '/dashboard'}
+            >
               <ListItemIcon>
                 <Home />
               </ListItemIcon>
               <ListItemText primary="Inicio" />
             </ListItemButton>
           </ListItem>
-          {showEvents ? (
-            <ListItem disablePadding>
-              <ListItemButton href="/dashboard/eventos">
-                <ListItemIcon>
-                  <Event />
-                </ListItemIcon>
-                <ListItemText primary="Eventos" />
-              </ListItemButton>
-            </ListItem>
-          ) : null}
-          {showMyTournaments ? (
-            <ListItem disablePadding>
-              <ListItemButton href="/dashboard/torneos-semana">
-                <ListItemIcon>
-                  <EmojiEvents />
-                </ListItemIcon>
-                <ListItemText primary="Mis torneos" />
-              </ListItemButton>
-            </ListItem>
-          ) : null}
-          {showStatistics ? (
-            <ListItem disablePadding>
-              <ListItemButton href="/dashboard/estadisticas">
-                <ListItemIcon>
-                  <BarChart />
-                </ListItemIcon>
-                <ListItemText primary="Estadísticas" />
-              </ListItemButton>
-            </ListItem>
-          ) : null}
-          {showMail ? (
-            <ListItem disablePadding>
-              <ListItemButton href="/dashboard/mail">
-                <ListItemIcon>
-                  <Email />
-                </ListItemIcon>
-                <ListItemText primary="Correo" />
-              </ListItemButton>
-            </ListItem>
-          ) : null}
+          <ListItem disablePadding>
+            <ListItemButton
+              component={Link}
+              href={storeHubHref}
+              selected={
+                pathname === '/dashboard/tiendas' ||
+                isStoreContextHubPath(pathname)
+              }
+            >
+              <ListItemIcon>
+                <Storefront />
+              </ListItemIcon>
+              <ListItemText primary="Tiendas" />
+            </ListItemButton>
+          </ListItem>
+          <ListItem disablePadding>
+            <ListItemButton
+              component={Link}
+              href="/dashboard/mi-cuenta"
+              selected={pathname === '/dashboard/mi-cuenta'}
+            >
+              <ListItemIcon>
+                <AccountCircleOutlined />
+              </ListItemIcon>
+              <ListItemText primary="Mi cuenta" />
+            </ListItemButton>
+          </ListItem>
           <ListItem disablePadding>
             <ListItemButton
               onClick={() => setDecklistOpen(s => !s)}

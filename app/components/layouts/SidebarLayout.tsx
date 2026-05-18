@@ -4,6 +4,9 @@ import { Box, Grid, SwipeableDrawer, useTheme } from '@mui/material'
 import { usePathname } from 'next/navigation'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useAppStore } from '@/store/useAppStore'
+import DashboardMobileBottomNav, {
+  DASHBOARD_MOBILE_BOTTOM_NAV_CONTENT_PADDING
+} from '@/components/navigation/DashboardMobileBottomNav'
 
 const DRAWER_WIDTH = 280
 
@@ -51,7 +54,7 @@ export default function SidebarLayout({
 
   if (isDesktop) {
     return (
-      <Grid container spacing={2}>
+      <Grid container spacing={0}>
         <Grid size={sidebarSize}>{sidebar}</Grid>
         <Grid size={contentSize}>{children}</Grid>
       </Grid>
@@ -81,9 +84,16 @@ export default function SidebarLayout({
       >
         <Box sx={{ overflow: 'auto', py: 2, px: 1 }}>{sidebar}</Box>
       </SwipeableDrawer>
-      <Box component="main" sx={{ width: '100%' }}>
+      <Box
+        component="main"
+        sx={{
+          width: '100%',
+          pb: { xs: DASHBOARD_MOBILE_BOTTOM_NAV_CONTENT_PADDING, md: 0 }
+        }}
+      >
         {children}
       </Box>
+      <DashboardMobileBottomNav />
     </Box>
   )
 }

@@ -2142,7 +2142,7 @@ export default function TournamentMatchRoundsCard({
                     m: 0
                   }}
                 >
-                  Powered by TcgFamily HUB
+                  Powered by TCG Nexo
                 </Typography>
 
                 <Card

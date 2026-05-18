@@ -10,6 +10,8 @@ import {
   validateEmailFormat,
   PASSWORD_TIMING_DUMMY_HASH
 } from '@/lib/password-rules'
+import { hydrateStoreContextInJwt } from '@/lib/multitenancy/session-store-hydrate'
+import mongoose from 'mongoose'
 import { createSlidingWindowLimiter } from '@/lib/auth-rate-limit'
 
 const credentialIpLimiter = createSlidingWindowLimiter({
@@ -139,7 +141,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (typeof s.popid === 'string') token.popid = s.popid
         if (typeof s.hasPassword === 'boolean')
           token.hasPassword = s.hasPassword
-        return token
+        const defSid = s.defaultStoreId
+        if (defSid === null || defSid === '') {
+          token.defaultStoreId = ''
+        } else if (
+          typeof defSid === 'string' &&
+          mongoose.Types.ObjectId.isValid(defSid.trim())
+        ) {
+          token.defaultStoreId = defSid.trim()
+        }
+        const sid = s.activeStoreId
+        if (typeof sid === 'string') {
+          if (mongoose.Types.ObjectId.isValid(sid.trim())) {
+            token.activeStoreId = sid.trim()
+          }
+        }
       }
 
       if (user) {
@@ -148,7 +164,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.role = uRole === 'admin' ? 'admin' : 'user'
         await connectDB()
         const db = await User.findById(user.id).select(
-          '+passwordHash name email image rut popid role'
+          '+passwordHash name email image rut popid role defaultStoreId'
         )
         if (db) {
           token.name = db.name ?? undefined
@@ -158,6 +174,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.popid = db.popid ?? ''
           token.hasPassword = Boolean(db.passwordHash)
           token.role = db.role === 'admin' ? 'admin' : 'user'
+          token.defaultStoreId = db.defaultStoreId
+            ? String(db.defaultStoreId)
+            : ''
         } else {
           token.name = user.name
           token.email = user.email
@@ -165,6 +184,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.rut = ''
           token.popid = ''
           token.hasPassword = false
+          token.defaultStoreId = ''
         }
       } else if (
         token.sub &&
@@ -174,13 +194,32 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       ) {
         await connectDB()
         const db = await User.findById(token.sub).select(
-          '+passwordHash rut popid role'
+          '+passwordHash rut popid role defaultStoreId'
         )
         if (db) {
           token.rut = db.rut?.trim() ?? ''
           token.popid = db.popid ?? ''
           token.hasPassword = Boolean(db.passwordHash)
           token.role = db.role === 'admin' ? 'admin' : 'user'
+          token.defaultStoreId = db.defaultStoreId
+            ? String(db.defaultStoreId)
+            : ''
+        }
+      } else if (token.sub && typeof token.defaultStoreId === 'undefined') {
+        await connectDB()
+        const db = await User.findById(token.sub)
+          .select('defaultStoreId')
+          .lean<{ defaultStoreId?: mongoose.Types.ObjectId | null } | null>()
+        token.defaultStoreId = db?.defaultStoreId
+          ? String(db.defaultStoreId)
+          : ''
+      }
+      if (token.sub) {
+        try {
+          await hydrateStoreContextInJwt(token)
+        } catch {
+          token.activeStoreId = undefined
+          token.storeRole = undefined
         }
       }
       return token
@@ -192,6 +231,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.rut = typeof token.rut === 'string' ? token.rut : ''
         session.user.popid = typeof token.popid === 'string' ? token.popid : ''
         session.user.hasPassword = Boolean(token.hasPassword)
+        session.user.activeStoreId =
+          typeof token.activeStoreId === 'string' &&
+          mongoose.Types.ObjectId.isValid(token.activeStoreId.trim())
+            ? token.activeStoreId.trim()
+            : null
+        const sr = token.storeRole
+        session.user.storeRole =
+          sr === 'owner' || sr === 'store_admin' ? sr : null
+        const ds = token.defaultStoreId
+        session.user.defaultStoreId =
+          typeof ds === 'string' &&
+          ds.trim().length > 0 &&
+          mongoose.Types.ObjectId.isValid(ds.trim())
+            ? ds.trim()
+            : null
       }
       return session
     }

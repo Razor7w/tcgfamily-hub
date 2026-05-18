@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import { requireSessionUserWithActiveStore } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import Mail from '@/models/Mails'
 import mongoose from 'mongoose'
+import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
+import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
 import {
   clean as cleanRut,
   format as formatRut,
@@ -13,10 +15,9 @@ import {
 // Query: ?limit=3 para traer solo los 3 más recientes
 export async function GET(request: Request) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const sg = await requireSessionUserWithActiveStore()
+    if (!sg.ok) return sg.response
+    const session = sg.session
 
     const { searchParams } = new URL(request.url)
     const limitParam = searchParams.get('limit')
@@ -31,6 +32,12 @@ export async function GET(request: Request) {
       searchParams.get('inStore') === 'true'
 
     await connectDB()
+    const primary = await memoPrimaryTcgfamilyStoreObjectId()
+    const mailScope = mongoFilterByStore(sg.activeStoreOid, primary) as Record<
+      string,
+      unknown
+    >
+
     const userId = session.user.id as string
     let uid: mongoose.Types.ObjectId
     try {
@@ -53,13 +60,18 @@ export async function GET(request: Request) {
     }
 
     const query = Mail.find({
-      $or: [
-        { toUserId: uid },
-        { fromUserId: uid },
-        ...(rutVariants.length ? [{ toRut: { $in: rutVariants } }] : [])
-      ],
-      ...(pendingOnly ? { isRecived: false } : {}),
-      ...(inStoreOnly ? { isRecivedInStore: true } : {})
+      $and: [
+        mailScope,
+        {
+          $or: [
+            { toUserId: uid },
+            { fromUserId: uid },
+            ...(rutVariants.length ? [{ toRut: { $in: rutVariants } }] : [])
+          ],
+          ...(pendingOnly ? { isRecived: false } : {}),
+          ...(inStoreOnly ? { isRecivedInStore: true } : {})
+        }
+      ]
     })
       .sort({ createdAt: -1 })
       .populate('fromUserId', 'name rut')

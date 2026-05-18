@@ -1,17 +1,22 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import {
   aggregateLeagueStandings,
   leagueEventHasContributingRecord
 } from '@/lib/league-aggregate'
+import mongoose from 'mongoose'
 import League from '@/models/League'
 import WeeklyEvent from '@/models/WeeklyEvent'
+import Store from '@/models/Store'
+import { publicStoreSlugFromHeaders } from '@/lib/multitenancy/ingress-headers'
+import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
+import { DEFAULT_PRIMARY_STORE_SLUG } from '@/lib/multitenancy/constants'
 
 /**
  * Clasificación pública de una liga (torneos cerrados; puntos por récord W/L/T del participante).
  */
 export async function GET(
-  _request: Request,
+  request: NextRequest,
   context: { params: Promise<{ slug: string }> }
 ) {
   try {
@@ -22,10 +27,77 @@ export async function GET(
     }
 
     await connectDB()
-    const leagueDoc = await League.findOne({ slug, isActive: true }).lean()
+
+    const { searchParams } = new URL(request.url)
+    const qpStore = searchParams.get('storeSlug')
+    let storeSlugHint =
+      typeof qpStore === 'string' && qpStore.trim()
+        ? qpStore.trim().toLowerCase()
+        : ''
+    if (!storeSlugHint) {
+      const hSlug = publicStoreSlugFromHeaders(request.headers)
+      if (hSlug) storeSlugHint = hSlug.trim().toLowerCase()
+    }
+    if (!storeSlugHint) {
+      storeSlugHint = DEFAULT_PRIMARY_STORE_SLUG
+    }
+
+    const storeLean = await Store.findOne({
+      slug: storeSlugHint
+    })
+      .select('_id')
+      .lean<{ _id: mongoose.Types.ObjectId } | null>()
+    if (!storeLean) {
+      return NextResponse.json(
+        { error: 'Tienda no encontrada' },
+        { status: 404 }
+      )
+    }
+    const hintedStoreOid = storeLean._id
+    const prim = await Store.findOne({ slug: DEFAULT_PRIMARY_STORE_SLUG })
+      .select('_id')
+      .lean<{ _id: mongoose.Types.ObjectId } | null>()
+    const leagueScope = mongoFilterByStore(
+      hintedStoreOid,
+      prim?._id ?? null
+    ) as Record<string, unknown>
+
+    let leagueDoc = await League.findOne({
+      slug,
+      isActive: true,
+      ...leagueScope
+    }).lean()
+
+    /**
+     * En localhost el header suele anclar la tienda primaria (tcgfamily), pero la liga
+     * puede existir sólo en otra tienda (ej. tier0). Si no hay match, resolvemos por
+     * slug global y usamos el `storeId` del documento de liga para filtrar eventos.
+     */
+    if (!leagueDoc) {
+      const sameSlug = await League.find({ slug, isActive: true }).lean()
+      if (sameSlug.length === 1) {
+        leagueDoc = sameSlug[0]!
+      } else if (sameSlug.length > 1) {
+        return NextResponse.json(
+          {
+            error:
+              'Hay varias ligas con este slug en distintas tiendas; indica la tienda con ?storeSlug=',
+            code: 'ambiguous_league_slug'
+          },
+          { status: 400 }
+        )
+      }
+    }
+
     if (!leagueDoc) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     }
+
+    const sidRaw = leagueDoc.storeId
+    const effectiveStoreOid =
+      sidRaw != null
+        ? new mongoose.Types.ObjectId(sidRaw as mongoose.Types.ObjectId)
+        : (prim?._id ?? hintedStoreOid)
 
     const league = {
       _id: String(leagueDoc._id),
@@ -41,11 +113,36 @@ export async function GET(
             : null
     }
 
+    const storeLeanPub = await Store.findById(effectiveStoreOid)
+      .select('name slug logoUrl')
+      .lean<{ name: string; slug: string; logoUrl?: string } | null>()
+    const storePub = storeLeanPub
+      ? {
+          name:
+            typeof storeLeanPub.name === 'string'
+              ? storeLeanPub.name.trim()
+              : '',
+          slug:
+            typeof storeLeanPub.slug === 'string'
+              ? storeLeanPub.slug.trim()
+              : '',
+          logoUrl:
+            typeof storeLeanPub.logoUrl === 'string'
+              ? storeLeanPub.logoUrl.trim()
+              : ''
+        }
+      : null
+
+    const evScope = mongoFilterByStore(
+      effectiveStoreOid,
+      prim?._id ?? null
+    ) as Record<string, unknown>
     const events = await WeeklyEvent.find({
       leagueId: leagueDoc._id,
       tournamentOrigin: 'official',
       kind: 'tournament',
-      state: 'close'
+      state: 'close',
+      ...evScope
     })
       .select(
         'title startsAt dashboardRoundCap roundSnapshots participants.displayName participants.popId participants.wins participants.losses participants.ties participants.matchRounds'
@@ -79,6 +176,7 @@ export async function GET(
     return NextResponse.json(
       {
         league,
+        store: storePub,
         tournaments: tournamentSummaries,
         standings,
         chartTop

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import mongoose from 'mongoose'
 import { auth } from '@/auth'
-import { requireAdminSession } from '@/lib/api-auth'
+import {
+  requireSessionUserWithActiveStore,
+  requireStoreStaffSession
+} from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import Mail from '@/models/Mails'
 import User from '@/models/User'
@@ -10,9 +14,11 @@ import {
   validate as validateRut
 } from 'rut.js'
 import {
-  countMailsRegisteredTodayBySender,
-  getMailRegisterDailyLimit
+  countMailsRegisteredTodayBySenderForStore,
+  getMailRegisterDailyLimitForStore
 } from '@/lib/mail-register-daily'
+import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
+import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
 
 function pad3(n: number) {
   return String(n).padStart(3, '0')
@@ -25,11 +31,21 @@ function todayPrefix(date = new Date()) {
   return `${dd}-${mm}-${yyyy}-`
 }
 
-async function generateNextMailCode() {
+async function generateNextMailCode(
+  activeStoreOid: mongoose.Types.ObjectId,
+  primaryStoreOid: mongoose.Types.ObjectId | null
+) {
   const prefix = todayPrefix()
+  const scope = mongoFilterByStore(activeStoreOid, primaryStoreOid) as Record<
+    string,
+    unknown
+  >
   // Regex con prefijo fijo por día (no usar $gte/$lt sobre DD-MM-YYYY: el orden lexicográfico
   // no coincide con el orden de fechas entre meses/años).
-  const last = await Mail.findOne({ code: { $regex: `^${prefix}` } })
+  const last = await Mail.findOne({
+    code: { $regex: `^${prefix}` },
+    ...scope
+  })
     .sort({ code: -1 })
     .select({ code: 1 })
     .lean<{ code?: string } | null>()
@@ -80,23 +96,33 @@ async function findUserByRut(input: string) {
 // GET - listar mails
 export async function GET() {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreStaffSession()
     if (!gate.ok) return gate.response
     await connectDB()
+
+    const scope = mongoFilterByStore(
+      gate.activeStoreOid,
+      gate.primaryStoreOid ?? null
+    ) as Record<string, unknown>
 
     // Datos legacy: anclar fecha de ingreso usando updatedAt cuando falte.
     await Mail.updateMany(
       {
-        isRecivedInStore: true,
-        $or: [
-          { receivedInStoreAt: { $exists: false } },
-          { receivedInStoreAt: null }
+        $and: [
+          scope,
+          {
+            isRecivedInStore: true,
+            $or: [
+              { receivedInStoreAt: { $exists: false } },
+              { receivedInStoreAt: null }
+            ]
+          }
         ]
       },
       [{ $set: { receivedInStoreAt: '$updatedAt' } }]
     ).catch(() => undefined)
 
-    const mails = await Mail.find({})
+    const mails = await Mail.find({ ...scope })
       .sort({ createdAt: -1 })
       .populate('fromUserId', 'name rut')
       .populate('toUserId', 'name rut')
@@ -119,7 +145,6 @@ export async function POST(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
-    await connectDB()
 
     const body = await request.json()
     const {
@@ -134,19 +159,31 @@ export async function POST(request: NextRequest) {
 
     /** Admin: `all` = emisor/destinatario por ID (panel). `onlyReceptor` = como usuario (solo toRut). */
     const createMode = rawMode === 'onlyReceptor' ? 'onlyReceptor' : 'all'
-    const adminFullCreate =
-      session.user.role === 'admin' && createMode === 'all'
+
+    let activeStoreOid: mongoose.Types.ObjectId
+    let primaryStoreOid: mongoose.Types.ObjectId | null
+    let adminFullCreate = false
+
+    if (createMode === 'all') {
+      const staffGate = await requireStoreStaffSession()
+      if (!staffGate.ok) return staffGate.response
+      activeStoreOid = staffGate.activeStoreOid
+      primaryStoreOid = staffGate.primaryStoreOid ?? null
+      adminFullCreate = true
+    } else {
+      const uGate = await requireSessionUserWithActiveStore()
+      if (!uGate.ok) return uGate.response
+      activeStoreOid = uGate.activeStoreOid
+      await connectDB()
+      primaryStoreOid = await memoPrimaryTcgfamilyStoreObjectId()
+    }
+
+    await connectDB()
 
     const OBS_MAX = 2000
     const normalizeObs = (v: unknown) => {
       if (typeof v !== 'string') return ''
       return v.trim().slice(0, OBS_MAX)
-    }
-
-    const isAdmin = session.user.role === 'admin'
-    const isUser = session.user.role === 'user'
-    if (!isAdmin && !isUser) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
     let resolvedFromUserId: string | null = null
@@ -246,8 +283,12 @@ export async function POST(request: NextRequest) {
 
     if (!adminFullCreate) {
       const [usedToday, dailyLimit] = await Promise.all([
-        countMailsRegisteredTodayBySender(session.user.id as string),
-        getMailRegisterDailyLimit()
+        countMailsRegisteredTodayBySenderForStore(
+          session.user.id as string,
+          activeStoreOid,
+          primaryStoreOid
+        ),
+        getMailRegisterDailyLimitForStore(activeStoreOid.toString())
       ])
       if (usedToday >= dailyLimit) {
         return NextResponse.json(
@@ -264,10 +305,11 @@ export async function POST(request: NextRequest) {
     let lastError: unknown = null
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
-        const code = await generateNextMailCode()
+        const code = await generateNextMailCode(activeStoreOid, primaryStoreOid)
         const adminInStore =
           Boolean(adminFullCreate) && Boolean(isRecivedInStore ?? false)
         const newMail = new Mail({
+          storeId: activeStoreOid,
           code,
           fromUserId: resolvedFromUserId,
           ...(resolvedToUserId ? { toUserId: resolvedToUserId } : {}),
@@ -286,7 +328,7 @@ export async function POST(request: NextRequest) {
         break
       } catch (e: unknown) {
         lastError = e
-        // Duplicate key (code único) => reintentar
+        // Carrera entre requests o índices viejos: reintentar
         if (isDuplicateKeyError(e)) continue
         throw e
       }

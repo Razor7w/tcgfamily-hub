@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdminSession } from '@/lib/api-auth'
+import { requireStoreOwnerSession } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
 
@@ -31,7 +31,7 @@ function parseCSV(csvText: string): Array<Record<string, string>> {
 // POST - Crear usuarios masivamente desde CSV
 export async function POST(request: NextRequest) {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreOwnerSession()
     if (!gate.ok) return gate.response
 
     const formData = await request.formData()

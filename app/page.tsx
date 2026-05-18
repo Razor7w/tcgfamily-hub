@@ -7,8 +7,8 @@ import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
-import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
+import CircularProgress from '@mui/material/CircularProgress'
 import Alert from '@mui/material/Alert'
 import GoogleIcon from '@mui/icons-material/Google'
 import AppVersion from '@/components/AppVersion'
@@ -105,7 +105,7 @@ export default function LoginPage() {
             color="primary"
             textAlign="center"
           >
-            TCGFamily HUB
+            TCG Nexo
           </Typography>
           <Suspense fallback={null}>
             <LoginAlerts />

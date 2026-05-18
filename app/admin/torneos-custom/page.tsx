@@ -31,6 +31,7 @@ import {
   getLimitlessPokemonSpriteUrl,
   limitlessSpriteDimensions
 } from '@/lib/limitless-pokemon-sprite'
+import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
 
 const ADMIN_TABLE_SPRITE_BOX = limitlessSpriteDimensions(28)
 
@@ -233,21 +234,23 @@ export default function AdminTorneosCustomPage() {
               alignItems={{ xs: 'flex-start', sm: 'center' }}
               justifyContent="space-between"
             >
-              <Stack direction="row" spacing={1.5} alignItems="center">
-                <SportsEsports
-                  sx={{ fontSize: 40, color: 'primary.main', opacity: 0.9 }}
-                />
-                <Box>
-                  <Typography variant="h5" component="h1" fontWeight={700}>
-                    Torneos custom
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Torneos Pokémon creados por usuarios (no aparecen en el
-                    calendario público de la tienda). Solo lectura; la gestión
-                    la hace cada jugador en «Mis torneos».
-                  </Typography>
-                </Box>
-              </Stack>
+              <AdminStorePageHeading alignItems="center">
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <SportsEsports
+                    sx={{ fontSize: 40, color: 'primary.main', opacity: 0.9 }}
+                  />
+                  <Box>
+                    <Typography variant="h5" component="h1" fontWeight={700}>
+                      Torneos custom
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Torneos Pokémon creados por usuarios (no aparecen en el
+                      calendario público de la tienda). Solo lectura; la gestión
+                      la hace cada jugador en «Mis torneos».
+                    </Typography>
+                  </Box>
+                </Stack>
+              </AdminStorePageHeading>
               <Chip
                 label={`${rows.length} en total`}
                 color="primary"

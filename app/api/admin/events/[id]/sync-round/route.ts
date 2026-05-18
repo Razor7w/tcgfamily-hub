@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import mongoose from 'mongoose'
-import { requireAdminSession } from '@/lib/api-auth'
+import { requireStoreStaffSession } from '@/lib/api-auth'
 import { adminWeeklyEventForbiddenResponse } from '@/lib/admin-weekly-event-access'
 import connectDB from '@/lib/mongodb'
-import WeeklyEvent from '@/models/WeeklyEvent'
+import { weeklyOfficialByIdForStaffGate } from '@/lib/multitenancy/staff-queries'
 import type {
   IRoundPairingSnapshot,
   IRoundSnapshot
@@ -102,7 +102,7 @@ export async function POST(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const gate = await requireAdminSession()
+    const gate = await requireStoreStaffSession()
     if (!gate.ok) return gate.response
 
     const { id: eventId } = await context.params
@@ -147,7 +147,7 @@ export async function POST(
 
     await connectDB()
 
-    const doc = await WeeklyEvent.findById(eventId.trim())
+    const doc = await weeklyOfficialByIdForStaffGate(gate, eventId.trim())
     if (!doc) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     }
