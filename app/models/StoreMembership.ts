@@ -36,6 +36,8 @@ const StoreMembershipSchema = new Schema<IStoreMembership>(
 )
 
 StoreMembershipSchema.index({ userId: 1, storeId: 1 }, { unique: true })
+/** `exists({ userId, role: 'owner' })` en canManageStoresGlobally. */
+StoreMembershipSchema.index({ userId: 1, role: 1 })
 
 if (mongoose.models.StoreMembership) {
   delete mongoose.models.StoreMembership

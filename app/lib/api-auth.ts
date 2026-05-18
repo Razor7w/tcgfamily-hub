@@ -171,7 +171,7 @@ export async function requireSessionUserWithActiveStore(): Promise<
 
   await connectDB()
   const oid = new mongoose.Types.ObjectId(aid)
-  const exists = await Store.exists({ _id: oid })
+  const exists = await Store.exists({ _id: oid, isActive: true })
   if (!exists) {
     return {
       ok: false,

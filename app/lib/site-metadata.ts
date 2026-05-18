@@ -1,0 +1,109 @@
+import type { Metadata } from 'next'
+
+export const SITE_NAME = 'TCG Nexo'
+
+export const SITE_DESCRIPTION =
+  'Plataforma para tiendas TCG: eventos semanales, correo físico, puntos de tienda, mazos y torneos Pokémon en un solo lugar.'
+
+/** URL canónica (Open Graph, enlaces absolutos). */
+export function getSiteUrl(): string {
+  const pub = process.env.NEXT_PUBLIC_APP_URL?.trim()
+  if (pub) return pub.replace(/\/$/, '')
+  const auth = process.env.AUTH_URL?.trim()
+  if (auth) return auth.replace(/\/$/, '')
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL.replace(/\/$/, '')}`
+  }
+  return 'http://localhost:3000'
+}
+
+export function siteMetadataBase(): URL {
+  return new URL(getSiteUrl())
+}
+
+function absoluteUrl(path: string): string {
+  const base = getSiteUrl()
+  if (!path || path === '/') return base
+  return `${base}${path.startsWith('/') ? path : `/${path}`}`
+}
+
+type BuildPageMetadataOptions = {
+  /** Título corto de la página (el layout raíz añade «| TCG Nexo»). */
+  title?: string
+  description?: string
+  /** Ruta relativa, p. ej. `/dashboard` o `/tcgfamily`. */
+  path?: string
+  /** Paneles privados: no indexar en buscadores. */
+  noIndex?: boolean
+  /** URL absoluta o relativa de imagen para vista previa al compartir. */
+  image?: string
+}
+
+/** Metadatos por ruta (título, descripción, Open Graph, Twitter). */
+export function buildPageMetadata(
+  options: BuildPageMetadataOptions = {}
+): Metadata {
+  const description = options.description ?? SITE_DESCRIPTION
+  const pageTitle = options.title
+    ? `${options.title} | ${SITE_NAME}`
+    : SITE_NAME
+  const url = options.path ? absoluteUrl(options.path) : getSiteUrl()
+  const images = options.image
+    ? [
+        {
+          url: options.image.startsWith('http')
+            ? options.image
+            : absoluteUrl(options.image)
+        }
+      ]
+    : undefined
+
+  return {
+    ...(options.title ? { title: options.title } : { title: SITE_NAME }),
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      type: 'website',
+      locale: 'es_CL',
+      siteName: SITE_NAME,
+      title: pageTitle,
+      description,
+      url,
+      ...(images ? { images } : {})
+    },
+    twitter: {
+      card: images ? 'summary_large_image' : 'summary',
+      title: pageTitle,
+      description,
+      ...(images ? { images: images.map(i => i.url) } : {})
+    },
+    ...(options.noIndex
+      ? { robots: { index: false, follow: false } }
+      : { robots: { index: true, follow: true } })
+  }
+}
+
+/** Metadatos por defecto del sitio (layout raíz). */
+export const rootSiteMetadata: Metadata = {
+  metadataBase: siteMetadataBase(),
+  title: {
+    default: SITE_NAME,
+    template: `%s | ${SITE_NAME}`
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  openGraph: {
+    type: 'website',
+    locale: 'es_CL',
+    siteName: SITE_NAME,
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    url: getSiteUrl()
+  },
+  twitter: {
+    card: 'summary',
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION
+  },
+  robots: { index: true, follow: true }
+}

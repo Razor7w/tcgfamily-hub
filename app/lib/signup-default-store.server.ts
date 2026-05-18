@@ -10,7 +10,7 @@ export async function listActiveStoresForSignup(): Promise<
   SignupStoreOption[]
 > {
   await connectDB()
-  const rows = await Store.find({ isActive: { $ne: false } })
+  const rows = await Store.find({ isActive: true })
     .sort({ name: 1 })
     .select('_id name slug')
     .lean<Array<{ _id: mongoose.Types.ObjectId; name: string; slug: string }>>()
@@ -31,7 +31,7 @@ export async function resolveValidSignupStoreObjectId(
   }
   await connectDB()
   const oid = new mongoose.Types.ObjectId(t)
-  const exists = await Store.exists({ _id: oid, isActive: { $ne: false } })
+  const exists = await Store.exists({ _id: oid, isActive: true })
   if (!exists) {
     return { ok: false, error: 'La tienda indicada no está disponible.' }
   }

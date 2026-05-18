@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import mongoose from 'mongoose'
 import { requireStoreOwnerSession } from '@/lib/api-auth'
-import {
-  canManageStoresGlobally,
-  ownedStoreIdsForUser
-} from '@/lib/store-admin-access'
+import { loadStoreAdminAuthContext } from '@/lib/store-admin-access'
 import connectDB from '@/lib/mongodb'
 import Store from '@/models/Store'
 import {
@@ -29,16 +26,16 @@ export async function GET() {
 
     await connectDB()
     const uid = gate.session.user!.id
-    const globalMgmt = await canManageStoresGlobally(uid)
+    const adminCtx = await loadStoreAdminAuthContext(uid)
 
-    const filter = globalMgmt
+    const filter = adminCtx.isGlobalManager
       ? { isActive: true }
-      : { _id: { $in: await ownedStoreIdsForUser(uid) }, isActive: true }
+      : { _id: { $in: adminCtx.ownedStoreIds }, isActive: true }
 
     const rows = await Store.find(filter).sort({ name: 1 }).lean()
 
     return NextResponse.json({
-      canCreateStores: globalMgmt,
+      canCreateStores: adminCtx.isGlobalManager,
       stores: rows.map(s => serializeStoreAdminRow(s))
     })
   } catch (e) {
@@ -56,7 +53,8 @@ export async function POST(request: NextRequest) {
     if (!gate.ok) return gate.response
 
     const uid = gate.session.user!.id
-    if (!(await canManageStoresGlobally(uid))) {
+    const adminCtx = await loadStoreAdminAuthContext(uid)
+    if (!adminCtx.isGlobalManager) {
       return NextResponse.json(
         { error: 'Solo la plaza principal puede crear tiendas' },
         { status: 403 }

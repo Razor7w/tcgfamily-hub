@@ -332,6 +332,9 @@ const WeeklyEventSchema = new Schema<IWeeklyEvent>(
 
 // Next.js recarga el módulo en dev pero `mongoose.models` conserva el modelo ya
 // compilado; sin esto, un esquema viejo sigue activo y se pierden campos nuevos al guardar.
+/** Último torneo cerrado por tienda (`/api/stores/[slug]/last-finished-tournament`). */
+WeeklyEventSchema.index({ storeId: 1, kind: 1, state: 1, startsAt: -1 })
+
 if (mongoose.models.WeeklyEvent) {
   delete mongoose.models.WeeklyEvent
 }
