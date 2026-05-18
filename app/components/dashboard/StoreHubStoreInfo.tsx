@@ -24,9 +24,7 @@ function hasPublicInfo(
   websiteUrl?: string,
   instagramUrl?: string
 ) {
-  return Boolean(
-    address?.trim() || websiteUrl?.trim() || instagramUrl?.trim()
-  )
+  return Boolean(address?.trim() || websiteUrl?.trim() || instagramUrl?.trim())
 }
 
 export default function StoreHubStoreInfo({

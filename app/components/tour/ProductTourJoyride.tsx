@@ -41,8 +41,7 @@ export default function ProductTourJoyride({
   const [mounted] = useState(() => typeof window !== 'undefined')
 
   const tourSteps = useMemo(
-    () =>
-      enrichTourStepsWithMobileRailScroll(steps, { mobileRailLayout }),
+    () => enrichTourStepsWithMobileRailScroll(steps, { mobileRailLayout }),
     [steps, mobileRailLayout]
   )
 

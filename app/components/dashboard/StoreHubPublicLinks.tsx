@@ -86,12 +86,7 @@ export default function StoreHubPublicLinks({
         </Stack>
       ) : null}
       {addr ? (
-        <Stack
-          direction="row"
-          spacing={1}
-          alignItems="flex-start"
-          sx={rowSx}
-        >
+        <Stack direction="row" spacing={1} alignItems="flex-start" sx={rowSx}>
           <PlaceOutlinedIcon
             sx={{
               fontSize: 18,

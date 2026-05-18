@@ -42,9 +42,7 @@ export function parseTourTargetDataTour(
   const m = target.match(/\[data-tour="([^"]+)"\]/)
   const id = m?.[1]
   if (!id) return null
-  if (
-    Object.values(PRODUCT_TOUR_TARGETS).includes(id as ProductTourTarget)
-  ) {
+  if (Object.values(PRODUCT_TOUR_TARGETS).includes(id as ProductTourTarget)) {
     return id as ProductTourTarget
   }
   return null
@@ -101,14 +99,10 @@ function scrollScrollerToRevealRail(
   if (el && el !== scroller) {
     const elRect = el.getBoundingClientRect()
     const scRect = scroller.getBoundingClientRect()
-    const elLeftInScroller =
-      elRect.left - scRect.left + scroller.scrollLeft
+    const elLeftInScroller = elRect.left - scRect.left + scroller.scrollLeft
     const targetLeft = Math.min(
       maxLeft,
-      Math.max(
-        0,
-        elLeftInScroller - (scroller.clientWidth - elRect.width) / 2
-      )
+      Math.max(0, elLeftInScroller - (scroller.clientWidth - elRect.width) / 2)
     )
     scroller.scrollLeft = targetLeft
   } else {
@@ -165,14 +159,12 @@ export function enrichTourStepsWithMobileRailScroll(
   steps: Step[],
   options?: { mobileRailLayout?: boolean }
 ): Step[] {
-  const mobileRail =
-    options?.mobileRailLayout ?? isMobileHorizontalRailLayout()
+  const mobileRail = options?.mobileRailLayout ?? isMobileHorizontalRailLayout()
 
   return steps.map(step => {
     const target = typeof step.target === 'string' ? step.target : ''
     const needsRail = tourTargetNeedsMobileRailScroll(target)
-    const needsScrollTop =
-      mobileRail && tourTargetNeedsScrollToTop(target)
+    const needsScrollTop = mobileRail && tourTargetNeedsScrollToTop(target)
     const userBefore = step.before
 
     const mobileRailPlacement =
