@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
+import { PRODUCT_TOUR_HORIZONTAL_SCROLL_ATTR } from '@/lib/product-tour-rail-scroll'
 
 const RAIL_WIDTH_PX = 340
 
@@ -26,6 +27,7 @@ export default function DashboardPageWithRightRail({
   return (
     <Box sx={{ width: '100%' }}>
       <Box
+        {...{ [PRODUCT_TOUR_HORIZONTAL_SCROLL_ATTR]: '' }}
         sx={{
           display: 'flex',
           flexDirection: 'row',

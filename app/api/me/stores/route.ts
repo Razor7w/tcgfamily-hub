@@ -6,12 +6,16 @@ import Store from '@/models/Store'
 import StoreMembership from '@/models/StoreMembership'
 import User from '@/models/User'
 import { DEFAULT_PRIMARY_STORE_SLUG } from '@/lib/multitenancy/constants'
+import { serializeStorePublicFields } from '@/lib/store-api-serialize'
 
 type StoreRow = {
   id: string
   name: string
   slug: string
   logoUrl: string
+  address: string
+  websiteUrl: string
+  instagramUrl: string
   role?: 'owner' | 'store_admin'
 }
 
@@ -27,7 +31,10 @@ export async function GET() {
     const mems = await StoreMembership.find({
       userId: new mongoose.Types.ObjectId(uid)
     })
-      .populate('storeId', 'name slug logoUrl isActive')
+      .populate(
+        'storeId',
+        'name slug logoUrl address websiteUrl instagramUrl isActive'
+      )
       .lean<
         Array<{
           role: string
@@ -36,6 +43,9 @@ export async function GET() {
             name: string
             slug: string
             logoUrl?: string
+            address?: string
+            websiteUrl?: string
+            instagramUrl?: string
             isActive?: boolean
           } | null
         }>
@@ -49,6 +59,9 @@ export async function GET() {
           name: string
           slug: string
           logoUrl?: string
+          address?: string
+          websiteUrl?: string
+          instagramUrl?: string
           isActive?: boolean
         }
         return {
@@ -56,6 +69,7 @@ export async function GET() {
           name: s.name,
           slug: s.slug,
           logoUrl: s.logoUrl ?? '',
+          ...serializeStorePublicFields(s),
           role: (m.role === 'owner' ? 'owner' : 'store_admin') as
             | 'owner'
             | 'store_admin'
@@ -68,11 +82,20 @@ export async function GET() {
         slug: DEFAULT_PRIMARY_STORE_SLUG
       }).lean<{ _id: mongoose.Types.ObjectId; name: string; slug: string }>()
       if (primary && !fromMembership.some(x => x.id === String(primary._id))) {
+        const primaryFull = await Store.findById(primary._id)
+          .select('address websiteUrl instagramUrl logoUrl')
+          .lean<{
+            address?: string
+            websiteUrl?: string
+            instagramUrl?: string
+            logoUrl?: string
+          } | null>()
         fromMembership.unshift({
           id: String(primary._id),
           name: primary.name,
           slug: primary.slug,
-          logoUrl: '',
+          logoUrl: primaryFull?.logoUrl ?? '',
+          ...serializeStorePublicFields(primaryFull ?? {}),
           role: 'owner'
         })
       }
@@ -85,17 +108,29 @@ export async function GET() {
 
     const allActive = await Store.find({ isActive: true })
       .sort({ name: 1 })
-      .select('name slug logoUrl')
+      .select('name slug logoUrl address websiteUrl instagramUrl')
       .lean<Array<{ _id: mongoose.Types.ObjectId } & Record<string, unknown>>>()
 
     const stores: StoreRow[] = allActive.map(s => {
       const id = String(s._id)
-      const r = s as { name?: unknown; slug?: unknown; logoUrl?: unknown }
+      const r = s as {
+        name?: unknown
+        slug?: unknown
+        logoUrl?: unknown
+        address?: unknown
+        websiteUrl?: unknown
+        instagramUrl?: unknown
+      }
       const base: StoreRow = {
         id,
         name: typeof r.name === 'string' ? r.name : '',
         slug: typeof r.slug === 'string' ? r.slug : '',
-        logoUrl: typeof r.logoUrl === 'string' ? r.logoUrl : ''
+        logoUrl: typeof r.logoUrl === 'string' ? r.logoUrl : '',
+        ...serializeStorePublicFields({
+          address: typeof r.address === 'string' ? r.address : '',
+          websiteUrl: typeof r.websiteUrl === 'string' ? r.websiteUrl : '',
+          instagramUrl: typeof r.instagramUrl === 'string' ? r.instagramUrl : ''
+        })
       }
       const role = roleById.get(id)
       return role ? { ...base, role } : base

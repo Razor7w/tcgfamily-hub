@@ -10,6 +10,12 @@ import connectDB from '@/lib/mongodb'
 import { isR2StoreBrandingKeyForStore } from '@/lib/r2-store-branding-key'
 import { r2BucketName, r2Client } from '@/lib/r2'
 import Store from '@/models/Store'
+import { serializeStoreAdminRow } from '@/lib/store-api-serialize'
+import {
+  normalizeStoreAddress,
+  normalizeStoreInstagramUrl,
+  normalizeStoreWebsiteUrl
+} from '@/lib/store-public-profile'
 
 export const runtime = 'nodejs'
 
@@ -48,13 +54,7 @@ export async function PATCH(
           { status: 404 }
         )
       }
-      return NextResponse.json({
-        id: s._id.toString(),
-        name: s.name,
-        slug: s.slug,
-        logoUrl: s.logoUrl ?? '',
-        isActive: s.isActive
-      })
+      return NextResponse.json(serializeStoreAdminRow(s))
     }
 
     const can = await assertCanManageStoreMutation(uid, oid)
@@ -65,6 +65,9 @@ export async function PATCH(
       name: string
       logoUrl: string
       logoKey: string
+      address: string
+      websiteUrl: string
+      instagramUrl: string
     }> = {}
     if (typeof body?.name === 'string') {
       const n = body.name.trim().slice(0, 200)
@@ -75,6 +78,15 @@ export async function PATCH(
     }
     if (typeof body?.logoKey === 'string') {
       patch.logoKey = body.logoKey.trim().slice(0, 512)
+    }
+    if (body && typeof body === 'object' && 'address' in body) {
+      patch.address = normalizeStoreAddress(body.address)
+    }
+    if (body && typeof body === 'object' && 'websiteUrl' in body) {
+      patch.websiteUrl = normalizeStoreWebsiteUrl(body.websiteUrl)
+    }
+    if (body && typeof body === 'object' && 'instagramUrl' in body) {
+      patch.instagramUrl = normalizeStoreInstagramUrl(body.instagramUrl)
     }
 
     if (Object.keys(patch).length === 0) {
@@ -124,13 +136,7 @@ export async function PATCH(
       }
     }
 
-    return NextResponse.json({
-      id: s._id.toString(),
-      name: s.name,
-      slug: s.slug,
-      logoUrl: s.logoUrl ?? '',
-      isActive: s.isActive
-    })
+    return NextResponse.json(serializeStoreAdminRow(s))
   } catch (e) {
     console.error('PATCH /api/admin/stores/[storeId]:', e)
     return NextResponse.json(

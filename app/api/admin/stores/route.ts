@@ -7,6 +7,12 @@ import {
 } from '@/lib/store-admin-access'
 import connectDB from '@/lib/mongodb'
 import Store from '@/models/Store'
+import {
+  normalizeStoreAddress,
+  normalizeStoreInstagramUrl,
+  normalizeStoreWebsiteUrl
+} from '@/lib/store-public-profile'
+import { serializeStoreAdminRow } from '@/lib/store-api-serialize'
 
 export const runtime = 'nodejs'
 
@@ -33,13 +39,7 @@ export async function GET() {
 
     return NextResponse.json({
       canCreateStores: globalMgmt,
-      stores: rows.map(s => ({
-        id: s._id.toString(),
-        name: s.name,
-        slug: s.slug,
-        logoUrl: s.logoUrl ?? '',
-        isActive: s.isActive
-      }))
+      stores: rows.map(s => serializeStoreAdminRow(s))
     })
   } catch (e) {
     console.error('GET /api/admin/stores:', e)
@@ -78,19 +78,31 @@ export async function POST(request: NextRequest) {
     }
 
     await connectDB()
+    const address = normalizeStoreAddress(body?.address)
+    const websiteUrl = normalizeStoreWebsiteUrl(body?.websiteUrl)
+    const instagramUrl = normalizeStoreInstagramUrl(body?.instagramUrl)
+
     try {
       const created = await Store.create({
         name,
         slug: slugOk,
-        isActive: true
+        isActive: true,
+        address,
+        websiteUrl,
+        instagramUrl
       })
-      return NextResponse.json({
-        id: (created._id as mongoose.Types.ObjectId).toString(),
-        name: created.name,
-        slug: created.slug,
-        logoUrl: created.logoUrl ?? '',
-        isActive: created.isActive
-      })
+      return NextResponse.json(
+        serializeStoreAdminRow({
+          _id: created._id as mongoose.Types.ObjectId,
+          name: created.name,
+          slug: created.slug,
+          logoUrl: created.logoUrl,
+          isActive: created.isActive,
+          address: created.address,
+          websiteUrl: created.websiteUrl,
+          instagramUrl: created.instagramUrl
+        })
+      )
     } catch {
       return NextResponse.json(
         { error: 'Slug duplicado o datos inválidos' },

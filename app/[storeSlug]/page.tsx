@@ -12,6 +12,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import DashboardHomeContent from '@/components/dashboard/DashboardHomeContent'
+import StoreHubStoreInfo from '@/components/dashboard/StoreHubStoreInfo'
 import StoreHubRightRail from '@/components/dashboard/StoreHubRightRail'
 import DashboardPageWithRightRail from '@/components/layouts/DashboardPageWithRightRail'
 import StoreHubTour from '@/components/tour/StoreHubTour'
@@ -189,6 +190,11 @@ function StoreHubBody({
       ? resolvedStoreName.name.trim()
       : '') ||
     ''
+  const urlStoreRow = storeRows.find(
+    r => typeof r.slug === 'string' && normSlug(r.slug) === normalizedParam
+  )
+  const displayStoreRow = urlStoreRow ?? activeStoreFromList
+
   const activeStoreHeading = activeStoreName
     ? {
         name: activeStoreName,
@@ -232,43 +238,58 @@ function StoreHubBody({
             <Stack
               direction="row"
               spacing={2}
-              alignItems="center"
+              alignItems="flex-start"
+              justifyContent="space-between"
               sx={{ mb: 2 }}
               data-tour="store-hub-heading"
             >
-              {activeStoreHeading ? (
-                <Avatar
-                  variant="rounded"
-                  src={activeStoreHeading.logoUrl || undefined}
-                  alt=""
-                  sx={{
-                    width: { xs: 44, sm: 52 },
-                    height: { xs: 44, sm: 52 },
-                    flexShrink: 0,
-                    bgcolor: 'action.hover',
-                    border: 1,
-                    borderColor: 'divider',
-                    '& .MuiAvatar-img': {
-                      objectFit: 'contain',
-                      p: 0.5
-                    }
-                  }}
-                >
-                  <StorefrontOutlinedIcon sx={{ fontSize: 28 }} />
-                </Avatar>
-              ) : null}
-              <Box sx={{ minWidth: 0 }}>
-                <Typography variant="h4" component="h1" gutterBottom={false}>
-                  {activeStoreHeading?.name ?? ''}
-                </Typography>
-                <Typography
-                  variant="subtitle1"
-                  color="text.secondary"
-                  sx={{ mt: 0.5, mb: 0.5 }}
-                >
-                  Hola {session?.user?.name ?? ''}
-                </Typography>
-              </Box>
+              <Stack
+                direction="row"
+                spacing={2}
+                alignItems="center"
+                sx={{ minWidth: 0, flex: '1 1 auto' }}
+              >
+                {activeStoreHeading ? (
+                  <Avatar
+                    variant="rounded"
+                    src={activeStoreHeading.logoUrl || undefined}
+                    alt=""
+                    sx={{
+                      width: { xs: 44, sm: 52 },
+                      height: { xs: 44, sm: 52 },
+                      flexShrink: 0,
+                      bgcolor: 'action.hover',
+                      border: 1,
+                      borderColor: 'divider',
+                      '& .MuiAvatar-img': {
+                        objectFit: 'contain',
+                        p: 0.5
+                      }
+                    }}
+                  >
+                    <StorefrontOutlinedIcon sx={{ fontSize: 28 }} />
+                  </Avatar>
+                ) : null}
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="h4" component="h1" gutterBottom={false}>
+                    {activeStoreHeading?.name ?? ''}
+                  </Typography>
+                  <Typography
+                    variant="subtitle1"
+                    color="text.secondary"
+                    sx={{ mt: 0.5 }}
+                  >
+                    Hola {session?.user?.name ?? ''}
+                  </Typography>
+                </Box>
+              </Stack>
+
+              <StoreHubStoreInfo
+                storeName={activeStoreHeading?.name}
+                address={displayStoreRow?.address}
+                websiteUrl={displayStoreRow?.websiteUrl}
+                instagramUrl={displayStoreRow?.instagramUrl}
+              />
             </Stack>
 
             <DashboardHomeContent

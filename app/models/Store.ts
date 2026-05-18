@@ -7,6 +7,12 @@ export interface IStore extends Document {
   logoUrl?: string
   /** Key en R2 para borrar/reemplazar logo (opcional). */
   logoKey?: string
+  /** Dirección física (visible en el hub `/{slug}`). */
+  address?: string
+  /** Sitio web público de la tienda. */
+  websiteUrl?: string
+  /** Perfil de Instagram (URL o @usuario). */
+  instagramUrl?: string
   isActive: boolean
 }
 
@@ -25,6 +31,9 @@ const StoreSchema = new Schema<IStore>(
     },
     logoUrl: { type: String, default: '' },
     logoKey: { type: String, default: '' },
+    address: { type: String, default: '', maxlength: 500 },
+    websiteUrl: { type: String, default: '', maxlength: 2048 },
+    instagramUrl: { type: String, default: '', maxlength: 2048 },
     isActive: { type: Boolean, default: true }
   },
   { timestamps: true, strict: true }

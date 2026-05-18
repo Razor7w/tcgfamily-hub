@@ -22,6 +22,9 @@ import {
 } from '@mui/material'
 import { ArrowBack } from '@mui/icons-material'
 import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
+import { useQueryClient } from '@tanstack/react-query'
+import { meStoresQueryKey } from '@/hooks/useMeStores'
+import { useSession } from 'next-auth/react'
 
 type StoreRow = {
   id: string
@@ -29,6 +32,9 @@ type StoreRow = {
   slug: string
   logoUrl: string
   isActive: boolean
+  address: string
+  websiteUrl: string
+  instagramUrl: string
 }
 
 type StoresPayload = {
@@ -87,6 +93,8 @@ async function uploadStoreLogo(storeId: string, file: File) {
 }
 
 export default function AdminTiendasPage() {
+  const queryClient = useQueryClient()
+  const { data: session } = useSession()
   const [payload, setPayload] = useState<StoresPayload | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [toast, setToast] = useState<{
@@ -104,6 +112,12 @@ export default function AdminTiendasPage() {
   const [addEmail, setAddEmail] = useState('')
   const [addRole, setAddRole] = useState<'owner' | 'store_admin'>('store_admin')
   const [savingMembership, setSavingMembership] = useState<string | null>(null)
+  const [profileDraft, setProfileDraft] = useState({
+    address: '',
+    websiteUrl: '',
+    instagramUrl: ''
+  })
+  const [savingProfile, setSavingProfile] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setMessage(null)
@@ -154,10 +168,60 @@ export default function AdminTiendasPage() {
       setExpanded(null)
       return
     }
+    const store = payload?.stores.find(x => x.id === id)
+    if (store) {
+      setProfileDraft({
+        address: store.address ?? '',
+        websiteUrl: store.websiteUrl ?? '',
+        instagramUrl: store.instagramUrl ?? ''
+      })
+    }
     setExpanded(id)
     setAddEmail('')
     setAddRole('store_admin')
     void ensureMemberships(id)
+  }
+
+  const onSavePublicProfile = async (storeId: string) => {
+    setSavingProfile(storeId)
+    setMessage(null)
+    try {
+      const row = await patchStore(storeId, {
+        address: profileDraft.address,
+        websiteUrl: profileDraft.websiteUrl,
+        instagramUrl: profileDraft.instagramUrl
+      })
+      setPayload(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          stores: prev.stores.map(x =>
+            x.id === storeId
+              ? {
+                  ...x,
+                  address: row.address ?? '',
+                  websiteUrl: row.websiteUrl ?? '',
+                  instagramUrl: row.instagramUrl ?? ''
+                }
+              : x
+          )
+        }
+      })
+      const uid = session?.user?.id ? String(session.user.id) : ''
+      if (uid) {
+        void queryClient.invalidateQueries({
+          queryKey: meStoresQueryKey(uid)
+        })
+      }
+      setToast({
+        sev: 'success',
+        msg: 'Datos públicos guardados (visibles en el hub de la tienda)'
+      })
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Error')
+    } finally {
+      setSavingProfile(null)
+    }
   }
 
   const onCreate = async () => {
@@ -418,13 +482,78 @@ export default function AdminTiendasPage() {
                         size="small"
                         onClick={() => toggleExpand(s.id)}
                       >
-                        {expanded === s.id ? 'Cerrar detalle' : 'Equipo y logo'}
+                        {expanded === s.id ? 'Cerrar detalle' : 'Editar tienda'}
                       </Button>
                     </Stack>
                   </Stack>
 
                   <Collapse in={expanded === s.id}>
                     <Stack spacing={2} sx={{ pt: 1 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                        Datos públicos (hub /{s.slug})
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Dirección y enlaces que verán los jugadores en la página
+                        de la tienda.
+                      </Typography>
+                      <TextField
+                        label="Dirección"
+                        value={expanded === s.id ? profileDraft.address : ''}
+                        onChange={e => {
+                          if (expanded === s.id) {
+                            setProfileDraft(d => ({
+                              ...d,
+                              address: e.target.value
+                            }))
+                          }
+                        }}
+                        fullWidth
+                        multiline
+                        minRows={2}
+                        placeholder="Av. ejemplo 123, Santiago"
+                      />
+                      <TextField
+                        label="Sitio web"
+                        value={expanded === s.id ? profileDraft.websiteUrl : ''}
+                        onChange={e => {
+                          if (expanded === s.id) {
+                            setProfileDraft(d => ({
+                              ...d,
+                              websiteUrl: e.target.value
+                            }))
+                          }
+                        }}
+                        fullWidth
+                        placeholder="https://mitienda.cl"
+                      />
+                      <TextField
+                        label="Instagram"
+                        value={
+                          expanded === s.id ? profileDraft.instagramUrl : ''
+                        }
+                        onChange={e => {
+                          if (expanded === s.id) {
+                            setProfileDraft(d => ({
+                              ...d,
+                              instagramUrl: e.target.value
+                            }))
+                          }
+                        }}
+                        fullWidth
+                        placeholder="@mitienda o URL del perfil"
+                      />
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        disabled={savingProfile === s.id}
+                        onClick={() => void onSavePublicProfile(s.id)}
+                        sx={{ alignSelf: 'flex-start' }}
+                      >
+                        {savingProfile === s.id
+                          ? 'Guardando…'
+                          : 'Guardar datos públicos'}
+                      </Button>
+                      <Divider />
                       <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                         Equipo (
                         {memLoading === s.id

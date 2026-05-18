@@ -8,6 +8,9 @@ export type MeStoreRow = {
   name: string
   slug: string
   logoUrl: string
+  address: string
+  websiteUrl: string
+  instagramUrl: string
   role?: 'owner' | 'store_admin'
 }
 

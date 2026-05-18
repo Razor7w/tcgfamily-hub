@@ -1,4 +1,7 @@
 /** Valores de `data-tour` usados por Joyride (selectores `[data-tour="…"]`). */
+export type ProductTourTarget =
+  (typeof PRODUCT_TOUR_TARGETS)[keyof typeof PRODUCT_TOUR_TARGETS]
+
 export const PRODUCT_TOUR_TARGETS = {
   storeSwitcher: 'store-switcher',
   dashboardMainNav: 'dashboard-main-nav',
