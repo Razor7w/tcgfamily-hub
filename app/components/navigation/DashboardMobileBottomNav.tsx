@@ -75,6 +75,7 @@ export default function DashboardMobileBottomNav() {
     <Paper
       component="nav"
       aria-label="Accesos rápidos"
+      data-tour="dashboard-mobile-nav"
       elevation={0}
       sx={{
         display: { xs: 'block', md: 'none' },

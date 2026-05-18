@@ -6,6 +6,7 @@ import {
   Email,
   ExpandLess,
   ExpandMore,
+  LightbulbOutlined,
   MilitaryTech,
   People,
   Settings,
@@ -64,6 +65,12 @@ export default function AdminSidebarClient({ isOwner }: { isOwner: boolean }) {
                 <Storefront />
               </ListItemIcon>
               <ListItemText primary="Tiendas" />
+            </ListItemButton>
+            <ListItemButton sx={{ pl: 4 }} href="/admin/sugerencias">
+              <ListItemIcon>
+                <LightbulbOutlined />
+              </ListItemIcon>
+              <ListItemText primary="Sugerencias" />
             </ListItemButton>
           </List>
         ) : null}

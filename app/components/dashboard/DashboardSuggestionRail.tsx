@@ -49,6 +49,7 @@ export default function DashboardSuggestionRail() {
   return (
     <Card
       variant="outlined"
+      data-tour="dashboard-suggestion-rail"
       sx={{
         borderRadius: 3,
         borderColor: t => alpha(t.palette.text.primary, 0.1),

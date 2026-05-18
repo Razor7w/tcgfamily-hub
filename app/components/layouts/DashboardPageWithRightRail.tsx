@@ -60,6 +60,7 @@ export default function DashboardPageWithRightRail({
         <Box
           component="aside"
           aria-label="Panel lateral"
+          data-tour="store-hub-right-rail"
           sx={{
             flex: { lg: `0 0 ${railWidth}px` },
             width: { xs: `min(100vw - 32px, ${railWidth}px)`, lg: railWidth },
@@ -84,6 +85,7 @@ export default function DashboardPageWithRightRail({
       </Box>
 
       <Box
+        data-tour="store-hub-mobile-rail-hint"
         sx={{
           display: { xs: 'flex', lg: 'none' },
           alignItems: 'center',

@@ -564,6 +564,7 @@ export default function Header() {
                     aria-haspopup="dialog"
                     aria-expanded={storePickerOpen}
                     aria-label="Cambiar tienda de contexto"
+                    data-tour="store-switcher"
                     disabled={storeSwitchBusy}
                     onClick={() => openStorePicker()}
                     sx={{ p: activeStoreLogo ? 0.5 : 1 }}

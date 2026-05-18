@@ -14,6 +14,7 @@ import { useSession } from 'next-auth/react'
 import DashboardHomeContent from '@/components/dashboard/DashboardHomeContent'
 import StoreHubRightRail from '@/components/dashboard/StoreHubRightRail'
 import DashboardPageWithRightRail from '@/components/layouts/DashboardPageWithRightRail'
+import StoreHubTour from '@/components/tour/StoreHubTour'
 import { consumeHubActiveStoreHeaderSync } from '@/lib/active-store-hub-sync-flag'
 import {
   fetchMeStores,
@@ -203,68 +204,80 @@ function StoreHubBody({
     (hubReady || (Boolean(activeId) && Boolean(activeStoreHeading?.name)))
 
   return (
-    <Box
-      sx={t => ({
-        minHeight: '100dvh',
-        background: `linear-gradient(165deg, ${alpha(t.palette.primary.main, 0.06)} 0%, ${t.palette.background.default} 38%, ${t.palette.background.default} 100%)`,
-        py: 4
-      })}
-    >
-      <DashboardPageWithRightRail
-        rail={
-          <StoreHubRightRail
-            storeSlug={normalizedParam}
-            hubReady={hubContentReady}
-          />
-        }
+    <>
+      <StoreHubTour hubReady={hubContentReady} />
+      <Box
+        sx={t => ({
+          minHeight: '100dvh',
+          background: `linear-gradient(165deg, ${alpha(t.palette.primary.main, 0.06)} 0%, ${t.palette.background.default} 38%, ${t.palette.background.default} 100%)`,
+          py: 4
+        })}
       >
-        <Container
-          maxWidth={false}
-          sx={{
-            px: { xs: 2, sm: 3 },
-            width: '100%',
-            maxWidth: { lg: 920 }
-          }}
+        <DashboardPageWithRightRail
+          rail={
+            <StoreHubRightRail
+              storeSlug={normalizedParam}
+              hubReady={hubContentReady}
+            />
+          }
         >
-          <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-            {activeStoreHeading ? (
-              <Avatar
-                variant="rounded"
-                src={activeStoreHeading.logoUrl || undefined}
-                alt=""
-                sx={{
-                  width: { xs: 44, sm: 52 },
-                  height: { xs: 44, sm: 52 },
-                  flexShrink: 0,
-                  bgcolor: 'action.hover',
-                  border: 1,
-                  borderColor: 'divider',
-                  '& .MuiAvatar-img': {
-                    objectFit: 'contain',
-                    p: 0.5
-                  }
-                }}
-              >
-                <StorefrontOutlinedIcon sx={{ fontSize: 28 }} />
-              </Avatar>
-            ) : null}
-            <Box sx={{ minWidth: 0 }}>
-              <Typography variant="h4" component="h1" gutterBottom={false}>
-                {activeStoreHeading?.name ?? ''}
-              </Typography>
-              <Typography
-                variant="subtitle1"
-                color="text.secondary"
-                sx={{ mt: 0.5, mb: 0.5 }}
-              >
-                Hola {session?.user?.name ?? ''}
-              </Typography>
-            </Box>
-          </Stack>
+          <Container
+            maxWidth={false}
+            sx={{
+              px: { xs: 2, sm: 3 },
+              width: '100%',
+              maxWidth: { lg: 920 }
+            }}
+          >
+            <Stack
+              direction="row"
+              spacing={2}
+              alignItems="center"
+              sx={{ mb: 2 }}
+              data-tour="store-hub-heading"
+            >
+              {activeStoreHeading ? (
+                <Avatar
+                  variant="rounded"
+                  src={activeStoreHeading.logoUrl || undefined}
+                  alt=""
+                  sx={{
+                    width: { xs: 44, sm: 52 },
+                    height: { xs: 44, sm: 52 },
+                    flexShrink: 0,
+                    bgcolor: 'action.hover',
+                    border: 1,
+                    borderColor: 'divider',
+                    '& .MuiAvatar-img': {
+                      objectFit: 'contain',
+                      p: 0.5
+                    }
+                  }}
+                >
+                  <StorefrontOutlinedIcon sx={{ fontSize: 28 }} />
+                </Avatar>
+              ) : null}
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="h4" component="h1" gutterBottom={false}>
+                  {activeStoreHeading?.name ?? ''}
+                </Typography>
+                <Typography
+                  variant="subtitle1"
+                  color="text.secondary"
+                  sx={{ mt: 0.5, mb: 0.5 }}
+                >
+                  Hola {session?.user?.name ?? ''}
+                </Typography>
+              </Box>
+            </Stack>
 
-          <DashboardHomeContent variant="tiendas" hubReady={hubContentReady} />
-        </Container>
-      </DashboardPageWithRightRail>
-    </Box>
+            <DashboardHomeContent
+              variant="tiendas"
+              hubReady={hubContentReady}
+            />
+          </Container>
+        </DashboardPageWithRightRail>
+      </Box>
+    </>
   )
 }

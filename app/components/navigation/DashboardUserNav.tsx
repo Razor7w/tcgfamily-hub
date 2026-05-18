@@ -62,7 +62,7 @@ export default function DashboardUserNav({
   return (
     <Stack>
       <nav aria-label="main mailbox folders">
-        <List>
+        <List data-tour="dashboard-main-nav">
           {isAdmin && <AdminSidebarClient isOwner={isOwner} />}
           <ListItem disablePadding>
             <ListItemButton

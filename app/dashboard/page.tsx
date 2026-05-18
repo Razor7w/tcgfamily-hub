@@ -22,6 +22,7 @@ import RecentPublicDecklistsHomeCard from '@/components/dashboard/RecentPublicDe
 import DashboardPageWithRightRail from '@/components/layouts/DashboardPageWithRightRail'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
 import { useStoreHubHref } from '@/hooks/useStoreHubHref'
+import DashboardPlayerTour from '@/components/tour/DashboardPlayerTour'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -40,128 +41,144 @@ export default function DashboardPage() {
     shortcuts.playPokemonDecklistPdf
 
   return (
-    <Box
-      sx={t => ({
-        minHeight: '100dvh',
-        background: `linear-gradient(165deg, ${alpha(t.palette.primary.main, 0.06)} 0%, ${t.palette.background.default} 38%, ${t.palette.background.default} 100%)`,
-        py: 4
-      })}
-    >
-      <DashboardPageWithRightRail rail={<DashboardSuggestionRail />}>
-        <Container
-          maxWidth={false}
-          sx={{
-            px: { xs: 2, sm: 3 },
-            width: '100%',
-            maxWidth: { lg: 920 }
-          }}
-        >
-          <Typography variant="h4" component="h1" gutterBottom>
-            Inicio
-          </Typography>
-          <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 2 }}>
-            Hola, {name}.
-          </Typography>
-
-          <Stack spacing={3}>
-            {showQuickActions ? (
-              <Box sx={{ maxWidth: { xs: '100%', sm: 960 } }}>
-                <DashboardQuickActions
-                  shortcuts={shortcuts}
-                  subtitle="Toman la tienda seleccionada en la barra superior. Los bloques están en Tiendas."
-                  onRegisterMail={() => setRegisterMailOpen(true)}
-                  onCreateCustomTournament={() => setCustomTournamentOpen(true)}
-                  onPlayPokemonDecklistPdf={() =>
-                    router.push('/dashboard/decklist-pdf-torneo')
-                  }
-                />
-              </Box>
-            ) : null}
-
-            <Box sx={{ maxWidth: { xs: '100%', sm: 960 } }}>
-              <RecentPublicDecklistsHomeCard />
-            </Box>
-
+    <>
+      <DashboardPlayerTour />
+      <Box
+        sx={t => ({
+          minHeight: '100dvh',
+          background: `linear-gradient(165deg, ${alpha(t.palette.primary.main, 0.06)} 0%, ${t.palette.background.default} 38%, ${t.palette.background.default} 100%)`,
+          py: 4
+        })}
+      >
+        <DashboardPageWithRightRail rail={<DashboardSuggestionRail />}>
+          <Container
+            maxWidth={false}
+            sx={{
+              px: { xs: 2, sm: 3 },
+              width: '100%',
+              maxWidth: { lg: 920 }
+            }}
+          >
+            <Typography variant="h4" component="h1" gutterBottom>
+              Inicio
+            </Typography>
             <Typography
-              variant="overline"
+              variant="subtitle1"
               color="text.secondary"
-              sx={{
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-                display: 'block',
-                maxWidth: { xs: '100%', sm: 960 },
-                pt: 0.5
-              }}
+              sx={{ mb: 2 }}
             >
-              Continuar en el panel
+              Hola, {name}.
             </Typography>
 
-            <Stack spacing={2} sx={{ maxWidth: { xs: '100%', sm: 960 } }}>
-              <Card variant="outlined" sx={{ borderRadius: 3 }}>
-                <CardActionArea component={Link} href={storeHubHref}>
-                  <CardContent
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2,
-                      py: 2.5
-                    }}
-                  >
-                    <Storefront color="primary" sx={{ fontSize: 40 }} />
-                    <Box>
-                      <Typography variant="subtitle1" fontWeight={700}>
-                        Tiendas
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Eventos de la tienda activa, correo y puntos.
-                      </Typography>
-                    </Box>
-                  </CardContent>
-                </CardActionArea>
-              </Card>
-              <Card variant="outlined" sx={{ borderRadius: 3 }}>
-                <CardActionArea component={Link} href="/dashboard/mi-cuenta">
-                  <CardContent
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2,
-                      py: 2.5
-                    }}
-                  >
-                    <AccountCircleOutlined
-                      color="primary"
-                      sx={{ fontSize: 40 }}
-                    />
-                    <Box>
-                      <Typography variant="subtitle1" fontWeight={700}>
-                        Mi cuenta
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Torneos, estadísticas y mazos enlazados a tu perfil.
-                      </Typography>
-                    </Box>
-                  </CardContent>
-                </CardActionArea>
-              </Card>
-            </Stack>
-          </Stack>
+            <Stack spacing={3}>
+              {showQuickActions ? (
+                <Box
+                  data-tour="dashboard-quick-actions"
+                  sx={{ maxWidth: { xs: '100%', sm: 960 } }}
+                >
+                  <DashboardQuickActions
+                    shortcuts={shortcuts}
+                    subtitle="Toman la tienda seleccionada en la barra superior. Los bloques están en Tiendas."
+                    onRegisterMail={() => setRegisterMailOpen(true)}
+                    onCreateCustomTournament={() =>
+                      setCustomTournamentOpen(true)
+                    }
+                    onPlayPokemonDecklistPdf={() =>
+                      router.push('/dashboard/decklist-pdf-torneo')
+                    }
+                  />
+                </Box>
+              ) : null}
 
-          <RegisterMailDialog
-            open={registerMailOpen}
-            onClose={() => setRegisterMailOpen(false)}
-          />
-          <ReportCustomTournamentDialog
-            open={customTournamentOpen}
-            onClose={() => setCustomTournamentOpen(false)}
-            weekAnchor={weekAnchor}
-            onCreated={eventId => {
-              setCustomTournamentOpen(false)
-              router.push(`/dashboard/torneos-semana/${eventId}`)
-            }}
-          />
-        </Container>
-      </DashboardPageWithRightRail>
-    </Box>
+              <Box sx={{ maxWidth: { xs: '100%', sm: 960 } }}>
+                <RecentPublicDecklistsHomeCard />
+              </Box>
+
+              <Typography
+                variant="overline"
+                color="text.secondary"
+                sx={{
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                  display: 'block',
+                  maxWidth: { xs: '100%', sm: 960 },
+                  pt: 0.5
+                }}
+              >
+                Continuar en el panel
+              </Typography>
+
+              <Stack spacing={2} sx={{ maxWidth: { xs: '100%', sm: 960 } }}>
+                <Card
+                  variant="outlined"
+                  sx={{ borderRadius: 3 }}
+                  data-tour="dashboard-card-tiendas"
+                >
+                  <CardActionArea component={Link} href={storeHubHref}>
+                    <CardContent
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        py: 2.5
+                      }}
+                    >
+                      <Storefront color="primary" sx={{ fontSize: 40 }} />
+                      <Box>
+                        <Typography variant="subtitle1" fontWeight={700}>
+                          Tiendas
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Eventos de la tienda activa, correo y puntos.
+                        </Typography>
+                      </Box>
+                    </CardContent>
+                  </CardActionArea>
+                </Card>
+                <Card variant="outlined" sx={{ borderRadius: 3 }}>
+                  <CardActionArea component={Link} href="/dashboard/mi-cuenta">
+                    <CardContent
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        py: 2.5
+                      }}
+                    >
+                      <AccountCircleOutlined
+                        color="primary"
+                        sx={{ fontSize: 40 }}
+                      />
+                      <Box>
+                        <Typography variant="subtitle1" fontWeight={700}>
+                          Mi cuenta
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Torneos, estadísticas y mazos enlazados a tu perfil.
+                        </Typography>
+                      </Box>
+                    </CardContent>
+                  </CardActionArea>
+                </Card>
+              </Stack>
+            </Stack>
+
+            <RegisterMailDialog
+              open={registerMailOpen}
+              onClose={() => setRegisterMailOpen(false)}
+            />
+            <ReportCustomTournamentDialog
+              open={customTournamentOpen}
+              onClose={() => setCustomTournamentOpen(false)}
+              weekAnchor={weekAnchor}
+              onCreated={eventId => {
+                setCustomTournamentOpen(false)
+                router.push(`/dashboard/torneos-semana/${eventId}`)
+              }}
+            />
+          </Container>
+        </DashboardPageWithRightRail>
+      </Box>
+    </>
   )
 }

@@ -27,7 +27,7 @@ function isMailWaitingForPickup(mail: Mail, currentUserId: string): boolean {
   if (mail.isRecived || !mail.isRecivedInStore) return false
   if (!currentUserId) return false
   if (mailUserId(mail.fromUserId) === currentUserId) return false
-  if (mailUserId(mail.toUserId) === currentUserId) return true
+  if (mail.toUserId && mailUserId(mail.toUserId) === currentUserId) return true
   return Boolean(mail.toRut?.trim())
 }
 

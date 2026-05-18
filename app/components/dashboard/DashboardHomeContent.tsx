@@ -124,6 +124,13 @@ export default function DashboardHomeContent({
     )
   ) : null
 
+  const weeklyEventsForBlocks =
+    variant === 'tiendas' && weeklyEventsBlock ? (
+      <Box data-tour="store-hub-weekly-events">{weeklyEventsBlock}</Box>
+    ) : (
+      weeklyEventsBlock
+    )
+
   const myTournamentsBlock = visibility.myTournaments ? (
     deferStoreScopedHome ? (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -326,7 +333,7 @@ export default function DashboardHomeContent({
   ) : null
 
   const blocks: Record<DashboardModuleId, ReactNode> = {
-    weeklyEvents: weeklyEventsBlock,
+    weeklyEvents: weeklyEventsForBlocks,
     leagues: null,
     recentPublicDecklists: null,
     myTournaments: myTournamentsBlock,
