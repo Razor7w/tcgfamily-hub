@@ -72,7 +72,6 @@ export default function DashboardSuggestionRail() {
           </Box>
         }
         title="¿Tienes una sugerencia?"
-        subheader="Un comentario por cuenta para mejorar TCG Nexo"
         slotProps={{
           title: { variant: 'subtitle1', sx: { fontWeight: 800 } },
           subheader: { sx: { lineHeight: 1.45 } }

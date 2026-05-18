@@ -911,10 +911,6 @@ export default function AdminConfiguracionPage() {
               key={`dash-${dataUpdatedAt}`}
               initial={mergeDashboardSettings(data.settings)}
             />
-            <DashboardShortcutsEditor
-              key={`shortcuts-${dataUpdatedAt}`}
-              initial={mergeDashboardSettings(data.settings).shortcuts}
-            />
             <MailRegisterDailyLimitCard
               key={`mail-limit-${dataUpdatedAt}`}
               initialLimit={data.mailRegisterDailyLimit}
@@ -923,6 +919,10 @@ export default function AdminConfiguracionPage() {
               key={`email-${dataUpdatedAt}`}
               initialEnabled={data.resendNotifyPickupInStoreEnabled}
             />
+            <DashboardShortcutsEditor
+              key={`shortcuts-${dataUpdatedAt}`}
+              initial={mergeDashboardSettings(data.settings).shortcuts}
+            />
           </Stack>
         ) : (
           <Stack spacing={3}>
@@ -930,15 +930,15 @@ export default function AdminConfiguracionPage() {
               key="defaults"
               initial={mergeDashboardSettings(null)}
             />
-            <DashboardShortcutsEditor
-              key="shortcuts-defaults"
-              initial={mergeDashboardSettings(null).shortcuts}
-            />
             <MailRegisterDailyLimitCard
               key="mail-limit-defaults"
               initialLimit={MAIL_REGISTER_DAILY_LIMIT}
             />
             <ResendPickupEmailCard key="email-defaults" initialEnabled />
+            <DashboardShortcutsEditor
+              key="shortcuts-defaults"
+              initial={mergeDashboardSettings(null).shortcuts}
+            />
           </Stack>
         )}
       </Container>

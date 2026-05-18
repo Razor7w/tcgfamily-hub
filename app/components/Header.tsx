@@ -41,7 +41,7 @@ import SearchIcon from '@mui/icons-material/Search'
 import CheckIcon from '@mui/icons-material/Check'
 import { setHubActiveStoreHeaderSync } from '@/lib/active-store-hub-sync-flag'
 import { useMeStores } from '@/hooks/useMeStores'
-import { shouldRewriteStoreHubUrlAfterStoreSwitch } from '@/lib/store-context-hub-path'
+import { isStoreContextHubPath } from '@/lib/store-context-hub-path'
 import { useAppStore } from '@/store/useAppStore'
 
 const ACCOUNT_DRAWER_WIDTH = 300
@@ -464,20 +464,13 @@ export default function Header() {
         slug = row?.slug?.trim() ?? ''
       }
 
+      await update({ activeStoreId: nextActiveId })
+
       const pathForStoreUrl =
         typeof window !== 'undefined' ? window.location.pathname : ''
-      const goToSlug = shouldRewriteStoreHubUrlAfterStoreSwitch(
-        pathForStoreUrl,
-        slug
-      )
-
-      // Navegar antes de actualizar la sesión en cliente: si seguimos en `/tier0` con
-      // sesión ya en otra tienda, el efecto de la página vieja POSTea tier0 y anula el cambio.
-      if (goToSlug) {
-        router.replace(`/${slug}`)
+      if (slug && isStoreContextHubPath(pathForStoreUrl)) {
+        router.replace(`/${encodeURIComponent(slug)}`)
       }
-
-      await update({ activeStoreId: nextActiveId })
       // Cambiar tienda ya actualiza TanStack Query (queryKey usa activeStoreId); invalidar
       // también refetchaba y duplicaba /api/events, /api/mail/me, etc.
 
