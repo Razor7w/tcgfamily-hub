@@ -1,0 +1,15 @@
+{
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "hub.tcgfamily.cl"
+        }
+      ],
+      "destination": "https://tcgnexo.cl/:path*",
+      "permanent": true
+    }
+  ]
+}
