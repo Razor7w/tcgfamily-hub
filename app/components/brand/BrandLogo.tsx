@@ -39,7 +39,12 @@ function BrandWordmark({
   const onDark = surface === 'dark'
 
   return (
-    <Stack direction="row" alignItems="center" spacing={dim.gap} sx={{ minWidth: 0 }}>
+    <Stack
+      direction="row"
+      alignItems="center"
+      spacing={dim.gap}
+      sx={{ minWidth: 0 }}
+    >
       <Box
         sx={{
           flexShrink: 0,
