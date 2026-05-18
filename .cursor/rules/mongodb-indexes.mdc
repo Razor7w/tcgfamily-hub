@@ -1,0 +1,40 @@
+---
+description: Avisar al usuario cuando un cambio requiera índices nuevos en MongoDB Atlas
+alwaysApply: true
+---
+
+# Índices MongoDB (Atlas)
+
+Este proyecto usa Mongoose. Los índices en `Schema.index()` **no se crean solos en producción**: solo `Mails` llama `syncIndexes()` al conectar (`app/lib/mongodb.ts`). En Vercel/Atlas hay que crearlos a mano o con `syncIndexes` puntual.
+
+## Cuando aplica
+
+Al terminar un desarrollo que toque:
+
+- Modelos en `app/models/`
+- Consultas nuevas o cambiadas en `app/api/`, `app/lib/`, scripts con `connectDB()`
+- Filtros, orden (`sort`), `exists`, agregaciones o unicidad compuesta
+
+## Qué hacer siempre
+
+1. **Código**: Añadir o actualizar `Schema.index()` en el modelo si el patrón de query es estable (regla ESR: igualdad → sort → rango).
+2. **Aviso obligatorio al usuario** (en el resumen final, sección clara **«Índices MongoDB»**):
+   - Si **no** hace falta índice nuevo, decirlo explícitamente («no requiere índices nuevos»).
+   - Si **sí** hace falta:
+     - Colección (plural minúscula: `stores`, `weeklyevents`, `storememberships`, …).
+     - Comando `createIndex` listo para mongosh/Atlas.
+     - Por qué (qué endpoint/query lo usa).
+     - Recordar verificar con `db.<colección>.getIndexes()` y no duplicar índices redundantes.
+3. No asumir que Atlas ya tiene el índice por el deploy.
+
+## Ejemplo de aviso
+
+```text
+## Índices MongoDB
+
+Debes crear en Atlas (`use tcgfamily-hub`):
+
+db.weeklyevents.createIndex({ storeId: 1, kind: 1, state: 1, startsAt: -1 })
+
+Motivo: GET /api/stores/[slug]/last-finished-tournament filtra por tienda, kind, state y ordena por fecha.
+```
