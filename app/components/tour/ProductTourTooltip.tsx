@@ -109,7 +109,7 @@ export default function ProductTourTooltip({
                   ...focusVisibleSx
                 }}
               >
-                {backProps.children}
+                {backProps.title}
               </Button>
             ) : null}
             <Button
@@ -124,7 +124,7 @@ export default function ProductTourTooltip({
                 ...focusVisibleSx
               }}
             >
-              {primaryProps.children}
+              {primaryProps.title}
             </Button>
           </Stack>
         </Stack>
