@@ -4,7 +4,7 @@ import { DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { requireStoreOwnerSession } from '@/lib/api-auth'
 import {
   assertCanManageStoreMutation,
-  canManageStoresGlobally
+  loadStoreAdminAuthContext
 } from '@/lib/store-admin-access'
 import connectDB from '@/lib/mongodb'
 import { isR2StoreBrandingKeyForStore } from '@/lib/r2-store-branding-key'
@@ -35,10 +35,10 @@ export async function PATCH(
 
     const body = await request.json()
     const uid = gate.session.user!.id
-    const globalMgmt = await canManageStoresGlobally(uid)
+    const adminCtx = await loadStoreAdminAuthContext(uid)
 
     if (body?.isActive !== undefined) {
-      if (!globalMgmt) {
+      if (!adminCtx.isGlobalManager) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
       }
       const v = Boolean(body.isActive)
@@ -57,7 +57,7 @@ export async function PATCH(
       return NextResponse.json(serializeStoreAdminRow(s))
     }
 
-    const can = await assertCanManageStoreMutation(uid, oid)
+    const can = await assertCanManageStoreMutation(uid, oid, { adminCtx })
     if (!can)
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
 

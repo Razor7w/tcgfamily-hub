@@ -1,84 +1,76 @@
 import type { Types } from 'mongoose'
-import connectDB from '@/lib/mongodb'
-import StoreMembership from '@/models/StoreMembership'
-import User from '@/models/User'
+import { loadDashboardAccessContext } from '@/lib/multitenancy/session-store-hydrate'
+
+export type StoreAdminAuthContext = {
+  isGlobalManager: boolean
+  ownedStoreIds: Types.ObjectId[]
+}
+
+/** Una ronda: rol legacy + membresías (reutiliza `loadDashboardAccessContext`). */
+export async function loadStoreAdminAuthContext(
+  userId: string
+): Promise<StoreAdminAuthContext> {
+  const dash = await loadDashboardAccessContext(userId)
+  return {
+    isGlobalManager: dash.isGlobalManager,
+    ownedStoreIds: dash.memberships
+      .filter(m => m.role === 'owner')
+      .map(m => m.storeId)
+  }
+}
 
 /**
  * Quién puede actuar como “HQ” sobre **cualquier** tienda (listado completo, mutaciones
  * globales, contexto dashboard en cualquier ubicación activa).
  *
  * - `User.role === 'admin'` (legacy).
- * - **Cualquier** membresía `StoreMembership` con `role: 'owner'`: el rol owner no depende
- *   de estar ligado a la tienda primaria; un owner asignado a una filial tiene el mismo
- *   alcance global sobre todas las tiendas.
+ * - **Cualquier** membresía `StoreMembership` con `role: 'owner'`.
  */
 export async function canManageStoresGlobally(
-  userId: string
+  userId: string,
+  options?: { adminCtx?: StoreAdminAuthContext }
 ): Promise<boolean> {
-  await connectDB()
-  const oid = userId.trim()
-  const legacy = await User.findById(oid)
-    .select('role')
-    .lean<{ role?: string }>()
-  if (legacy?.role === 'admin') return true
-
-  return Boolean(
-    await StoreMembership.exists({
-      userId: oid,
-      role: 'owner'
-    })
-  )
+  if (options?.adminCtx) return options.adminCtx.isGlobalManager
+  const ctx = await loadStoreAdminAuthContext(userId)
+  return ctx.isGlobalManager
 }
 
-/** Stores donde el usuario es dueño (`StoreMembership`), sin filtro global (primaria nexo HQ). */
+/** Stores donde el usuario es dueño (`StoreMembership`), sin filtro global. */
 export async function ownedStoreIdsForUser(
-  userId: string
+  userId: string,
+  options?: { adminCtx?: StoreAdminAuthContext }
 ): Promise<Types.ObjectId[]> {
-  await connectDB()
-  const rows = await StoreMembership.find({
-    userId,
-    role: 'owner'
-  })
-    .select('storeId')
-    .lean<{ storeId: Types.ObjectId }[]>()
-  return rows.map(r => r.storeId)
+  if (options?.adminCtx) return options.adminCtx.ownedStoreIds
+  const ctx = await loadStoreAdminAuthContext(userId)
+  return ctx.ownedStoreIds
 }
 
 export async function assertCanManageStoreMutation(
   actingUserId: string,
   targetStoreOid: Types.ObjectId,
-  opts?: { globalOnlyActions?: boolean }
+  opts?: {
+    globalOnlyActions?: boolean
+    adminCtx?: StoreAdminAuthContext
+  }
 ): Promise<boolean> {
-  await connectDB()
-  if (await canManageStoresGlobally(actingUserId)) return true
+  const ctx = opts?.adminCtx ?? (await loadStoreAdminAuthContext(actingUserId))
+  if (ctx.isGlobalManager) return true
   if (opts?.globalOnlyActions) return false
-  return Boolean(
-    await StoreMembership.exists({
-      userId: actingUserId,
-      storeId: targetStoreOid,
-      role: 'owner'
-    })
-  )
+  return ctx.ownedStoreIds.some(id => id.equals(targetStoreOid))
 }
 
-/** Alta de `owner` en una tienda: sólo quien ya tiene alcance global (admin legacy o cualquier membresía `owner`). */
+/** Alta de `owner` en una tienda: sólo quien ya tiene alcance global. */
 export async function canAssignOwnerMembership(
-  userId: string
+  userId: string,
+  options?: { adminCtx?: StoreAdminAuthContext }
 ): Promise<boolean> {
-  return canManageStoresGlobally(userId)
+  return canManageStoresGlobally(userId, options)
 }
 
 export async function canAssignStoreAdminOnStore(
   actingUserId: string,
-  targetStoreOid: Types.ObjectId
+  targetStoreOid: Types.ObjectId,
+  options?: { adminCtx?: StoreAdminAuthContext }
 ): Promise<boolean> {
-  await connectDB()
-  if (await canManageStoresGlobally(actingUserId)) return true
-  return Boolean(
-    await StoreMembership.exists({
-      userId: actingUserId,
-      storeId: targetStoreOid,
-      role: 'owner'
-    })
-  )
+  return assertCanManageStoreMutation(actingUserId, targetStoreOid, options)
 }

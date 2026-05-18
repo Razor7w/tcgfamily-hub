@@ -36,17 +36,19 @@ export async function GET(
 
     await connectDB()
 
-    const storeLean = await Store.findOne({ slug, isActive: true })
-      .select('_id name')
-      .lean<{ _id: mongoose.Types.ObjectId; name: string } | null>()
+    const [storeLean, primary] = await Promise.all([
+      Store.findOne({ slug, isActive: true })
+        .select('_id name')
+        .lean<{ _id: mongoose.Types.ObjectId; name: string } | null>(),
+      memoPrimaryTcgfamilyStoreObjectId()
+    ])
+
     if (!storeLean) {
       return NextResponse.json(
         { error: 'Tienda no encontrada' },
         { status: 404 }
       )
     }
-
-    const primary = await memoPrimaryTcgfamilyStoreObjectId()
     const storeScope = mongoFilterByStore(storeLean._id, primary) as Record<
       string,
       unknown

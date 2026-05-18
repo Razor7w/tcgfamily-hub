@@ -4,7 +4,8 @@ import { requireStoreOwnerSession } from '@/lib/api-auth'
 import {
   assertCanManageStoreMutation,
   canAssignOwnerMembership,
-  canAssignStoreAdminOnStore
+  canAssignStoreAdminOnStore,
+  loadStoreAdminAuthContext
 } from '@/lib/store-admin-access'
 import connectDB from '@/lib/mongodb'
 import StoreMembership from '@/models/StoreMembership'
@@ -27,8 +28,9 @@ export async function GET(
     }
     const oid = new mongoose.Types.ObjectId(storeId)
     const uid = gate.session.user!.id
+    const adminCtx = await loadStoreAdminAuthContext(uid)
 
-    const can = await assertCanManageStoreMutation(uid, oid)
+    const can = await assertCanManageStoreMutation(uid, oid, { adminCtx })
     if (!can)
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
 
@@ -38,6 +40,10 @@ export async function GET(
       .lean()
 
     const uids = m.map(row => row.userId)
+    if (uids.length === 0) {
+      return NextResponse.json({ memberships: [] })
+    }
+
     const users = await User.find({ _id: { $in: uids } })
       .select('email name')
       .lean()
@@ -116,12 +122,13 @@ export async function POST(
 
     await connectDB()
     const acting = gate.session.user!.id
+    const adminCtx = await loadStoreAdminAuthContext(acting)
 
     if (role === 'owner') {
-      if (!(await canAssignOwnerMembership(acting))) {
+      if (!(await canAssignOwnerMembership(acting, { adminCtx }))) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
       }
-    } else if (!(await canAssignStoreAdminOnStore(acting, oid))) {
+    } else if (!(await canAssignStoreAdminOnStore(acting, oid, { adminCtx }))) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
@@ -170,11 +177,12 @@ export async function DELETE(
     if (!row) return NextResponse.json({ ok: true })
 
     const acting = gate.session.user!.id
+    const adminCtx = await loadStoreAdminAuthContext(acting)
     if (row.role === 'owner') {
-      if (!(await canAssignOwnerMembership(acting))) {
+      if (!(await canAssignOwnerMembership(acting, { adminCtx }))) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
       }
-    } else if (!(await canAssignStoreAdminOnStore(acting, oid))) {
+    } else if (!(await canAssignStoreAdminOnStore(acting, oid, { adminCtx }))) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 

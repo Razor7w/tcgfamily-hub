@@ -15,7 +15,6 @@ export async function GET() {
     const gate = await requireSessionUserWithActiveStore()
     if (!gate.ok) return gate.response
 
-    await connectDB()
     let userOid: mongoose.Types.ObjectId
     try {
       userOid = new mongoose.Types.ObjectId(gate.session.user.id)
@@ -23,11 +22,15 @@ export async function GET() {
       return NextResponse.json({ error: 'Sesión inválida' }, { status: 400 })
     }
 
-    const user = await User.findById(userOid)
-      .select(
-        'storePoints storePointsExpiringNext storePointsExpiryDate storeCredits'
-      )
-      .lean()
+    await connectDB()
+    const [user, primary] = await Promise.all([
+      User.findById(userOid)
+        .select(
+          'storePoints storePointsExpiringNext storePointsExpiryDate storeCredits'
+        )
+        .lean(),
+      memoPrimaryTcgfamilyStoreObjectId()
+    ])
 
     if (!user || Array.isArray(user)) {
       return NextResponse.json(
@@ -35,8 +38,6 @@ export async function GET() {
         { status: 404 }
       )
     }
-
-    const primary = await memoPrimaryTcgfamilyStoreObjectId()
     const w = resolveStoreWalletForUser(
       user as LeanUserWallet,
       gate.activeStoreOid,

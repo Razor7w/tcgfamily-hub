@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server'
-import mongoose from 'mongoose'
+import type { Types } from 'mongoose'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import Store from '@/models/Store'
-import StoreMembership from '@/models/StoreMembership'
-import User from '@/models/User'
-import { DEFAULT_PRIMARY_STORE_SLUG } from '@/lib/multitenancy/constants'
+import { loadDashboardAccessContext } from '@/lib/multitenancy/session-store-hydrate'
 import { serializeStorePublicFields } from '@/lib/store-api-serialize'
 
 type StoreRow = {
@@ -26,90 +24,33 @@ export async function GET() {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    await connectDB()
     const uid = session.user.id
-    const mems = await StoreMembership.find({
-      userId: new mongoose.Types.ObjectId(uid)
-    })
-      .populate(
-        'storeId',
-        'name slug logoUrl address websiteUrl instagramUrl isActive'
-      )
-      .lean<
-        Array<{
-          role: string
-          storeId: {
-            _id: mongoose.Types.ObjectId
-            name: string
-            slug: string
-            logoUrl?: string
-            address?: string
-            websiteUrl?: string
-            instagramUrl?: string
-            isActive?: boolean
-          } | null
-        }>
-      >()
 
-    const fromMembership: StoreRow[] = mems
-      .filter(m => m.storeId && typeof m.storeId === 'object')
-      .map(m => {
-        const s = m.storeId as unknown as {
-          _id: mongoose.Types.ObjectId
-          name: string
-          slug: string
-          logoUrl?: string
-          address?: string
-          websiteUrl?: string
-          instagramUrl?: string
-          isActive?: boolean
-        }
-        return {
-          id: String(s._id),
-          name: s.name,
-          slug: s.slug,
-          logoUrl: s.logoUrl ?? '',
-          ...serializeStorePublicFields(s),
-          role: (m.role === 'owner' ? 'owner' : 'store_admin') as
-            | 'owner'
-            | 'store_admin'
-        }
-      })
-
-    const u = await User.findById(uid).select('role').lean<{ role?: string }>()
-    if (u?.role === 'admin') {
-      const primary = await Store.findOne({
-        slug: DEFAULT_PRIMARY_STORE_SLUG
-      }).lean<{ _id: mongoose.Types.ObjectId; name: string; slug: string }>()
-      if (primary && !fromMembership.some(x => x.id === String(primary._id))) {
-        const primaryFull = await Store.findById(primary._id)
-          .select('address websiteUrl instagramUrl logoUrl')
-          .lean<{
-            address?: string
-            websiteUrl?: string
-            instagramUrl?: string
-            logoUrl?: string
-          } | null>()
-        fromMembership.unshift({
-          id: String(primary._id),
-          name: primary.name,
-          slug: primary.slug,
-          logoUrl: primaryFull?.logoUrl ?? '',
-          ...serializeStorePublicFields(primaryFull ?? {}),
-          role: 'owner'
-        })
-      }
-    }
+    const [dash, allActive] = await Promise.all([
+      loadDashboardAccessContext(uid),
+      (async () => {
+        await connectDB()
+        return Store.find({ isActive: true })
+          .sort({ name: 1 })
+          .select('name slug logoUrl address websiteUrl instagramUrl')
+          .lean<Array<{ _id: Types.ObjectId } & Record<string, unknown>>>()
+      })()
+    ])
 
     const roleById = new Map<string, 'owner' | 'store_admin'>()
-    for (const row of fromMembership) {
-      if (row.role) roleById.set(row.id, row.role)
+    for (const m of dash.memberships) {
+      roleById.set(
+        m.storeId.toString(),
+        m.role === 'owner' ? 'owner' : 'store_admin'
+      )
     }
 
-    const allActive = await Store.find({ isActive: true })
-      .sort({ name: 1 })
-      .select('name slug logoUrl address websiteUrl instagramUrl')
-      .lean<Array<{ _id: mongoose.Types.ObjectId } & Record<string, unknown>>>()
+    if (dash.legacyRole === 'admin' && dash.primaryOid) {
+      const pid = dash.primaryOid.toString()
+      if (!roleById.has(pid)) {
+        roleById.set(pid, 'owner')
+      }
+    }
 
     const stores: StoreRow[] = allActive.map(s => {
       const id = String(s._id)
@@ -139,7 +80,7 @@ export async function GET() {
     return NextResponse.json({
       stores,
       mode:
-        fromMembership.length === 0
+        dash.memberships.length === 0
           ? ('open' as const)
           : ('all_active' as const)
     })

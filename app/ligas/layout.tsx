@@ -8,6 +8,10 @@ export const metadata: Metadata = buildPageMetadata({
   path: '/ligas'
 })
 
-export default function LigasLayout({ children }: { children: React.ReactNode }) {
+export default function LigasLayout({
+  children
+}: {
+  children: React.ReactNode
+}) {
   return children
 }
