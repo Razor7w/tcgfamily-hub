@@ -1,6 +1,14 @@
 import type { Metadata } from 'next'
+import { BRAND_OG_IMAGE_SRC } from '@/lib/brand-assets'
 
 export const SITE_NAME = 'TCG Nexo'
+
+const defaultOgImage = {
+  url: BRAND_OG_IMAGE_SRC,
+  width: 1200,
+  height: 630,
+  alt: SITE_NAME
+}
 
 export const SITE_DESCRIPTION =
   'Plataforma para tiendas TCG: eventos semanales, correo físico, puntos de tienda, mazos y torneos Pokémon en un solo lugar.'
@@ -56,7 +64,7 @@ export function buildPageMetadata(
             : absoluteUrl(options.image)
         }
       ]
-    : undefined
+    : [{ ...defaultOgImage, url: absoluteUrl(BRAND_OG_IMAGE_SRC) }]
 
   return {
     ...(options.title ? { title: options.title } : { title: SITE_NAME }),
@@ -72,7 +80,7 @@ export function buildPageMetadata(
       ...(images ? { images } : {})
     },
     twitter: {
-      card: images ? 'summary_large_image' : 'summary',
+      card: 'summary_large_image',
       title: pageTitle,
       description,
       ...(images ? { images: images.map(i => i.url) } : {})
@@ -98,12 +106,14 @@ export const rootSiteMetadata: Metadata = {
     siteName: SITE_NAME,
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
-    url: getSiteUrl()
+    url: getSiteUrl(),
+    images: [defaultOgImage]
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: SITE_NAME,
-    description: SITE_DESCRIPTION
+    description: SITE_DESCRIPTION,
+    images: [absoluteUrl(BRAND_OG_IMAGE_SRC)]
   },
   robots: { index: true, follow: true }
 }

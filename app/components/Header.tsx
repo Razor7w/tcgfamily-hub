@@ -8,6 +8,7 @@ import { useSession, signOut } from 'next-auth/react'
 import AppBar from '@mui/material/AppBar'
 import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
+import BrandLogo from '@/components/brand/BrandLogo'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import IconButton from '@mui/material/IconButton'
@@ -513,19 +514,9 @@ export default function Header() {
             </IconButton>
           </Tooltip>
         )}
-        <Typography
-          variant="h6"
-          component={Link}
-          href="/"
-          sx={{
-            flexGrow: 1,
-            textDecoration: 'none',
-            color: 'inherit',
-            '&:hover': { opacity: 0.9 }
-          }}
-        >
-          TCG Nexo
-        </Typography>
+        <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
+          <BrandLogo variant="wordmark" size="sm" surface="dark" href="/" />
+        </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {showStoreSwitcher ? (

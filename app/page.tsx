@@ -12,6 +12,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Alert from '@mui/material/Alert'
 import GoogleIcon from '@mui/icons-material/Google'
 import AppVersion from '@/components/AppVersion'
+import BrandLogo from '@/components/brand/BrandLogo'
 import Header from '@/components/Header'
 import EmailPasswordSignInForm from '@/components/auth/EmailPasswordSignInForm'
 import { signIn } from 'next-auth/react'
@@ -98,15 +99,16 @@ export default function LoginPage() {
             gap: 3
           }}
         >
-          <Typography
+          <Box
             component="h1"
-            variant="h4"
-            fontWeight={600}
-            color="primary"
-            textAlign="center"
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              m: 0
+            }}
           >
-            TCG Nexo
-          </Typography>
+            <BrandLogo variant="wordmark" size="lg" href="/" />
+          </Box>
           <Suspense fallback={null}>
             <LoginAlerts />
           </Suspense>

@@ -91,6 +91,9 @@ export default function EmailPasswordSignInForm() {
         disabled={loading}
         required
         fullWidth
+        slotProps={{
+          inputLabel: { shrink: true }
+        }}
         inputProps={{ maxLength: 254 }}
       />
       <TextField
@@ -105,6 +108,9 @@ export default function EmailPasswordSignInForm() {
         disabled={loading}
         required
         fullWidth
+        slotProps={{
+          inputLabel: { shrink: true }
+        }}
         inputProps={{ maxLength: 128 }}
         InputProps={{
           endAdornment: (
