@@ -5,8 +5,7 @@ import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
 import Store from '@/models/Store'
 import StoreMembership from '@/models/StoreMembership'
-import { canManageStoresGlobally } from '@/lib/store-admin-access'
-import { DEFAULT_PRIMARY_STORE_SLUG } from '@/lib/multitenancy/constants'
+import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
 import { publicStoreSlugFromHeaders } from '@/lib/multitenancy/ingress-headers'
 import type { StoreMembershipRole } from '@/models/StoreMembership'
 
@@ -24,6 +23,120 @@ type DashboardMembershipLean = Array<{
   role: StoreMembershipRole
 }>
 
+export type DashboardAccessContext = {
+  legacyRole: 'user' | 'admin'
+  primaryOid: mongoose.Types.ObjectId | null
+  memberships: DashboardMembershipLean
+  /** Admin legacy o al menos una membresía `owner` (HQ global). */
+  isGlobalManager: boolean
+}
+
+/** Una sola ronda a BD: rol legacy, tienda primaria (memo) y membresías del usuario. */
+export async function loadDashboardAccessContext(
+  userId: string
+): Promise<DashboardAccessContext> {
+  await connectDB()
+  const uid = new mongoose.Types.ObjectId(userId)
+  const [dbUser, primaryOid, memberships] = await Promise.all([
+    User.findById(userId)
+      .select('role')
+      .lean<{ role?: 'user' | 'admin' } | null>(),
+    memoPrimaryTcgfamilyStoreObjectId(),
+    StoreMembership.find({ userId: uid })
+      .select('storeId role')
+      .lean<DashboardMembershipLean>()
+  ])
+  const legacyRole: 'user' | 'admin' =
+    dbUser?.role === 'admin' ? 'admin' : 'user'
+  const isGlobalManager =
+    legacyRole === 'admin' || memberships.some(m => m.role === 'owner')
+  return { legacyRole, primaryOid, memberships, isGlobalManager }
+}
+
+function resolveStoreRoleFromContext(
+  ctx: DashboardAccessContext,
+  storeOid: mongoose.Types.ObjectId,
+  membershipOnStore: { role: StoreMembershipRole } | null,
+  storeIsActive: boolean
+): StoreMembershipRole | null {
+  if (!storeIsActive) return null
+  if (ctx.isGlobalManager) return 'owner'
+  if (
+    ctx.legacyRole === 'admin' &&
+    ctx.primaryOid &&
+    storeOid.equals(ctx.primaryOid)
+  ) {
+    return 'owner'
+  }
+  if (ctx.legacyRole === 'admin') return null
+  return membershipOnStore?.role ?? null
+}
+
+function canActivateStoreFromContext(
+  ctx: DashboardAccessContext,
+  storeOid: mongoose.Types.ObjectId,
+  membershipOnStore: { role: StoreMembershipRole } | null,
+  storeIsActive: boolean
+): boolean {
+  if (!storeIsActive) return false
+  if (membershipOnStore) return true
+  if (
+    ctx.legacyRole === 'admin' &&
+    ctx.primaryOid &&
+    storeOid.equals(ctx.primaryOid)
+  ) {
+    return true
+  }
+  if (ctx.isGlobalManager) return true
+  const onlyStoreAdminStaff =
+    ctx.memberships.length > 0 &&
+    ctx.memberships.every(m => m.role === 'store_admin')
+  if (onlyStoreAdminStaff && ctx.legacyRole === 'user') return true
+  if (ctx.memberships.length === 0 && ctx.legacyRole === 'user') return true
+  return false
+}
+
+/**
+ * POST /api/me/active-store: valida acceso y rol con el mínimo de consultas (paralelas).
+ * Evita repetir User, Store primaria y membresías que hacían ~2–3 s en frío.
+ */
+export async function resolveActiveStorePost(
+  userId: string,
+  storeOid: mongoose.Types.ObjectId,
+  options?: { storeAlreadyVerifiedActive?: boolean }
+): Promise<{ allowed: boolean; storeRole: StoreMembershipRole | null }> {
+  const [ctx, storeIsActive] = await Promise.all([
+    loadDashboardAccessContext(userId),
+    options?.storeAlreadyVerifiedActive
+      ? Promise.resolve(true)
+      : (async () => {
+          await connectDB()
+          return Boolean(await Store.exists({ _id: storeOid, isActive: true }))
+        })()
+  ])
+
+  const membershipOnStore =
+    ctx.memberships.find(m => m.storeId.equals(storeOid)) ?? null
+
+  const allowed = canActivateStoreFromContext(
+    ctx,
+    storeOid,
+    membershipOnStore,
+    storeIsActive
+  )
+  if (!allowed) {
+    return { allowed: false, storeRole: null }
+  }
+
+  const storeRole = resolveStoreRoleFromContext(
+    ctx,
+    storeOid,
+    membershipOnStore,
+    storeIsActive
+  )
+  return { allowed: true, storeRole }
+}
+
 /**
  * Reglas alineadas con GET /api/me/stores: listado = todas las tiendas activas;
  * membresía da acceso explícito; usuario sin membresías = cualquier tienda activa;
@@ -34,12 +147,16 @@ export async function evaluateDashboardStoreAccess(
   memberships: DashboardMembershipLean,
   globActiveIdSet: Set<string> | null,
   primaryOid: mongoose.Types.ObjectId | null,
-  storeOid: mongoose.Types.ObjectId
+  storeOid: mongoose.Types.ObjectId,
+  options?: { isGlobalManager?: boolean }
 ): Promise<boolean> {
   const m = memberships.find(x => x.storeId.equals(storeOid))
   if (m) return true
   if (legacyRole === 'admin' && primaryOid && storeOid.equals(primaryOid)) {
     return true
+  }
+  if (options?.isGlobalManager) {
+    return Boolean(await Store.exists({ _id: storeOid, isActive: true }))
   }
   if (globActiveIdSet?.has(storeOid.toString())) return true
 
@@ -73,83 +190,56 @@ export async function evaluateDashboardStoreAccess(
   return false
 }
 
-/** Carga contexto desde BD (p. ej. POST /api/me/active-store). */
+/** Carga contexto desde BD (p. ej. GET /api/me). */
 export async function canUserActivateDashboardStore(
   userId: string,
   storeOid: mongoose.Types.ObjectId
 ): Promise<boolean> {
+  const ctx = await loadDashboardAccessContext(userId)
+  const membershipOnStore =
+    ctx.memberships.find(m => m.storeId.equals(storeOid)) ?? null
   await connectDB()
-  const dbUser = await User.findById(userId).select('role').lean<{
-    role?: 'user' | 'admin'
-  } | null>()
-  const legacyRole: 'user' | 'admin' =
-    dbUser?.role === 'admin' ? 'admin' : 'user'
-
-  const primary = await Store.findOne({ slug: DEFAULT_PRIMARY_STORE_SLUG })
-    .select('_id')
-    .lean<{ _id: mongoose.Types.ObjectId } | null>()
-  const primaryOid = primary?._id ?? null
-
-  const memberships = await StoreMembership.find({
-    userId: new mongoose.Types.ObjectId(userId)
-  })
-    .select('storeId role')
-    .lean<DashboardMembershipLean>()
-
-  let globActiveIdSet: Set<string> | null = null
-  if (await canManageStoresGlobally(userId)) {
-    const ids = await Store.find({ isActive: true })
-      .select('_id')
-      .lean<Array<{ _id: mongoose.Types.ObjectId }>>()
-    globActiveIdSet = new Set(ids.map(doc => doc._id.toString()))
-  }
-
-  return evaluateDashboardStoreAccess(
-    legacyRole,
-    memberships,
-    globActiveIdSet,
-    primaryOid,
-    storeOid
+  const storeIsActive = Boolean(
+    await Store.exists({ _id: storeOid, isActive: true })
+  )
+  return canActivateStoreFromContext(
+    ctx,
+    storeOid,
+    membershipOnStore,
+    storeIsActive
   )
 }
 
 export async function resolveStoreRoleForUser(
   userId: string,
   activeStoreOid: mongoose.Types.ObjectId | null,
-  legacyUserRole: 'user' | 'admin'
+  legacyUserRole: 'user' | 'admin',
+  preloaded?: DashboardAccessContext
 ): Promise<StoreMembershipRole | null> {
-  await connectDB()
-
   if (!activeStoreOid) return null
 
-  /** HQ (admin legacy o dueño TCGFamily): contexto sobre cualquier tienda activa. */
-  if (await canManageStoresGlobally(userId)) {
-    const ok = await Store.exists({
-      _id: activeStoreOid,
-      isActive: true
-    })
-    if (ok) return 'owner'
+  const ctx = preloaded ?? (await loadDashboardAccessContext(userId))
+  await connectDB()
+  const storeIsActive = Boolean(
+    await Store.exists({ _id: activeStoreOid, isActive: true })
+  )
+  const membershipOnStore =
+    ctx.memberships.find(m => m.storeId.equals(activeStoreOid)) ?? null
+
+  if (legacyUserRole !== ctx.legacyRole) {
+    return resolveStoreRoleFromContext(
+      { ...ctx, legacyRole: legacyUserRole },
+      activeStoreOid,
+      membershipOnStore,
+      storeIsActive
+    )
   }
-
-  const primary = await Store.findOne({ slug: DEFAULT_PRIMARY_STORE_SLUG })
-    .select('_id')
-    .lean<{ _id: mongoose.Types.ObjectId } | null>()
-
-  if (legacyUserRole === 'admin' && primary) {
-    if (activeStoreOid.equals(primary._id)) {
-      return 'owner'
-    }
-    return null
-  }
-
-  const m = await StoreMembership.findOne({
-    userId: new mongoose.Types.ObjectId(userId),
-    storeId: activeStoreOid
-  })
-    .select('role')
-    .lean<{ role: StoreMembershipRole } | null>()
-
-  return m?.role ?? null
+  return resolveStoreRoleFromContext(
+    ctx,
+    activeStoreOid,
+    membershipOnStore,
+    storeIsActive
+  )
 }
 
 /**
@@ -169,10 +259,7 @@ export async function hydrateStoreContextInJwt(token: JWT): Promise<void> {
   const legacyRole: 'user' | 'admin' =
     dbUser?.role === 'admin' ? 'admin' : 'user'
 
-  const primary = await Store.findOne({ slug: DEFAULT_PRIMARY_STORE_SLUG })
-    .select('_id')
-    .lean<{ _id: mongoose.Types.ObjectId } | null>()
-  const primaryOid = primary?._id ?? null
+  const primaryOid = await memoPrimaryTcgfamilyStoreObjectId()
 
   const memberships = await StoreMembership.find({
     userId: new mongoose.Types.ObjectId(userId)
@@ -187,13 +274,10 @@ export async function hydrateStoreContextInJwt(token: JWT): Promise<void> {
 
   const legacyAdmin = legacyRole === 'admin'
 
-  let globActiveIdSet: Set<string> | null = null
-  if (await canManageStoresGlobally(userId)) {
-    const ids = await Store.find({ isActive: true })
-      .select('_id')
-      .lean<Array<{ _id: mongoose.Types.ObjectId }>>()
-    globActiveIdSet = new Set(ids.map(doc => doc._id.toString()))
-  }
+  const isGlobalManager =
+    legacyRole === 'admin' || memberships.some(m => m.role === 'owner')
+  const globActiveIdSet: Set<string> | null = null
+  const globalAccessOpts = { isGlobalManager }
 
   if (activeIdStr && mongoose.Types.ObjectId.isValid(activeIdStr)) {
     const cur = new mongoose.Types.ObjectId(activeIdStr)
@@ -202,7 +286,8 @@ export async function hydrateStoreContextInJwt(token: JWT): Promise<void> {
       memberships,
       globActiveIdSet,
       primaryOid,
-      cur
+      cur,
+      globalAccessOpts
     )
     if (!okCur) {
       activeIdStr = ''
@@ -220,7 +305,8 @@ export async function hydrateStoreContextInJwt(token: JWT): Promise<void> {
       memberships,
       globActiveIdSet,
       primaryOid,
-      defOid
+      defOid,
+      globalAccessOpts
     )
     if (okDef) {
       activeIdStr = defOid.toString()
@@ -251,7 +337,8 @@ export async function hydrateStoreContextInJwt(token: JWT): Promise<void> {
           memberships,
           globActiveIdSet,
           primaryOid,
-          sid
+          sid,
+          globalAccessOpts
         ))
       ) {
         activeIdStr = sid.toString()
