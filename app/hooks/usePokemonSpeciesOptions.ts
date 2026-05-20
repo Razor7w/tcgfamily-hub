@@ -56,6 +56,9 @@ function isExcludedAlternateFormSlug(slug: string): boolean {
   if (slug.includes('-galar')) return true
   if (slug === 'dudunsparce-two-segment') return true
   if (slug === 'dudunsparce-three-segment') return true
+  if (slug === 'zygarde-50') return true
+  if (slug === 'zygarde-10-power-construct') return true
+  if (slug === 'zygarde-50-power-construct') return true
   return false
 }
 
@@ -113,7 +116,7 @@ async function fetchBaseAndMegaForms(): Promise<PokemonSpeciesOption[]> {
  */
 export function usePokemonSpeciesOptions() {
   return useQuery({
-    queryKey: ['pokemon-base-and-mega-forms', 'v3'],
+    queryKey: ['pokemon-base-and-mega-forms', 'v4'],
     queryFn: fetchBaseAndMegaForms,
     staleTime: 1000 * 60 * 60 * 24,
     gcTime: 1000 * 60 * 60 * 24 * 7
