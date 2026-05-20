@@ -222,27 +222,37 @@ export default function TorneoSemanaDetallePage() {
                             ) : null}
                           </Box>
                         </Stack>
-                        <Button
-                          variant="contained"
-                          onClick={() => setDeckOpen(true)}
-                          sx={t => ({
-                            flexShrink: 0,
-                            fontWeight: 700,
-                            textTransform: 'none',
-                            px: 2.5,
-                            boxShadow: 'none',
-                            bgcolor: t.palette.grey[900],
-                            color: t.palette.common.white,
-                            '&:hover': {
-                              bgcolor: t.palette.grey[800],
-                              boxShadow: 'none'
-                            }
-                          })}
-                        >
-                          {ev.myDeckPokemonSlugs?.length
-                            ? 'Editar Pokémon'
-                            : 'Elegir Pokémon'}
-                        </Button>
+                        {ev.canEditMyDeck !== false ? (
+                          <Button
+                            variant="contained"
+                            onClick={() => setDeckOpen(true)}
+                            sx={t => ({
+                              flexShrink: 0,
+                              fontWeight: 700,
+                              textTransform: 'none',
+                              px: 2.5,
+                              boxShadow: 'none',
+                              bgcolor: t.palette.grey[900],
+                              color: t.palette.common.white,
+                              '&:hover': {
+                                bgcolor: t.palette.grey[800],
+                                boxShadow: 'none'
+                              }
+                            })}
+                          >
+                            {ev.myDeckPokemonSlugs?.length
+                              ? 'Editar decklist'
+                              : 'Añadir decklist'}
+                          </Button>
+                        ) : (
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ fontStyle: 'italic' }}
+                          >
+                            Torneo finalizado: el deck ya no se puede editar.
+                          </Typography>
+                        )}
                       </Stack>
                       {ev.myDeckPokemonSlugs &&
                       ev.myDeckPokemonSlugs.length > 0 ? (

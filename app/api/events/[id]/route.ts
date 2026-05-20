@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import mongoose from 'mongoose'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
+import { canEditParticipantDeck } from '@/lib/can-edit-participant-deck'
 import { getTournamentDecklistDisplayLabels } from '@/lib/tournament-decklist-display'
 import WeeklyEvent from '@/models/WeeklyEvent'
 import {
@@ -267,6 +268,14 @@ export async function GET(
         viewAs?.tournamentDecklistRef
       ),
       myTournamentDecklistDisplay,
+      canEditMyDeck:
+        !adminReadOnlyView &&
+        canEditParticipantDeck({
+          myRegistration,
+          kind: doc.kind,
+          game: doc.game,
+          state: eventState
+        }),
       canReportDeck:
         !adminReadOnlyView &&
         Boolean(myRegistration) &&

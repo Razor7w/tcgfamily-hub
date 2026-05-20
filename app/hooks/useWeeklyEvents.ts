@@ -65,6 +65,12 @@ export interface PublicWeeklyEvent {
   } | null
   /** Liga local asignada (solo torneos oficiales con liga activa). */
   league?: { name: string; slug: string } | null
+  /** Sprites del mazo (solo para el usuario inscrito; no se exponen a otros en esta API). */
+  myDeckPokemonSlugs?: string[]
+  /** Referencia al listado guardado (solo usuario inscrito). */
+  myTournamentDecklistRef?: MyTournamentDecklistRefDTO | null
+  /** Puede editar sprites / decklist mientras el torneo no esté cerrado. */
+  canEditMyDeck?: boolean
 }
 
 export function useWeekEvents(weekAnchor: Date | null) {
@@ -188,6 +194,7 @@ export type DashboardEventDetail = PublicWeeklyEvent & {
   /** Nombre del mazo y variante/listado para mostrar en perfil. */
   myTournamentDecklistDisplay?: MyTournamentDecklistDisplayDTO | null
   canReportDeck: boolean
+  canEditMyDeck?: boolean
   myMatchRounds: ParticipantMatchRoundDTO[]
   /** Solo torneos custom creados por el usuario actual. */
   canDeleteCustomTournament?: boolean
@@ -284,6 +291,7 @@ export function useSaveMyDeck(eventId: string) {
       queryClient.invalidateQueries({
         queryKey: ['dashboard-event-detail', eventId]
       })
+      queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
       queryClient.invalidateQueries({ queryKey: ['my-tournaments-week'] })
       queryClient.invalidateQueries({ queryKey: ['my-tournaments-all'] })
       queryClient.invalidateQueries({ queryKey: ['my-recent-tournaments'] })
