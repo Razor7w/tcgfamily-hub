@@ -244,15 +244,16 @@ export default function TorneoSemanaDetallePage() {
                               ? 'Editar decklist'
                               : 'Añadir decklist'}
                           </Button>
-                        ) : (
+                        ) : ev.myRegistration ? (
                           <Typography
                             variant="body2"
                             color="text.secondary"
                             sx={{ fontStyle: 'italic' }}
                           >
-                            Torneo finalizado: el deck ya no se puede editar.
+                            Torneo finalizado. El deck solo se puede editar si
+                            estás inscrito con tu cuenta.
                           </Typography>
-                        )}
+                        ) : null}
                       </Stack>
                       {ev.myDeckPokemonSlugs &&
                       ev.myDeckPokemonSlugs.length > 0 ? (

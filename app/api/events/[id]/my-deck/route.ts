@@ -84,13 +84,6 @@ export async function PUT(
       )
     }
 
-    if (doc.state === 'close') {
-      return NextResponse.json(
-        { error: 'El torneo ya finalizó; no puedes editar tu deck' },
-        { status: 400 }
-      )
-    }
-
     part.deckPokemonSlugs = slugs
 
     if ('tournamentDecklistRef' in bodyObj) {

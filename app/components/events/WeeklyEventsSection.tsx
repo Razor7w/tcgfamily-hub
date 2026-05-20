@@ -609,15 +609,59 @@ export default function WeeklyEventsSection({
                               </Typography>
                             </Box>
                             {selectedEvent.myRegistration ? (
-                              <Typography variant="body2">
-                                Lista como{' '}
-                                <Box
-                                  component="strong"
-                                  sx={{ color: 'text.primary' }}
-                                >
-                                  {selectedEvent.myRegistration}
-                                </Box>
-                              </Typography>
+                              <Stack spacing={1.5}>
+                                <Typography variant="body2">
+                                  Lista como{' '}
+                                  <Box
+                                    component="strong"
+                                    sx={{ color: 'text.primary' }}
+                                  >
+                                    {selectedEvent.myRegistration}
+                                  </Box>
+                                </Typography>
+                                {selectedEvent.canEditMyDeck ? (
+                                  <Stack spacing={1.25}>
+                                    <TournamentDeckSpritesSummary
+                                      slugs={
+                                        selectedEvent.myDeckPokemonSlugs ?? []
+                                      }
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="outlined"
+                                      color="primary"
+                                      fullWidth
+                                      size="medium"
+                                      startIcon={<Style aria-hidden />}
+                                      onClick={() =>
+                                        setDeckDialogOpenForEventId(
+                                          selectedEvent._id
+                                        )
+                                      }
+                                    >
+                                      {(selectedEvent.myDeckPokemonSlugs
+                                        ?.length ?? 0) > 0
+                                        ? 'Editar decklist'
+                                        : 'Añadir decklist'}
+                                    </Button>
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                    >
+                                      Puedes registrar tu mazo aunque el torneo
+                                      ya terminó. Solo tú ves el listado
+                                      completo.
+                                    </Typography>
+                                  </Stack>
+                                ) : (selectedEvent.myDeckPokemonSlugs?.length ??
+                                    0) > 0 ? (
+                                  <TournamentDeckSpritesSummary
+                                    slugs={
+                                      selectedEvent.myDeckPokemonSlugs ?? []
+                                    }
+                                  />
+                                ) : null}
+                              </Stack>
                             ) : (
                               <Typography
                                 variant="body2"
@@ -837,22 +881,11 @@ export default function WeeklyEventsSection({
                                   </Stack>
                                 ) : (selectedEvent.myDeckPokemonSlugs?.length ??
                                     0) > 0 ? (
-                                  <Stack spacing={0.75}>
-                                    <TournamentDeckSpritesSummary
-                                      slugs={
-                                        selectedEvent.myDeckPokemonSlugs ?? []
-                                      }
-                                    />
-                                    {selectedEvent.state === 'close' ? (
-                                      <Typography
-                                        variant="caption"
-                                        color="text.secondary"
-                                      >
-                                        El torneo finalizó; ya no puedes editar
-                                        tu deck.
-                                      </Typography>
-                                    ) : null}
-                                  </Stack>
+                                  <TournamentDeckSpritesSummary
+                                    slugs={
+                                      selectedEvent.myDeckPokemonSlugs ?? []
+                                    }
+                                  />
                                 ) : null}
                                 {selectedEvent.kind === 'tournament' &&
                                 selectedEvent.state === 'running' ? (
