@@ -17,6 +17,8 @@ import { effectivePublicRoundNum } from '@/lib/dashboard-round-cap'
 import { requireSessionUserWithActiveStore } from '@/lib/api-auth'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
+import { canEditParticipantDeck } from '@/lib/can-edit-participant-deck'
+import { serializeTournamentDecklistRef } from '@/lib/weekly-event-view-as'
 
 function publicLeagueFromLeanDoc(d: Record<string, unknown>): {
   name: string
@@ -60,6 +62,12 @@ function toPublicEvent(
       wins?: unknown
       losses?: unknown
       ties?: unknown
+      deckPokemonSlugs?: string[]
+      tournamentDecklistRef?: {
+        decklistId?: unknown
+        listKind?: string
+        variantId?: unknown
+      }
     }[]
   },
   now: Date,
@@ -95,6 +103,25 @@ function toPublicEvent(
     doc.state !== 'running' &&
     doc.state !== 'close'
 
+  const eventState =
+    doc.state === 'schedule' || doc.state === 'running' || doc.state === 'close'
+      ? doc.state
+      : 'schedule'
+  const myDeckPokemonSlugs = Array.isArray(mine?.deckPokemonSlugs)
+    ? mine.deckPokemonSlugs.filter(
+        (s): s is string => typeof s === 'string' && s.trim().length > 0
+      )
+    : []
+  const myTournamentDecklistRef = serializeTournamentDecklistRef(
+    mine?.tournamentDecklistRef
+  )
+  const canEditMyDeck = canEditParticipantDeck({
+    myRegistration,
+    kind: doc.kind,
+    game: doc.game,
+    state: eventState
+  })
+
   const tournamentClosed = doc.kind === 'tournament' && doc.state === 'close'
   const myParticipantPopId =
     mine && typeof mine.popId === 'string' ? mine.popId : undefined
@@ -119,12 +146,7 @@ function toPublicEvent(
     formatNotes: doc.formatNotes,
     prizesNotes: doc.prizesNotes,
     location: doc.location,
-    state:
-      doc.state === 'schedule' ||
-      doc.state === 'running' ||
-      doc.state === 'close'
-        ? doc.state
-        : 'schedule',
+    state: eventState,
     roundNum,
     participantNames: doc.participants.map(p => p.displayName),
     participantCount: doc.participants.length,
@@ -135,6 +157,9 @@ function toPublicEvent(
     myOpponentName,
     myMatchRecord,
     canUnregister,
+    myDeckPokemonSlugs,
+    myTournamentDecklistRef,
+    canEditMyDeck,
     ...(tournamentClosed
       ? {
           standingsTopByCategory: standingsPublic?.standingsTopByCategory ?? [],

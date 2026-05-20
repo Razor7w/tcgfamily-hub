@@ -44,6 +44,12 @@ export async function PUT(
         { status: 400 }
       )
     }
+    if (slugs.length === 0) {
+      return NextResponse.json(
+        { error: 'Debes elegir al menos un Pokémon (sprite del mazo)' },
+        { status: 400 }
+      )
+    }
 
     const bodyObj =
       body && typeof body === 'object' && body !== null
@@ -75,6 +81,13 @@ export async function PUT(
       return NextResponse.json(
         { error: 'Debes estar preinscrito en este torneo' },
         { status: 403 }
+      )
+    }
+
+    if (doc.state === 'close') {
+      return NextResponse.json(
+        { error: 'El torneo ya finalizó; no puedes editar tu deck' },
+        { status: 400 }
       )
     }
 

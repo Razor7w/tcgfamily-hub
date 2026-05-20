@@ -19,6 +19,7 @@ import {
   LocalActivity,
   PersonOutline,
   Place,
+  Style,
   TableRestaurant,
   Verified
 } from '@mui/icons-material'
@@ -60,6 +61,8 @@ import WeeklyEventsSameDayEventChips from '@/components/events/WeeklyEventsSameD
 import WeeklyParticipantsDialog from '@/components/events/WeeklyParticipantsDialog'
 import WeeklyFullStandingsDialog from '@/components/events/WeeklyFullStandingsDialog'
 import WeeklyCurrentRoundDialog from '@/components/events/WeeklyCurrentRoundDialog'
+import ReportDeckDialog from '@/components/events/ReportDeckDialog'
+import TournamentDeckSpritesSummary from '@/components/events/TournamentDeckSpritesSummary'
 
 type WeeklyEventsSectionProps = {
   showSeeAllLink?: boolean
@@ -144,6 +147,9 @@ export default function WeeklyEventsSection({
     (selectedEvent.state === 'running' || selectedEvent.state === 'close')
 
   const [participantsOpenForEventId, setParticipantsOpenForEventId] = useState<
+    string | null
+  >(null)
+  const [deckDialogOpenForEventId, setDeckDialogOpenForEventId] = useState<
     string | null
   >(null)
   const participantsModalOpen =
@@ -825,6 +831,59 @@ export default function WeeklyEventsSection({
                                     </Box>
                                   </Typography>
                                 </Stack>
+                                {selectedEvent.canEditMyDeck ? (
+                                  <Stack spacing={1.25}>
+                                    <TournamentDeckSpritesSummary
+                                      slugs={
+                                        selectedEvent.myDeckPokemonSlugs ?? []
+                                      }
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="outlined"
+                                      color="primary"
+                                      fullWidth
+                                      size="medium"
+                                      startIcon={<Style aria-hidden />}
+                                      onClick={() =>
+                                        setDeckDialogOpenForEventId(
+                                          selectedEvent._id
+                                        )
+                                      }
+                                    >
+                                      {(selectedEvent.myDeckPokemonSlugs
+                                        ?.length ?? 0) > 0
+                                        ? 'Editar decklist'
+                                        : 'Añadir decklist'}
+                                    </Button>
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                    >
+                                      Solo tú ves el listado completo; otros
+                                      jugadores no tienen acceso a esta
+                                      información.
+                                    </Typography>
+                                  </Stack>
+                                ) : (selectedEvent.myDeckPokemonSlugs?.length ??
+                                    0) > 0 ? (
+                                  <Stack spacing={0.75}>
+                                    <TournamentDeckSpritesSummary
+                                      slugs={
+                                        selectedEvent.myDeckPokemonSlugs ?? []
+                                      }
+                                    />
+                                    {selectedEvent.state === 'close' ? (
+                                      <Typography
+                                        variant="caption"
+                                        color="text.secondary"
+                                      >
+                                        El torneo finalizó; ya no puedes editar
+                                        tu deck.
+                                      </Typography>
+                                    ) : null}
+                                  </Stack>
+                                ) : null}
                                 {selectedEvent.kind === 'tournament' &&
                                 selectedEvent.state === 'running' ? (
                                   <>
@@ -1032,6 +1091,18 @@ export default function WeeklyEventsSection({
                             ) : null}
                           </>
                         )}
+
+                        <ReportDeckDialog
+                          open={deckDialogOpenForEventId === selectedEvent._id}
+                          onClose={() => setDeckDialogOpenForEventId(null)}
+                          eventId={selectedEvent._id}
+                          eventTitle={selectedEvent.title}
+                          initialSlugs={selectedEvent.myDeckPokemonSlugs ?? []}
+                          initialDecklistRef={
+                            selectedEvent.myTournamentDecklistRef ?? null
+                          }
+                          title="Tu deck para el torneo"
+                        />
 
                         <WeeklyParticipantsDialog
                           open={participantsModalOpen}
