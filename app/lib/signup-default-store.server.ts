@@ -11,7 +11,7 @@ export async function listActiveStoresForSignup(): Promise<
 > {
   await connectDB()
   const rows = await Store.find({ isActive: true })
-    .sort({ name: 1 })
+    .sort({ createdAt: 1 })
     .select('_id name slug')
     .lean<Array<{ _id: mongoose.Types.ObjectId; name: string; slug: string }>>()
   return rows.map(r => ({ id: String(r._id), name: r.name, slug: r.slug }))

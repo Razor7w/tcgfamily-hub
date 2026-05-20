@@ -12,7 +12,7 @@ export const PRODUCT_TOUR_TARGETS = {
   storeHubHeading: 'store-hub-heading',
   storeHubWeeklyEvents: 'store-hub-weekly-events',
   storeHubRightRail: 'store-hub-right-rail',
-  storeHubMobileRailHint: 'store-hub-mobile-rail-hint'
+  mobileRightRailTrigger: 'mobile-right-rail-trigger'
 } as const
 
 export function tourSelector(

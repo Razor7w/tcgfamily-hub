@@ -10,6 +10,39 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [1.1.0] - 2026-05-20
+
+Mejora de **hub móvil**, **panel lateral en drawer**, **tours** y corrección crítica de **clics bloqueados** tras navegación SPA en iOS/Safari.
+
+### Añadido
+
+- **Panel lateral en drawer** (`DashboardPageWithRightRail`): en pantallas &lt; `lg` el carril derecho (sugerencias, último torneo, etc.) se abre con botón flotante y **Drawer** lateral; en escritorio sigue en dos columnas.
+- **Eventos del tour** para el drawer móvil (`MOBILE_RIGHT_RAIL_DRAWER_OPEN` / `CLOSE` en `mobile-right-rail-drawer.ts`); el recorrido del hub abre y cierra el panel sin paso de “desliza horizontal”.
+- **Limpieza de overlays** (`overlay-blocker-cleanup.ts`): restaura `aria-hidden` huérfano de MUI, elimina portales de Joyride, cierra drawer del rail y resetea estado del tour al navegar.
+- **`ProductTourRouteCleanup`**: limpieza en cada cambio de ruta dentro del shell del dashboard (cierra menú lateral y overlays).
+- **`product-tour-targets-ready`**: espera selectores del DOM antes de iniciar el tour (evita overlay bloqueante sobre contenido aún no montado).
+- **`PointerBlockerDiagnostics`** (solo desarrollo): `?debugPointers=1` o `localStorage tcg-debug-pointers` para inspeccionar capas que interceptan clics y probar `aria fix` / `cleanup`.
+- **Redirect Vercel** (`vercel.json`): `hub.tcgfamily.cl` → `tcgnexo.cl` (301 permanente).
+- **Iconos SVG** de la app (favicon, PWA, apple-touch) y guía **`.cursor/rules/mongodb-indexes.mdc`** para índices en Atlas.
+- **Metadatos** por layout (títulos/descripciones más coherentes en rutas del dashboard y admin).
+
+### Cambiado
+
+- **Tours** (Inicio y hub de tienda): reactivados tras la corrección de overlays; `hubReady` unificado en hub; scroll del rail vía drawer en móvil; `useProductTourRunner` con arranque diferido, doble `requestAnimationFrame` y `queueMicrotask` para cumplir reglas React 19.
+- **`SidebarLayout`**: `SwipeableDrawer` sustituido por **`Drawer`** montado solo cuando el menú está abierto (`keepMounted: false`).
+- **`Header`**: cierra selector de tienda, drawer de cuenta y menú al cambiar `pathname`; limpieza de overlays en cada navegación.
+- **`DashboardMobileBottomNav`**: navegación con `router.push` y `cleanupOverlayBlockers()` antes del cambio de ruta.
+- **Opciones de especies Pokémon** y resolución de imágenes en decklist (mejor cobertura de cartas / sets).
+- **Acceso por tienda**: validación y resolución de roles más estricta; orden y gestión de `storeId` en listados admin.
+- **`BrandLogo`**: estructura refactorizada para lectura y mantenimiento.
+
+### Corregido
+
+- **Clics bloqueados en móvil** al ir de Inicio (`/dashboard`) al hub de tienda (`/{slug}`) sin recargar: fuga de `aria-hidden` del **ModalManager** de MUI al desmontar drawers en navegación SPA (Safari/iOS); recargar la página ya no debería ser necesario.
+- Drawers con **`keepMounted: true`** forzado o montados siempre con `open={false}` que dejaban el DOM en estado inconsistente.
+- Tour del hub con **`hubContentReady`** incorrecto (ahora **`hubReady`**); panel lateral del hub alineado con el tour.
+- Sincronización de **tienda activa** y títulos al cambiar de tienda en flujos admin/hub.
+
 ## [1.0.0] - 2026-05-16
 
 Primera versión estable **TCG Nexo** con soporte multitienda.

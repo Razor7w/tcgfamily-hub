@@ -1,6 +1,6 @@
 'use client'
 
-import { Box, Grid, SwipeableDrawer, useTheme } from '@mui/material'
+import { Box, Drawer, Grid, useTheme } from '@mui/material'
 import { usePathname } from 'next/navigation'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useAppStore } from '@/store/useAppStore'
@@ -24,11 +24,8 @@ export default function SidebarLayout({
   contentSize = 9
 }: SidebarLayoutProps) {
   const theme = useTheme()
-  // Importante: evita mismatch de hidratación. En SSR + primer render del cliente
-  // asumimos "mobile-first" y solo calculamos desktop tras montar.
   const [isDesktop, setIsDesktop] = useState(false)
   const desktopQuery = useMemo(() => {
-    // theme.breakpoints.up('md') => '@media (min-width:900px)'
     const q = theme.breakpoints.up('md')
     return q.startsWith('@media ') ? q.slice('@media '.length) : q
   }, [theme])
@@ -40,7 +37,6 @@ export default function SidebarLayout({
       mq.addEventListener('change', onChange)
       return () => mq.removeEventListener('change', onChange)
     }
-    // Safari viejo
     mq.addListener(onChange)
     return () => mq.removeListener(onChange)
   }, [desktopQuery])
@@ -63,27 +59,25 @@ export default function SidebarLayout({
 
   return (
     <Box sx={{ width: '100%' }}>
-      <SwipeableDrawer
-        variant="temporary"
-        anchor="left"
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        onOpen={() => setSidebarOpen(true)}
-        disableScrollLock
-        ModalProps={{
-          keepMounted: true
-        }}
-        swipeAreaWidth={24}
-        sx={{
-          display: { xs: 'block', md: 'none' },
-          '& .MuiDrawer-paper': {
-            width: DRAWER_WIDTH,
-            boxSizing: 'border-box'
-          }
-        }}
-      >
-        <Box sx={{ overflow: 'auto', py: 2, px: 1 }}>{sidebar}</Box>
-      </SwipeableDrawer>
+      {sidebarOpen ? (
+        <Drawer
+          variant="temporary"
+          anchor="left"
+          open
+          onClose={() => setSidebarOpen(false)}
+          disableScrollLock
+          ModalProps={{ keepMounted: false }}
+          sx={{
+            display: { xs: 'block', md: 'none' },
+            '& .MuiDrawer-paper': {
+              width: DRAWER_WIDTH,
+              boxSizing: 'border-box'
+            }
+          }}
+        >
+          <Box sx={{ overflow: 'auto', py: 2, px: 1 }}>{sidebar}</Box>
+        </Drawer>
+      ) : null}
       <Box
         component="main"
         sx={{

@@ -1,8 +1,11 @@
+import { Suspense } from 'react'
 import { auth } from '@/auth'
 import AuthLayout from '@/components/auth/AuthLayout'
 import Header from '@/components/Header'
 import SidebarLayout from '@/components/layouts/SidebarLayout'
 import DashboardSidebar from '@/components/navigation/DashboardSidebar'
+import PointerBlockerDiagnostics from '@/components/debug/PointerBlockerDiagnostics'
+import ProductTourRouteCleanup from '@/components/tour/ProductTourRouteCleanup'
 import { DashboardModulesProvider } from '@/contexts/DashboardModulesContext'
 import { loadDashboardModuleSettings } from '@/lib/load-dashboard-module-settings'
 
@@ -27,6 +30,10 @@ export default async function DashboardRouteLayout({
       <Header />
 
       <DashboardModulesProvider settings={dashboardModules}>
+        <ProductTourRouteCleanup />
+        <Suspense fallback={null}>
+          <PointerBlockerDiagnostics />
+        </Suspense>
         <SidebarLayout
           sidebar={<DashboardSidebar isAdmin={isAdmin} isOwner={isOwner} />}
         >

@@ -229,6 +229,40 @@ function isDecklistEnergySetToken(set: string): boolean {
 }
 
 /**
+ * Subsets Galarian Gallery / Trainer Gallery: en decklist `CRZ-GG 14`, en tpci
+ * `tpci/CRZ/CRZ_GG14_R_EN_XS.png` (carpeta = set base, no `CRZ-GG`).
+ */
+const LIMITLESS_GALLERY_SUBSET_TPCI: Readonly<
+  Record<string, { base: string; suffix: string }>
+> = {
+  'CRZ-GG': { base: 'CRZ', suffix: 'GG' },
+  'SIT-TG': { base: 'SIT', suffix: 'TG' }
+}
+
+function limitlessGallerySubsetImageUrl(
+  setCode: string,
+  numStr: string,
+  lang: string,
+  size: 'SM' | 'LG'
+): string | null {
+  const spec = LIMITLESS_GALLERY_SUBSET_TPCI[setCode.trim().toUpperCase()]
+  if (!spec) return null
+
+  const digits = numStr.replace(/\D/g, '')
+  let token: string
+  if (digits) {
+    token = `${spec.suffix}${Number.parseInt(digits, 10)}`
+  } else {
+    const up = numStr.trim().toUpperCase()
+    if (!up.startsWith(spec.suffix)) return null
+    token = up
+  }
+
+  const imgSize = size === 'SM' ? 'XS' : 'XS'
+  return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${spec.base}/${spec.base}_${token}_R_${lang}_${imgSize}.png`
+}
+
+/**
  * Thumbnail o arte completo: Limitless tpci (`SET_###_R_EN_SM|LG.png`), o images.pokemontcg.io
  * para sets clásicos, o patrón HIF Shiny Vault (`HIF_SV#_R_EN_XS|LG.png`) en el CDN Limitless.
  *
@@ -266,6 +300,9 @@ export function limitlessCardImageUrl(args: {
   if (ptcgId) {
     return `https://images.pokemontcg.io/${ptcgId}/${numStr.toLowerCase()}.png`
   }
+
+  const galleryUrl = limitlessGallerySubsetImageUrl(setU, numStr, lang, size)
+  if (galleryUrl) return galleryUrl
 
   // Hidden Fates — Shiny Vault: numeración SV9, etc.; en tpci no es ### con padding.
   if (setU === 'HIF' && !isAllDigitsString(numStr)) {

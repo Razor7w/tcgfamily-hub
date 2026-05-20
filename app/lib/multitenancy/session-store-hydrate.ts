@@ -298,6 +298,35 @@ export async function hydrateStoreContextInJwt(token: JWT): Promise<void> {
     token.activeStoreId = undefined
   }
 
+  /**
+   * Tras OAuth/registro: el primer JWT suele fijar la tienda primaria (tcgfamily)
+   * antes del onboarding. Si el usuario ya guardó otra `defaultStoreId`, alinear
+   * la tienda activa (jugadores sin membresías de staff).
+   */
+  if (
+    activeIdStr &&
+    primaryOid &&
+    activeIdStr === primaryOid.toString() &&
+    dbUser?.defaultStoreId &&
+    !dbUser.defaultStoreId.equals(primaryOid) &&
+    memberships.length === 0 &&
+    legacyRole === 'user' &&
+    globActiveIdSet === null
+  ) {
+    const okPreferred = await evaluateDashboardStoreAccess(
+      legacyRole,
+      memberships,
+      globActiveIdSet,
+      primaryOid,
+      dbUser.defaultStoreId,
+      globalAccessOpts
+    )
+    if (okPreferred) {
+      activeIdStr = dbUser.defaultStoreId.toString()
+      token.activeStoreId = activeIdStr
+    }
+  }
+
   if (!activeIdStr && dbUser?.defaultStoreId) {
     const defOid = dbUser.defaultStoreId
     const okDef = await evaluateDashboardStoreAccess(

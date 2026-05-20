@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSession, signOut } from 'next-auth/react'
 import AppBar from '@mui/material/AppBar'
@@ -41,6 +41,7 @@ import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import CheckIcon from '@mui/icons-material/Check'
 import { setHubActiveStoreHeaderSync } from '@/lib/active-store-hub-sync-flag'
+import { cleanupOverlayBlockers } from '@/lib/overlay-blocker-cleanup'
 import { useMeStores } from '@/hooks/useMeStores'
 import { isStoreContextHubPath } from '@/lib/store-context-hub-path'
 import { useAppStore } from '@/store/useAppStore'
@@ -350,6 +351,7 @@ function StorePickerPanel({
 }
 
 export default function Header() {
+  const pathname = usePathname() ?? ''
   const router = useRouter()
   const queryClient = useQueryClient()
   const { data: session, status, update } = useSession()
@@ -393,6 +395,13 @@ export default function Header() {
     return () => mq.removeListener(onChange)
   }, [desktopQuery])
   const toggleSidebar = useAppStore(s => s.toggleSidebar)
+
+  useEffect(() => {
+    setStorePickerOpen(false)
+    setAccountDrawerOpen(false)
+    setAnchorEl(null)
+    cleanupOverlayBlockers()
+  }, [pathname])
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget)
@@ -688,7 +697,7 @@ export default function Header() {
                   open
                   onClose={() => !storeSwitchBusy && closeStorePicker()}
                   disableScrollLock
-                  ModalProps={{ keepMounted: true }}
+                  ModalProps={{ keepMounted: false }}
                   slotProps={{
                     backdrop: {
                       sx: {
@@ -898,7 +907,7 @@ export default function Header() {
                   open={accountDrawerOpen}
                   onClose={closeAccountDrawer}
                   disableScrollLock
-                  ModalProps={{ keepMounted: true }}
+                  ModalProps={{ keepMounted: false }}
                   slotProps={{
                     paper: {
                       sx: {

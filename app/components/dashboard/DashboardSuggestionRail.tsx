@@ -53,7 +53,7 @@ export default function DashboardSuggestionRail() {
       sx={{
         borderRadius: 3,
         borderColor: t => alpha(t.palette.text.primary, 0.1),
-        minHeight: { xs: 280, lg: 320 }
+        minHeight: { lg: 320 }
       }}
     >
       <CardHeader
