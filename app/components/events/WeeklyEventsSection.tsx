@@ -44,7 +44,6 @@ import LinearCapacity from '@/components/events/LinearCapacity'
 import TournamentFinishedStandingsTabs from '@/components/events/TournamentFinishedStandingsTabs'
 import WeeklyEventPreRegisterForm from '@/components/events/WeeklyEventPreRegisterForm'
 import {
-  formatCloseNote,
   formatPrice,
   formatWhen,
   gameLabel,
@@ -141,10 +140,9 @@ export default function WeeklyEventsSection({
     return eventsForDay[0] ?? null
   }, [eventsForDay, selectedEventId])
 
-  /** Oculta bloques de preinscripción cuando el evento ya está en curso o cerrado (admin marca `running` al setear ronda, etc.). */
-  const selectedEventStarted =
-    selectedEvent != null &&
-    (selectedEvent.state === 'running' || selectedEvent.state === 'close')
+  /** Torneo cerrado por admin: sin preinscripción ni edición de deck. */
+  const selectedEventClosed =
+    selectedEvent != null && selectedEvent.state === 'close'
 
   const [participantsOpenForEventId, setParticipantsOpenForEventId] = useState<
     string | null
@@ -218,7 +216,7 @@ export default function WeeklyEventsSection({
   const registerDisabledReason = (ev: PublicWeeklyEvent | null) => {
     if (!ev) return 'No hay evento seleccionado'
     if (ev.myRegistration) return null
-    if (!ev.canPreRegister) return 'La preinscripción ya cerró'
+    if (!ev.canPreRegister) return 'El torneo ya está cerrado'
     if (ev.participantCount >= ev.maxParticipants) return 'Cupo completo'
     return null
   }
@@ -577,34 +575,6 @@ export default function WeeklyEventsSection({
                               </Typography>
                             </Stack>
                           ) : null}
-                          {selectedEvent.state !== 'close' ? (
-                            <Box
-                              sx={{
-                                mt: 0.5,
-                                p: 1.5,
-                                borderRadius: 2.5,
-                                bgcolor: t =>
-                                  alpha(t.palette.primary.main, 0.06),
-                                border: '1px solid',
-                                borderColor: t =>
-                                  alpha(t.palette.primary.main, 0.18),
-                                boxShadow: t =>
-                                  `inset 0 1px 0 ${alpha(t.palette.common.white, 0.5)}`
-                              }}
-                            >
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                sx={{ lineHeight: 1.55 }}
-                              >
-                                Preinscripción hasta las{' '}
-                                <strong>
-                                  {formatCloseNote(selectedEvent.startsAt)}
-                                </strong>{' '}
-                                (cierra 1 s antes del inicio).
-                              </Typography>
-                            </Box>
-                          ) : null}
                         </Stack>
                       </CardContent>
                     </Card>
@@ -785,7 +755,7 @@ export default function WeeklyEventsSection({
                           </Stack>
                         ) : (
                           <>
-                            {!selectedEventStarted ? (
+                            {!selectedEventClosed ? (
                               <>
                                 <Typography
                                   variant="overline"
@@ -994,14 +964,9 @@ export default function WeeklyEventsSection({
                                     </Button>
                                   </>
                                 ) : null}
-                                {selectedEvent.state !== 'running' &&
-                                !(
-                                  selectedEvent.kind === 'tournament' &&
-                                  selectedEvent.state === 'close'
-                                ) ? (
+                                {!selectedEventClosed ? (
                                   <>
-                                    {!selectedEventStarted &&
-                                    selectedEvent.myAttendanceConfirmed ? (
+                                    {selectedEvent.myAttendanceConfirmed ? (
                                       <Alert
                                         severity="success"
                                         variant="filled"
@@ -1038,12 +1003,12 @@ export default function WeeklyEventsSection({
                                           ? 'Quitando…'
                                           : 'Desinscribirse'}
                                       </Button>
-                                    ) : (
+                                    ) : !selectedEvent.canPreRegister ? (
                                       <Alert severity="info" variant="outlined">
-                                        No puedes desinscribirte: el evento ya
-                                        comenzó.
+                                        No puedes desinscribirte: el torneo ya
+                                        está cerrado.
                                       </Alert>
-                                    )}
+                                    ) : null}
                                     {unregister.isError ? (
                                       <Alert
                                         severity="error"
@@ -1068,7 +1033,7 @@ export default function WeeklyEventsSection({
                               />
                             )}
 
-                            {!selectedEventStarted ? (
+                            {!selectedEventClosed ? (
                               <Button
                                 type="button"
                                 variant="outlined"

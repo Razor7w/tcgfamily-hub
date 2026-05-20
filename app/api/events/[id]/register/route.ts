@@ -57,9 +57,15 @@ export async function POST(
       )
     }
 
-    if (!canPreRegisterNow(existing.startsAt, now)) {
+    const eventState =
+      existing.state === 'schedule' ||
+      existing.state === 'running' ||
+      existing.state === 'close'
+        ? existing.state
+        : 'schedule'
+    if (!canPreRegisterNow(eventState)) {
       return NextResponse.json(
-        { error: 'La preinscripción ya cerró para este evento' },
+        { error: 'El torneo ya está cerrado; no puedes preinscribirte' },
         { status: 400 }
       )
     }
@@ -133,7 +139,6 @@ export async function DELETE(
     }
 
     await connectDB()
-    const now = new Date()
     const userId = new mongoose.Types.ObjectId(session.user.id)
 
     const existing = await WeeklyEvent.findById(id)
@@ -144,18 +149,15 @@ export async function DELETE(
       )
     }
 
-    if (!canUnregisterNow(existing.startsAt, now)) {
+    const eventState =
+      existing.state === 'schedule' ||
+      existing.state === 'running' ||
+      existing.state === 'close'
+        ? existing.state
+        : 'schedule'
+    if (!canUnregisterNow(eventState)) {
       return NextResponse.json(
-        { error: 'Ya no puedes desinscribirte (el evento ya comenzó)' },
-        { status: 400 }
-      )
-    }
-
-    if (existing.state === 'running') {
-      return NextResponse.json(
-        {
-          error: 'No puedes desinscribirte mientras el evento está en curso.'
-        },
+        { error: 'El torneo ya está cerrado; no puedes desinscribirte' },
         { status: 400 }
       )
     }
