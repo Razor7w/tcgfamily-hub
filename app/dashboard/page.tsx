@@ -50,7 +50,10 @@ export default function DashboardPage() {
           py: 4
         })}
       >
-        <DashboardPageWithRightRail rail={<DashboardSuggestionRail />}>
+        <DashboardPageWithRightRail
+          rail={<DashboardSuggestionRail />}
+          mobileDrawerLabel="Sugerencias"
+        >
           <Container
             maxWidth={false}
             sx={{

@@ -49,28 +49,23 @@ export function useProductTourRunner({
 export function useProductTourViewport() {
   const [viewport, setViewport] = useState({
     showDesktopNav: true,
-    showMobileNav: false,
-    showMobileRailHint: true
+    showMobileNav: false
   })
 
   useEffect(() => {
     const desktopMq = window.matchMedia('(min-width: 900px)')
-    const railMq = window.matchMedia('(min-width: 1200px)')
 
     const sync = () => {
       setViewport({
         showDesktopNav: desktopMq.matches,
-        showMobileNav: !desktopMq.matches,
-        showMobileRailHint: !railMq.matches
+        showMobileNav: !desktopMq.matches
       })
     }
 
     sync()
     desktopMq.addEventListener('change', sync)
-    railMq.addEventListener('change', sync)
     return () => {
       desktopMq.removeEventListener('change', sync)
-      railMq.removeEventListener('change', sync)
     }
   }, [])
 

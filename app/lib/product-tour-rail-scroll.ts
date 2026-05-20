@@ -1,28 +1,27 @@
 import type { Step } from 'react-joyride'
 import {
+  requestCloseMobileRightRailDrawer,
+  requestOpenMobileRightRailDrawer
+} from '@/lib/mobile-right-rail-drawer'
+import {
   PRODUCT_TOUR_TARGETS,
-  tourSelector,
   type ProductTourTarget
 } from '@/lib/product-tour-targets'
 
-export const PRODUCT_TOUR_HORIZONTAL_SCROLL_ATTR =
-  'data-product-tour-horizontal-scroll'
-
-/** Pasos que en móvil requieren desplazar el carril horizontal hacia el panel derecho. */
-const MOBILE_RAIL_SCROLL_TARGETS: ReadonlySet<ProductTourTarget> = new Set([
+/** Pasos que en móvil requieren abrir el drawer del panel lateral. */
+const MOBILE_RAIL_DRAWER_TARGETS: ReadonlySet<ProductTourTarget> = new Set([
   PRODUCT_TOUR_TARGETS.storeHubRightRail,
   PRODUCT_TOUR_TARGETS.dashboardSuggestionRail
 ])
 
-/** Antes de estos pasos, volver arriba en la página (p. ej. sugerencias tras scroll horizontal). */
+/** Antes de estos pasos, volver arriba en la página. */
 const MOBILE_SCROLL_TOP_TARGETS: ReadonlySet<ProductTourTarget> = new Set([
   PRODUCT_TOUR_TARGETS.dashboardSuggestionRail
 ])
 
-let savedScrollLeft = 0
-let hasSavedScrollLeft = false
+let drawerWasOpenByTour = false
 
-function isMobileHorizontalRailLayout(): boolean {
+function isMobileDrawerRailLayout(): boolean {
   if (typeof window === 'undefined') return false
   return window.matchMedia('(max-width: 1199px)').matches
 }
@@ -32,6 +31,12 @@ function afterLayoutPaint(): Promise<void> {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => resolve())
     })
+  })
+}
+
+function afterDrawerTransition(): Promise<void> {
+  return new Promise(resolve => {
+    window.setTimeout(resolve, 320)
   })
 }
 
@@ -52,7 +57,7 @@ export function tourTargetNeedsMobileRailScroll(
   target: string | null | undefined
 ): boolean {
   const id = parseTourTargetDataTour(target)
-  return id !== null && MOBILE_RAIL_SCROLL_TARGETS.has(id)
+  return id !== null && MOBILE_RAIL_DRAWER_TARGETS.has(id)
 }
 
 export function tourTargetNeedsScrollToTop(
@@ -69,97 +74,40 @@ function scrollWindowToTop(): void {
   document.body.scrollTop = 0
 }
 
-function getHorizontalScroller(): HTMLElement | null {
-  if (typeof document === 'undefined') return null
-  return document.querySelector(
-    `[${PRODUCT_TOUR_HORIZONTAL_SCROLL_ATTR}]`
-  ) as HTMLElement | null
-}
-
-function scrollScrollerToRevealRail(
-  scroller: HTMLElement,
-  target: string
-): void {
-  const tourId = parseTourTargetDataTour(target)
-  const maxLeft = Math.max(0, scroller.scrollWidth - scroller.clientWidth)
-
-  if (
-    tourId === PRODUCT_TOUR_TARGETS.storeHubRightRail ||
-    tourId === PRODUCT_TOUR_TARGETS.dashboardSuggestionRail
-  ) {
-    scroller.scrollLeft = maxLeft
-    return
-  }
-
-  const selector =
-    target.length > 0
-      ? target
-      : tourSelector(PRODUCT_TOUR_TARGETS.storeHubRightRail)
-  const el = document.querySelector(selector)
-  if (el && el !== scroller) {
-    const elRect = el.getBoundingClientRect()
-    const scRect = scroller.getBoundingClientRect()
-    const elLeftInScroller = elRect.left - scRect.left + scroller.scrollLeft
-    const targetLeft = Math.min(
-      maxLeft,
-      Math.max(0, elLeftInScroller - (scroller.clientWidth - elRect.width) / 2)
-    )
-    scroller.scrollLeft = targetLeft
-  } else {
-    scroller.scrollLeft = maxLeft
-  }
-}
-
-/** Antes de mostrar el paso: scroll instantáneo para que Joyride calcule bien el spotlight. */
+/** Antes de mostrar el paso: abre el drawer para que Joyride calcule bien el spotlight. */
 export async function prepareMobileRailScrollForTourTarget(
   target: string | null | undefined
 ): Promise<void> {
-  if (!isMobileHorizontalRailLayout()) return
+  if (!isMobileDrawerRailLayout()) return
   if (!tourTargetNeedsMobileRailScroll(target)) return
 
-  const scroller = getHorizontalScroller()
-  if (!scroller) return
-
-  if (!hasSavedScrollLeft) {
-    savedScrollLeft = scroller.scrollLeft
-    hasSavedScrollLeft = true
-  }
-
-  scrollScrollerToRevealRail(
-    scroller,
-    typeof target === 'string' && target.length > 0
-      ? target
-      : tourSelector(PRODUCT_TOUR_TARGETS.storeHubRightRail)
-  )
-
+  drawerWasOpenByTour = true
+  requestOpenMobileRightRailDrawer()
   await afterLayoutPaint()
+  await afterDrawerTransition()
 }
 
 /** Al volver a un paso sin panel lateral o al cerrar el tour. */
 export async function restoreMobileRailScroll(): Promise<void> {
-  if (!hasSavedScrollLeft) return
-  const scroller = getHorizontalScroller()
-  if (scroller) {
-    scroller.scrollLeft = savedScrollLeft
-  }
-  savedScrollLeft = 0
-  hasSavedScrollLeft = false
+  if (!drawerWasOpenByTour) return
+  drawerWasOpenByTour = false
+  requestCloseMobileRightRailDrawer()
   await afterLayoutPaint()
 }
 
-/** Restaura carril horizontal y posición vertical al terminar el tour. */
+/** Cierra el drawer y restaura scroll vertical al terminar el tour. */
 export async function resetTourScrollPosition(): Promise<void> {
   await restoreMobileRailScroll()
   scrollWindowToTop()
   await afterLayoutPaint()
 }
 
-/** Añade `before` + `skipScroll` para que el overlay no se desalinee tras scroll horizontal. */
+/** Añade `before` + `skipScroll` para el drawer en móvil. */
 export function enrichTourStepsWithMobileRailScroll(
   steps: Step[],
   options?: { mobileRailLayout?: boolean }
 ): Step[] {
-  const mobileRail = options?.mobileRailLayout ?? isMobileHorizontalRailLayout()
+  const mobileRail = options?.mobileRailLayout ?? isMobileDrawerRailLayout()
 
   return steps.map(step => {
     const target = typeof step.target === 'string' ? step.target : ''

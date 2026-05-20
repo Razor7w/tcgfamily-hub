@@ -220,6 +220,7 @@ function StoreHubBody({
         })}
       >
         <DashboardPageWithRightRail
+          mobileDrawerLabel="Panel"
           rail={
             <StoreHubRightRail
               storeSlug={normalizedParam}

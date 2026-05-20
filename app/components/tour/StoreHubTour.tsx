@@ -1,18 +1,11 @@
 'use client'
 
-import { useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import ProductTourJoyride from '@/components/tour/ProductTourJoyride'
-import {
-  useProductTourRunner,
-  useProductTourViewport
-} from '@/hooks/useProductTourRunner'
+import { useProductTourRunner } from '@/hooks/useProductTourRunner'
 import { sessionNeedsProfileCompletion } from '@/lib/product-tour-profile-gate'
 import { PRODUCT_TOUR_KEYS } from '@/lib/product-tour-storage'
-import {
-  STORE_HUB_TOUR_STEPS,
-  filterStoreHubTourSteps
-} from '@/lib/product-tour-steps'
+import { STORE_HUB_TOUR_STEPS } from '@/lib/product-tour-steps'
 
 type StoreHubTourProps = {
   hubReady: boolean
@@ -20,8 +13,6 @@ type StoreHubTourProps = {
 
 export default function StoreHubTour({ hubReady }: StoreHubTourProps) {
   const { data: session, status } = useSession()
-  const viewport = useProductTourViewport()
-
   const enabled =
     status === 'authenticated' &&
     hubReady &&
@@ -33,14 +24,7 @@ export default function StoreHubTour({ hubReady }: StoreHubTourProps) {
     delayMs: 600
   })
 
-  const steps = useMemo(
-    () =>
-      filterStoreHubTourSteps(
-        STORE_HUB_TOUR_STEPS,
-        viewport.showMobileRailHint
-      ),
-    [viewport.showMobileRailHint]
+  return (
+    <ProductTourJoyride steps={STORE_HUB_TOUR_STEPS} run={run} onFinish={finish} />
   )
-
-  return <ProductTourJoyride steps={steps} run={run} onFinish={finish} />
 }

@@ -14,7 +14,11 @@ export default function StoreHubRightRail({
   hubReady = true
 }: StoreHubRightRailProps) {
   return (
-    <Stack spacing={2} sx={{ width: '100%' }}>
+    <Stack
+      spacing={2}
+      sx={{ width: '100%' }}
+      data-tour="store-hub-right-rail"
+    >
       <StoreHubLastTournamentRail storeSlug={storeSlug} />
       <StoreHubMailsWaitingRail hubReady={hubReady} />
     </Stack>

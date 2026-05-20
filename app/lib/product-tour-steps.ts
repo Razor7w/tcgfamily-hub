@@ -76,14 +76,6 @@ export const STORE_HUB_TOUR_STEPS: Step[] = [
       'Último torneo finalizado (top por categoría) y correos listos para retirar en tienda.',
     placement: 'left',
     skipBeacon: true
-  },
-  {
-    target: tourSelector(PRODUCT_TOUR_TARGETS.storeHubMobileRailHint),
-    title: 'Panel en móvil',
-    content:
-      'Desliza el contenido hacia la izquierda para ver el panel lateral.',
-    placement: 'top',
-    skipBeacon: true
   }
 ]
 
@@ -128,36 +120,3 @@ export function filterDashboardPlayerTourSteps(
   })
 }
 
-export function filterStoreHubTourSteps(
-  steps: Step[],
-  showMobileRailHint: boolean
-): Step[] {
-  return steps
-    .filter(step => {
-      const target = typeof step.target === 'string' ? step.target : ''
-      if (
-        target === tourSelector(PRODUCT_TOUR_TARGETS.storeHubMobileRailHint)
-      ) {
-        return false
-      }
-      return true
-    })
-    .map(step => {
-      const target = typeof step.target === 'string' ? step.target : ''
-      if (
-        target === tourSelector(PRODUCT_TOUR_TARGETS.storeHubRightRail) &&
-        showMobileRailHint
-      ) {
-        return {
-          ...step,
-          placement: 'bottom' as const,
-          offset: 14,
-          spotlightPadding: 8,
-          spotlightRadius: 16,
-          content:
-            'Último torneo finalizado (top por categoría) y correos listos para retirar en tienda. Desliza hacia la izquierda para volver al calendario.'
-        }
-      }
-      return step
-    })
-}
