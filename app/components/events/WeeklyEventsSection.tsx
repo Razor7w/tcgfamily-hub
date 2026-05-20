@@ -35,9 +35,11 @@ import {
 } from '@/hooks/useWeeklyEvents'
 import WeekRangeNavigator from '@/components/events/WeekRangeNavigator'
 import {
+  latestEventOnDay,
   localDayKey,
   mondayIndexFromDate,
   sameLocalDay,
+  sortEventsByStartsAt,
   startOfWeekMonday
 } from '@/components/events/weekUtils'
 import LinearCapacity from '@/components/events/LinearCapacity'
@@ -126,19 +128,33 @@ export default function WeeklyEventsSection({
   }, [weekStart, selectedOffset])
 
   const eventsForDay = useMemo(() => {
-    return events.filter(e => sameLocalDay(new Date(e.startsAt), selectedDate))
+    const onDay = events.filter(e =>
+      sameLocalDay(new Date(e.startsAt), selectedDate)
+    )
+    return sortEventsByStartsAt(onDay)
   }, [events, selectedDate])
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
 
-  const selectedEvent = useMemo(() => {
+  /** Id efectivo: chip manual si sigue en el día; si no, el torneo más tardío (tarde). */
+  const resolvedSelectedEventId = useMemo(() => {
     if (!eventsForDay.length) return null
-    if (selectedEventId != null) {
-      const match = eventsForDay.find(e => e._id === selectedEventId)
-      if (match) return match
+    if (
+      selectedEventId != null &&
+      eventsForDay.some(e => e._id === selectedEventId)
+    ) {
+      return selectedEventId
     }
-    return eventsForDay[0] ?? null
+    return latestEventOnDay(eventsForDay)?._id ?? null
   }, [eventsForDay, selectedEventId])
+
+  const selectedEvent = useMemo(() => {
+    if (!eventsForDay.length || !resolvedSelectedEventId) return null
+    return (
+      eventsForDay.find(e => e._id === resolvedSelectedEventId) ??
+      latestEventOnDay(eventsForDay)
+    )
+  }, [eventsForDay, resolvedSelectedEventId])
 
   /** Torneo cerrado por admin: sin preinscripción ni edición de deck. */
   const selectedEventClosed =
@@ -306,7 +322,7 @@ export default function WeeklyEventsSection({
           <>
             <WeeklyEventsSameDayEventChips
               eventsForDay={eventsForDay}
-              selectedEventId={selectedEvent?._id ?? null}
+              selectedEventId={resolvedSelectedEventId}
               onSelectEventId={setSelectedEventId}
             />
 

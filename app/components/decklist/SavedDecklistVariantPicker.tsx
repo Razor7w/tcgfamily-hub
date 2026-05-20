@@ -25,6 +25,8 @@ export type SavedDecklistTournamentOption = {
   pokemonSlugs: string[]
 }
 
+const EMPTY_DECKLISTS: SavedDecklistSummary[] = []
+
 function buildFlatOptions(
   decklists: SavedDecklistSummary[]
 ): SavedDecklistTournamentOption[] {
@@ -122,11 +124,16 @@ export default function SavedDecklistVariantPicker({
 }: Props) {
   const ownQuery = useSavedDecklistsList()
   const useOverride = decklistsOverride !== undefined
-  const decklists = useOverride ? decklistsOverride : (ownQuery.data ?? [])
+  const decklists = useMemo(() => {
+    if (decklistsOverride !== undefined) return decklistsOverride
+    return ownQuery.data ?? EMPTY_DECKLISTS
+  }, [decklistsOverride, ownQuery.data])
   const isPending = useOverride
     ? Boolean(decklistsLoadingOverride)
     : ownQuery.isPending
-  const isError = useOverride ? Boolean(decklistsErrorOverride) : ownQuery.isError
+  const isError = useOverride
+    ? Boolean(decklistsErrorOverride)
+    : ownQuery.isError
   const error = useOverride ? decklistsErrorOverride : ownQuery.error
   const options = useMemo(() => buildFlatOptions(decklists), [decklists])
   /** Valor preseleccionado (p. ej. desde el torneo) puede no existir aún en la lista cargada. */
