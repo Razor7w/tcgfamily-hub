@@ -21,10 +21,15 @@ export default function StoreHubTour({ hubReady }: StoreHubTourProps) {
   const { run, finish } = useProductTourRunner({
     tourKey: PRODUCT_TOUR_KEYS.storeHub,
     enabled,
-    delayMs: 600
+    delayMs: 600,
+    steps: STORE_HUB_TOUR_STEPS
   })
 
   return (
-    <ProductTourJoyride steps={STORE_HUB_TOUR_STEPS} run={run} onFinish={finish} />
+    <ProductTourJoyride
+      steps={STORE_HUB_TOUR_STEPS}
+      run={run}
+      onFinish={finish}
+    />
   )
 }

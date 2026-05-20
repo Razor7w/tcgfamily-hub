@@ -211,7 +211,7 @@ function StoreHubBody({
 
   return (
     <>
-      <StoreHubTour hubReady={hubContentReady} />
+      <StoreHubTour hubReady={hubReady} />
       <Box
         sx={t => ({
           minHeight: '100dvh',
@@ -293,10 +293,7 @@ function StoreHubBody({
               />
             </Stack>
 
-            <DashboardHomeContent
-              variant="tiendas"
-              hubReady={hubContentReady}
-            />
+            <DashboardHomeContent variant="tiendas" hubReady={hubReady} />
           </Container>
         </DashboardPageWithRightRail>
       </Box>

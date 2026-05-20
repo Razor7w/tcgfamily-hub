@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { cleanupOverlayBlockers } from '@/lib/overlay-blocker-cleanup'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
@@ -51,6 +52,8 @@ export default function DashboardPageWithRightRail({
     return () => {
       window.removeEventListener(MOBILE_RIGHT_RAIL_DRAWER_OPEN, onOpen)
       window.removeEventListener(MOBILE_RIGHT_RAIL_DRAWER_CLOSE, onClose)
+      closeDrawer()
+      cleanupOverlayBlockers()
     }
   }, [openDrawer, closeDrawer])
 
@@ -117,57 +120,59 @@ export default function DashboardPageWithRightRail({
             {mobileDrawerLabel}
           </Button>
 
-          <Drawer
-            anchor="right"
-            open={drawerOpen}
-            onClose={closeDrawer}
-            keepMounted
-            slotProps={{
-              paper: {
-                sx: {
-                  width: `min(100vw - 24px, ${railWidth}px)`,
-                  maxWidth: '100%',
-                  boxSizing: 'border-box',
-                  display: 'flex',
-                  flexDirection: 'column'
+          {drawerOpen ? (
+            <Drawer
+              anchor="right"
+              open
+              onClose={closeDrawer}
+              ModalProps={{ keepMounted: false }}
+              slotProps={{
+                paper: {
+                  sx: {
+                    width: `min(100vw - 24px, ${railWidth}px)`,
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }
                 }
-              }
-            }}
-          >
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                px: 2,
-                py: 1.5,
-                borderBottom: 1,
-                borderColor: 'divider',
-                flexShrink: 0
               }}
             >
-              <Typography variant="subtitle1" fontWeight={700}>
-                {mobileDrawerLabel}
-              </Typography>
-              <IconButton
-                aria-label="Cerrar panel"
-                onClick={closeDrawer}
-                edge="end"
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  px: 2,
+                  py: 1.5,
+                  borderBottom: 1,
+                  borderColor: 'divider',
+                  flexShrink: 0
+                }}
               >
-                <CloseIcon />
-              </IconButton>
-            </Box>
-            <Box
-              sx={{
-                p: 2,
-                overflowY: 'auto',
-                flex: 1,
-                minHeight: 0
-              }}
-            >
-              {rail}
-            </Box>
-          </Drawer>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  {mobileDrawerLabel}
+                </Typography>
+                <IconButton
+                  aria-label="Cerrar panel"
+                  onClick={closeDrawer}
+                  edge="end"
+                >
+                  <CloseIcon />
+                </IconButton>
+              </Box>
+              <Box
+                sx={{
+                  p: 2,
+                  overflowY: 'auto',
+                  flex: 1,
+                  minHeight: 0
+                }}
+              >
+                {rail}
+              </Box>
+            </Drawer>
+          ) : null}
         </>
       ) : null}
     </Box>

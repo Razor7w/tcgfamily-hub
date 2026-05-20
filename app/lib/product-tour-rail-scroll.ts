@@ -21,6 +21,11 @@ const MOBILE_SCROLL_TOP_TARGETS: ReadonlySet<ProductTourTarget> = new Set([
 
 let drawerWasOpenByTour = false
 
+/** Restaura el flag interno del drawer abierto por el tour (p. ej. al cambiar de ruta). */
+export function resetTourRailDrawerState(): void {
+  drawerWasOpenByTour = false
+}
+
 function isMobileDrawerRailLayout(): boolean {
   if (typeof window === 'undefined') return false
   return window.matchMedia('(max-width: 1199px)').matches
@@ -97,6 +102,7 @@ export async function restoreMobileRailScroll(): Promise<void> {
 
 /** Cierra el drawer y restaura scroll vertical al terminar el tour. */
 export async function resetTourScrollPosition(): Promise<void> {
+  resetTourRailDrawerState()
   await restoreMobileRailScroll()
   scrollWindowToTop()
   await afterLayoutPaint()

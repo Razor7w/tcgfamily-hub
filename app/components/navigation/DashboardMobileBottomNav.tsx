@@ -1,7 +1,6 @@
 'use client'
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   AccountCircleOutlined,
   Home,
@@ -12,11 +11,11 @@ import {
   BottomNavigation,
   BottomNavigationAction,
   Paper,
-  Tooltip,
   useTheme
 } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { useStoreHubHref } from '@/hooks/useStoreHubHref'
+import { cleanupOverlayBlockers } from '@/lib/overlay-blocker-cleanup'
 import { isStoreContextHubPath } from '@/lib/store-context-hub-path'
 
 /** Altura base del nav (sin safe area ni padding del shell); alinear con padding del main en SidebarLayout */
@@ -58,6 +57,7 @@ function mobileNavValue(
 
 export default function DashboardMobileBottomNav() {
   const theme = useTheme()
+  const router = useRouter()
   const pathname = usePathname() ?? ''
   const storeHubHref = useStoreHubHref()
   const selected = mobileNavValue(pathname)
@@ -69,6 +69,12 @@ export default function DashboardMobileBottomNav() {
     '& .MuiBottomNavigationAction-label': {
       display: 'none'
     }
+  }
+
+  const go = (href: string) => {
+    if (!href || href === pathname) return
+    cleanupOverlayBlockers()
+    router.push(href)
   }
 
   return (
@@ -95,7 +101,6 @@ export default function DashboardMobileBottomNav() {
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
         pb: 'env(safe-area-inset-bottom, 0px)',
-        // Sombra neutra (sin glow de acento)
         boxShadow:
           theme.palette.mode === 'dark'
             ? `0 -8px 28px ${alpha('#000', 0.35)}`
@@ -111,50 +116,34 @@ export default function DashboardMobileBottomNav() {
           minHeight: DASHBOARD_MOBILE_BOTTOM_NAV_HEIGHT_PX
         }}
       >
-        <Tooltip title="Inicio">
-          <BottomNavigationAction
-            value="home"
-            aria-label="Inicio"
-            icon={<Home />}
-            component={Link}
-            href="/dashboard"
-            prefetch
-            sx={actionSx}
-          />
-        </Tooltip>
-        <Tooltip title="Tiendas">
-          <BottomNavigationAction
-            value="stores"
-            aria-label="Tiendas"
-            icon={<Storefront />}
-            component={Link}
-            href={storeHubHref}
-            prefetch={false}
-            sx={actionSx}
-          />
-        </Tooltip>
-        <Tooltip title="Mazos">
-          <BottomNavigationAction
-            value="decks"
-            aria-label="Mazos"
-            icon={<Style />}
-            component={Link}
-            href="/dashboard/decklists"
-            prefetch
-            sx={actionSx}
-          />
-        </Tooltip>
-        <Tooltip title="Mi cuenta">
-          <BottomNavigationAction
-            value="account"
-            aria-label="Mi cuenta"
-            icon={<AccountCircleOutlined />}
-            component={Link}
-            href="/dashboard/mi-cuenta"
-            prefetch
-            sx={actionSx}
-          />
-        </Tooltip>
+        <BottomNavigationAction
+          value="home"
+          aria-label="Inicio"
+          icon={<Home />}
+          onClick={() => go('/dashboard')}
+          sx={actionSx}
+        />
+        <BottomNavigationAction
+          value="stores"
+          aria-label="Tiendas"
+          icon={<Storefront />}
+          onClick={() => go(storeHubHref)}
+          sx={actionSx}
+        />
+        <BottomNavigationAction
+          value="decks"
+          aria-label="Mazos"
+          icon={<Style />}
+          onClick={() => go('/dashboard/decklists')}
+          sx={actionSx}
+        />
+        <BottomNavigationAction
+          value="account"
+          aria-label="Mi cuenta"
+          icon={<AccountCircleOutlined />}
+          onClick={() => go('/dashboard/mi-cuenta')}
+          sx={actionSx}
+        />
       </BottomNavigation>
     </Paper>
   )

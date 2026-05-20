@@ -1,16 +1,18 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Joyride,
   EVENTS,
   STATUS,
+  type Controls,
   type EventData,
   type Step
 } from 'react-joyride'
 import { useTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import type { ProductTourOutcome } from '@/lib/product-tour-storage'
+import { cleanupProductTourUi } from '@/lib/product-tour-cleanup'
 import {
   enrichTourStepsWithMobileRailScroll,
   resetTourScrollPosition
@@ -45,19 +47,44 @@ export default function ProductTourJoyride({
     [steps, mobileRailLayout]
   )
 
-  if (!mounted || tourSteps.length === 0) return null
+  useEffect(() => {
+    if (!run) {
+      void resetTourScrollPosition()
+      cleanupProductTourUi()
+    }
+  }, [run])
+
+  useEffect(() => {
+    return () => {
+      void resetTourScrollPosition()
+      cleanupProductTourUi()
+    }
+  }, [])
+
+  if (!mounted || tourSteps.length === 0 || !run) return null
 
   const primary = theme.palette.primary.main
   const paper = theme.palette.background.paper
   const text = theme.palette.text.primary
 
-  const handleEvent = (data: EventData) => {
+  const endTour = (outcome: ProductTourOutcome) => {
+    void resetTourScrollPosition()
+    cleanupProductTourUi()
+    onFinish(outcome)
+  }
+
+  const handleEvent = (data: EventData, controls: Controls) => {
+    if (data.type === EVENTS.TARGET_NOT_FOUND || data.type === EVENTS.ERROR) {
+      controls.skip()
+      endTour('skipped')
+      return
+    }
+
     if (data.type === EVENTS.TOUR_END) {
-      void resetTourScrollPosition()
       if (data.status === STATUS.FINISHED) {
-        onFinish('done')
+        endTour('done')
       } else if (data.status === STATUS.SKIPPED) {
-        onFinish('skipped')
+        endTour('skipped')
       }
     }
   }
@@ -65,9 +92,9 @@ export default function ProductTourJoyride({
   return (
     <Joyride
       steps={tourSteps}
-      run={run}
+      run
       continuous
-      scrollToFirstStep
+      scrollToFirstStep={false}
       locale={LOCALE}
       tooltipComponent={ProductTourTooltip}
       onEvent={handleEvent}
@@ -107,7 +134,7 @@ export default function ProductTourJoyride({
         backgroundColor: paper,
         zIndex: theme.zIndex.modal + 2,
         showProgress: false,
-        overlayClickAction: false,
+        overlayClickAction: 'close',
         width: 'min(380px, calc(100vw - 32px))',
         spotlightRadius: 12
       }}

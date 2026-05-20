@@ -37,11 +37,6 @@ export default function DashboardPlayerTour() {
     pathname === '/dashboard' &&
     !sessionNeedsProfileCompletion(session)
 
-  const { run, finish } = useProductTourRunner({
-    tourKey: PRODUCT_TOUR_KEYS.dashboard,
-    enabled
-  })
-
   const steps = useMemo(
     () =>
       filterDashboardPlayerTourSteps(DASHBOARD_PLAYER_TOUR_STEPS, {
@@ -57,6 +52,12 @@ export default function DashboardPlayerTour() {
       viewport.showMobileNav
     ]
   )
+
+  const { run, finish } = useProductTourRunner({
+    tourKey: PRODUCT_TOUR_KEYS.dashboard,
+    enabled,
+    steps
+  })
 
   return <ProductTourJoyride steps={steps} run={run} onFinish={finish} />
 }

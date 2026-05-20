@@ -119,4 +119,3 @@ export function filterDashboardPlayerTourSteps(
     return true
   })
 }
-
