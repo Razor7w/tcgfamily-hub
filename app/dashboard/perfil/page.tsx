@@ -121,9 +121,6 @@ export default function PerfilPage() {
         name: String(r.name ?? '').trim()
       }))
       .filter(r => r.id)
-      .sort((a, b) =>
-        a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
-      )
   }, [meStoresPayload?.stores])
 
   const storesLoading =
@@ -241,12 +238,19 @@ export default function PerfilPage() {
         setDefaultStoreId((data.defaultStoreId ?? '').trim())
       }
       setProfileMsg('Datos actualizados.')
+      const savedDefault = (data.defaultStoreId ?? sid).trim()
       await update({
         name: data.name ?? name.trim(),
         popid:
           data.popid !== undefined && data.popid !== null
             ? data.popid
-            : popid.trim().slice(0, 64)
+            : popid.trim().slice(0, 64),
+        ...(savedDefault && /^[a-f0-9]{24}$/i.test(savedDefault)
+          ? {
+              defaultStoreId: savedDefault,
+              activeStoreId: savedDefault
+            }
+          : {})
       })
     } finally {
       setSavingProfile(false)

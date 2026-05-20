@@ -142,19 +142,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (typeof s.hasPassword === 'boolean')
           token.hasPassword = s.hasPassword
         const defSid = s.defaultStoreId
+        let parsedDefaultStoreId: string | undefined
         if (defSid === null || defSid === '') {
           token.defaultStoreId = ''
+          parsedDefaultStoreId = ''
         } else if (
           typeof defSid === 'string' &&
           mongoose.Types.ObjectId.isValid(defSid.trim())
         ) {
-          token.defaultStoreId = defSid.trim()
+          parsedDefaultStoreId = defSid.trim()
+          token.defaultStoreId = parsedDefaultStoreId
         }
         const sid = s.activeStoreId
         if (typeof sid === 'string') {
           if (mongoose.Types.ObjectId.isValid(sid.trim())) {
             token.activeStoreId = sid.trim()
           }
+        } else if (parsedDefaultStoreId && parsedDefaultStoreId.length > 0) {
+          token.activeStoreId = parsedDefaultStoreId
         }
       }
 

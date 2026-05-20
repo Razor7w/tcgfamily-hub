@@ -45,7 +45,8 @@ function isMegaFormSlug(slug: string): boolean {
 }
 
 /**
- * Formas alternativas que no deben aparecer (Gigantamax, primales, regionales Alola/Galar).
+ * Formas alternativas que no deben aparecer (Gigantamax, primales, regionales Alola/Galar,
+ * variantes segmentadas de Dudunsparce en juego/registro de mazos).
  * Megas no se filtran aquí: van por `isMegaFormSlug`.
  */
 function isExcludedAlternateFormSlug(slug: string): boolean {
@@ -53,6 +54,8 @@ function isExcludedAlternateFormSlug(slug: string): boolean {
   if (slug.includes('-primal')) return true
   if (slug.includes('-alola')) return true
   if (slug.includes('-galar')) return true
+  if (slug === 'dudunsparce-two-segment') return true
+  if (slug === 'dudunsparce-three-segment') return true
   return false
 }
 
@@ -61,6 +64,14 @@ function shouldIncludePokemonSlug(slug: string): boolean {
   if (isExcludedAlternateFormSlug(slug)) return false
   return true
 }
+
+/**
+ * PokéAPI solo expone formas segmentadas; Limitless y el TCG usan `dudunsparce`.
+ * @see https://r2.limitlesstcg.net/pokemon/gen9/dudunsparce.png
+ */
+const CANONICAL_SPECIES_ALIASES: PokemonSpeciesOption[] = [
+  { slug: 'dudunsparce', label: 'Dudunsparce' }
+]
 
 /**
  * Entradas `pokemon` en PokéAPI: **formas base + megas**, excluyendo Gmax, primales y
@@ -79,12 +90,20 @@ async function fetchBaseAndMegaForms(): Promise<PokemonSpeciesOption[]> {
   const data = (await res.json()) as {
     results: { name: string }[]
   }
-  const rows = data.results
-    .filter(r => shouldIncludePokemonSlug(r.name))
-    .map(r => ({
-      slug: r.name,
-      label: slugToLabel(r.name)
-    }))
+  const slugSet = new Set<string>()
+  const rows: PokemonSpeciesOption[] = []
+  for (const r of data.results) {
+    if (!shouldIncludePokemonSlug(r.name)) continue
+    if (slugSet.has(r.name)) continue
+    slugSet.add(r.name)
+    rows.push({ slug: r.name, label: slugToLabel(r.name) })
+  }
+  for (const alias of CANONICAL_SPECIES_ALIASES) {
+    if (!slugSet.has(alias.slug)) {
+      slugSet.add(alias.slug)
+      rows.push(alias)
+    }
+  }
   rows.sort((a, b) => a.label.localeCompare(b.label, 'es'))
   return rows
 }
@@ -94,7 +113,7 @@ async function fetchBaseAndMegaForms(): Promise<PokemonSpeciesOption[]> {
  */
 export function usePokemonSpeciesOptions() {
   return useQuery({
-    queryKey: ['pokemon-base-and-mega-forms'],
+    queryKey: ['pokemon-base-and-mega-forms', 'v3'],
     queryFn: fetchBaseAndMegaForms,
     staleTime: 1000 * 60 * 60 * 24,
     gcTime: 1000 * 60 * 60 * 24 * 7

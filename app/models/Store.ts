@@ -39,8 +39,10 @@ const StoreSchema = new Schema<IStore>(
   { timestamps: true, strict: true }
 )
 
-/** Listados `find({ isActive: true }).sort({ name: 1 })` (me/stores, admin, signup). */
+/** Admin: listado activo por nombre. */
 StoreSchema.index({ isActive: 1, name: 1 })
+/** GET /api/public/stores, GET /api/me/stores: activas ordenadas por creación. */
+StoreSchema.index({ isActive: 1, createdAt: 1 })
 
 if (mongoose.models.Store) {
   delete mongoose.models.Store

@@ -31,7 +31,7 @@ export async function GET() {
       (async () => {
         await connectDB()
         return Store.find({ isActive: true })
-          .sort({ name: 1 })
+          .sort({ createdAt: 1 })
           .select('name slug logoUrl address websiteUrl instagramUrl')
           .lean<Array<{ _id: Types.ObjectId } & Record<string, unknown>>>()
       })()

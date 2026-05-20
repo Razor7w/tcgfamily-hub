@@ -35,7 +35,8 @@ export default function ProfileCompletionGate() {
     await update({
       rut: data.rut,
       popid: data.popid,
-      defaultStoreId: data.defaultStoreId
+      defaultStoreId: data.defaultStoreId,
+      activeStoreId: data.defaultStoreId
     })
   }
 
