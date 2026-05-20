@@ -25,6 +25,8 @@ export type SavedDecklistTournamentOption = {
   pokemonSlugs: string[]
 }
 
+const EMPTY_DECKLISTS: SavedDecklistSummary[] = []
+
 function buildFlatOptions(
   decklists: SavedDecklistSummary[]
 ): SavedDecklistTournamentOption[] {
@@ -98,6 +100,11 @@ type Props = {
   helperText?: string
   /** Muestra «Ver decklist» con la vista en imágenes al elegir un mazo */
   showViewDecklistButton?: boolean
+  /** Listas de otro usuario (p. ej. reporte manual owner). */
+  decklistsOverride?: SavedDecklistSummary[]
+  decklistsLoadingOverride?: boolean
+  decklistsErrorOverride?: Error | null
+  emptyListsMessage?: string
 }
 
 /**
@@ -109,14 +116,25 @@ export default function SavedDecklistVariantPicker({
   disabled = false,
   label = 'Mazo desde tus listas',
   helperText,
-  showViewDecklistButton = true
+  showViewDecklistButton = true,
+  decklistsOverride,
+  decklistsLoadingOverride,
+  decklistsErrorOverride,
+  emptyListsMessage = 'No tienes listas guardadas. Créalas en «Mis listas» en el panel.'
 }: Props) {
-  const {
-    data: decklists = [],
-    isPending,
-    isError,
-    error
-  } = useSavedDecklistsList()
+  const ownQuery = useSavedDecklistsList()
+  const useOverride = decklistsOverride !== undefined
+  const decklists = useMemo(() => {
+    if (decklistsOverride !== undefined) return decklistsOverride
+    return ownQuery.data ?? EMPTY_DECKLISTS
+  }, [decklistsOverride, ownQuery.data])
+  const isPending = useOverride
+    ? Boolean(decklistsLoadingOverride)
+    : ownQuery.isPending
+  const isError = useOverride
+    ? Boolean(decklistsErrorOverride)
+    : ownQuery.isError
+  const error = useOverride ? decklistsErrorOverride : ownQuery.error
   const options = useMemo(() => buildFlatOptions(decklists), [decklists])
   /** Valor preseleccionado (p. ej. desde el torneo) puede no existir aún en la lista cargada. */
   const autocompleteOptions = useMemo(() => {
@@ -158,7 +176,7 @@ export default function SavedDecklistVariantPicker({
   if (autocompleteOptions.length === 0) {
     return (
       <Typography variant="body2" color="text.secondary">
-        No tienes listas guardadas. Créalas en «Mis listas» en el panel.
+        {emptyListsMessage}
       </Typography>
     )
   }

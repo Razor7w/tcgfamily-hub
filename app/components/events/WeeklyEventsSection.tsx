@@ -35,16 +35,17 @@ import {
 } from '@/hooks/useWeeklyEvents'
 import WeekRangeNavigator from '@/components/events/WeekRangeNavigator'
 import {
+  latestEventOnDay,
   localDayKey,
   mondayIndexFromDate,
   sameLocalDay,
+  sortEventsByStartsAt,
   startOfWeekMonday
 } from '@/components/events/weekUtils'
 import LinearCapacity from '@/components/events/LinearCapacity'
 import TournamentFinishedStandingsTabs from '@/components/events/TournamentFinishedStandingsTabs'
 import WeeklyEventPreRegisterForm from '@/components/events/WeeklyEventPreRegisterForm'
 import {
-  formatCloseNote,
   formatPrice,
   formatWhen,
   gameLabel,
@@ -127,24 +128,37 @@ export default function WeeklyEventsSection({
   }, [weekStart, selectedOffset])
 
   const eventsForDay = useMemo(() => {
-    return events.filter(e => sameLocalDay(new Date(e.startsAt), selectedDate))
+    const onDay = events.filter(e =>
+      sameLocalDay(new Date(e.startsAt), selectedDate)
+    )
+    return sortEventsByStartsAt(onDay)
   }, [events, selectedDate])
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
 
-  const selectedEvent = useMemo(() => {
+  /** Id efectivo: chip manual si sigue en el día; si no, el torneo más tardío (tarde). */
+  const resolvedSelectedEventId = useMemo(() => {
     if (!eventsForDay.length) return null
-    if (selectedEventId != null) {
-      const match = eventsForDay.find(e => e._id === selectedEventId)
-      if (match) return match
+    if (
+      selectedEventId != null &&
+      eventsForDay.some(e => e._id === selectedEventId)
+    ) {
+      return selectedEventId
     }
-    return eventsForDay[0] ?? null
+    return latestEventOnDay(eventsForDay)?._id ?? null
   }, [eventsForDay, selectedEventId])
 
-  /** Oculta bloques de preinscripción cuando el evento ya está en curso o cerrado (admin marca `running` al setear ronda, etc.). */
-  const selectedEventStarted =
-    selectedEvent != null &&
-    (selectedEvent.state === 'running' || selectedEvent.state === 'close')
+  const selectedEvent = useMemo(() => {
+    if (!eventsForDay.length || !resolvedSelectedEventId) return null
+    return (
+      eventsForDay.find(e => e._id === resolvedSelectedEventId) ??
+      latestEventOnDay(eventsForDay)
+    )
+  }, [eventsForDay, resolvedSelectedEventId])
+
+  /** Torneo cerrado por admin: sin preinscripción ni edición de deck. */
+  const selectedEventClosed =
+    selectedEvent != null && selectedEvent.state === 'close'
 
   const [participantsOpenForEventId, setParticipantsOpenForEventId] = useState<
     string | null
@@ -218,7 +232,7 @@ export default function WeeklyEventsSection({
   const registerDisabledReason = (ev: PublicWeeklyEvent | null) => {
     if (!ev) return 'No hay evento seleccionado'
     if (ev.myRegistration) return null
-    if (!ev.canPreRegister) return 'La preinscripción ya cerró'
+    if (!ev.canPreRegister) return 'El torneo ya está cerrado'
     if (ev.participantCount >= ev.maxParticipants) return 'Cupo completo'
     return null
   }
@@ -308,7 +322,7 @@ export default function WeeklyEventsSection({
           <>
             <WeeklyEventsSameDayEventChips
               eventsForDay={eventsForDay}
-              selectedEventId={selectedEvent?._id ?? null}
+              selectedEventId={resolvedSelectedEventId}
               onSelectEventId={setSelectedEventId}
             />
 
@@ -577,34 +591,6 @@ export default function WeeklyEventsSection({
                               </Typography>
                             </Stack>
                           ) : null}
-                          {selectedEvent.state !== 'close' ? (
-                            <Box
-                              sx={{
-                                mt: 0.5,
-                                p: 1.5,
-                                borderRadius: 2.5,
-                                bgcolor: t =>
-                                  alpha(t.palette.primary.main, 0.06),
-                                border: '1px solid',
-                                borderColor: t =>
-                                  alpha(t.palette.primary.main, 0.18),
-                                boxShadow: t =>
-                                  `inset 0 1px 0 ${alpha(t.palette.common.white, 0.5)}`
-                              }}
-                            >
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                sx={{ lineHeight: 1.55 }}
-                              >
-                                Preinscripción hasta las{' '}
-                                <strong>
-                                  {formatCloseNote(selectedEvent.startsAt)}
-                                </strong>{' '}
-                                (cierra 1 s antes del inicio).
-                              </Typography>
-                            </Box>
-                          ) : null}
                         </Stack>
                       </CardContent>
                     </Card>
@@ -639,15 +625,59 @@ export default function WeeklyEventsSection({
                               </Typography>
                             </Box>
                             {selectedEvent.myRegistration ? (
-                              <Typography variant="body2">
-                                Lista como{' '}
-                                <Box
-                                  component="strong"
-                                  sx={{ color: 'text.primary' }}
-                                >
-                                  {selectedEvent.myRegistration}
-                                </Box>
-                              </Typography>
+                              <Stack spacing={1.5}>
+                                <Typography variant="body2">
+                                  Lista como{' '}
+                                  <Box
+                                    component="strong"
+                                    sx={{ color: 'text.primary' }}
+                                  >
+                                    {selectedEvent.myRegistration}
+                                  </Box>
+                                </Typography>
+                                {selectedEvent.canEditMyDeck ? (
+                                  <Stack spacing={1.25}>
+                                    <TournamentDeckSpritesSummary
+                                      slugs={
+                                        selectedEvent.myDeckPokemonSlugs ?? []
+                                      }
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="outlined"
+                                      color="primary"
+                                      fullWidth
+                                      size="medium"
+                                      startIcon={<Style aria-hidden />}
+                                      onClick={() =>
+                                        setDeckDialogOpenForEventId(
+                                          selectedEvent._id
+                                        )
+                                      }
+                                    >
+                                      {(selectedEvent.myDeckPokemonSlugs
+                                        ?.length ?? 0) > 0
+                                        ? 'Editar decklist'
+                                        : 'Añadir decklist'}
+                                    </Button>
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                    >
+                                      Puedes registrar tu mazo aunque el torneo
+                                      ya terminó. Solo tú ves el listado
+                                      completo.
+                                    </Typography>
+                                  </Stack>
+                                ) : (selectedEvent.myDeckPokemonSlugs?.length ??
+                                    0) > 0 ? (
+                                  <TournamentDeckSpritesSummary
+                                    slugs={
+                                      selectedEvent.myDeckPokemonSlugs ?? []
+                                    }
+                                  />
+                                ) : null}
+                              </Stack>
                             ) : (
                               <Typography
                                 variant="body2"
@@ -785,7 +815,7 @@ export default function WeeklyEventsSection({
                           </Stack>
                         ) : (
                           <>
-                            {!selectedEventStarted ? (
+                            {!selectedEventClosed ? (
                               <>
                                 <Typography
                                   variant="overline"
@@ -867,22 +897,11 @@ export default function WeeklyEventsSection({
                                   </Stack>
                                 ) : (selectedEvent.myDeckPokemonSlugs?.length ??
                                     0) > 0 ? (
-                                  <Stack spacing={0.75}>
-                                    <TournamentDeckSpritesSummary
-                                      slugs={
-                                        selectedEvent.myDeckPokemonSlugs ?? []
-                                      }
-                                    />
-                                    {selectedEvent.state === 'close' ? (
-                                      <Typography
-                                        variant="caption"
-                                        color="text.secondary"
-                                      >
-                                        El torneo finalizó; ya no puedes editar
-                                        tu deck.
-                                      </Typography>
-                                    ) : null}
-                                  </Stack>
+                                  <TournamentDeckSpritesSummary
+                                    slugs={
+                                      selectedEvent.myDeckPokemonSlugs ?? []
+                                    }
+                                  />
                                 ) : null}
                                 {selectedEvent.kind === 'tournament' &&
                                 selectedEvent.state === 'running' ? (
@@ -994,14 +1013,9 @@ export default function WeeklyEventsSection({
                                     </Button>
                                   </>
                                 ) : null}
-                                {selectedEvent.state !== 'running' &&
-                                !(
-                                  selectedEvent.kind === 'tournament' &&
-                                  selectedEvent.state === 'close'
-                                ) ? (
+                                {!selectedEventClosed ? (
                                   <>
-                                    {!selectedEventStarted &&
-                                    selectedEvent.myAttendanceConfirmed ? (
+                                    {selectedEvent.myAttendanceConfirmed ? (
                                       <Alert
                                         severity="success"
                                         variant="filled"
@@ -1038,12 +1052,12 @@ export default function WeeklyEventsSection({
                                           ? 'Quitando…'
                                           : 'Desinscribirse'}
                                       </Button>
-                                    ) : (
+                                    ) : !selectedEvent.canPreRegister ? (
                                       <Alert severity="info" variant="outlined">
-                                        No puedes desinscribirte: el evento ya
-                                        comenzó.
+                                        No puedes desinscribirte: el torneo ya
+                                        está cerrado.
                                       </Alert>
-                                    )}
+                                    ) : null}
                                     {unregister.isError ? (
                                       <Alert
                                         severity="error"
@@ -1068,7 +1082,7 @@ export default function WeeklyEventsSection({
                               />
                             )}
 
-                            {!selectedEventStarted ? (
+                            {!selectedEventClosed ? (
                               <Button
                                 type="button"
                                 variant="outlined"

@@ -6,6 +6,7 @@ import {
   Email,
   ExpandLess,
   ExpandMore,
+  AssignmentOutlined,
   LightbulbOutlined,
   MilitaryTech,
   People,
@@ -71,6 +72,12 @@ export default function AdminSidebarClient({ isOwner }: { isOwner: boolean }) {
                 <LightbulbOutlined />
               </ListItemIcon>
               <ListItemText primary="Sugerencias" />
+            </ListItemButton>
+            <ListItemButton sx={{ pl: 4 }} href="/admin/reporte-manual">
+              <ListItemIcon>
+                <AssignmentOutlined />
+              </ListItemIcon>
+              <ListItemText primary="Reporte manual" />
             </ListItemButton>
           </List>
         ) : null}

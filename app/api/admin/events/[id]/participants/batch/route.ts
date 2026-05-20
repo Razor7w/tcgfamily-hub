@@ -55,9 +55,17 @@ export async function POST(
     const forbidden = adminWeeklyEventForbiddenResponse(existing)
     if (forbidden) return forbidden
 
-    if (!canPreRegisterNow(existing.startsAt, now)) {
+    const eventState =
+      existing.state === 'schedule' ||
+      existing.state === 'running' ||
+      existing.state === 'close'
+        ? existing.state
+        : 'schedule'
+    if (!canPreRegisterNow(eventState)) {
       return NextResponse.json(
-        { error: 'La preinscripción ya cerró para este evento' },
+        {
+          error: 'El torneo ya está cerrado; no se pueden añadir preinscritos'
+        },
         { status: 400 }
       )
     }

@@ -36,6 +36,23 @@ export function addWeeks(weekStartMonday: Date, delta: number): Date {
   return n
 }
 
+/** Orden cronológico (mañana → tarde). */
+export function sortEventsByStartsAt<T extends { startsAt: string }>(
+  list: T[]
+): T[] {
+  return [...list].sort(
+    (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
+  )
+}
+
+/** Evento más tardío del día (p. ej. torneo de la tarde si hay dos el mismo día). */
+export function latestEventOnDay<T extends { startsAt: string }>(
+  list: T[]
+): T | null {
+  const sorted = sortEventsByStartsAt(list)
+  return sorted.length > 0 ? sorted[sorted.length - 1]! : null
+}
+
 export function sameLocalDay(a: Date, b: Date): boolean {
   return (
     a.getFullYear() === b.getFullYear() &&

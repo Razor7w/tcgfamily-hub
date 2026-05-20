@@ -96,17 +96,14 @@ function toPublicEvent(
         ties: Math.max(0, Math.min(999, Math.round(Number(mine.ties) || 0)))
       }
     : null
-  const canUnregister =
-    Boolean(myRegistration) &&
-    canUnregisterNow(startsAt, now) &&
-    !myAttendanceConfirmed &&
-    doc.state !== 'running' &&
-    doc.state !== 'close'
-
   const eventState =
     doc.state === 'schedule' || doc.state === 'running' || doc.state === 'close'
       ? doc.state
       : 'schedule'
+  const canUnregister =
+    Boolean(myRegistration) &&
+    canUnregisterNow(eventState) &&
+    !myAttendanceConfirmed
   const myDeckPokemonSlugs = Array.isArray(mine?.deckPokemonSlugs)
     ? mine.deckPokemonSlugs.filter(
         (s): s is string => typeof s === 'string' && s.trim().length > 0
@@ -150,7 +147,7 @@ function toPublicEvent(
     roundNum,
     participantNames: doc.participants.map(p => p.displayName),
     participantCount: doc.participants.length,
-    canPreRegister: canPreRegisterNow(startsAt, now),
+    canPreRegister: canPreRegisterNow(eventState),
     myRegistration,
     myAttendanceConfirmed,
     myTable,

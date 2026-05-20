@@ -96,7 +96,6 @@ export async function GET(
     }
 
     await connectDB()
-    const now = new Date()
 
     const doc = await WeeklyEvent.findById(id).lean<LeanEvent | null>()
     if (!doc) {
@@ -250,7 +249,7 @@ export async function GET(
       participantNames: parts.map(p => p.displayName),
       participantCount: parts.length,
       canPreRegister:
-        tournamentOrigin !== 'custom' && canPreRegisterNow(startsAt, now),
+        tournamentOrigin !== 'custom' && canPreRegisterNow(eventState),
       myRegistration,
       myAttendanceConfirmed,
       myTable,
@@ -259,10 +258,8 @@ export async function GET(
       canUnregister:
         tournamentOrigin !== 'custom' &&
         Boolean(myRegistration) &&
-        canUnregisterNow(startsAt, now) &&
-        !myAttendanceConfirmed &&
-        doc.state !== 'running' &&
-        doc.state !== 'close',
+        canUnregisterNow(eventState) &&
+        !myAttendanceConfirmed,
       myDeckPokemonSlugs,
       myTournamentDecklistRef: serializeTournamentDecklistRef(
         viewAs?.tournamentDecklistRef

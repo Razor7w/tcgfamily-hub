@@ -1,19 +1,23 @@
-/** Cierra la preinscripción 1 segundo antes de la hora de inicio. */
-export const REGISTRATION_CUTOFF_MS_BEFORE_START = 1000
+import type { WeeklyEventState } from '@/models/WeeklyEvent'
 
-export function registrationClosesAt(startsAt: Date): Date {
-  return new Date(startsAt.getTime() - REGISTRATION_CUTOFF_MS_BEFORE_START)
+function isEventOpenForPlayerChanges(
+  state: WeeklyEventState | string | undefined
+): boolean {
+  return state === 'schedule' || state === 'running'
 }
 
-export function canPreRegisterNow(startsAt: Date, now = new Date()): boolean {
-  return (
-    now.getTime() <= startsAt.getTime() - REGISTRATION_CUTOFF_MS_BEFORE_START
-  )
+/** Preinscripción abierta mientras el torneo no esté cerrado (`close`). */
+export function canPreRegisterNow(
+  state: WeeklyEventState | string | undefined
+): boolean {
+  return isEventOpenForPlayerChanges(state)
 }
 
-/** Puede desinscribirse mientras el evento no haya comenzado. */
-export function canUnregisterNow(startsAt: Date, now = new Date()): boolean {
-  return now.getTime() < startsAt.getTime()
+/** Desinscripción permitida mientras el torneo no esté cerrado. */
+export function canUnregisterNow(
+  state: WeeklyEventState | string | undefined
+): boolean {
+  return isEventOpenForPlayerChanges(state)
 }
 
 export const DISPLAY_NAME_MAX = 80
