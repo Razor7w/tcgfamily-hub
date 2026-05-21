@@ -6,9 +6,17 @@ import { useDashboardStoreQueryKey } from '@/hooks/use-dashboard-store-key'
  * Ver ejemplos completos en ./MAILS_USAGE.md
  */
 
+export type MailStoreRef = {
+  id: string
+  name: string
+  slug: string
+}
+
 export interface Mail {
   _id: string
   code?: string
+  /** Tienda del envío (presente en GET /api/mail/me con allStores). */
+  store?: MailStoreRef | null
   fromUserId: {
     _id: string
     name?: string
@@ -86,6 +94,8 @@ export type UseMyMailsOptions = {
   pendingOnly?: boolean
   /** Solo correos que ya están recibidos en tienda (isRecivedInStore: true). */
   inStoreOnly?: boolean
+  /** Sin filtro por tienda activa; incluye `store` en cada mail. */
+  allStores?: boolean
   limit?: number
   enabled?: boolean
 }
@@ -94,18 +104,22 @@ export type UseMyMailsOptions = {
 export function useMyMails(options?: UseMyMailsOptions) {
   const pendingOnly = options?.pendingOnly ?? false
   const inStoreOnly = options?.inStoreOnly ?? false
+  const allStores = options?.allStores ?? false
   const limit = options?.limit
   const enabled = options?.enabled !== false
   const storeKey = useDashboardStoreQueryKey()
 
   return useQuery<{ mails: Mail[] }>({
-    queryKey: ['mails', 'me', storeKey, { pendingOnly, inStoreOnly, limit }],
+    queryKey: allStores
+      ? ['mails', 'me', 'all-stores', { pendingOnly, inStoreOnly, limit }]
+      : ['mails', 'me', storeKey, { pendingOnly, inStoreOnly, limit }],
     enabled,
     queryFn: async () => {
       const params = new URLSearchParams()
       if (limit !== undefined) params.set('limit', String(limit))
       if (pendingOnly) params.set('pending', '1')
       if (inStoreOnly) params.set('inStore', '1')
+      if (allStores) params.set('allStores', '1')
       const qs = params.toString()
       const url = qs ? `/api/mail/me?${qs}` : '/api/mail/me'
       const response = await fetch(url)

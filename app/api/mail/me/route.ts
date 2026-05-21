@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireSessionUserWithActiveStore } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import Mail from '@/models/Mails'
+import Store from '@/models/Store'
 import mongoose from 'mongoose'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
@@ -30,13 +31,18 @@ export async function GET(request: Request) {
     const inStoreOnly =
       searchParams.get('inStore') === '1' ||
       searchParams.get('inStore') === 'true'
+    const allStores =
+      searchParams.get('allStores') === '1' ||
+      searchParams.get('allStores') === 'true'
 
     await connectDB()
     const primary = await memoPrimaryTcgfamilyStoreObjectId()
-    const mailScope = mongoFilterByStore(sg.activeStoreOid, primary) as Record<
-      string,
-      unknown
-    >
+    const mailScope = allStores
+      ? null
+      : (mongoFilterByStore(sg.activeStoreOid, primary) as Record<
+          string,
+          unknown
+        >)
 
     const userId = session.user.id as string
     let uid: mongoose.Types.ObjectId
@@ -59,23 +65,23 @@ export async function GET(request: Request) {
       rutVariants.push(cleaned)
     }
 
-    const query = Mail.find({
-      $and: [
-        mailScope,
-        {
-          $or: [
-            { toUserId: uid },
-            { fromUserId: uid },
-            ...(rutVariants.length ? [{ toRut: { $in: rutVariants } }] : [])
-          ],
-          ...(pendingOnly ? { isRecived: false } : {}),
-          ...(inStoreOnly ? { isRecivedInStore: true } : {})
-        }
-      ]
-    })
+    const userFilter = {
+      $or: [
+        { toUserId: uid },
+        { fromUserId: uid },
+        ...(rutVariants.length ? [{ toRut: { $in: rutVariants } }] : [])
+      ],
+      ...(pendingOnly ? { isRecived: false } : {}),
+      ...(inStoreOnly ? { isRecivedInStore: true } : {})
+    }
+
+    const query = Mail.find(
+      mailScope ? { $and: [mailScope, userFilter] } : userFilter
+    )
       .sort({ createdAt: -1 })
       .populate('fromUserId', 'name rut')
       .populate('toUserId', 'name rut')
+      .populate('storeId', 'name slug')
       .lean()
 
     if (limit !== undefined) {
@@ -84,7 +90,51 @@ export async function GET(request: Request) {
 
     const mails = await query
 
-    return NextResponse.json({ mails }, { status: 200 })
+    let primaryStoreLabel: { name: string; slug: string } | null = null
+    if (allStores && primary) {
+      const ps = await Store.findById(primary)
+        .select('name slug')
+        .lean<{ name: string; slug: string } | null>()
+      if (ps?.name && ps?.slug) {
+        primaryStoreLabel = {
+          name: String(ps.name).trim(),
+          slug: String(ps.slug).trim().toLowerCase()
+        }
+      }
+    }
+
+    const enriched = mails.map(row => {
+      const storeRef = row.storeId as
+        | { _id: unknown; name?: string; slug?: string }
+        | null
+        | undefined
+      const hasPopulatedStore =
+        storeRef &&
+        typeof storeRef === 'object' &&
+        storeRef !== null &&
+        'name' in storeRef &&
+        typeof storeRef.name === 'string'
+      const store =
+        hasPopulatedStore && storeRef
+          ? {
+              id: String(storeRef._id),
+              name: storeRef.name!.trim(),
+              slug:
+                typeof storeRef.slug === 'string'
+                  ? storeRef.slug.trim().toLowerCase()
+                  : ''
+            }
+          : primaryStoreLabel
+            ? {
+                id: String(primary),
+                name: primaryStoreLabel.name,
+                slug: primaryStoreLabel.slug
+              }
+            : null
+      return { ...row, store }
+    })
+
+    return NextResponse.json({ mails: enriched }, { status: 200 })
   } catch (error) {
     console.error('Error al obtener mails:', error)
     return NextResponse.json(
