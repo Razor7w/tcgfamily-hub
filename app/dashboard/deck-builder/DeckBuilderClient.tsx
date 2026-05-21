@@ -425,17 +425,48 @@ export default function DeckBuilderClient() {
               direction="row"
               justifyContent="space-between"
               alignItems="center"
-              sx={{ mb: 2 }}
+              flexWrap="wrap"
+              useFlexGap
+              spacing={1}
+              sx={{ mb: 2, rowGap: 1 }}
             >
               <Typography variant="h6" component="h2" sx={{ fontWeight: 800 }}>
                 Mazo
               </Typography>
-              <Chip
-                label={`${totalCards} / ${MAX_DECK}`}
-                color={totalCards === MAX_DECK ? 'success' : 'default'}
-                size="small"
-                sx={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}
-              />
+              <Stack
+                direction="row"
+                alignItems="center"
+                spacing={1}
+                flexWrap="wrap"
+                useFlexGap
+                sx={{ ml: { xs: 0, sm: 'auto' } }}
+              >
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<ContentCopyIcon />}
+                  disabled={!exportText}
+                  onClick={() => void copyExport()}
+                  sx={{ textTransform: 'none', fontWeight: 600 }}
+                >
+                  Copiar listado
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<PostAddIcon />}
+                  onClick={goToCreateList}
+                  sx={{ textTransform: 'none', fontWeight: 600 }}
+                >
+                  Crear lista
+                </Button>
+                <Chip
+                  label={`${totalCards} / ${MAX_DECK}`}
+                  color={totalCards === MAX_DECK ? 'success' : 'default'}
+                  size="small"
+                  sx={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}
+                />
+              </Stack>
             </Stack>
             {Object.keys(deck).length === 0 ? (
               <Typography variant="body2" color="text.secondary">
@@ -525,31 +556,6 @@ export default function DeckBuilderClient() {
                   })}
               </Stack>
             )}
-            <Stack
-              direction="row"
-              spacing={1}
-              sx={{ mt: 2 }}
-              flexWrap="wrap"
-              useFlexGap
-            >
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<ContentCopyIcon />}
-                disabled={!exportText}
-                onClick={() => void copyExport()}
-              >
-                Copiar listado
-              </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<PostAddIcon />}
-                onClick={goToCreateList}
-              >
-                Crear lista
-              </Button>
-            </Stack>
           </Paper>
 
           <Paper
