@@ -190,6 +190,65 @@ export async function requireSessionUserWithActiveStore(): Promise<
 }
 
 /**
+ * Tienda destino al registrar correo (`storeId` en body/query o tienda activa de sesión).
+ * Misma regla que GET /api/me/stores: cualquier tienda activa del sistema.
+ */
+export async function resolveMailRegisterStoreOid(
+  session: Session,
+  requestedStoreId?: string | null
+): Promise<
+  | { ok: true; activeStoreOid: mongoose.Types.ObjectId }
+  | { ok: false; response: NextResponse }
+> {
+  const userId = session.user?.id
+  if (!userId) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+  }
+
+  let targetId =
+    typeof requestedStoreId === 'string' ? requestedStoreId.trim() : ''
+  if (!targetId) {
+    const raw = session.user as { activeStoreId?: string } | undefined
+    targetId =
+      typeof raw?.activeStoreId === 'string' &&
+      mongoose.Types.ObjectId.isValid(raw.activeStoreId)
+        ? raw.activeStoreId.trim()
+        : ''
+  }
+
+  if (!targetId || !mongoose.Types.ObjectId.isValid(targetId)) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          error: 'Selecciona una tienda válida',
+          code: 'store_required'
+        },
+        { status: 403 }
+      )
+    }
+  }
+
+  await connectDB()
+  const oid = new mongoose.Types.ObjectId(targetId)
+  const exists = await Store.exists({ _id: oid, isActive: true })
+  if (!exists) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: 'Tienda no encontrada.' },
+        { status: 400 }
+      )
+    }
+  }
+
+  return { ok: true, activeStoreOid: oid }
+}
+
+/**
  * ¿El usuario tiene fila explícita de staff sobre la tienda? (Útil antes de crear membresías automáticas).
  */
 export async function userHasExplicitStaffMembershipOnStore(

@@ -50,6 +50,8 @@ export interface RegisterMailData {
   toRut: string
   /** Comentario u observación (opcional). */
   observations?: string
+  /** Tienda donde se registra el envío; si falta, usa la activa en sesión. */
+  storeId?: string
   /**
    * `onlyReceptor`: mismo flujo que un usuario (emisor = sesión, solo `toRut`).
    * Necesario si el emisor es admin para no exigir `fromUserId`/`toUserId`.
@@ -158,14 +160,19 @@ export function useCreateMail() {
   })
 }
 
-/** Cuota de registros de correo del usuario para el día (hora Chile), por tienda activa. */
-export function useMailRegisterQuota() {
-  const storeKey = useDashboardStoreQueryKey()
+/** Cuota de registros de correo del usuario para el día (hora Chile), por tienda. */
+export function useMailRegisterQuota(storeId?: string | null) {
+  const fallbackKey = useDashboardStoreQueryKey()
+  const effectiveStoreId = (storeId ?? '').trim() || fallbackKey
   return useQuery<MailRegisterQuota>({
-    queryKey: ['mail-register-quota', storeKey],
-    enabled: storeKey !== 'none',
+    queryKey: ['mail-register-quota', effectiveStoreId],
+    enabled: effectiveStoreId !== 'none',
     queryFn: async () => {
-      const response = await fetch('/api/mail/register-quota')
+      const qs =
+        (storeId ?? '').trim().length > 0
+          ? `?storeId=${encodeURIComponent((storeId ?? '').trim())}`
+          : ''
+      const response = await fetch(`/api/mail/register-quota${qs}`)
       if (!response.ok) {
         const err = await response.json().catch(() => ({}))
         throw new Error(
