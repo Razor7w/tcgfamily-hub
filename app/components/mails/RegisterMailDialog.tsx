@@ -54,9 +54,29 @@ export default function RegisterMailDialog({
   const theme = useTheme()
   const { data: session } = useSession()
   const { data: meStoresRes, isLoading: storesLoading } = useMeStores()
-  const storeOptions = meStoresRes?.stores ?? []
+  const storeOptions = useMemo(
+    () => meStoresRes?.stores ?? [],
+    [meStoresRes?.stores]
+  )
 
-  const [selectedStore, setSelectedStore] = useState<MeStoreRow | null>(null)
+  const activeStoreId = useMemo(() => {
+    const id =
+      typeof session?.user?.activeStoreId === 'string'
+        ? session.user.activeStoreId.trim()
+        : ''
+    return id && storeOptions.some(s => s.id === id) ? id : ''
+  }, [session, storeOptions])
+
+  const defaultStore = useMemo((): MeStoreRow | null => {
+    if (storeOptions.length === 0) return null
+    return (
+      (activeStoreId ? storeOptions.find(s => s.id === activeStoreId) : null) ??
+      storeOptions[0]!
+    )
+  }, [storeOptions, activeStoreId])
+
+  const [userStore, setUserStore] = useState<MeStoreRow | null>(null)
+  const selectedStore = open ? (userStore ?? defaultStore) : null
 
   /** Misma lógica que Header/SidebarLayout: primer render móvil, luego `md` real. */
   const [isMdUp, setIsMdUp] = useState(false)
@@ -75,27 +95,6 @@ export default function RegisterMailDialog({
     mq.addListener(onChange)
     return () => mq.removeListener(onChange)
   }, [desktopQuery])
-
-  const activeStoreId = useMemo(() => {
-    const id =
-      typeof session?.user?.activeStoreId === 'string'
-        ? session.user.activeStoreId.trim()
-        : ''
-    return id && storeOptions.some(s => s.id === id) ? id : ''
-  }, [session, storeOptions])
-
-  useEffect(() => {
-    if (!open) return
-    if (storeOptions.length === 0) {
-      setSelectedStore(null)
-      return
-    }
-    const preferred =
-      (activeStoreId
-        ? storeOptions.find(s => s.id === activeStoreId)
-        : null) ?? storeOptions[0]!
-    setSelectedStore(preferred)
-  }, [open, activeStoreId, storeOptions])
 
   const selectedStoreLabel = selectedStore?.name?.trim() || 'tu tienda'
   const titleFull = `Registrar correo en ${selectedStoreLabel}`
@@ -124,7 +123,7 @@ export default function RegisterMailDialog({
     setRut('')
     setObservations('')
     setSubmitAttempted(false)
-    setSelectedStore(null)
+    setUserStore(null)
     registerMail.reset()
     onClose()
   }
@@ -210,12 +209,10 @@ export default function RegisterMailDialog({
         size="small"
         options={storeOptions}
         value={selectedStore}
-        onChange={(_, value) => setSelectedStore(value)}
+        onChange={(_, value) => setUserStore(value)}
         getOptionLabel={o => o.name?.trim() || o.slug || 'Tienda'}
         isOptionEqualToValue={(a, b) => a.id === b.id}
-        disabled={
-          storesLoading || noStores || registerMail.isPending
-        }
+        disabled={storesLoading || noStores || registerMail.isPending}
         loading={storesLoading}
         noOptionsText={
           storesLoading ? 'Cargando tiendas…' : 'No hay tiendas disponibles'
@@ -508,10 +505,7 @@ export default function RegisterMailDialog({
               ml: 'auto'
             }}
           >
-            <Button
-              onClick={handleClose}
-              disabled={registerMail.isPending}
-            >
+            <Button onClick={handleClose} disabled={registerMail.isPending}>
               Cancelar
             </Button>
             <Button

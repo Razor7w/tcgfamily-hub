@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import ChevronRight from '@mui/icons-material/ChevronRight'
 import MarkunreadMailboxOutlinedIcon from '@mui/icons-material/MarkunreadMailboxOutlined'
@@ -90,10 +90,7 @@ type FlatRow = {
   showStore: boolean
 }
 
-function buildFlatRows(
-  mails: Mail[],
-  sortByReceived: boolean
-): FlatRow[] {
+function buildFlatRows(mails: Mail[], sortByReceived: boolean): FlatRow[] {
   const sorted = [...mails].sort((a, b) => {
     const storeCmp = storeLabelForMail(a).localeCompare(
       storeLabelForMail(b),
@@ -166,9 +163,7 @@ export default function DashboardInStoreMailsCard() {
 
   const pickup = useMemo(
     () =>
-      (data?.mails ?? []).filter(m =>
-        isMailWaitingForPickup(m, currentUserId)
-      ),
+      (data?.mails ?? []).filter(m => isMailWaitingForPickup(m, currentUserId)),
     [data?.mails, currentUserId]
   )
 
@@ -180,16 +175,13 @@ export default function DashboardInStoreMailsCard() {
     [data?.mails, currentUserId]
   )
 
-  const [tab, setTab] = useState<MailHomeTab>('pickup')
-  const tabInitialized = useRef(false)
+  const autoTab = useMemo((): MailHomeTab => {
+    if (pickup.length === 0 && pendingStore.length > 0) return 'pending'
+    return 'pickup'
+  }, [pickup.length, pendingStore.length])
 
-  useEffect(() => {
-    if (tabInitialized.current || isPending) return
-    tabInitialized.current = true
-    if (pickup.length === 0 && pendingStore.length > 0) {
-      setTab('pending')
-    }
-  }, [isPending, pickup.length, pendingStore.length])
+  const [userTab, setUserTab] = useState<MailHomeTab | null>(null)
+  const tab = userTab ?? autoTab
 
   const showTabs = pickup.length > 0 && pendingStore.length > 0
   const effectiveTab: MailHomeTab = showTabs
@@ -266,9 +258,7 @@ export default function DashboardInStoreMailsCard() {
   const visible = flatRows.slice(0, VISIBLE_ROWS)
   const hiddenCount = flatRows.length - visible.length
   const accent =
-    effectiveTab === 'pickup'
-      ? 'warning'
-      : ('primary' as 'warning' | 'primary')
+    effectiveTab === 'pickup' ? 'warning' : ('primary' as 'warning' | 'primary')
 
   return (
     <Box
@@ -387,7 +377,7 @@ export default function DashboardInStoreMailsCard() {
       {showTabs ? (
         <Tabs
           value={tab}
-          onChange={(_e, v) => setTab(v as MailHomeTab)}
+          onChange={(_e, v) => setUserTab(v as MailHomeTab)}
           variant="fullWidth"
           sx={{
             minHeight: 40,

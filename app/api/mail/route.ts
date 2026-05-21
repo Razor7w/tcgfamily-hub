@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import mongoose from 'mongoose'
 import { auth } from '@/auth'
 import {
-  requireSessionUserWithActiveStore,
   requireStoreStaffSession,
   resolveMailRegisterStoreOid
 } from '@/lib/api-auth'
