@@ -5,6 +5,7 @@ import Link from 'next/link'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Dialog,
@@ -22,7 +23,7 @@ import {
 import { useSession } from 'next-auth/react'
 import { clean } from 'rut.js'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
-import { useMeStores } from '@/hooks/useMeStores'
+import { useMeStores, type MeStoreRow } from '@/hooks/useMeStores'
 import { useMailRegisterQuota, useRegisterMail } from '@/hooks/useMails'
 import { MAIL_REGISTER_DAILY_LIMIT } from '@/lib/mail-register-constants'
 
@@ -52,7 +53,30 @@ export default function RegisterMailDialog({
 }: RegisterMailDialogProps) {
   const theme = useTheme()
   const { data: session } = useSession()
-  const { data: meStoresRes } = useMeStores()
+  const { data: meStoresRes, isLoading: storesLoading } = useMeStores()
+  const storeOptions = useMemo(
+    () => meStoresRes?.stores ?? [],
+    [meStoresRes?.stores]
+  )
+
+  const activeStoreId = useMemo(() => {
+    const id =
+      typeof session?.user?.activeStoreId === 'string'
+        ? session.user.activeStoreId.trim()
+        : ''
+    return id && storeOptions.some(s => s.id === id) ? id : ''
+  }, [session, storeOptions])
+
+  const defaultStore = useMemo((): MeStoreRow | null => {
+    if (storeOptions.length === 0) return null
+    return (
+      (activeStoreId ? storeOptions.find(s => s.id === activeStoreId) : null) ??
+      storeOptions[0]!
+    )
+  }, [storeOptions, activeStoreId])
+
+  const [userStore, setUserStore] = useState<MeStoreRow | null>(null)
+  const selectedStore = open ? (userStore ?? defaultStore) : null
 
   /** Misma lógica que Header/SidebarLayout: primer render móvil, luego `md` real. */
   const [isMdUp, setIsMdUp] = useState(false)
@@ -72,26 +96,17 @@ export default function RegisterMailDialog({
     return () => mq.removeListener(onChange)
   }, [desktopQuery])
 
-  const activeStoreLabel = useMemo(() => {
-    const id =
-      typeof session?.user?.activeStoreId === 'string'
-        ? session.user.activeStoreId.trim()
-        : ''
-    if (!id) return 'tu tienda activa'
-    const rows = meStoresRes?.stores ?? []
-    const hit = rows.find(r => String(r.id ?? '').trim() === id)
-    const name = typeof hit?.name === 'string' ? hit.name.trim() : ''
-    return name || 'tu tienda activa'
-  }, [session, meStoresRes])
+  const selectedStoreLabel = selectedStore?.name?.trim() || 'tu tienda'
+  const titleFull = `Registrar correo en ${selectedStoreLabel}`
 
-  const titleFull = `Registrar correo en ${activeStoreLabel}`
+  const selectedStoreId = selectedStore?.id?.trim() ?? ''
 
   const registerMail = useRegisterMail()
   const {
     data: quota,
     isLoading: quotaLoading,
     isError: quotaError
-  } = useMailRegisterQuota()
+  } = useMailRegisterQuota(selectedStoreId || null)
   const remaining = quota?.remaining ?? 0
   const limit = quota?.limit ?? MAIL_REGISTER_DAILY_LIMIT
   const usedToday = quota?.usedToday ?? 0
@@ -108,6 +123,7 @@ export default function RegisterMailDialog({
     setRut('')
     setObservations('')
     setSubmitAttempted(false)
+    setUserStore(null)
     registerMail.reset()
     onClose()
   }
@@ -122,14 +138,25 @@ export default function RegisterMailDialog({
 
   const handleSubmit = async () => {
     setSubmitAttempted(true)
+    if (!selectedStoreId) return
     if (getRutFieldError(rut, true)) return
     await registerMail.mutateAsync({
       toRut: normalizeRutForApi(rut),
       observations: observations.trim() || undefined,
-      mode: 'onlyReceptor'
+      mode: 'onlyReceptor',
+      storeId: selectedStoreId
     })
     handleClose()
   }
+
+  const noStores = !storesLoading && storeOptions.length === 0
+  const fieldsDisabled =
+    quotaBlocked ||
+    quotaLoading ||
+    storesLoading ||
+    noStores ||
+    !selectedStoreId ||
+    registerMail.isPending
 
   const titleRow = (
     <>
@@ -178,6 +205,28 @@ export default function RegisterMailDialog({
         pt: { xs: 0.5, sm: 1 }
       }}
     >
+      <Autocomplete<MeStoreRow>
+        size="small"
+        options={storeOptions}
+        value={selectedStore}
+        onChange={(_, value) => setUserStore(value)}
+        getOptionLabel={o => o.name?.trim() || o.slug || 'Tienda'}
+        isOptionEqualToValue={(a, b) => a.id === b.id}
+        disabled={storesLoading || noStores || registerMail.isPending}
+        loading={storesLoading}
+        noOptionsText={
+          storesLoading ? 'Cargando tiendas…' : 'No hay tiendas disponibles'
+        }
+        renderInput={params => (
+          <TextField
+            {...params}
+            label="Tienda"
+            required
+            helperText="Donde quedará pendiente el ingreso del paquete."
+          />
+        )}
+      />
+
       <TextField
         label="RUT receptor"
         placeholder="12.345.678-5"
@@ -201,7 +250,7 @@ export default function RegisterMailDialog({
         }
         size="small"
         autoComplete="off"
-        disabled={quotaBlocked || quotaLoading}
+        disabled={fieldsDisabled}
         inputProps={{ maxLength: 20, inputMode: 'text' }}
       />
 
@@ -214,7 +263,7 @@ export default function RegisterMailDialog({
         minRows={3}
         size="small"
         fullWidth
-        disabled={quotaBlocked || quotaLoading}
+        disabled={fieldsDisabled}
         helperText={`${observations.length}/${OBS_MAX}`}
         inputProps={{ maxLength: OBS_MAX }}
       />
@@ -236,7 +285,7 @@ export default function RegisterMailDialog({
         <Button
           fullWidth
           onClick={handleClose}
-          disabled={registerMail.isPending || quotaLoading}
+          disabled={registerMail.isPending}
           sx={{ py: 1 }}
         >
           Cancelar
@@ -246,7 +295,10 @@ export default function RegisterMailDialog({
           onClick={handleSubmit}
           variant="contained"
           disabled={
-            registerMail.isPending || quotaLoading || quotaError || quotaBlocked
+            registerMail.isPending ||
+            quotaError ||
+            fieldsDisabled ||
+            !selectedStoreId
           }
           sx={{ py: 1, fontWeight: 700 }}
         >
@@ -260,7 +312,7 @@ export default function RegisterMailDialog({
         color="primary"
         fullWidth
         variant="text"
-        disabled={registerMail.isPending || quotaLoading}
+        disabled={registerMail.isPending}
         sx={{ fontWeight: 700 }}
       >
         Cargar múltiples
@@ -401,7 +453,7 @@ export default function RegisterMailDialog({
               <Button
                 fullWidth
                 onClick={handleClose}
-                disabled={registerMail.isPending || quotaLoading}
+                disabled={registerMail.isPending}
                 sx={{ py: 1 }}
               >
                 Cancelar
@@ -412,9 +464,9 @@ export default function RegisterMailDialog({
                 variant="contained"
                 disabled={
                   registerMail.isPending ||
-                  quotaLoading ||
                   quotaError ||
-                  quotaBlocked
+                  fieldsDisabled ||
+                  !selectedStoreId
                 }
                 sx={{ py: 1, fontWeight: 700 }}
               >
@@ -428,7 +480,7 @@ export default function RegisterMailDialog({
               color="primary"
               fullWidth
               variant="text"
-              disabled={registerMail.isPending || quotaLoading}
+              disabled={registerMail.isPending}
               sx={{ fontWeight: 700 }}
             >
               Cargar múltiples
@@ -440,7 +492,7 @@ export default function RegisterMailDialog({
             href="/dashboard/mail/registrar-multiples"
             onClick={handleClose}
             color="primary"
-            disabled={registerMail.isPending || quotaLoading}
+            disabled={registerMail.isPending}
             sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
           >
             Cargar múltiples
@@ -453,10 +505,7 @@ export default function RegisterMailDialog({
               ml: 'auto'
             }}
           >
-            <Button
-              onClick={handleClose}
-              disabled={registerMail.isPending || quotaLoading}
-            >
+            <Button onClick={handleClose} disabled={registerMail.isPending}>
               Cancelar
             </Button>
             <Button
@@ -464,9 +513,9 @@ export default function RegisterMailDialog({
               variant="contained"
               disabled={
                 registerMail.isPending ||
-                quotaLoading ||
                 quotaError ||
-                quotaBlocked
+                fieldsDisabled ||
+                !selectedStoreId
               }
             >
               {registerMail.isPending ? 'Registrando…' : 'Registrar'}

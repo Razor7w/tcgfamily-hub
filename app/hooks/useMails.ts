@@ -6,9 +6,17 @@ import { useDashboardStoreQueryKey } from '@/hooks/use-dashboard-store-key'
  * Ver ejemplos completos en ./MAILS_USAGE.md
  */
 
+export type MailStoreRef = {
+  id: string
+  name: string
+  slug: string
+}
+
 export interface Mail {
   _id: string
   code?: string
+  /** Tienda del envío (presente en GET /api/mail/me con allStores). */
+  store?: MailStoreRef | null
   fromUserId: {
     _id: string
     name?: string
@@ -42,6 +50,8 @@ export interface RegisterMailData {
   toRut: string
   /** Comentario u observación (opcional). */
   observations?: string
+  /** Tienda donde se registra el envío; si falta, usa la activa en sesión. */
+  storeId?: string
   /**
    * `onlyReceptor`: mismo flujo que un usuario (emisor = sesión, solo `toRut`).
    * Necesario si el emisor es admin para no exigir `fromUserId`/`toUserId`.
@@ -86,6 +96,8 @@ export type UseMyMailsOptions = {
   pendingOnly?: boolean
   /** Solo correos que ya están recibidos en tienda (isRecivedInStore: true). */
   inStoreOnly?: boolean
+  /** Sin filtro por tienda activa; incluye `store` en cada mail. */
+  allStores?: boolean
   limit?: number
   enabled?: boolean
 }
@@ -94,18 +106,22 @@ export type UseMyMailsOptions = {
 export function useMyMails(options?: UseMyMailsOptions) {
   const pendingOnly = options?.pendingOnly ?? false
   const inStoreOnly = options?.inStoreOnly ?? false
+  const allStores = options?.allStores ?? false
   const limit = options?.limit
   const enabled = options?.enabled !== false
   const storeKey = useDashboardStoreQueryKey()
 
   return useQuery<{ mails: Mail[] }>({
-    queryKey: ['mails', 'me', storeKey, { pendingOnly, inStoreOnly, limit }],
+    queryKey: allStores
+      ? ['mails', 'me', 'all-stores', { pendingOnly, inStoreOnly, limit }]
+      : ['mails', 'me', storeKey, { pendingOnly, inStoreOnly, limit }],
     enabled,
     queryFn: async () => {
       const params = new URLSearchParams()
       if (limit !== undefined) params.set('limit', String(limit))
       if (pendingOnly) params.set('pending', '1')
       if (inStoreOnly) params.set('inStore', '1')
+      if (allStores) params.set('allStores', '1')
       const qs = params.toString()
       const url = qs ? `/api/mail/me?${qs}` : '/api/mail/me'
       const response = await fetch(url)
@@ -144,14 +160,19 @@ export function useCreateMail() {
   })
 }
 
-/** Cuota de registros de correo del usuario para el día (hora Chile), por tienda activa. */
-export function useMailRegisterQuota() {
-  const storeKey = useDashboardStoreQueryKey()
+/** Cuota de registros de correo del usuario para el día (hora Chile), por tienda. */
+export function useMailRegisterQuota(storeId?: string | null) {
+  const fallbackKey = useDashboardStoreQueryKey()
+  const effectiveStoreId = (storeId ?? '').trim() || fallbackKey
   return useQuery<MailRegisterQuota>({
-    queryKey: ['mail-register-quota', storeKey],
-    enabled: storeKey !== 'none',
+    queryKey: ['mail-register-quota', effectiveStoreId],
+    enabled: effectiveStoreId !== 'none',
     queryFn: async () => {
-      const response = await fetch('/api/mail/register-quota')
+      const qs =
+        (storeId ?? '').trim().length > 0
+          ? `?storeId=${encodeURIComponent((storeId ?? '').trim())}`
+          : ''
+      const response = await fetch(`/api/mail/register-quota${qs}`)
       if (!response.ok) {
         const err = await response.json().catch(() => ({}))
         throw new Error(

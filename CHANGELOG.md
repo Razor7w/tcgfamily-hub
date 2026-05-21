@@ -10,6 +10,30 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [1.2.0] - 2026-05-21
+
+Correo en el dashboard, login con Google más claro y barra móvil con acceso a tus correos.
+
+### Añadido
+
+- **Tarjeta de correos en Inicio** (`DashboardInStoreMailsCard`): listos para retiro y pendientes de ingreso en tienda, agrupados por sede y pestañas cuando aplica.
+- **Página de error de autenticación** (`/auth/error`): mensajes en español según código Auth.js, reintento con Google y avisos para navegador in-app o dominio legacy.
+- **Registro de correo**: autocomplete de **tienda** en el diálogo de acceso directo; por defecto la tienda activa; API acepta `storeId` y cuota por tienda elegida.
+- **Barra inferior móvil**: quinto acceso **Tus correos** (centro, `/dashboard/mail`) con **punto rojo** si hay paquetes en tienda listos para retirar.
+- **`app/lib/mail-inbox.ts`**: helpers compartidos (`isMailWaitingForPickup`, etc.) para inbox y badge.
+- **`app/lib/auth-error-messages.ts`**: textos por código de error OAuth/sesión.
+
+### Cambiado
+
+- **`GET /api/mail/me`**: soporte `allStores`, `inStore` y respuesta con referencia de tienda por envío.
+- **Tour móvil**: copy actualizado (cinco iconos, incluido Tus correos).
+
+### Corregido
+
+- **Login Google** intermitente: redirect **301** `hub.tcgfamily.cl` → `tcgnexo.cl` en `proxy.ts`; sin `metadataBase` fijo (evita peticiones RSC cross-origin y `OPTIONS` 400); notas en `.env.example` sobre `AUTH_URL`.
+- **React 19**: pestaña inicial de correos en Inicio y tienda del diálogo de registro sin `setState` en efectos (estado derivado / `useMemo`).
+- Logging `[auth]` en errores de NextAuth para diagnóstico en Vercel.
+
 ## [1.1.0] - 2026-05-20
 
 Mejora de **hub móvil**, **panel lateral en drawer**, **tours** y corrección crítica de **clics bloqueados** tras navegación SPA en iOS/Safari.
@@ -427,7 +451,9 @@ Primera versión estable **TCG Nexo** con soporte multitienda.
 
 Línea base anterior en `package.json` antes de este changelog; el detalle de cambios queda en el historial de git.
 
-[Unreleased]: https://github.com/Razor7w/tcgfamily-hub/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/Razor7w/tcgfamily-hub/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/Razor7w/tcgfamily-hub/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/Razor7w/tcgfamily-hub/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Razor7w/tcgfamily-hub/compare/v0.9.4...v1.0.0
 
 Cuando publiques tags `vX.Y.Z` en GitHub, puedes añadir al final de este archivo enlaces tipo _Keep a Changelog_ (`[Unreleased]: …/compare/v1.0.0…HEAD`, `[1.0.0]: …/compare/v0.9.4…v1.0.0`, `[0.9.4]: …/compare/v0.9.3…v0.9.4`, `[0.9.3]: …/compare/v0.9.2…v0.9.3`, `[0.9.2]: …/compare/v0.9.1…v0.9.2`, `[0.9.1]: …/compare/v0.9.0…v0.9.1`, `[0.9.0]: …/compare/v0.8.0…v0.9.0`, `[0.8.0]: …/compare/v0.7.0…v0.8.0`, `[0.7.0]: …/compare/v0.6.6…v0.7.0`, `[0.6.6]: …/compare/v0.6.5…v0.6.6`, `[0.6.5]: …/compare/v0.6.4…v0.6.5`, `[0.6.4]: …/compare/v0.6.3…v0.6.4`, `[0.6.3]: …/compare/v0.6.2…v0.6.3`, `[0.6.2]: …/compare/v0.6.1…v0.6.2`, `[0.6.1]: …/compare/v0.6.0…v0.6.1`, `[0.6.0]: …/compare/v0.5.5…v0.6.0`, `[0.5.5]: …/compare/v0.5.4…v0.5.5`, `[0.5.4]: …/compare/v0.5.3…v0.5.4`, `[0.5.3]: …/compare/v0.5.2…v0.5.3`, `[0.5.2]: …/compare/v0.5.1…v0.5.2`, `[0.5.1]: …/compare/v0.5.0…v0.5.1`, `[0.5.0]: …/compare/v0.4.6…v0.5.0`, `[0.4.6]: …/compare/v0.4.5…v0.4.6`, `[0.4.5]: …/compare/v0.4.4…v0.4.5`, `[0.4.4]: …/compare/v0.4.3…v0.4.4`, `[0.4.3]: …/compare/v0.4.2…v0.4.3`, `[0.4.2]: …/compare/v0.4.1…v0.4.2`, `[0.4.1]: …/compare/v0.4.0…v0.4.1`, `[0.4.0]: …/compare/v0.3.0…v0.4.0`, `[0.3.0]: …/compare/v0.2.1…v0.3.0`, etc.).

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import mongoose from 'mongoose'
 import { auth } from '@/auth'
 import {
-  requireSessionUserWithActiveStore,
-  requireStoreStaffSession
+  requireStoreStaffSession,
+  resolveMailRegisterStoreOid
 } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import Mail from '@/models/Mails'
@@ -154,7 +154,8 @@ export async function POST(request: NextRequest) {
       isRecived,
       isRecivedInStore,
       observations,
-      mode: rawMode
+      mode: rawMode,
+      storeId: rawStoreId
     } = body
 
     /** Admin: `all` = emisor/destinatario por ID (panel). `onlyReceptor` = como usuario (solo toRut). */
@@ -171,9 +172,9 @@ export async function POST(request: NextRequest) {
       primaryStoreOid = staffGate.primaryStoreOid ?? null
       adminFullCreate = true
     } else {
-      const uGate = await requireSessionUserWithActiveStore()
-      if (!uGate.ok) return uGate.response
-      activeStoreOid = uGate.activeStoreOid
+      const storeGate = await resolveMailRegisterStoreOid(session, rawStoreId)
+      if (!storeGate.ok) return storeGate.response
+      activeStoreOid = storeGate.activeStoreOid
       await connectDB()
       primaryStoreOid = await memoPrimaryTcgfamilyStoreObjectId()
     }

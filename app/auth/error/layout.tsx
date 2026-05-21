@@ -2,14 +2,14 @@ import type { Metadata } from 'next'
 import { buildPageMetadata } from '@/lib/site-metadata'
 
 export const metadata: Metadata = buildPageMetadata({
-  title: 'Cuenta',
+  title: 'Error al iniciar sesión',
   description:
-    'Regístrate o inicia sesión en TCG Nexo para gestionar eventos, correo y mazos en tu tienda TCG.',
-  path: '/auth',
+    'No se pudo completar el inicio de sesión con Google u otro proveedor.',
+  path: '/auth/error',
   noIndex: true
 })
 
-export default function AuthLayout({
+export default function AuthErrorLayout({
   children
 }: {
   children: React.ReactNode
