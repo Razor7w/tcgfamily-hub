@@ -1,22 +1,30 @@
 'use client'
 
+import { useMemo } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import {
   AccountCircleOutlined,
   Home,
+  MarkunreadMailboxOutlined,
   Storefront,
   Style
 } from '@mui/icons-material'
 import {
+  Badge,
   BottomNavigation,
   BottomNavigationAction,
   Paper,
   useTheme
 } from '@mui/material'
 import { alpha } from '@mui/material/styles'
+import { useMyMails } from '@/hooks/useMails'
 import { useStoreHubHref } from '@/hooks/useStoreHubHref'
 import { cleanupOverlayBlockers } from '@/lib/overlay-blocker-cleanup'
+import { isMailWaitingForPickup } from '@/lib/mail-inbox'
 import { isStoreContextHubPath } from '@/lib/store-context-hub-path'
+
+const MAIL_PICKUP_BADGE_LIMIT = 48
 
 /** Altura base del nav (sin safe area ni padding del shell); alinear con padding del main en SidebarLayout */
 export const DASHBOARD_MOBILE_BOTTOM_NAV_HEIGHT_PX = 56
@@ -34,10 +42,16 @@ function isUnderDecklistNav(path: string) {
 
 function mobileNavValue(
   pathname: string
-): false | 'home' | 'stores' | 'decks' | 'account' {
+): false | 'home' | 'stores' | 'mail' | 'decks' | 'account' {
   if (pathname === '/dashboard') return 'home'
   if (pathname === '/dashboard/tiendas' || isStoreContextHubPath(pathname)) {
     return 'stores'
+  }
+  if (
+    pathname === '/dashboard/mail' ||
+    pathname.startsWith('/dashboard/mail/')
+  ) {
+    return 'mail'
   }
   if (isUnderDecklistNav(pathname)) return 'decks'
   if (
@@ -59,8 +73,37 @@ export default function DashboardMobileBottomNav() {
   const theme = useTheme()
   const router = useRouter()
   const pathname = usePathname() ?? ''
+  const { data: session, status } = useSession()
+  const currentUserId = session?.user?.id ?? ''
   const storeHubHref = useStoreHubHref()
   const selected = mobileNavValue(pathname)
+
+  const { data: pickupMailsData } = useMyMails({
+    pendingOnly: true,
+    inStoreOnly: true,
+    allStores: true,
+    limit: MAIL_PICKUP_BADGE_LIMIT,
+    enabled: status === 'authenticated' && currentUserId.length > 0
+  })
+
+  const hasMailToPickup = useMemo(
+    () =>
+      (pickupMailsData?.mails ?? []).some(m =>
+        isMailWaitingForPickup(m, currentUserId)
+      ),
+    [pickupMailsData?.mails, currentUserId]
+  )
+
+  const mailNavIcon = (
+    <Badge
+      color="error"
+      variant="dot"
+      invisible={!hasMailToPickup}
+      overlap="circular"
+    >
+      <MarkunreadMailboxOutlined />
+    </Badge>
+  )
 
   const actionSx = {
     minWidth: 0,
@@ -128,6 +171,17 @@ export default function DashboardMobileBottomNav() {
           aria-label="Tiendas"
           icon={<Storefront />}
           onClick={() => go(storeHubHref)}
+          sx={actionSx}
+        />
+        <BottomNavigationAction
+          value="mail"
+          aria-label={
+            hasMailToPickup
+              ? 'Tus correos, tienes correos listos para retirar'
+              : 'Tus correos'
+          }
+          icon={mailNavIcon}
+          onClick={() => go('/dashboard/mail')}
           sx={actionSx}
         />
         <BottomNavigationAction

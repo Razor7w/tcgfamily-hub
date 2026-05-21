@@ -22,7 +22,7 @@ export const DASHBOARD_PLAYER_TOUR_STEPS: Step[] = [
     target: tourSelector(PRODUCT_TOUR_TARGETS.dashboardMobileNav),
     title: 'Navegación',
     content:
-      'En el celular usa esta barra: Inicio, Tiendas, Mazos y Mi cuenta. Tiendas muestra la tienda activa del selector superior.',
+      'En el celular usa esta barra: Inicio, Tiendas, Tus correos (centro), Mazos y Mi cuenta. Tiendas muestra la tienda activa del selector superior.',
     placement: 'top',
     skipBeacon: true
   },

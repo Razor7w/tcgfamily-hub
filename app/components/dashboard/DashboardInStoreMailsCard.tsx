@@ -16,6 +16,10 @@ import { useSession } from 'next-auth/react'
 import ButtonBarCode from '@/components/molecule/ButtonBarCode'
 import { useMyMails, type Mail } from '@/hooks/useMails'
 import {
+  isMailPendingStoreReceipt,
+  isMailWaitingForPickup
+} from '@/lib/mail-inbox'
+import {
   getElapsedCalendarDaysSince,
   getMailStoreWaitDays,
   toneForStoreWaitDays,
@@ -26,30 +30,6 @@ const MAIL_HOME_LIMIT = 24
 const VISIBLE_ROWS = 5
 
 type MailHomeTab = 'pickup' | 'pending'
-
-function mailUserId(ref: { _id: string } | string): string {
-  return typeof ref === 'object' ? ref._id : String(ref)
-}
-
-function isMailInvolved(mail: Mail, currentUserId: string): boolean {
-  if (!currentUserId) return false
-  if (mailUserId(mail.fromUserId) === currentUserId) return true
-  if (mail.toUserId && mailUserId(mail.toUserId) === currentUserId) return true
-  return Boolean(mail.toRut?.trim())
-}
-
-function isMailWaitingForPickup(mail: Mail, currentUserId: string): boolean {
-  if (mail.isRecived || !mail.isRecivedInStore) return false
-  if (!currentUserId) return false
-  if (mailUserId(mail.fromUserId) === currentUserId) return false
-  if (mail.toUserId && mailUserId(mail.toUserId) === currentUserId) return true
-  return Boolean(mail.toRut?.trim())
-}
-
-function isMailPendingStoreReceipt(mail: Mail, currentUserId: string): boolean {
-  if (mail.isRecived || mail.isRecivedInStore) return false
-  return isMailInvolved(mail, currentUserId)
-}
 
 function storeKeyForMail(mail: Mail): string {
   const s = mail.store
