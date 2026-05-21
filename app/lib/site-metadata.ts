@@ -91,9 +91,12 @@ export function buildPageMetadata(
   }
 }
 
-/** Metadatos por defecto del sitio (layout raíz). */
+/**
+ * Sin `metadataBase` fijo: si el usuario entra por hub.tcgfamily.cl, Next no debe
+ * pedir RSC a tcgnexo.cl (OPTIONS cross-origin → 400). Las URLs absolutas de OG
+ * siguen usando `getSiteUrl()` / `absoluteUrl()`.
+ */
 export const rootSiteMetadata: Metadata = {
-  metadataBase: siteMetadataBase(),
   title: {
     default: SITE_NAME,
     template: `%s | ${SITE_NAME}`

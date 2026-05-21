@@ -124,7 +124,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     })
   ],
   pages: {
-    signIn: '/'
+    signIn: '/',
+    error: '/auth/error'
+  },
+  logger: {
+    error(error) {
+      console.error('[auth]', error)
+    }
   },
   session: {
     strategy: 'jwt',
