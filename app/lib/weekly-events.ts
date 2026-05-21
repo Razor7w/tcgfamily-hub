@@ -20,11 +20,38 @@ export function canUnregisterNow(
   return isEventOpenForPlayerChanges(state)
 }
 
+/**
+ * Sprites y listados de otros participantes solo visibles cuando el torneo está cerrado.
+ * Torneos custom se tratan como cerrados en la API.
+ */
+export function canExposeParticipantDecksToOthers(input: {
+  state?: string
+  tournamentOrigin?: string
+}): boolean {
+  if (input.tournamentOrigin === 'custom') return true
+  return input.state === 'close'
+}
+
 export const DISPLAY_NAME_MAX = 80
+
+/** Primera letra de cada palabra en mayúsculas (nombres de jugadores en UI). */
+export function formatPersonDisplayName(raw: string): string {
+  const collapsed = raw.replace(/\s+/g, ' ').trim()
+  if (!collapsed) return collapsed
+  return collapsed
+    .split(' ')
+    .filter(Boolean)
+    .map(word => {
+      const lower = word.toLocaleLowerCase('es')
+      return lower.charAt(0).toLocaleUpperCase('es') + lower.slice(1)
+    })
+    .join(' ')
+}
 
 export function normalizeDisplayName(raw: unknown): string {
   if (typeof raw !== 'string') return ''
-  return raw.replace(/\s+/g, ' ').trim().slice(0, DISPLAY_NAME_MAX)
+  const trimmed = raw.replace(/\s+/g, ' ').trim().slice(0, DISPLAY_NAME_MAX)
+  return formatPersonDisplayName(trimmed)
 }
 
 type ParticipantForPairing = {

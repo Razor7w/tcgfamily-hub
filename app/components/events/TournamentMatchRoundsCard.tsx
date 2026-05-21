@@ -11,8 +11,10 @@ import {
   type Key
 } from 'react'
 import AddIcon from '@mui/icons-material/Add'
+import Alert from '@mui/material/Alert'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import ShareIcon from '@mui/icons-material/Share'
+import Leaderboard from '@mui/icons-material/Leaderboard'
 import TableRowsOutlinedIcon from '@mui/icons-material/TableRowsOutlined'
 import HandshakeOutlinedIcon from '@mui/icons-material/HandshakeOutlined'
 import PersonOffOutlinedIcon from '@mui/icons-material/PersonOffOutlined'
@@ -44,6 +46,7 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { alpha, useTheme } from '@mui/material/styles'
 import {
   matchRecordFromRounds,
+  OPPONENT_DISPLAY_NAME_MAX,
   roundTableOutcome,
   summarizeRoundResult,
   type GameResultLetter,
@@ -51,6 +54,7 @@ import {
   type SpecialRoundOutcome,
   type TurnOrder
 } from '@/lib/participant-match-round'
+import MatchRoundOpponentCell from '@/components/events/MatchRoundOpponentCell'
 import {
   getLimitlessPokemonSpriteUrl,
   limitlessSpriteDimensions
@@ -62,6 +66,7 @@ import {
   type PokemonSpeciesOption,
   usePokemonSpeciesOptions
 } from '@/hooks/usePokemonSpeciesOptions'
+import Link from 'next/link'
 import DecklistImagePreviewButton from '@/components/decklist/DecklistImagePreviewButton'
 import {
   useSaveMyMatchRounds,
@@ -358,6 +363,19 @@ function ShareTournamentSummaryButton({ onOpen }: { onOpen: () => void }) {
 
 type AutocompleteLiProps = HTMLAttributes<HTMLLIElement> & { key?: Key }
 
+/** `undefined` = sin tocar (muestra slugs guardados); `null` = vacío explícito. */
+type DeckSlotDraft = PokemonSpeciesOption | null | undefined
+
+function deckSlotFromDraft(
+  draft: DeckSlotDraft,
+  resolved: PokemonSpeciesOption | null,
+  locked: boolean
+): PokemonSpeciesOption | null {
+  if (locked) return resolved
+  if (draft !== undefined) return draft
+  return resolved
+}
+
 function renderPokemonOption(
   props: AutocompleteLiProps,
   option: PokemonSpeciesOption
@@ -458,33 +476,7 @@ function RoundMobileCard({
           >
             Ronda {row.roundNum}
           </Typography>
-          <Stack
-            direction="row"
-            spacing={0.75}
-            alignItems="center"
-            flexWrap="wrap"
-            useFlexGap
-          >
-            {row.specialOutcome ? (
-              <Chip size="small" label={summarizeRoundResult(row)} />
-            ) : row.opponentDeckSlugs.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                —
-              </Typography>
-            ) : (
-              row.opponentDeckSlugs.map(slug => (
-                <Tooltip
-                  key={slug}
-                  title={slugToLabel.get(slug) ?? slug}
-                  placement="top"
-                >
-                  <Box sx={{ cursor: 'default', display: 'inline-flex' }}>
-                    <LimitlessSpriteThumb slug={slug} size={36} />
-                  </Box>
-                </Tooltip>
-              ))
-            )}
-          </Stack>
+          <MatchRoundOpponentCell row={row} slugToLabel={slugToLabel} inline />
         </Box>
         <Stack
           direction="row"
@@ -512,7 +504,7 @@ function RoundMobileCard({
           >
             {summarizeRoundResult(row)}
           </Box>
-          {interactive ? (
+          {interactive && !row.opponentDeckFromPlatform ? (
             <IconButton
               size="medium"
               aria-label="Eliminar ronda"
@@ -634,6 +626,8 @@ type Props = {
   readOnly?: boolean
   /** Listado guardado vinculado: botón «Ver decklist» bajo los chips del torneo. */
   myTournamentDecklistRef?: MyTournamentDecklistRefDTO | null
+  /** Torneo Pokémon oficial cerrado: enlace a meta del torneo. */
+  showTournamentMetaLink?: boolean
 }
 
 export default function TournamentMatchRoundsCard({
@@ -650,7 +644,8 @@ export default function TournamentMatchRoundsCard({
   isCustomTournament = false,
   onRequestChoosePokemon,
   readOnly = false,
-  myTournamentDecklistRef = null
+  myTournamentDecklistRef = null,
+  showTournamentMetaLink = false
 }: Props) {
   const theme = useTheme()
   const isMobileViewport = useMediaQuery(theme.breakpoints.down('sm'))
@@ -663,8 +658,8 @@ export default function TournamentMatchRoundsCard({
   const [shareOpen, setShareOpen] = useState(false)
   /** `null` = modo añadir; número = editar esa ronda. */
   const [editingRoundNum, setEditingRoundNum] = useState<number | null>(null)
-  const [slot1, setSlot1] = useState<PokemonSpeciesOption | null>(null)
-  const [slot2, setSlot2] = useState<PokemonSpeciesOption | null>(null)
+  const [slot1Draft, setSlot1Draft] = useState<DeckSlotDraft>(null)
+  const [slot2Draft, setSlot2Draft] = useState<DeckSlotDraft>(null)
   const [slot1Open, setSlot1Open] = useState(false)
   const [slot2Open, setSlot2Open] = useState(false)
   const [slot1Query, setSlot1Query] = useState('')
@@ -673,6 +668,7 @@ export default function TournamentMatchRoundsCard({
   const [games, setGames] = useState<GameRowState[]>([
     { result: null, turn: null }
   ])
+  const [opponentName, setOpponentName] = useState('')
 
   const isEditing = editingRoundNum != null
 
@@ -755,8 +751,20 @@ export default function TournamentMatchRoundsCard({
     return allOptions.find(o => o.slug === slug) ?? null
   }, [editingRoundRow, allOptions])
 
-  const slot1Value = slot1 ?? slot1Resolved
-  const slot2Value = slot2 ?? slot2Resolved
+  /** Solo el reporte propio del rival bloquea edición (no sprites inferidos de bitácora). */
+  const editingOpponentDeckLocked =
+    editingRoundRow?.opponentDeckFromPlatform === true
+
+  const slot1Value = deckSlotFromDraft(
+    slot1Draft,
+    slot1Resolved,
+    editingOpponentDeckLocked
+  )
+  const slot2Value = deckSlotFromDraft(
+    slot2Draft,
+    slot2Resolved,
+    editingOpponentDeckLocked
+  )
 
   const optionsForSlot1 = useMemo(
     () => allOptions.filter(o => o.slug !== slot2Value?.slug),
@@ -769,22 +777,26 @@ export default function TournamentMatchRoundsCard({
 
   const resetForm = () => {
     setEditingRoundNum(null)
-    setSlot1(null)
-    setSlot2(null)
+    setSlot1Draft(null)
+    setSlot2Draft(null)
     setSlot1Open(false)
     setSlot2Open(false)
     setSlot1Query('')
     setSlot2Query('')
+    setOpponentName('')
     setSpecial('none')
     setGames([{ result: null, turn: null }])
   }
 
   const hydrateFormFromRound = useCallback((row: ParticipantMatchRoundDTO) => {
+    setOpponentName(
+      typeof row.opponentDisplayName === 'string' ? row.opponentDisplayName : ''
+    )
     if (row.specialOutcome) {
       setSpecial(row.specialOutcome)
       setGames([{ result: null, turn: null }])
-      setSlot1(null)
-      setSlot2(null)
+      setSlot1Draft(null)
+      setSlot2Draft(null)
       return
     }
     setSpecial('none')
@@ -797,8 +809,8 @@ export default function TournamentMatchRoundsCard({
       }))
       setGames(reconcileMatchGames(gr))
     }
-    setSlot1(null)
-    setSlot2(null)
+    setSlot1Draft(undefined)
+    setSlot2Draft(undefined)
   }, [])
 
   const openEditRound = useCallback(
@@ -845,10 +857,15 @@ export default function TournamentMatchRoundsCard({
         ? rounds.find(x => x.roundNum === editingRoundNum)
         : undefined
 
+    const opponentDisplayName = opponentName
+      .trim()
+      .slice(0, OPPONENT_DISPLAY_NAME_MAX)
+
     if (special !== 'none') {
       const r: ParticipantMatchRoundDTO = {
         ...(previous?.id ? { id: previous.id } : {}),
         roundNum: targetRoundNum,
+        ...(opponentDisplayName ? { opponentDisplayName } : {}),
         opponentDeckSlugs: [],
         gameResults: [],
         turnOrders: [],
@@ -875,13 +892,18 @@ export default function TournamentMatchRoundsCard({
       const t = rows[i]?.turn
       if (t === 'first' || t === 'second') turns.push(t)
     }
-    const opp = [slot1Value?.slug, slot2Value?.slug].filter(
-      (s): s is string => typeof s === 'string' && s.length > 0
-    )
+    const deckLocked =
+      previous?.opponentDeckFromPlatform === true || editingOpponentDeckLocked
+    const opp = deckLocked
+      ? []
+      : [slot1Value?.slug, slot2Value?.slug].filter(
+          (s): s is string => typeof s === 'string' && s.length > 0
+        )
 
     const r: ParticipantMatchRoundDTO = {
       ...(previous?.id ? { id: previous.id } : {}),
       roundNum: targetRoundNum,
+      ...(opponentDisplayName ? { opponentDisplayName } : {}),
       opponentDeckSlugs: opp,
       gameResults: results,
       turnOrders: turns.length === results.length ? turns : [],
@@ -1066,12 +1088,36 @@ export default function TournamentMatchRoundsCard({
                     variant="outlined"
                   />
                 </Stack>
-                {myTournamentDecklistRef ? (
-                  <Box sx={{ mt: 0.25 }}>
-                    <DecklistImagePreviewButton
-                      source={{ kind: 'event', eventId }}
-                    />
-                  </Box>
+                {myTournamentDecklistRef || showTournamentMetaLink ? (
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    flexWrap="wrap"
+                    useFlexGap
+                    sx={{ mt: 0.25 }}
+                  >
+                    {myTournamentDecklistRef ? (
+                      <DecklistImagePreviewButton
+                        source={{ kind: 'event', eventId }}
+                      />
+                    ) : null}
+                    {showTournamentMetaLink ? (
+                      <Button
+                        component={Link}
+                        href={`/dashboard/torneos-semana/${eventId}/meta`}
+                        variant="outlined"
+                        size="small"
+                        color="primary"
+                        startIcon={<Leaderboard fontSize="small" />}
+                        sx={{
+                          fontWeight: 600,
+                          textTransform: 'none'
+                        }}
+                      >
+                        Ver meta del torneo
+                      </Button>
+                    ) : null}
+                  </Stack>
                 ) : null}
               </Stack>
               <Stack
@@ -1395,7 +1441,7 @@ export default function TournamentMatchRoundsCard({
                       })}
                     >
                       <TableCell width={72}>Ronda</TableCell>
-                      <TableCell sx={{ minWidth: 0 }}>Deck rival</TableCell>
+                      <TableCell sx={{ minWidth: 0 }}>Rival</TableCell>
                       <TableCell width={120} align="right">
                         Resultado
                       </TableCell>
@@ -1481,48 +1527,11 @@ export default function TournamentMatchRoundsCard({
                             </Typography>
                           </TableCell>
                           <TableCell sx={{ py: 1.5 }}>
-                            <Stack
-                              direction="row"
-                              spacing={0.75}
-                              alignItems="center"
-                              flexWrap="wrap"
-                            >
-                              {row.specialOutcome ? (
-                                <Chip
-                                  size="small"
-                                  label={summarizeRoundResult(row)}
-                                />
-                              ) : row.opponentDeckSlugs.length === 0 ? (
-                                <Typography
-                                  variant="body2"
-                                  color="text.secondary"
-                                >
-                                  —
-                                </Typography>
-                              ) : (
-                                row.opponentDeckSlugs.map(slug => (
-                                  <Tooltip
-                                    key={slug}
-                                    title={slugToLabel.get(slug) ?? slug}
-                                    placement="top"
-                                  >
-                                    <Box
-                                      sx={{
-                                        cursor: 'default',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        lineHeight: 0
-                                      }}
-                                    >
-                                      <LimitlessSpriteThumb
-                                        slug={slug}
-                                        size={36}
-                                      />
-                                    </Box>
-                                  </Tooltip>
-                                ))
-                              )}
-                            </Stack>
+                            <MatchRoundOpponentCell
+                              row={row}
+                              slugToLabel={slugToLabel}
+                              inline
+                            />
                           </TableCell>
                           <TableCell align="right" sx={{ py: 1.5 }}>
                             <Box
@@ -1547,17 +1556,19 @@ export default function TournamentMatchRoundsCard({
                           </TableCell>
                           {rowInteractive ? (
                             <TableCell align="right" sx={{ py: 1.5 }}>
-                              <IconButton
-                                size="small"
-                                aria-label="Eliminar ronda"
-                                onClick={e => {
-                                  e.stopPropagation()
-                                  handleDeleteRound(row.roundNum)
-                                }}
-                                disabled={saveRounds.isPending}
-                              >
-                                <DeleteOutlineIcon fontSize="small" />
-                              </IconButton>
+                              {!row.opponentDeckFromPlatform ? (
+                                <IconButton
+                                  size="small"
+                                  aria-label="Eliminar ronda"
+                                  onClick={e => {
+                                    e.stopPropagation()
+                                    handleDeleteRound(row.roundNum)
+                                  }}
+                                  disabled={saveRounds.isPending}
+                                >
+                                  <DeleteOutlineIcon fontSize="small" />
+                                </IconButton>
+                              ) : null}
                             </TableCell>
                           ) : null}
                         </TableRow>
@@ -1632,8 +1643,22 @@ export default function TournamentMatchRoundsCard({
                     {isEditing ? 'Editar ronda' : 'Ronda'} {formRoundLabel}
                   </Typography>
 
+                  <TextField
+                    fullWidth
+                    label="Nombre del rival"
+                    placeholder="Ej. Juan Pérez"
+                    value={opponentName}
+                    onChange={e =>
+                      setOpponentName(
+                        e.target.value.slice(0, OPPONENT_DISPLAY_NAME_MAX)
+                      )
+                    }
+                    helperText="Opcional. Si la tienda publicó la ronda en el TDF, también puede completarse solo."
+                    sx={{ mb: special === 'none' ? 0 : 2 }}
+                  />
+
                   {special === 'none' ? (
-                    <Stack spacing={2}>
+                    <Stack spacing={2} sx={{ mt: 2 }}>
                       <Typography variant="body2" fontWeight={600}>
                         Deck del rival{' '}
                         <Typography
@@ -1642,19 +1667,42 @@ export default function TournamentMatchRoundsCard({
                           color="text.secondary"
                           fontWeight={400}
                         >
-                          (opcional)
+                          {editingOpponentDeckLocked
+                            ? '(reportado en el torneo)'
+                            : '(opcional)'}
                         </Typography>
                       </Typography>
+                      {editingOpponentDeckLocked ? (
+                        <Alert severity="info" sx={{ py: 0.5 }}>
+                          Este rival ya reportó su mazo. Los sprites se muestran
+                          automáticamente y no puedes cambiarlos aquí.
+                        </Alert>
+                      ) : null}
+                      {editingOpponentDeckLocked &&
+                      editingRoundRow &&
+                      editingRoundRow.opponentDeckSlugs.length > 0 ? (
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          {editingRoundRow.opponentDeckSlugs.map(slug => (
+                            <LimitlessSpriteThumb
+                              key={slug}
+                              slug={slug}
+                              size={40}
+                              circular
+                            />
+                          ))}
+                        </Stack>
+                      ) : null}
                       <Stack
                         direction={{ xs: 'column', sm: 'row' }}
                         spacing={2}
                       >
                         <Autocomplete
                           fullWidth
+                          disabled={editingOpponentDeckLocked}
                           options={optionsForSlot1}
                           loading={optionsLoading}
                           value={slot1Value}
-                          onChange={(_e, v) => setSlot1(v)}
+                          onChange={(_e, v) => setSlot1Draft(v)}
                           inputValue={
                             slot1Open ? slot1Query : (slot1Value?.label ?? '')
                           }
@@ -1693,10 +1741,11 @@ export default function TournamentMatchRoundsCard({
                         />
                         <Autocomplete
                           fullWidth
+                          disabled={editingOpponentDeckLocked}
                           options={optionsForSlot2}
                           loading={optionsLoading}
                           value={slot2Value}
-                          onChange={(_e, v) => setSlot2(v)}
+                          onChange={(_e, v) => setSlot2Draft(v)}
                           inputValue={
                             slot2Open ? slot2Query : (slot2Value?.label ?? '')
                           }
@@ -2221,7 +2270,7 @@ export default function TournamentMatchRoundsCard({
                               fontSize: '0.65rem'
                             }}
                           >
-                            Deck rival
+                            Rival
                           </Typography>
                           <Typography
                             component="span"
@@ -2291,36 +2340,11 @@ export default function TournamentMatchRoundsCard({
                                   role="cell"
                                   sx={{ minWidth: 0 }}
                                 >
-                                  <Stack
-                                    direction="row"
-                                    spacing={0.75}
-                                    alignItems="center"
-                                    flexWrap="wrap"
-                                    useFlexGap
-                                  >
-                                    {row.specialOutcome ? (
-                                      <Chip
-                                        size="small"
-                                        label={summarizeRoundResult(row)}
-                                        sx={{ fontWeight: 600 }}
-                                      />
-                                    ) : row.opponentDeckSlugs.length === 0 ? (
-                                      <Typography
-                                        variant="body2"
-                                        color="text.secondary"
-                                      >
-                                        —
-                                      </Typography>
-                                    ) : (
-                                      row.opponentDeckSlugs.map(slug => (
-                                        <LimitlessSpriteThumb
-                                          key={slug}
-                                          slug={slug}
-                                          size={36}
-                                        />
-                                      ))
-                                    )}
-                                  </Stack>
+                                  <MatchRoundOpponentCell
+                                    row={row}
+                                    slugToLabel={slugToLabel}
+                                    inline
+                                  />
                                 </Box>
                                 <Box
                                   component="span"

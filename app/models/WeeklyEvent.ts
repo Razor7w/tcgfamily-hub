@@ -44,6 +44,8 @@ export interface ITournamentCategoryStandings {
 /** Partido de torneo reportado por el participante (no confundir con roundSnapshots del evento). */
 export interface IParticipantMatchRound {
   roundNum: number
+  /** Nombre del rival (reporte manual; el TDF se resuelve al leer). */
+  opponentDisplayName?: string
   opponentDeckSlugs: string[]
   gameResults: ('W' | 'L' | 'T')[]
   turnOrders: ('first' | 'second')[]
@@ -200,6 +202,7 @@ const TournamentCategoryStandingsSchema =
 const ParticipantMatchRoundSchema = new Schema<IParticipantMatchRound>(
   {
     roundNum: { type: Number, required: true, min: 1, max: 99 },
+    opponentDisplayName: { type: String, default: '', maxlength: 120 },
     opponentDeckSlugs: { type: [String], default: [] },
     gameResults: { type: [String], default: [] },
     turnOrders: { type: [String], default: [] },
