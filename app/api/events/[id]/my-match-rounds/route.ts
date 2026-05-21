@@ -2,7 +2,18 @@ import { NextResponse } from 'next/server'
 import mongoose from 'mongoose'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
-import { normalizeMatchRoundsPayload } from '@/lib/participant-match-round'
+import {
+  buildParticipantDeckLookup,
+  emptyParticipantDeckLookup,
+  stripManualOpponentDecksWhenPlatformReported,
+  type RoundSnapshotLean
+} from '@/lib/match-rounds-with-snapshots'
+import { canExposeParticipantDecksToOthers } from '@/lib/weekly-events'
+import {
+  normalizeMatchRoundsPayload,
+  trimOpponentDisplayName
+} from '@/lib/participant-match-round'
+import { popidForStorage } from '@/lib/rut-chile'
 import WeeklyEvent from '@/models/WeeklyEvent'
 import type { IParticipantMatchRound } from '@/models/WeeklyEvent'
 
@@ -92,13 +103,48 @@ export async function PUT(
       )
     }
 
-    const toSave: IParticipantMatchRound[] = rounds.map(r => ({
-      roundNum: r.roundNum,
-      opponentDeckSlugs: r.opponentDeckSlugs,
-      gameResults: r.gameResults,
-      turnOrders: r.turnOrders,
-      ...(r.specialOutcome ? { specialOutcome: r.specialOutcome } : {})
-    }))
+    const myPop = popidForStorage(
+      typeof part.popId === 'string' ? part.popId : ''
+    )
+    const tournamentOrigin: 'official' | 'custom' =
+      (doc as { tournamentOrigin?: string }).tournamentOrigin === 'custom'
+        ? 'custom'
+        : 'official'
+    const exposeOpponentDecksToOthers = canExposeParticipantDecksToOthers({
+      state: doc.state,
+      tournamentOrigin
+    })
+    const selfReportedDeckLookup = exposeOpponentDecksToOthers
+      ? buildParticipantDeckLookup(
+          (doc.participants ?? []) as {
+            displayName?: string
+            popId?: string
+            deckPokemonSlugs?: unknown
+          }[]
+        )
+      : emptyParticipantDeckLookup()
+    const snapshots = (doc.roundSnapshots ?? []) as RoundSnapshotLean[]
+    const roundsToPersist = stripManualOpponentDecksWhenPlatformReported(
+      myPop,
+      rounds,
+      snapshots,
+      selfReportedDeckLookup,
+      exposeOpponentDecksToOthers
+    )
+
+    const toSave: IParticipantMatchRound[] = roundsToPersist.map(r => {
+      const opponentDisplayName = trimOpponentDisplayName(r.opponentDisplayName)
+      return {
+        roundNum: r.roundNum,
+        ...(opponentDisplayName
+          ? { opponentDisplayName }
+          : { opponentDisplayName: '' }),
+        opponentDeckSlugs: r.opponentDeckSlugs,
+        gameResults: r.gameResults,
+        turnOrders: r.turnOrders,
+        ...(r.specialOutcome ? { specialOutcome: r.specialOutcome } : {})
+      }
+    })
 
     part.matchRounds = toSave
     doc.markModified('participants')

@@ -6,6 +6,7 @@ import { canEditParticipantDeck } from '@/lib/can-edit-participant-deck'
 import { getTournamentDecklistDisplayLabels } from '@/lib/tournament-decklist-display'
 import WeeklyEvent from '@/models/WeeklyEvent'
 import {
+  canExposeParticipantDecksToOthers,
   canPreRegisterNow,
   canUnregisterNow,
   pairingExtrasForUser
@@ -17,9 +18,17 @@ import {
 } from '@/lib/weekly-event-public'
 import {
   matchRecordFromRounds,
-  parseParticipantMatchRoundsFromLean,
   type ParticipantMatchRoundDTO
 } from '@/lib/participant-match-round'
+import {
+  buildBitacoraInferredDeckLookup,
+  buildParticipantDeckLookup,
+  buildPopToDisplayNameMap,
+  emptyParticipantDeckLookup,
+  enrichMatchRoundsWithOpponentDecks,
+  mergeLeanMatchRoundsWithSnapshots,
+  type RoundSnapshotLean
+} from '@/lib/match-rounds-with-snapshots'
 import { effectivePublicRoundNum } from '@/lib/dashboard-round-cap'
 import {
   resolveViewAsParticipant,
@@ -43,6 +52,7 @@ type LeanEvent = {
   roundNum?: number
   dashboardRoundCap?: number
   tournamentStandings?: import('@/lib/weekly-event-public').TournamentStandingLean[]
+  roundSnapshots?: RoundSnapshotLean[]
   createdByUserId?: unknown
   participants?: {
     _id: unknown
@@ -59,6 +69,7 @@ type LeanEvent = {
     matchRounds?: {
       _id?: unknown
       roundNum?: number
+      opponentDisplayName?: string
       opponentDeckSlugs?: string[]
       gameResults?: string[]
       turnOrders?: string[]
@@ -135,8 +146,66 @@ export async function GET(
       (createdByStr === uid ||
         (!createdByStr && Boolean(mine?.userId && String(mine.userId) === uid)))
 
+    const popToDisplayName = buildPopToDisplayNameMap(
+      parts as { displayName: string; popId?: string }[]
+    )
+    const exposeOpponentDecksToOthers = canExposeParticipantDecksToOthers({
+      state: doc.state,
+      tournamentOrigin
+    })
+    const selfReportedDeckLookup = exposeOpponentDecksToOthers
+      ? buildParticipantDeckLookup(
+          parts as {
+            displayName?: string
+            popId?: string
+            deckPokemonSlugs?: unknown
+          }[]
+        )
+      : emptyParticipantDeckLookup()
+    const bitacoraDeckLookup = exposeOpponentDecksToOthers
+      ? buildBitacoraInferredDeckLookup(
+          parts as {
+            displayName?: string
+            popId?: string
+            deckPokemonSlugs?: unknown
+            matchRounds?: unknown
+          }[]
+        )
+      : emptyParticipantDeckLookup()
+    const myPopForRounds =
+      viewAs && typeof viewAs.popId === 'string' ? viewAs.popId : null
+    const myTdfFinalForRounds =
+      viewAs && tournamentOrigin !== 'custom'
+        ? {
+            wins: Math.max(
+              0,
+              Math.min(999, Math.round(Number(viewAs.wins) || 0))
+            ),
+            losses: Math.max(
+              0,
+              Math.min(999, Math.round(Number(viewAs.losses) || 0))
+            ),
+            ties: Math.max(
+              0,
+              Math.min(999, Math.round(Number(viewAs.ties) || 0))
+            )
+          }
+        : null
     const myMatchRounds: ParticipantMatchRoundDTO[] =
-      parseParticipantMatchRoundsFromLean(viewAs?.matchRounds)
+      enrichMatchRoundsWithOpponentDecks(
+        myPopForRounds,
+        mergeLeanMatchRoundsWithSnapshots(
+          myPopForRounds,
+          viewAs?.matchRounds,
+          doc.roundSnapshots ?? [],
+          popToDisplayName,
+          myTdfFinalForRounds
+        ),
+        doc.roundSnapshots ?? [],
+        selfReportedDeckLookup,
+        bitacoraDeckLookup,
+        exposeOpponentDecksToOthers
+      )
 
     let myMatchRecord: {
       wins: number

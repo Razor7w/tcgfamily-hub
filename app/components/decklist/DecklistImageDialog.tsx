@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import CloseIcon from '@mui/icons-material/Close'
+import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import {
   Box,
   Button,
@@ -24,6 +25,8 @@ export type DecklistImageDialogProps = {
   cards: DecklistFlatCard[]
   /** Título del panel (p. ej. nombre del mazo y variante). */
   title?: string
+  /** Texto del listado; si se pasa, muestra «Copiar lista». */
+  deckText?: string
 }
 
 /**
@@ -33,16 +36,47 @@ export default function DecklistImageDialog({
   open,
   onClose,
   cards,
-  title = 'Vista en imágenes'
+  title = 'Vista en imágenes',
+  deckText
 }: DecklistImageDialogProps) {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const [active, setActive] = useState<DecklistFlatCard | null>(null)
+  const [listCopied, setListCopied] = useState(false)
+
+  const showCopyList = Boolean(deckText?.trim())
 
   const handleClose = () => {
     setActive(null)
+    setListCopied(false)
     onClose()
   }
+
+  const handleCopyList = async () => {
+    const text = deckText?.trim()
+    if (!text) return
+    try {
+      await navigator.clipboard.writeText(text)
+      setListCopied(true)
+      window.setTimeout(() => setListCopied(false), 2000)
+    } catch {
+      setListCopied(false)
+    }
+  }
+
+  const copyListButton = showCopyList ? (
+    <Button
+      type="button"
+      variant="outlined"
+      color="primary"
+      startIcon={<ContentCopyIcon />}
+      onClick={() => void handleCopyList()}
+      aria-live="polite"
+      sx={{ fontWeight: 700, textTransform: 'none' }}
+    >
+      {listCopied ? 'Listado copiado' : 'Copiar lista'}
+    </Button>
+  ) : null
 
   const grid = (
     <Box
@@ -196,6 +230,21 @@ export default function DecklistImageDialog({
           >
             <Box sx={{ maxWidth: 980, mx: 'auto' }}>{grid}</Box>
           </Box>
+          {showCopyList ? (
+            <Box
+              sx={{
+                px: 2,
+                py: 1.5,
+                borderTop: 1,
+                borderColor: 'divider',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: 1
+              }}
+            >
+              {copyListButton}
+            </Box>
+          ) : null}
         </Drawer>
       ) : (
         <Dialog
@@ -209,7 +258,8 @@ export default function DecklistImageDialog({
             {title}
           </DialogTitle>
           <DialogContent dividers>{grid}</DialogContent>
-          <DialogActions sx={{ px: 3, py: 2 }}>
+          <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
+            {copyListButton}
             <Button onClick={handleClose}>Cerrar</Button>
           </DialogActions>
         </Dialog>

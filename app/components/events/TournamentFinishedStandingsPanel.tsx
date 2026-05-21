@@ -1,0 +1,64 @@
+'use client'
+
+import Alert from '@mui/material/Alert'
+import Button from '@mui/material/Button'
+import Divider from '@mui/material/Divider'
+import Stack from '@mui/material/Stack'
+import Typography from '@mui/material/Typography'
+import EmojiEvents from '@mui/icons-material/EmojiEvents'
+import type { PublicWeeklyEvent } from '@/hooks/useWeeklyEvents'
+import TournamentFinishedStandingsTabs from '@/components/events/TournamentFinishedStandingsTabs'
+
+type Props = {
+  eventId: string
+  categories: PublicWeeklyEvent['standingsTopByCategory']
+  onOpenFullStandings: () => void
+}
+
+/**
+ * Top por categoría + acceso al standing completo (torneo cerrado).
+ * Vive en la columna de clasificación final (derecha) en torneos cerrados.
+ */
+export default function TournamentFinishedStandingsPanel({
+  eventId,
+  categories,
+  onOpenFullStandings
+}: Props) {
+  const hasCategories = (categories?.length ?? 0) > 0
+
+  return (
+    <>
+      <Divider sx={{ mt: 2.5 }} />
+      <Stack spacing={1.5} sx={{ pt: 2.5 }}>
+        <Typography
+          variant="overline"
+          color="primary"
+          sx={{ fontWeight: 800, letterSpacing: '0.08em' }}
+        >
+          Top por categoría
+        </Typography>
+        {hasCategories ? (
+          <TournamentFinishedStandingsTabs
+            key={eventId}
+            categories={categories!}
+          />
+        ) : (
+          <Alert severity="info" variant="outlined">
+            La clasificación detallada aún no está publicada para este evento.
+          </Alert>
+        )}
+        <Button
+          type="button"
+          variant="outlined"
+          color="inherit"
+          fullWidth
+          size="medium"
+          startIcon={<EmojiEvents />}
+          onClick={onOpenFullStandings}
+        >
+          Ver standing completo
+        </Button>
+      </Stack>
+    </>
+  )
+}

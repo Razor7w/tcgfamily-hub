@@ -130,6 +130,9 @@ export default function TorneoSemanaDetallePage() {
                     isCustomTournament={ev.tournamentOrigin === 'custom'}
                     onRequestChoosePokemon={() => setDeckOpen(true)}
                     myTournamentDecklistRef={ev.myTournamentDecklistRef ?? null}
+                    showTournamentMetaLink={
+                      ev.state === 'close' && ev.tournamentOrigin !== 'custom'
+                    }
                   />
 
                   <Card

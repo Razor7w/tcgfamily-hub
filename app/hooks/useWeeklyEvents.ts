@@ -202,6 +202,117 @@ export type DashboardEventDetail = PublicWeeklyEvent & {
   adminReadOnlyView?: boolean
 }
 
+export type TournamentStandingsRow = {
+  place: number | null
+  isDnf: boolean
+  displayName: string
+  popId: string | null
+  participantKey: string | null
+  userId: string | null
+  points: number | null
+  record: { wins: number; losses: number; ties: number } | null
+  deckPokemonSlugs: string[]
+  decklistDisplay: { decklistName: string; listLabel: string } | null
+  hasDecklist: boolean
+  reportedOnPlatform: boolean
+  reportOnly?: boolean
+}
+
+export type TournamentStandingsCategory = {
+  categoryIndex: number
+  categoryLabel: string
+  rows: TournamentStandingsRow[]
+}
+
+export type TournamentStandingsMeta = {
+  categories: TournamentStandingsCategory[]
+  reportedWithoutPlacement: TournamentStandingsRow[]
+}
+
+export type TournamentMetaParticipant = {
+  participantKey: string
+  userId: string | null
+  popId: string | null
+  displayName: string
+  deckPokemonSlugs: string[]
+  decklistDisplay: { decklistName: string; listLabel: string } | null
+  hasDecklist: boolean
+  matchRounds: ParticipantMatchRoundDTO[]
+  matchRecord: { wins: number; losses: number; ties: number } | null
+  standingPlace: number | null
+  standingIsDnf: boolean
+}
+
+export type TournamentMetagameRow = {
+  deckKey: string
+  deckSlugs: string[]
+  deckName: string
+  count: number
+  sharePercent: number
+  wins: number
+  losses: number
+  ties: number
+  winPercent: number | null
+}
+
+export type TournamentMetaStore = {
+  name: string
+  slug: string
+  logoUrl: string
+}
+
+export type TournamentMetaResponse = {
+  event: {
+    _id: string
+    title: string
+    startsAt: string
+    kind: string
+    game: string
+    state: string
+    tournamentOrigin: 'official' | 'custom'
+  }
+  store: TournamentMetaStore | null
+  participants: TournamentMetaParticipant[]
+  metagame: TournamentMetagameRow[]
+  standings: TournamentStandingsMeta
+}
+
+export function useTournamentMeta(eventId: string | null) {
+  return useQuery({
+    queryKey: ['tournament-meta', eventId],
+    queryFn: async () => {
+      if (!eventId?.trim()) throw new Error('ID requerido')
+      const res = await fetch(
+        `/api/events/${encodeURIComponent(eventId)}/tournament-meta`,
+        { cache: 'no-store' }
+      )
+      const data = (await res
+        .json()
+        .catch(() => ({}))) as TournamentMetaResponse & {
+        error?: string
+      }
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === 'string'
+            ? data.error
+            : 'Error al cargar la meta'
+        )
+      }
+      if (
+        !data.event ||
+        !Array.isArray(data.participants) ||
+        !Array.isArray(data.metagame) ||
+        !data.standings ||
+        !Array.isArray(data.standings.categories)
+      ) {
+        throw new Error('Respuesta inválida')
+      }
+      return data
+    },
+    enabled: Boolean(eventId?.trim())
+  })
+}
+
 export function useDashboardEventDetail(eventId: string | null) {
   return useQuery({
     queryKey: ['dashboard-event-detail', eventId],

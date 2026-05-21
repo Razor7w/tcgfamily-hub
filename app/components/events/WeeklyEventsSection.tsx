@@ -9,6 +9,7 @@ import Stack from '@mui/material/Stack'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Alert from '@mui/material/Alert'
+import Divider from '@mui/material/Divider'
 import { alpha, useTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import {
@@ -43,7 +44,6 @@ import {
   startOfWeekMonday
 } from '@/components/events/weekUtils'
 import LinearCapacity from '@/components/events/LinearCapacity'
-import TournamentFinishedStandingsTabs from '@/components/events/TournamentFinishedStandingsTabs'
 import WeeklyEventPreRegisterForm from '@/components/events/WeeklyEventPreRegisterForm'
 import {
   formatPrice,
@@ -64,6 +64,8 @@ import WeeklyFullStandingsDialog from '@/components/events/WeeklyFullStandingsDi
 import WeeklyCurrentRoundDialog from '@/components/events/WeeklyCurrentRoundDialog'
 import ReportDeckDialog from '@/components/events/ReportDeckDialog'
 import TournamentDeckSpritesSummary from '@/components/events/TournamentDeckSpritesSummary'
+import TournamentMetaExploreCta from '@/components/events/TournamentMetaExploreCta'
+import TournamentFinishedStandingsPanel from '@/components/events/TournamentFinishedStandingsPanel'
 
 type WeeklyEventsSectionProps = {
   showSeeAllLink?: boolean
@@ -592,6 +594,18 @@ export default function WeeklyEventsSection({
                             </Stack>
                           ) : null}
                         </Stack>
+                        {selectedEvent.kind === 'tournament' &&
+                        selectedEvent.state === 'close' &&
+                        selectedEvent.game === 'pokemon' ? (
+                          <>
+                            <Divider sx={{ mt: 2.5 }} />
+                            <Box sx={{ pt: 2.5 }}>
+                              <TournamentMetaExploreCta
+                                eventId={selectedEvent._id}
+                              />
+                            </Box>
+                          </>
+                        ) : null}
                       </CardContent>
                     </Card>
                   </Box>
@@ -783,35 +797,15 @@ export default function WeeklyEventsSection({
                                 ) : null}
                               </Stack>
                             ) : null}
-                            {selectedEvent.standingsTopByCategory &&
-                            selectedEvent.standingsTopByCategory.length > 0 ? (
-                              <TournamentFinishedStandingsTabs
-                                key={selectedEvent._id}
-                                categories={
-                                  selectedEvent.standingsTopByCategory
-                                }
-                              />
-                            ) : (
-                              <Alert severity="info" variant="outlined">
-                                La clasificación detallada aún no está publicada
-                                para este evento.
-                              </Alert>
-                            )}
-                            <Button
-                              type="button"
-                              variant="outlined"
-                              color="inherit"
-                              fullWidth
-                              size="medium"
-                              startIcon={<EmojiEvents />}
-                              onClick={() =>
+                            <TournamentFinishedStandingsPanel
+                              eventId={selectedEvent._id}
+                              categories={selectedEvent.standingsTopByCategory}
+                              onOpenFullStandings={() =>
                                 setFullStandingsOpenForEventId(
                                   selectedEvent._id
                                 )
                               }
-                            >
-                              Ver standing completo
-                            </Button>
+                            />
                           </Stack>
                         ) : (
                           <>

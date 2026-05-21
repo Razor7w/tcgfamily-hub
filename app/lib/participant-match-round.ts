@@ -1,4 +1,13 @@
 import { isValidPokedexSlug } from '@/lib/limitless-pokemon-sprite'
+import { formatPersonDisplayName } from '@/lib/weekly-events'
+
+export const OPPONENT_DISPLAY_NAME_MAX = 120
+
+export function trimOpponentDisplayName(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null
+  const t = raw.trim().slice(0, OPPONENT_DISPLAY_NAME_MAX)
+  return t.length > 0 ? formatPersonDisplayName(t) : null
+}
 
 export type GameResultLetter = 'W' | 'L' | 'T'
 export type TurnOrder = 'first' | 'second'
@@ -8,7 +17,11 @@ export type ParticipantMatchRoundDTO = {
   /** Id estable del subdocumento en Mongo (si existe). */
   id?: string
   roundNum: number
+  /** Nombre del rival (manual o resuelto desde emparejamientos TDF). */
+  opponentDisplayName?: string | null
   opponentDeckSlugs: string[]
+  /** Sprites del rival tomados de su reporte en el torneo (no editables en la bitácora). */
+  opponentDeckFromPlatform?: boolean
   gameResults: GameResultLetter[]
   turnOrders: TurnOrder[]
   specialOutcome?: SpecialRoundOutcome | null
@@ -93,9 +106,11 @@ export function parseParticipantMatchRoundsFromLean(
       m.specialOutcome === 'bye'
         ? m.specialOutcome
         : undefined
+    const opponentDisplayName = trimOpponentDisplayName(m.opponentDisplayName)
     const row: ParticipantMatchRoundDTO = {
       ...(m._id != null ? { id: String(m._id) } : {}),
       roundNum,
+      ...(opponentDisplayName ? { opponentDisplayName } : {}),
       opponentDeckSlugs,
       gameResults,
       turnOrders,
@@ -176,9 +191,12 @@ export function normalizeMatchRoundInput(
     return null
   }
 
+  const opponentDisplayName = trimOpponentDisplayName(o.opponentDisplayName)
+
   if (specialOutcome) {
     return {
       roundNum,
+      ...(opponentDisplayName ? { opponentDisplayName } : {}),
       opponentDeckSlugs: [],
       gameResults: [],
       turnOrders: [],
@@ -190,6 +208,7 @@ export function normalizeMatchRoundInput(
 
   return {
     roundNum,
+    ...(opponentDisplayName ? { opponentDisplayName } : {}),
     opponentDeckSlugs,
     gameResults,
     turnOrders,
