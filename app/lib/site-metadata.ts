@@ -67,6 +67,7 @@ export function buildPageMetadata(
     : [{ ...defaultOgImage, url: absoluteUrl(BRAND_OG_IMAGE_SRC) }]
 
   return {
+    metadataBase: siteMetadataBase(),
     ...(options.title ? { title: options.title } : { title: SITE_NAME }),
     description,
     alternates: { canonical: url },
@@ -92,11 +93,11 @@ export function buildPageMetadata(
 }
 
 /**
- * Sin `metadataBase` fijo: si el usuario entra por hub.tcgfamily.cl, Next no debe
- * pedir RSC a tcgnexo.cl (OPTIONS cross-origin → 400). Las URLs absolutas de OG
- * siguen usando `getSiteUrl()` / `absoluteUrl()`.
+ * `metadataBase` resuelve rutas relativas de OG/Twitter (`/brand/og-default.png`).
+ * La base sale de `getSiteUrl()` (env), no de un dominio hardcodeado en el repo.
  */
 export const rootSiteMetadata: Metadata = {
+  metadataBase: siteMetadataBase(),
   title: {
     default: SITE_NAME,
     template: `%s | ${SITE_NAME}`
@@ -110,7 +111,7 @@ export const rootSiteMetadata: Metadata = {
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
     url: getSiteUrl(),
-    images: [defaultOgImage]
+    images: [{ ...defaultOgImage, url: absoluteUrl(BRAND_OG_IMAGE_SRC) }]
   },
   twitter: {
     card: 'summary_large_image',

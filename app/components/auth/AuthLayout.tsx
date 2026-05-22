@@ -1,5 +1,9 @@
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
+import {
+  MUST_CHANGE_PASSWORD_PATH,
+  sessionRequiresPasswordChange
+} from '@/lib/must-change-password-path'
 
 interface AuthLayoutProps {
   children: React.ReactNode
@@ -28,6 +32,10 @@ export default async function AuthLayout({
   // Si no hay sesión, redirigir a la página principal
   if (!session) {
     redirect('/')
+  }
+
+  if (sessionRequiresPasswordChange(session)) {
+    redirect(MUST_CHANGE_PASSWORD_PATH)
   }
 
   return <>{children}</>

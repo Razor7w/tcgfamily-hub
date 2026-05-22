@@ -62,6 +62,7 @@ export async function GET() {
       phone?: string
       role?: string
       passwordHash?: string
+      mustChangePassword?: boolean
       defaultStoreId?: mongoose.Types.ObjectId | null
     }
 
@@ -78,6 +79,7 @@ export async function GET() {
       phone: u.phone ?? '',
       role: u.role ?? 'user',
       hasPassword: Boolean(u.passwordHash),
+      mustChangePassword: Boolean(u.mustChangePassword),
       defaultStoreId: defSid
     })
   } catch (e) {
@@ -150,6 +152,20 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
+    if (
+      user.mustChangePassword &&
+      !wantsPasswordChange &&
+      (hasName || hasPop || hasImage || hasDefaultStore)
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Debes elegir una contraseña nueva antes de actualizar otros datos del perfil.'
+        },
+        { status: 403 }
+      )
+    }
+
     if (wantsPasswordChange) {
       if (!user.passwordHash) {
         return NextResponse.json(
@@ -187,6 +203,9 @@ export async function PATCH(request: NextRequest) {
         )
       }
       user.passwordHash = await hashPassword(newPassword)
+      if (user.mustChangePassword) {
+        user.mustChangePassword = false
+      }
     }
 
     if (hasName) {
@@ -308,6 +327,7 @@ export async function PATCH(request: NextRequest) {
       name: user.name ?? '',
       popid: user.popid ?? '',
       hasPassword,
+      mustChangePassword: Boolean(user.mustChangePassword),
       image: user.image ?? '',
       imageKey: typeof user.imageKey === 'string' ? user.imageKey : '',
       defaultStoreId: defOut

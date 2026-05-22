@@ -9,6 +9,8 @@ declare module 'next-auth' {
       rut: string
       popid: string
       hasPassword: boolean
+      /** Tras reset admin: forzar modal de nueva contraseña. */
+      mustChangePassword: boolean
       /** Preferencia de tienda (ObjectId hex). `null` si aún no definida. */
       defaultStoreId?: string | null
       /** Tienda activa (Mongo ObjectId como string). */
@@ -23,6 +25,7 @@ declare module 'next-auth' {
     rut?: string
     popid?: string
     hasPassword?: boolean
+    mustChangePassword?: boolean
   }
 }
 
@@ -32,6 +35,7 @@ declare module 'next-auth/jwt' {
     rut?: string
     popid?: string
     hasPassword?: boolean
+    mustChangePassword?: boolean
     activeStoreId?: string
     storeRole?: 'owner' | 'store_admin'
     /** Preferencia de tienda (ObjectId hex). Cadena vacía = sin preferencia en JWT. */

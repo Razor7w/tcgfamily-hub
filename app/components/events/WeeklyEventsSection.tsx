@@ -65,6 +65,7 @@ import WeeklyCurrentRoundDialog from '@/components/events/WeeklyCurrentRoundDial
 import ReportDeckDialog from '@/components/events/ReportDeckDialog'
 import TournamentDeckSpritesSummary from '@/components/events/TournamentDeckSpritesSummary'
 import TournamentMetaExploreCta from '@/components/events/TournamentMetaExploreCta'
+import TournamentReportRoundsCta from '@/components/events/TournamentReportRoundsCta'
 import TournamentFinishedStandingsPanel from '@/components/events/TournamentFinishedStandingsPanel'
 
 type WeeklyEventsSectionProps = {
@@ -595,15 +596,24 @@ export default function WeeklyEventsSection({
                           ) : null}
                         </Stack>
                         {selectedEvent.kind === 'tournament' &&
-                        selectedEvent.state === 'close' &&
-                        selectedEvent.game === 'pokemon' ? (
+                        selectedEvent.game === 'pokemon' &&
+                        (selectedEvent.state === 'close' ||
+                          (selectedEvent.state === 'running' &&
+                            Boolean(selectedEvent.myRegistration))) ? (
                           <>
                             <Divider sx={{ mt: 2.5 }} />
-                            <Box sx={{ pt: 2.5 }}>
-                              <TournamentMetaExploreCta
-                                eventId={selectedEvent._id}
-                              />
-                            </Box>
+                            <Stack spacing={2} sx={{ pt: 2.5 }}>
+                              {selectedEvent.myRegistration ? (
+                                <TournamentReportRoundsCta
+                                  eventId={selectedEvent._id}
+                                />
+                              ) : null}
+                              {selectedEvent.state === 'close' ? (
+                                <TournamentMetaExploreCta
+                                  eventId={selectedEvent._id}
+                                />
+                              ) : null}
+                            </Stack>
                           </>
                         ) : null}
                       </CardContent>

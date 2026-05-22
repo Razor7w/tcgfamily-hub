@@ -23,6 +23,9 @@ import InputLabel from '@mui/material/InputLabel'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import VisibilityIcon from '@mui/icons-material/Visibility'
+import LockResetIcon from '@mui/icons-material/LockReset'
+import ContentCopyIcon from '@mui/icons-material/ContentCopy'
+import Tooltip from '@mui/material/Tooltip'
 import AddIcon from '@mui/icons-material/Add'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import Avatar from '@mui/material/Avatar'
@@ -53,6 +56,7 @@ import {
   useUpdateUser,
   useDeleteUser,
   useBulkUploadUsers,
+  useResetUserPassword,
   type User,
   type CreateUserData
 } from '@/hooks/useUsers'
@@ -100,8 +104,14 @@ export default function UsersPageRefactored() {
     severity: 'success' as 'success' | 'error'
   })
   const [pointsModalUser, setPointsModalUser] = useState<User | null>(null)
+  const [resetConfirmUser, setResetConfirmUser] = useState<User | null>(null)
+  const [resetResult, setResetResult] = useState<{
+    user: User
+    temporaryPassword: string
+  } | null>(null)
   const [page, setPage] = useState(1)
   const [searchName, setSearchName] = useState('')
+  const [searchEmail, setSearchEmail] = useState('')
   const [searchRut, setSearchRut] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -111,6 +121,7 @@ export default function UsersPageRefactored() {
   const updateUser = useUpdateUser()
   const deleteUser = useDeleteUser()
   const bulkUpload = useBulkUploadUsers()
+  const resetPassword = useResetUserPassword()
 
   // Zustand store para filtros (ejemplo)
   const userFilter = useAppStore(state => state.userFilter)
@@ -126,11 +137,13 @@ export default function UsersPageRefactored() {
   const hasActiveFilters =
     Boolean(userFilter.role) ||
     Boolean(searchName.trim()) ||
+    Boolean(searchEmail.trim()) ||
     Boolean(searchRut.trim())
 
   const handleClearFilters = () => {
     clearUserFilterStore()
     setSearchName('')
+    setSearchEmail('')
     setSearchRut('')
   }
 
@@ -231,6 +244,53 @@ export default function UsersPageRefactored() {
     }
   }
 
+  const handleResetPasswordConfirm = async () => {
+    if (!resetConfirmUser) return
+    try {
+      const result = await resetPassword.mutateAsync(resetConfirmUser.id)
+      setResetConfirmUser(null)
+      setResetResult({
+        user: resetConfirmUser,
+        temporaryPassword: result.temporaryPassword
+      })
+      setSnackbar({
+        open: true,
+        message: 'Contraseña temporal generada',
+        severity: 'success'
+      })
+      addNotification({
+        message: `Contraseña reseteada para ${resetConfirmUser.name || resetConfirmUser.email}`,
+        type: 'success'
+      })
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Error al resetear contraseña'
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: 'error'
+      })
+    }
+  }
+
+  const copyTemporaryPassword = async () => {
+    if (!resetResult?.temporaryPassword) return
+    try {
+      await navigator.clipboard.writeText(resetResult.temporaryPassword)
+      setSnackbar({
+        open: true,
+        message: 'Contraseña copiada al portapapeles',
+        severity: 'success'
+      })
+    } catch {
+      setSnackbar({
+        open: true,
+        message: 'No se pudo copiar',
+        severity: 'error'
+      })
+    }
+  }
+
   // Eliminar usuario
   const handleDelete = async (userId: string) => {
     if (!confirm('¿Estás seguro de que deseas eliminar este usuario?')) {
@@ -303,23 +363,28 @@ export default function UsersPageRefactored() {
     }
   }
 
-  // Filtrar usuarios (rol en Zustand; nombre y RUT en estado local)
+  // Filtrar usuarios (rol en Zustand; nombre, correo y RUT en estado local)
   const filteredUsers = useMemo(() => {
     const nameQ = searchName.trim().toLowerCase()
+    const emailQ = searchEmail.trim().toLowerCase()
     return users.filter(user => {
       if (userFilter.role && user.role !== userFilter.role) return false
       if (nameQ) {
         const n = user.name?.toLowerCase() ?? ''
         if (!n.includes(nameQ)) return false
       }
+      if (emailQ) {
+        const e = user.email?.toLowerCase() ?? ''
+        if (!e.includes(emailQ)) return false
+      }
       if (!matchesRutQuery(user.rut, searchRut)) return false
       return true
     })
-  }, [users, userFilter.role, searchName, searchRut])
+  }, [users, userFilter.role, searchName, searchEmail, searchRut])
 
   useEffect(() => {
     setPage(1)
-  }, [userFilter.role, searchName, searchRut])
+  }, [userFilter.role, searchName, searchEmail, searchRut])
 
   const pageCount = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE))
 
@@ -475,6 +540,19 @@ export default function UsersPageRefactored() {
                 />
                 <TextField
                   size="small"
+                  label="Buscar por correo"
+                  placeholder="correo@ejemplo.com"
+                  type="search"
+                  value={searchEmail}
+                  onChange={e => setSearchEmail(e.target.value)}
+                  sx={{
+                    minWidth: { xs: '100%', sm: 200 },
+                    flex: { sm: '1 1 200px' }
+                  }}
+                  inputProps={{ 'aria-label': 'Buscar por correo' }}
+                />
+                <TextField
+                  size="small"
                   label="Buscar por RUT"
                   placeholder="Ej: 12345678 o 12.345.678-9"
                   value={searchRut}
@@ -556,7 +634,8 @@ export default function UsersPageRefactored() {
               No hay usuarios que coincidan
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Ajusta el rol, el nombre o el RUT, o restablece los filtros.
+              Ajusta el rol, el nombre, el correo o el RUT, o restablece los
+              filtros.
             </Typography>
             <Button
               size="small"
@@ -622,17 +701,35 @@ export default function UsersPageRefactored() {
                             >
                               {user.name || 'Sin nombre'}
                             </Typography>
-                            <Chip
-                              label={
-                                user.role === 'admin' ? 'Admin' : 'Usuario'
-                              }
-                              size="small"
-                              color={
-                                user.role === 'admin' ? 'secondary' : 'default'
-                              }
-                              variant="outlined"
-                              sx={{ fontWeight: 600, flexShrink: 0 }}
-                            />
+                            <Stack
+                              direction="row"
+                              spacing={0.5}
+                              flexWrap="wrap"
+                              justifyContent="flex-end"
+                            >
+                              {user.mustChangePassword ? (
+                                <Chip
+                                  label="Debe cambiar clave"
+                                  size="small"
+                                  color="warning"
+                                  variant="outlined"
+                                  sx={{ fontWeight: 600 }}
+                                />
+                              ) : null}
+                              <Chip
+                                label={
+                                  user.role === 'admin' ? 'Admin' : 'Usuario'
+                                }
+                                size="small"
+                                color={
+                                  user.role === 'admin'
+                                    ? 'secondary'
+                                    : 'default'
+                                }
+                                variant="outlined"
+                                sx={{ fontWeight: 600, flexShrink: 0 }}
+                              />
+                            </Stack>
                           </Stack>
                           <Typography
                             variant="body2"
@@ -671,6 +768,22 @@ export default function UsersPageRefactored() {
                       >
                         <VisibilityIcon />
                       </IconButton>
+                      {user.hasPassword ? (
+                        <Tooltip title="Resetear contraseña (genera temporal)">
+                          <span>
+                            <IconButton
+                              color="warning"
+                              onClick={() => setResetConfirmUser(user)}
+                              size="small"
+                              disabled={resetPassword.isPending}
+                              aria-label="Resetear contraseña"
+                              sx={{ touchAction: 'manipulation' }}
+                            >
+                              <LockResetIcon />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                      ) : null}
                       <IconButton
                         color="primary"
                         onClick={() => handleOpenDialog(user)}
@@ -839,6 +952,77 @@ export default function UsersPageRefactored() {
               {createUser.isPending || updateUser.isPending
                 ? 'Guardando…'
                 : 'Guardar'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={!!resetConfirmUser}
+          onClose={() => setResetConfirmUser(null)}
+          maxWidth="xs"
+          fullWidth
+        >
+          <DialogTitle>Resetear contraseña</DialogTitle>
+          <DialogContent dividers>
+            <Typography variant="body2" color="text.secondary">
+              Se generará una contraseña temporal para{' '}
+              <strong>
+                {resetConfirmUser?.name ||
+                  resetConfirmUser?.email ||
+                  'este usuario'}
+              </strong>
+              . Solo aplica a cuentas con inicio por correo y contraseña (no
+              Google). Al entrar, deberá elegir una contraseña nueva.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button onClick={() => setResetConfirmUser(null)}>Cancelar</Button>
+            <Button
+              variant="contained"
+              color="warning"
+              onClick={handleResetPasswordConfirm}
+              disabled={resetPassword.isPending}
+            >
+              {resetPassword.isPending ? 'Generando…' : 'Generar temporal'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={!!resetResult}
+          onClose={() => setResetResult(null)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>Contraseña temporal</DialogTitle>
+          <DialogContent dividers>
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Compártela de forma segura. Solo se muestra una vez. El usuario
+              deberá cambiarla al iniciar sesión.
+            </Alert>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Usuario:{' '}
+              <strong>
+                {resetResult?.user.name || resetResult?.user.email}
+              </strong>
+            </Typography>
+            <TextField
+              label="Contraseña temporal"
+              value={resetResult?.temporaryPassword ?? ''}
+              fullWidth
+              InputProps={{ readOnly: true }}
+              sx={{ mt: 1 }}
+            />
+          </DialogContent>
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button
+              startIcon={<ContentCopyIcon />}
+              onClick={copyTemporaryPassword}
+            >
+              Copiar
+            </Button>
+            <Button variant="contained" onClick={() => setResetResult(null)}>
+              Cerrar
             </Button>
           </DialogActions>
         </Dialog>

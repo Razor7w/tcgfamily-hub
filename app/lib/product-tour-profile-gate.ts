@@ -1,4 +1,5 @@
 import type { Session } from 'next-auth'
+import { sessionRequiresPasswordChange } from '@/lib/must-change-password-path'
 
 /** Misma lógica que `ProfileCompletionGate`: no mostrar tour si falta onboarding OAuth. */
 export function sessionNeedsProfileCompletion(
@@ -6,6 +7,7 @@ export function sessionNeedsProfileCompletion(
 ): boolean {
   const user = session?.user
   if (!user) return true
+  if (sessionRequiresPasswordChange(session)) return true
   if (user.hasPassword) return false
 
   const rutOk = Boolean(user.rut?.trim())

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSession, signOut } from 'next-auth/react'
@@ -41,7 +40,6 @@ import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import CheckIcon from '@mui/icons-material/Check'
 import { setHubActiveStoreHeaderSync } from '@/lib/active-store-hub-sync-flag'
-import { cleanupOverlayBlockers } from '@/lib/overlay-blocker-cleanup'
 import { useMeStores } from '@/hooks/useMeStores'
 import { isStoreContextHubPath } from '@/lib/store-context-hub-path'
 import { useAppStore } from '@/store/useAppStore'
@@ -400,7 +398,6 @@ export default function Header() {
     setStorePickerOpen(false)
     setAccountDrawerOpen(false)
     setAnchorEl(null)
-    cleanupOverlayBlockers()
   }, [pathname])
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
@@ -417,6 +414,15 @@ export default function Header() {
   }
 
   const closeAccountDrawer = () => setAccountDrawerOpen(false)
+
+  /** Cierra overlays del header antes de navegar (evita removeChild con Menu/Drawer + Link). */
+  const goToPerfil = () => {
+    handleClose()
+    closeAccountDrawer()
+    window.setTimeout(() => {
+      router.push('/dashboard/perfil')
+    }, 0)
+  }
 
   const handleLogout = async () => {
     handleClose()
@@ -888,11 +894,7 @@ export default function Header() {
                       {session.user.email}
                     </Typography>
                   </MenuItem>
-                  <MenuItem
-                    component={Link}
-                    href="/dashboard/perfil"
-                    onClick={handleClose}
-                  >
+                  <MenuItem onClick={goToPerfil}>
                     <PersonIcon sx={{ mr: 1 }} />
                     Perfil
                   </MenuItem>
@@ -949,11 +951,7 @@ export default function Header() {
                   </Box>
                   <Divider />
                   <Box sx={{ py: 1 }}>
-                    <ListItemButton
-                      component={Link}
-                      href="/dashboard/perfil"
-                      onClick={closeAccountDrawer}
-                    >
+                    <ListItemButton onClick={goToPerfil}>
                       <ListItemIcon>
                         <PersonIcon />
                       </ListItemIcon>
