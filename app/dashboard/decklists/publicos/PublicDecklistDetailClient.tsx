@@ -111,23 +111,23 @@ export default function PublicDecklistDetailClient({
                 spacing={1.5}
                 alignItems="center"
                 sx={{
-                  flexWrap: 'wrap',
                   p: 1.5,
                   borderRadius: 2,
                   border: '1px solid',
                   borderColor: 'divider',
                   bgcolor: alpha(theme.palette.primary.main, 0.04),
-                  maxWidth: 480
+                  width: '100%',
+                  maxWidth: { xs: '100%', md: 480 }
                 }}
               >
                 <Avatar
                   src={ownerImage ?? undefined}
                   alt=""
-                  sx={{ width: 48, height: 48 }}
+                  sx={{ width: 48, height: 48, flexShrink: 0 }}
                 >
                   {initial}
                 </Avatar>
-                <Stack spacing={0.25} sx={{ minWidth: 0 }}>
+                <Stack spacing={0.25} sx={{ minWidth: 0, flex: 1 }}>
                   <Typography variant="subtitle2" fontWeight={700} noWrap>
                     {ownerName}
                   </Typography>
@@ -135,22 +135,36 @@ export default function PublicDecklistDetailClient({
                     variant="caption"
                     color="text.secondary"
                     fontWeight={500}
-                    sx={{ fontVariantNumeric: 'tabular-nums' }}
+                    sx={{
+                      fontVariantNumeric: 'tabular-nums',
+                      lineHeight: 1.45
+                    }}
                   >
                     Dueño del mazo · Actualizado {updatedAtLabel}
                   </Typography>
                 </Stack>
+                <Box
+                  sx={{
+                    display: { xs: 'flex', sm: 'flex', md: 'none' },
+                    flexShrink: 0,
+                    alignSelf: 'center',
+                    ml: 'auto'
+                  }}
+                >
+                  <DecklistSpritePair slugs={pokemonSlugs} size={40} />
+                </Box>
               </Stack>
             </Stack>
 
             <Box
               sx={{
+                display: { xs: 'none', sm: 'none', md: 'block' },
                 p: 1.25,
                 borderRadius: 2,
                 border: '1px solid',
                 borderColor: 'divider',
                 bgcolor: alpha(theme.palette.primary.main, 0.06),
-                alignSelf: { xs: 'center', md: 'flex-start' }
+                alignSelf: 'flex-start'
               }}
             >
               <DecklistSpritePair slugs={pokemonSlugs} size={44} />
