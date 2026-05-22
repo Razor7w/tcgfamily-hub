@@ -74,4 +74,9 @@ MailSchema.index(
 /** Cuota diaria por emisor: equality on fromUserId + range on createdAt */
 MailSchema.index({ fromUserId: 1, createdAt: 1 })
 
+/** GET /api/mail/me — bandeja por usuario (to / from / RUT) + pending + sort reciente */
+MailSchema.index({ toUserId: 1, isRecived: 1, createdAt: -1 })
+MailSchema.index({ fromUserId: 1, isRecived: 1, createdAt: -1 })
+MailSchema.index({ toRut: 1, isRecived: 1, createdAt: -1 })
+
 export default mongoose.models.Mail || mongoose.model<IMail>('Mail', MailSchema)

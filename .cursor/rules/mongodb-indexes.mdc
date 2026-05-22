@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Índices MongoDB (Atlas)
 
-Este proyecto usa Mongoose. Los índices en `Schema.index()` **no se crean solos en producción**: solo `Mails` llama `syncIndexes()` al conectar (`app/lib/mongodb.ts`). En Vercel/Atlas hay que crearlos a mano o con `syncIndexes` puntual.
+Este proyecto usa Mongoose. Los índices en `Schema.index()` **no se crean solos en producción**: créalos en Atlas/mongosh. `connectDB()` ya no ejecuta `syncIndexes()` en el camino caliente (solo con `MAIL_SYNC_INDEXES_ON_CONNECT=1` en local).
 
 ## Cuando aplica
 
