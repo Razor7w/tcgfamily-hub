@@ -42,6 +42,7 @@ import { alpha, useTheme } from '@mui/material/styles'
 import {
   matchRecordFromRounds,
   OPPONENT_DISPLAY_NAME_MAX,
+  roundEligibleForPreCloseSpriteEdit,
   roundTableOutcome,
   summarizeRoundResult,
   trimOpponentDisplayName,
@@ -395,7 +396,8 @@ function RoundMobileCard({
   onEdit,
   onDelete,
   deleteDisabled,
-  readOnly
+  readOnly,
+  showDelete = true
 }: {
   row: ParticipantMatchRoundDTO
   slugToLabel: Map<string, string>
@@ -403,6 +405,7 @@ function RoundMobileCard({
   onDelete: () => void
   deleteDisabled: boolean
   readOnly?: boolean
+  showDelete?: boolean
 }) {
   const outcome = roundTableOutcome(row)
   const p = matchRowAccentParts(outcome)
@@ -504,7 +507,7 @@ function RoundMobileCard({
           >
             {summarizeRoundResult(row)}
           </Box>
-          {interactive && !row.opponentDeckFromPlatform ? (
+          {interactive && showDelete && !row.opponentDeckFromPlatform ? (
             <IconButton
               size="medium"
               aria-label="Eliminar ronda"
@@ -754,9 +757,27 @@ export default function TournamentMatchRoundsCard({
     return FALLBACK_MAX_SELF_REPORTED_ROUNDS
   }, [isCustomTournament, officialMatchRecord, eventState])
 
+  /** Torneo oficial (TDF): bitácora solo editable cuando la tienda marca el evento como finalizado. */
+  const roundsLockedUntilEventClose =
+    !isCustomTournament && eventState != null && eventState !== 'close'
+  const roundsReadOnly = readOnly || roundsLockedUntilEventClose
+
+  const canSpriteEditRow = useCallback(
+    (row: ParticipantMatchRoundDTO) =>
+      roundsLockedUntilEventClose &&
+      !readOnly &&
+      roundEligibleForPreCloseSpriteEdit(row),
+    [roundsLockedUntilEventClose, readOnly]
+  )
+
+  const isRoundRowInteractive = useCallback(
+    (row: ParticipantMatchRoundDTO) => !roundsReadOnly || canSpriteEditRow(row),
+    [roundsReadOnly, canSpriteEditRow]
+  )
+
   const canAddRound = rounds.length < maxSelfReportedRounds
   /** Mostrar el botón del formulario: añadir ronda, o cerrar si el panel está abierto (p. ej. editando al límite). */
-  const showRoundFormToggle = !readOnly && (canAddRound || formOpen)
+  const showRoundFormToggle = !roundsReadOnly && (canAddRound || formOpen)
 
   /** En pantallas estrechas, al abrir el formulario el scroll lleva el panel a la vista (tras la animación de Collapse). */
   useEffect(() => {
@@ -814,6 +835,17 @@ export default function TournamentMatchRoundsCard({
     editingRoundRow?.opponentDeckFromPlatform === true
   const editingOpponentNameLocked =
     editingRoundRow?.opponentNameFromPlatform === true
+
+  const editingSpriteOnly =
+    isEditing && editingRoundRow != null && canSpriteEditRow(editingRoundRow)
+
+  const effectiveFormOpen =
+    formOpen && (!roundsLockedUntilEventClose || editingSpriteOnly)
+
+  const hasSpriteEditRounds = useMemo(
+    () => rounds.some(r => canSpriteEditRow(r)),
+    [rounds, canSpriteEditRow]
+  )
 
   const slot1Value = deckSlotFromDraft(
     slot1Draft,
@@ -920,6 +952,36 @@ export default function TournamentMatchRoundsCard({
     const opponentDisplayName = editingOpponentNameLocked
       ? (trimOpponentDisplayName(previous?.opponentDisplayName) ?? '')
       : opponentName.trim().slice(0, OPPONENT_DISPLAY_NAME_MAX)
+
+    if (editingSpriteOnly && isEditing && previous) {
+      const deckLocked =
+        previous.opponentDeckFromPlatform === true || editingOpponentDeckLocked
+      const opp = deckLocked
+        ? previous.opponentDeckSlugs
+        : [slot1Value?.slug, slot2Value?.slug].filter(
+            (s): s is string => typeof s === 'string' && s.length > 0
+          )
+      const lockedName = trimOpponentDisplayName(previous.opponentDisplayName)
+      const r: ParticipantMatchRoundDTO = {
+        ...(previous.id ? { id: previous.id } : {}),
+        roundNum: targetRoundNum,
+        ...(lockedName ? { opponentDisplayName: lockedName } : {}),
+        opponentDeckSlugs: opp,
+        gameResults: previous.gameResults,
+        turnOrders: previous.turnOrders,
+        specialOutcome: previous.specialOutcome ?? null
+      }
+      saveRounds.mutate(
+        rounds.map(x => (x.roundNum === editingRoundNum ? r : x)),
+        {
+          onSuccess: () => {
+            resetForm()
+            setFormOpen(false)
+          }
+        }
+      )
+      return
+    }
 
     if (special !== 'none') {
       const r: ParticipantMatchRoundDTO = {
@@ -1291,7 +1353,9 @@ export default function TournamentMatchRoundsCard({
                           : tournamentPlacement?.isDnf
                             ? `Categoría ${tournamentPlacement.categoryLabel} · sin completar el torneo`
                             : 'Victorias · Derrotas · Empates'
-                        : 'Victorias · Derrotas · Tablas (mesas que reportaste)'}
+                        : isCustomTournament
+                          ? 'Victorias · Derrotas · Tablas (mesas que reportaste)'
+                          : 'Victorias · Derrotas · Tablas'}
                     </Typography>
                   </Box>
                   <Stack
@@ -1388,15 +1452,26 @@ export default function TournamentMatchRoundsCard({
           >
             Rondas
           </Typography>
+          {roundsLockedUntilEventClose ? (
+            <Alert severity="info" sx={{ mb: 1.5 }}>
+              {hasSpriteEditRounds
+                ? 'La bitácora completa se habilita al finalizar el torneo. Si la tienda ya publicó tu emparejamiento con nombre del rival, pulsa esa ronda para añadir sprites de su mazo.'
+                : 'La bitácora de rondas se habilita cuando el torneo esté finalizado en la tienda. Mientras tanto puedes preparar tu perfil.'}
+            </Alert>
+          ) : null}
           <Typography
             variant="body2"
             color="text.secondary"
             sx={{ mb: showOfficialRecord ? 1 : 2, lineHeight: 1.55 }}
           >
-            {readOnly
-              ? rounds.length === 0
-                ? 'Este torneo no tiene rondas reportadas en la bitácora.'
-                : 'Vista de solo lectura: datos que reportó el jugador.'
+            {roundsReadOnly
+              ? roundsLockedUntilEventClose
+                ? hasSpriteEditRounds
+                  ? 'Pulsa una mesa publicada por la tienda para registrar sprites del rival, o espera al cierre para el resto de la bitácora.'
+                  : 'Cuando el torneo cierre podrás registrar rival, resultados por juego y desenlaces (ID, bye, etc.).'
+                : rounds.length === 0
+                  ? 'Este torneo no tiene rondas reportadas en la bitácora.'
+                  : 'Vista de solo lectura: datos que reportó el jugador.'
               : rounds.length === 0
                 ? 'El emparejamiento oficial no se muestra aquí: puedes llevar tu propio registro de mesas.'
                 : 'Pulsa una tarjeta para editar esa ronda.'}
@@ -1440,11 +1515,13 @@ export default function TournamentMatchRoundsCard({
                 color="text.secondary"
                 sx={{ mb: 2, maxWidth: 440, mx: 'auto', lineHeight: 1.6 }}
               >
-                {readOnly
-                  ? 'El creador del torneo no ha añadido mesas a su bitácora.'
+                {roundsReadOnly
+                  ? roundsLockedUntilEventClose
+                    ? 'Al finalizar el torneo podrás añadir cada mesa que jugaste.'
+                    : 'El creador del torneo no ha añadido mesas a su bitácora.'
                   : 'Cuando juegues una mesa, añádela aquí: rival (opcional), resultado por juego y desenlaces como ID o bye.'}
               </Typography>
-              {!readOnly ? (
+              {!roundsReadOnly ? (
                 <Typography
                   variant="caption"
                   color="text.secondary"
@@ -1462,17 +1539,21 @@ export default function TournamentMatchRoundsCard({
                     key={row.roundNum}
                     row={row}
                     slugToLabel={slugToLabel}
-                    onEdit={() => openEditRound(row)}
+                    onEdit={() => {
+                      if (!isRoundRowInteractive(row)) return
+                      openEditRound(row)
+                    }}
                     onDelete={() => handleDeleteRound(row.roundNum)}
                     deleteDisabled={saveRounds.isPending}
-                    readOnly={readOnly}
+                    readOnly={!isRoundRowInteractive(row)}
+                    showDelete={!roundsReadOnly}
                   />
                 ))}
               </Stack>
             </>
           )}
 
-          {!readOnly ? (
+          {!roundsReadOnly ? (
             <>
               {showRoundFormToggle ? (
                 <Button
@@ -1518,7 +1599,7 @@ export default function TournamentMatchRoundsCard({
                 </Typography>
               )}
 
-              <Collapse in={formOpen}>
+              <Collapse in={effectiveFormOpen}>
                 <Card
                   ref={roundFormScrollRef}
                   elevation={0}
@@ -1551,14 +1632,20 @@ export default function TournamentMatchRoundsCard({
                         />
                         <Box sx={{ minWidth: 0 }}>
                           <Typography variant="subtitle1" fontWeight={800}>
-                            {isEditing ? 'Editar mesa' : 'Registrar mesa'}
+                            {editingSpriteOnly
+                              ? 'Sprites del rival'
+                              : isEditing
+                                ? 'Editar mesa'
+                                : 'Registrar mesa'}
                           </Typography>
                           <Typography
                             variant="caption"
                             color="text.secondary"
                             sx={{ display: 'block', lineHeight: 1.45 }}
                           >
-                            Todo lo de abajo corresponde a esta ronda única.
+                            {editingSpriteOnly
+                              ? 'Solo puedes guardar los Pokémon del rival hasta que el torneo finalice.'
+                              : 'Todo lo de abajo corresponde a esta ronda única.'}
                           </Typography>
                         </Box>
                       </Stack>
@@ -1577,8 +1664,11 @@ export default function TournamentMatchRoundsCard({
                           }
                         />
 
-                        {special === 'none' ? (
-                          <Stack spacing={2} sx={{ mt: 2 }}>
+                        {special === 'none' || editingSpriteOnly ? (
+                          <Stack
+                            spacing={2}
+                            sx={{ mt: special === 'none' ? 2 : 0 }}
+                          >
                             <Typography variant="body2" fontWeight={600}>
                               Deck del rival{' '}
                               <Typography
@@ -1722,192 +1812,199 @@ export default function TournamentMatchRoundsCard({
                         ) : null}
                       </RoundFormSection>
 
-                      {special === 'none' ? (
-                        <RoundFormSection
-                          title="Partidos"
-                          description="Marca W, L o T y quién sale. Pulsa de nuevo para deseleccionar."
-                        >
-                          <Stack
-                            direction="row"
-                            spacing={{ xs: 1, sm: 2 }}
-                            alignItems="flex-start"
-                            sx={{ width: '100%' }}
+                      {!editingSpriteOnly ? (
+                        special === 'none' ? (
+                          <RoundFormSection
+                            title="Partidos"
+                            description="Marca W, L o T y quién sale. Pulsa de nuevo para deseleccionar."
                           >
-                            {gameRows.map((g, idx) => (
-                              <Box
-                                key={idx}
-                                sx={t => ({
-                                  flex: 1,
-                                  minWidth: 0,
-                                  p: { xs: 1, sm: 1.25 },
-                                  borderRadius: 1.5,
-                                  border: '1px solid',
-                                  borderColor: 'divider',
-                                  bgcolor: 'background.paper',
-                                  boxShadow: `0 1px 3px ${alpha(t.palette.primary.main, 0.07)}`
-                                })}
-                              >
-                                <Typography
-                                  variant="body2"
-                                  fontWeight={600}
-                                  sx={{
-                                    mb: { xs: 0.75, sm: 1 },
-                                    fontSize: '0.8125rem'
-                                  }}
+                            <Stack
+                              direction="row"
+                              spacing={{ xs: 1, sm: 2 }}
+                              alignItems="flex-start"
+                              sx={{ width: '100%' }}
+                            >
+                              {gameRows.map((g, idx) => (
+                                <Box
+                                  key={idx}
+                                  sx={t => ({
+                                    flex: 1,
+                                    minWidth: 0,
+                                    p: { xs: 1, sm: 1.25 },
+                                    borderRadius: 1.5,
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                    bgcolor: 'background.paper',
+                                    boxShadow: `0 1px 3px ${alpha(t.palette.primary.main, 0.07)}`
+                                  })}
                                 >
-                                  Juego {idx + 1}
-                                </Typography>
-                                <Box sx={{ mb: { xs: 1, sm: 1.5 } }}>
                                   <Typography
-                                    variant="caption"
-                                    color="text.secondary"
-                                    display="block"
-                                    sx={{ fontSize: '0.65rem', mb: 0.25 }}
-                                  >
-                                    Resultado
-                                  </Typography>
-                                  <ToggleButtonGroup
-                                    exclusive
-                                    size="small"
-                                    value={g.result}
-                                    onChange={(_e, v) => {
-                                      patchGame(idx, { result: v })
-                                    }}
+                                    variant="body2"
+                                    fontWeight={600}
                                     sx={{
-                                      display: 'flex',
-                                      width: '100%',
-                                      '& .MuiToggleButton-root': {
-                                        flex: 1,
-                                        px: { xs: 0.25, sm: 1 },
-                                        py: { xs: 0.35, sm: 0.5 },
-                                        minWidth: 0,
-                                        fontSize: {
-                                          xs: '0.7rem',
-                                          sm: '0.8125rem'
-                                        },
-                                        lineHeight: 1.2
-                                      }
+                                      mb: { xs: 0.75, sm: 1 },
+                                      fontSize: '0.8125rem'
                                     }}
                                   >
-                                    <ToggleButton value="W">W</ToggleButton>
-                                    <ToggleButton value="L">L</ToggleButton>
-                                    <ToggleButton value="T">T</ToggleButton>
-                                  </ToggleButtonGroup>
+                                    Juego {idx + 1}
+                                  </Typography>
+                                  <Box sx={{ mb: { xs: 1, sm: 1.5 } }}>
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                      display="block"
+                                      sx={{ fontSize: '0.65rem', mb: 0.25 }}
+                                    >
+                                      Resultado
+                                    </Typography>
+                                    <ToggleButtonGroup
+                                      exclusive
+                                      size="small"
+                                      value={g.result}
+                                      onChange={(_e, v) => {
+                                        patchGame(idx, { result: v })
+                                      }}
+                                      sx={{
+                                        display: 'flex',
+                                        width: '100%',
+                                        '& .MuiToggleButton-root': {
+                                          flex: 1,
+                                          px: { xs: 0.25, sm: 1 },
+                                          py: { xs: 0.35, sm: 0.5 },
+                                          minWidth: 0,
+                                          fontSize: {
+                                            xs: '0.7rem',
+                                            sm: '0.8125rem'
+                                          },
+                                          lineHeight: 1.2
+                                        }
+                                      }}
+                                    >
+                                      <ToggleButton value="W">W</ToggleButton>
+                                      <ToggleButton value="L">L</ToggleButton>
+                                      <ToggleButton value="T">T</ToggleButton>
+                                    </ToggleButtonGroup>
+                                  </Box>
+                                  <Box>
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                      display="block"
+                                      sx={{ fontSize: '0.65rem', mb: 0.25 }}
+                                    >
+                                      Sale
+                                    </Typography>
+                                    <ToggleButtonGroup
+                                      exclusive
+                                      size="small"
+                                      value={g.turn}
+                                      onChange={(_e, v) => {
+                                        if (v == null) return
+                                        patchGame(idx, { turn: v })
+                                      }}
+                                      sx={{
+                                        display: 'flex',
+                                        width: '100%',
+                                        '& .MuiToggleButton-root': {
+                                          flex: 1,
+                                          px: { xs: 0.25, sm: 1 },
+                                          py: { xs: 0.35, sm: 0.5 },
+                                          minWidth: 0,
+                                          fontSize: {
+                                            xs: '0.7rem',
+                                            sm: '0.8125rem'
+                                          },
+                                          lineHeight: 1.2
+                                        }
+                                      }}
+                                    >
+                                      <ToggleButton value="first">
+                                        1º
+                                      </ToggleButton>
+                                      <ToggleButton value="second">
+                                        2º
+                                      </ToggleButton>
+                                    </ToggleButtonGroup>
+                                  </Box>
+                                  {idx === 2 && needsTiebreakResult ? (
+                                    <Typography
+                                      variant="caption"
+                                      sx={{
+                                        mt: 1,
+                                        display: 'block',
+                                        color: MATCH_TIE_COLOR
+                                      }}
+                                    >
+                                      Desempate obligatorio
+                                    </Typography>
+                                  ) : null}
                                 </Box>
-                                <Box>
-                                  <Typography
-                                    variant="caption"
-                                    color="text.secondary"
-                                    display="block"
-                                    sx={{ fontSize: '0.65rem', mb: 0.25 }}
-                                  >
-                                    Sale
-                                  </Typography>
-                                  <ToggleButtonGroup
-                                    exclusive
-                                    size="small"
-                                    value={g.turn}
-                                    onChange={(_e, v) => {
-                                      if (v == null) return
-                                      patchGame(idx, { turn: v })
-                                    }}
-                                    sx={{
-                                      display: 'flex',
-                                      width: '100%',
-                                      '& .MuiToggleButton-root': {
-                                        flex: 1,
-                                        px: { xs: 0.25, sm: 1 },
-                                        py: { xs: 0.35, sm: 0.5 },
-                                        minWidth: 0,
-                                        fontSize: {
-                                          xs: '0.7rem',
-                                          sm: '0.8125rem'
-                                        },
-                                        lineHeight: 1.2
-                                      }
-                                    }}
-                                  >
-                                    <ToggleButton value="first">
-                                      1º
-                                    </ToggleButton>
-                                    <ToggleButton value="second">
-                                      2º
-                                    </ToggleButton>
-                                  </ToggleButtonGroup>
-                                </Box>
-                                {idx === 2 && needsTiebreakResult ? (
-                                  <Typography
-                                    variant="caption"
-                                    sx={{
-                                      mt: 1,
-                                      display: 'block',
-                                      color: MATCH_TIE_COLOR
-                                    }}
-                                  >
-                                    Desempate obligatorio
-                                  </Typography>
-                                ) : null}
-                              </Box>
-                            ))}
-                          </Stack>
-                        </RoundFormSection>
-                      ) : (
-                        <RoundFormSection
-                          title="Partidos"
-                          description="No aplica con ID, no show o bye."
-                        >
-                          <Typography variant="body2" color="text.secondary">
-                            Este desenlace no usa juegos individuales. Se
-                            guardará solo la marca especial.
-                          </Typography>
-                        </RoundFormSection>
-                      )}
+                              ))}
+                            </Stack>
+                          </RoundFormSection>
+                        ) : (
+                          <RoundFormSection
+                            title="Partidos"
+                            description="No aplica con ID, no show o bye."
+                          >
+                            <Typography variant="body2" color="text.secondary">
+                              Este desenlace no usa juegos individuales. Se
+                              guardará solo la marca especial.
+                            </Typography>
+                          </RoundFormSection>
+                        )
+                      ) : null}
 
-                      <RoundFormSection
-                        title="Otro desenlace"
-                        description="Solo si la mesa no fue un partido normal."
-                      >
-                        <ToggleButtonGroup
-                          exclusive
-                          size="small"
-                          value={special}
-                          onChange={(_e, v) => v != null && setSpecial(v)}
-                          sx={{
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            width: '100%',
-                            gap: 0.5
-                          }}
+                      {!editingSpriteOnly ? (
+                        <RoundFormSection
+                          title="Otro desenlace"
+                          description="Solo si la mesa no fue un partido normal."
                         >
-                          <ToggleButton value="none" sx={{ fontSize: '12px' }}>
-                            Normal
-                          </ToggleButton>
-                          <ToggleButton
-                            value="intentional_draw"
-                            sx={{ fontSize: '12px' }}
+                          <ToggleButtonGroup
+                            exclusive
+                            size="small"
+                            value={special}
+                            onChange={(_e, v) => v != null && setSpecial(v)}
+                            sx={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              width: '100%',
+                              gap: 0.5
+                            }}
                           >
-                            <HandshakeOutlinedIcon
-                              sx={{ mr: 0.5, fontSize: 18 }}
-                            />
-                            ID
-                          </ToggleButton>
-                          <ToggleButton
-                            value="no_show"
-                            sx={{ fontSize: '12px' }}
-                          >
-                            <PersonOffOutlinedIcon
-                              sx={{ mr: 0.5, fontSize: 18 }}
-                            />
-                            No show
-                          </ToggleButton>
-                          <ToggleButton value="bye" sx={{ fontSize: '12px' }}>
-                            <WavingHandOutlinedIcon
-                              sx={{ mr: 0.5, fontSize: 18 }}
-                            />
-                            Bye
-                          </ToggleButton>
-                        </ToggleButtonGroup>
-                      </RoundFormSection>
+                            <ToggleButton
+                              value="none"
+                              sx={{ fontSize: '12px' }}
+                            >
+                              Normal
+                            </ToggleButton>
+                            <ToggleButton
+                              value="intentional_draw"
+                              sx={{ fontSize: '12px' }}
+                            >
+                              <HandshakeOutlinedIcon
+                                sx={{ mr: 0.5, fontSize: 18 }}
+                              />
+                              ID
+                            </ToggleButton>
+                            <ToggleButton
+                              value="no_show"
+                              sx={{ fontSize: '12px' }}
+                            >
+                              <PersonOffOutlinedIcon
+                                sx={{ mr: 0.5, fontSize: 18 }}
+                              />
+                              No show
+                            </ToggleButton>
+                            <ToggleButton value="bye" sx={{ fontSize: '12px' }}>
+                              <WavingHandOutlinedIcon
+                                sx={{ mr: 0.5, fontSize: 18 }}
+                              />
+                              Bye
+                            </ToggleButton>
+                          </ToggleButtonGroup>
+                        </RoundFormSection>
+                      ) : null}
 
                       {saveRounds.isError ? (
                         <Typography color="error" variant="body2">
@@ -1932,7 +2029,9 @@ export default function TournamentMatchRoundsCard({
                           disabled={
                             saveRounds.isPending ||
                             optionsLoading ||
-                            (special === 'none' && !canSaveNormalRound)
+                            (editingSpriteOnly
+                              ? false
+                              : special === 'none' && !canSaveNormalRound)
                           }
                           onClick={handleSaveRound}
                           sx={t => ({
@@ -2159,7 +2258,9 @@ export default function TournamentMatchRoundsCard({
                               : tournamentPlacement?.isDnf
                                 ? `Categoría ${tournamentPlacement.categoryLabel} · sin completar el torneo`
                                 : 'Victorias · Derrotas · Empates'
-                            : 'Victorias · Derrotas · Tablas (mesas que reportaste)'}
+                            : isCustomTournament
+                              ? 'Victorias · Derrotas · Tablas (mesas que reportaste)'
+                              : 'Victorias · Derrotas · Tablas'}
                         </Typography>
                       </Box>
                       <Stack

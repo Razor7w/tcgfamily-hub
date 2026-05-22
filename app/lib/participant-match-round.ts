@@ -31,6 +31,18 @@ export type ParticipantMatchRoundDTO = {
 
 const SPECIAL: SpecialRoundOutcome[] = ['intentional_draw', 'no_show', 'bye']
 
+/** Torneo oficial en curso: la tienda publicó rival (no bye) y aún no reportó mazo. */
+export function roundEligibleForPreCloseSpriteEdit(
+  row: ParticipantMatchRoundDTO
+): boolean {
+  if (row.specialOutcome) return false
+  if (row.opponentDeckFromPlatform) return false
+  return (
+    row.opponentNameFromPlatform === true &&
+    Boolean(trimOpponentDisplayName(row.opponentDisplayName))
+  )
+}
+
 export function summarizeRoundResult(r: ParticipantMatchRoundDTO): string {
   if (r.specialOutcome === 'bye') return 'Bye'
   if (r.specialOutcome === 'intentional_draw') return 'ID'
