@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { startTransition, useCallback, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -309,7 +309,7 @@ export default function DecklistDetailClient({
                   size="medium"
                   fullWidth
                   startIcon={<ImageOutlinedIcon />}
-                  onClick={() => setImageOpen(true)}
+                  onClick={() => startTransition(() => setImageOpen(true))}
                   disabled={imageCards.length === 0}
                   sx={{
                     py: 1.25,
@@ -441,12 +441,14 @@ export default function DecklistDetailClient({
         onApplied={handleDeckMetaApplied}
       />
 
-      <DecklistImageDialog
-        open={imageOpen}
-        onClose={() => setImageOpen(false)}
-        cards={imageCards}
-        title={imageDialogTitle}
-      />
+      {imageOpen ? (
+        <DecklistImageDialog
+          open={imageOpen}
+          onClose={() => setImageOpen(false)}
+          cards={imageCards}
+          title={imageDialogTitle}
+        />
+      ) : null}
 
       <Dialog
         open={deleteOpen}

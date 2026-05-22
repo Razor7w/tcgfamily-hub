@@ -12,6 +12,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import { alpha, useTheme } from '@mui/material/styles'
 import DecklistModule from '@/components/decklist/DecklistModule'
+import DecklistViewActions from '@/components/decklist/DecklistViewActions'
 import type { DecklistVariantDTO } from '@/components/decklist/DecklistVariantsPanel'
 
 type Props = {
@@ -101,17 +102,34 @@ export default function PublicDecklistVariantsPanel({
         }}
       >
         <Stack spacing={1.25}>
-          <Typography
-            variant="subtitle2"
-            sx={{
-              fontWeight: 700,
-              letterSpacing: '-0.02em',
-              color: 'text.secondary',
-              px: { xs: 0.5, sm: 0 }
-            }}
+          <Stack
+            direction="row"
+            alignItems="flex-start"
+            justifyContent="space-between"
+            spacing={1}
+            sx={{ px: { xs: 0.5, sm: 0 }, gap: 1 }}
           >
-            Listas del mazo
-          </Typography>
+            <Typography
+              variant="subtitle2"
+              sx={{
+                fontWeight: 700,
+                letterSpacing: '-0.02em',
+                color: 'text.secondary',
+                pt: 0.25,
+                minWidth: 0
+              }}
+            >
+              Listas del mazo
+            </Typography>
+            <Box sx={{ display: { xs: 'block', sm: 'none' }, flexShrink: 0 }}>
+              <DecklistViewActions
+                key={deckModuleKey}
+                value={activeDeckText}
+                showCopyListButton
+                compact
+              />
+            </Box>
+          </Stack>
 
           <Tabs
             value={resolvedTab}
@@ -255,6 +273,7 @@ export default function PublicDecklistVariantsPanel({
           key={deckModuleKey}
           value={activeDeckText}
           showCopyListButton
+          mobileActionsInHeader
         />
       </Box>
     </Paper>

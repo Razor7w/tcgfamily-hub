@@ -195,16 +195,18 @@ export default function DecklistImagePreviewButton({
           {previewError}
         </Alert>
       ) : null}
-      <DecklistImageDialog
-        open={imageOpen}
-        onClose={() => {
-          setImageOpen(false)
-          setDeckText('')
-        }}
-        cards={imageCards}
-        title={dialogTitle}
-        deckText={deckText}
-      />
+      {imageOpen ? (
+        <DecklistImageDialog
+          open={imageOpen}
+          onClose={() => {
+            setImageOpen(false)
+            setDeckText('')
+          }}
+          cards={imageCards}
+          title={dialogTitle}
+          deckText={deckText}
+        />
+      ) : null}
     </>
   )
 }

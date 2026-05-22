@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import CloseIcon from '@mui/icons-material/Close'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import {
   Box,
   Button,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -40,15 +41,32 @@ export default function DecklistImageDialog({
   deckText
 }: DecklistImageDialogProps) {
   const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true })
   const [active, setActive] = useState<DecklistFlatCard | null>(null)
   const [listCopied, setListCopied] = useState(false)
+  /** Evita montar decenas de <img> LG en el mismo frame que abre el modal. */
+  const [gridReady, setGridReady] = useState(false)
 
   const showCopyList = Boolean(deckText?.trim())
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    const id = window.requestAnimationFrame(() => {
+      if (!cancelled) setGridReady(true)
+    })
+    return () => {
+      cancelled = true
+      window.cancelAnimationFrame(id)
+    }
+  }, [open])
+
+  const showGrid = open && gridReady
 
   const handleClose = () => {
     setActive(null)
     setListCopied(false)
+    setGridReady(false)
     onClose()
   }
 
@@ -78,109 +96,128 @@ export default function DecklistImageDialog({
     </Button>
   ) : null
 
-  const grid = (
+  const gridLoading = (
     <Box
       sx={{
-        p: { xs: 1, sm: 2.5 },
-        borderRadius: 0,
-        bgcolor: theme.palette.background.default,
-        backgroundImage: `radial-gradient(circle at 18% 18%, ${alpha(theme.palette.primary.light, 0.09)}, transparent 44%), radial-gradient(circle at 82% 12%, ${alpha(theme.palette.primary.main, 0.07)}, transparent 48%), radial-gradient(circle at 50% 88%, ${alpha('#ffffff', 0.04)}, transparent 52%)`,
-        border: '1px solid',
-        borderColor: alpha(
-          theme.palette.mode === 'dark'
-            ? theme.palette.common.white
-            : theme.palette.primary.dark,
-          0.1
-        )
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 200,
+        py: 4
       }}
     >
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: {
-            xs: 'repeat(6, minmax(0, 1fr))',
-            sm: 'repeat(6, minmax(0, 1fr))',
-            md: 'repeat(10, minmax(0, 1fr))',
-            lg: 'repeat(12, minmax(0, 1fr))'
-          },
-          gap: { xs: 0.75, sm: 1.1, md: 1 }
-        }}
-      >
-        {cards.map(c => {
-          const src = limitlessCardImageUrl({
-            set: c.set,
-            number: c.number,
-            size: 'LG',
-            cardName: c.name
-          })
-          return (
-            <Box
-              key={`${c.set}-${c.number}`}
-              role="button"
-              tabIndex={0}
-              onClick={() => setActive(c)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' || e.key === ' ') setActive(c)
-              }}
-              sx={{
-                position: 'relative',
-                borderRadius: 0,
-                overflow: 'hidden',
-                boxShadow: `0 12px 28px ${alpha(theme.palette.primary.dark, 0.28)}`,
-                border: '1px solid',
-                borderColor: alpha(theme.palette.common.white, 0.1),
-                cursor: 'zoom-in',
-                outline: 'none',
-                transition:
-                  'transform 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1)',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: `0 18px 36px ${alpha(theme.palette.primary.dark, 0.38)}`
-                },
-                '&:focus-visible': {
-                  boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.light, 0.45)}, 0 18px 36px ${alpha(theme.palette.primary.dark, 0.38)}`
-                }
-              }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={src}
-                alt={`${c.name} ${c.set} ${c.number}`}
-                loading="lazy"
-                style={{
-                  width: '100%',
-                  height: 'auto',
-                  display: 'block'
-                }}
-              />
-              <Box
-                sx={{
-                  position: 'absolute',
-                  bottom: { xs: 6, sm: 8 },
-                  left: { xs: 6, sm: 8 },
-                  width: { xs: 24, sm: 30 },
-                  height: { xs: 24, sm: 30 },
-                  borderRadius: 999,
-                  bgcolor: 'primary.main',
-                  color: 'primary.contrastText',
-                  display: 'grid',
-                  placeItems: 'center',
-                  fontWeight: 900,
-                  fontSize: { xs: 12, sm: 14 },
-                  fontVariantNumeric: 'tabular-nums',
-                  border: '2px solid',
-                  borderColor: alpha(theme.palette.common.white, 0.88),
-                  boxShadow: `0 10px 22px ${alpha(theme.palette.primary.dark, 0.35)}`
-                }}
-              >
-                {c.count}
-              </Box>
-            </Box>
-          )
-        })}
-      </Box>
+      <CircularProgress size={36} aria-label="Cargando cartas" />
     </Box>
   )
+
+  const grid =
+    !showGrid || cards.length === 0 ? (
+      gridLoading
+    ) : (
+      <Box
+        sx={{
+          p: { xs: 1, sm: 2.5 },
+          borderRadius: 0,
+          bgcolor: theme.palette.background.default,
+          backgroundImage: `radial-gradient(circle at 18% 18%, ${alpha(theme.palette.primary.light, 0.09)}, transparent 44%), radial-gradient(circle at 82% 12%, ${alpha(theme.palette.primary.main, 0.07)}, transparent 48%), radial-gradient(circle at 50% 88%, ${alpha('#ffffff', 0.04)}, transparent 52%)`,
+          border: '1px solid',
+          borderColor: alpha(
+            theme.palette.mode === 'dark'
+              ? theme.palette.common.white
+              : theme.palette.primary.dark,
+            0.1
+          )
+        }}
+      >
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: 'repeat(6, minmax(0, 1fr))',
+              sm: 'repeat(6, minmax(0, 1fr))',
+              md: 'repeat(10, minmax(0, 1fr))',
+              lg: 'repeat(12, minmax(0, 1fr))'
+            },
+            gap: { xs: 0.75, sm: 1.1, md: 1 }
+          }}
+        >
+          {cards.map(c => {
+            const src = limitlessCardImageUrl({
+              set: c.set,
+              number: c.number,
+              size: 'SM',
+              cardName: c.name
+            })
+            return (
+              <Box
+                key={`${c.set}-${c.number}-${c.name}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => setActive(c)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') setActive(c)
+                }}
+                sx={{
+                  position: 'relative',
+                  borderRadius: 0,
+                  overflow: 'hidden',
+                  boxShadow: `0 12px 28px ${alpha(theme.palette.primary.dark, 0.28)}`,
+                  border: '1px solid',
+                  borderColor: alpha(theme.palette.common.white, 0.1),
+                  cursor: 'zoom-in',
+                  outline: 'none',
+                  transition:
+                    'transform 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1)',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 18px 36px ${alpha(theme.palette.primary.dark, 0.38)}`
+                  },
+                  '&:focus-visible': {
+                    boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.light, 0.45)}, 0 18px 36px ${alpha(theme.palette.primary.dark, 0.38)}`
+                  }
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={src}
+                  alt={`${c.name} ${c.set} ${c.number}`}
+                  loading="lazy"
+                  style={{
+                    width: '100%',
+                    height: 'auto',
+                    display: 'block'
+                  }}
+                />
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    bottom: { xs: 6, sm: 8 },
+                    left: { xs: 6, sm: 8 },
+                    width: { xs: 24, sm: 30 },
+                    height: { xs: 24, sm: 30 },
+                    borderRadius: 999,
+                    bgcolor: 'primary.main',
+                    color: 'primary.contrastText',
+                    display: 'grid',
+                    placeItems: 'center',
+                    fontWeight: 900,
+                    fontSize: { xs: 12, sm: 14 },
+                    fontVariantNumeric: 'tabular-nums',
+                    border: '2px solid',
+                    borderColor: alpha(theme.palette.common.white, 0.88),
+                    boxShadow: `0 10px 22px ${alpha(theme.palette.primary.dark, 0.35)}`
+                  }}
+                >
+                  {c.count}
+                </Box>
+              </Box>
+            )
+          })}
+        </Box>
+      </Box>
+    )
+
+  if (!open) return null
 
   return (
     <>
@@ -189,7 +226,6 @@ export default function DecklistImageDialog({
           open={open}
           onClose={handleClose}
           anchor="bottom"
-          ModalProps={{ keepMounted: true }}
           PaperProps={{
             sx: {
               height: 'min(100dvh, 100%)',
