@@ -1,7 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { signIn } from 'next-auth/react'
+import { getSession, signIn } from 'next-auth/react'
+import {
+  MUST_CHANGE_PASSWORD_PATH,
+  sessionRequiresPasswordChange
+} from '@/lib/must-change-password-path'
 import Link from 'next/link'
 import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
@@ -13,6 +17,7 @@ import IconButton from '@mui/material/IconButton'
 import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import { normalizeEmail, validateEmailFormat } from '@/lib/password-rules'
+import { storeTempPasswordHint } from '@/lib/temp-password-hint'
 
 export default function EmailPasswordSignInForm() {
   const [email, setEmail] = useState('')
@@ -54,6 +59,12 @@ export default function EmailPasswordSignInForm() {
       })
       if (res?.error) {
         setError('Correo o contraseña incorrectos.')
+        return
+      }
+      storeTempPasswordHint(password)
+      const session = await getSession()
+      if (sessionRequiresPasswordChange(session)) {
+        window.location.replace(MUST_CHANGE_PASSWORD_PATH)
         return
       }
       if (res?.url) {

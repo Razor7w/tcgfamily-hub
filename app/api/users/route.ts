@@ -23,7 +23,7 @@ export async function GET() {
 
     await connectDB()
     const users = await User.find({})
-      .select('-accounts -sessions -passwordHash')
+      .select('+passwordHash -accounts -sessions')
       .sort({ createdAt: -1 })
       .lean()
 
@@ -41,6 +41,8 @@ export async function GET() {
         phone?: string
         rut?: string
         popid?: string
+        passwordHash?: string
+        mustChangePassword?: boolean
         storePoints?: number
         storePointsExpiringNext?: number
         storePointsExpiryDate?: Date
@@ -62,6 +64,8 @@ export async function GET() {
         phone: userObj.phone || '',
         rut: userObj.rut || '',
         popid: userObj.popid || '',
+        hasPassword: Boolean(userObj.passwordHash),
+        mustChangePassword: Boolean(userObj.mustChangePassword),
         storePoints: w.storePoints,
         storePointsExpiringNext: w.storePointsExpiringNext,
         storePointsExpiryDate: isoOrNull(w.storePointsExpiryDate)

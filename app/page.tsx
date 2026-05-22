@@ -16,6 +16,10 @@ import BrandLogo from '@/components/brand/BrandLogo'
 import Header from '@/components/Header'
 import EmailPasswordSignInForm from '@/components/auth/EmailPasswordSignInForm'
 import { signIn } from 'next-auth/react'
+import {
+  MUST_CHANGE_PASSWORD_PATH,
+  sessionRequiresPasswordChange
+} from '@/lib/must-change-password-path'
 
 function LoginAlerts() {
   const searchParams = useSearchParams()
@@ -30,14 +34,17 @@ function LoginAlerts() {
 }
 
 export default function LoginPage() {
-  const { status } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
 
   useEffect(() => {
-    if (status === 'authenticated') {
-      router.replace('/dashboard')
+    if (status !== 'authenticated') return
+    if (sessionRequiresPasswordChange(session)) {
+      router.replace(MUST_CHANGE_PASSWORD_PATH)
+      return
     }
-  }, [status, router])
+    router.replace('/dashboard')
+  }, [status, session, router])
 
   if (status === 'loading') {
     return (

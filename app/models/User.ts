@@ -18,6 +18,8 @@ export interface IUser extends Document {
   imageKey?: string
   /** Solo usuarios con contraseña local; nunca exponer en APIs. */
   passwordHash?: string
+  /** Tras reset admin: obligar cambio en el próximo inicio con contraseña local. */
+  mustChangePassword: boolean
   credentialFailedAttempts?: number
   credentialLockedUntil?: Date
   role: UserRole
@@ -52,6 +54,10 @@ const UserSchema = new Schema<IUser>(
       type: String,
       select: false,
       default: undefined
+    },
+    mustChangePassword: {
+      type: Boolean,
+      default: false
     },
     credentialFailedAttempts: {
       type: Number,

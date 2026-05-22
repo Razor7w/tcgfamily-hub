@@ -9,6 +9,8 @@ export interface User {
   phone?: string
   rut?: string
   popid?: string
+  hasPassword: boolean
+  mustChangePassword: boolean
   storePoints: number
   storePointsExpiringNext: number
   storePointsExpiryDate: string | null
@@ -126,6 +128,33 @@ export function useDeleteUser() {
       }
 
       return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+    }
+  })
+}
+
+// Hook para resetear contraseña (solo usuarios con contraseña local)
+export function useResetUserPassword() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const response = await fetch(`/api/users/${userId}/reset-password`, {
+        method: 'POST'
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Error al resetear contraseña')
+      }
+
+      return response.json() as Promise<{
+        ok: boolean
+        temporaryPassword: string
+        message?: string
+      }>
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })

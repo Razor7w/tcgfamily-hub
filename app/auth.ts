@@ -78,7 +78,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const user = await User.findOne({ email })
           .collation({ locale: 'en', strength: 2 })
           .select(
-            '+passwordHash credentialFailedAttempts credentialLockedUntil'
+            '+passwordHash mustChangePassword credentialFailedAttempts credentialLockedUntil'
           )
 
         const now = new Date()
@@ -118,7 +118,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           role: user.role || 'user',
           rut: user.rut ?? '',
           popid: user.popid ?? '',
-          hasPassword: true
+          hasPassword: true,
+          mustChangePassword: Boolean(user.mustChangePassword)
         }
       }
     })
@@ -147,6 +148,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (typeof s.popid === 'string') token.popid = s.popid
         if (typeof s.hasPassword === 'boolean')
           token.hasPassword = s.hasPassword
+        if (typeof s.mustChangePassword === 'boolean')
+          token.mustChangePassword = s.mustChangePassword
         const defSid = s.defaultStoreId
         let parsedDefaultStoreId: string | undefined
         if (defSid === null || defSid === '') {
@@ -175,7 +178,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.role = uRole === 'admin' ? 'admin' : 'user'
         await connectDB()
         const db = await User.findById(user.id).select(
-          '+passwordHash name email image rut popid role defaultStoreId'
+          '+passwordHash mustChangePassword name email image rut popid role defaultStoreId'
         )
         if (db) {
           token.name = db.name ?? undefined
@@ -184,6 +187,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.rut = db.rut?.trim() ?? ''
           token.popid = db.popid ?? ''
           token.hasPassword = Boolean(db.passwordHash)
+          token.mustChangePassword = Boolean(db.mustChangePassword)
           token.role = db.role === 'admin' ? 'admin' : 'user'
           token.defaultStoreId = db.defaultStoreId
             ? String(db.defaultStoreId)
@@ -195,22 +199,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.rut = ''
           token.popid = ''
           token.hasPassword = false
+          token.mustChangePassword = Boolean(
+            (user as { mustChangePassword?: boolean }).mustChangePassword
+          )
           token.defaultStoreId = ''
         }
       } else if (
         token.sub &&
         (token.rut === undefined ||
           token.hasPassword === undefined ||
+          token.mustChangePassword === undefined ||
           token.popid === undefined)
       ) {
         await connectDB()
         const db = await User.findById(token.sub).select(
-          '+passwordHash rut popid role defaultStoreId'
+          '+passwordHash mustChangePassword rut popid role defaultStoreId'
         )
         if (db) {
           token.rut = db.rut?.trim() ?? ''
           token.popid = db.popid ?? ''
           token.hasPassword = Boolean(db.passwordHash)
+          token.mustChangePassword = Boolean(db.mustChangePassword)
           token.role = db.role === 'admin' ? 'admin' : 'user'
           token.defaultStoreId = db.defaultStoreId
             ? String(db.defaultStoreId)
@@ -242,6 +251,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.rut = typeof token.rut === 'string' ? token.rut : ''
         session.user.popid = typeof token.popid === 'string' ? token.popid : ''
         session.user.hasPassword = Boolean(token.hasPassword)
+        session.user.mustChangePassword = Boolean(token.mustChangePassword)
         session.user.activeStoreId =
           typeof token.activeStoreId === 'string' &&
           mongoose.Types.ObjectId.isValid(token.activeStoreId.trim())

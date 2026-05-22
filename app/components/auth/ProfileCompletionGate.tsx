@@ -23,6 +23,7 @@ export default function ProfileCompletionGate() {
   const open =
     status === 'authenticated' &&
     session?.user &&
+    !session.user.mustChangePassword &&
     !session.user.hasPassword &&
     (needsRutCompletion(session.user.rut) ||
       !hasDefaultStorePref(session.user.defaultStoreId))

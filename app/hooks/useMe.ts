@@ -13,6 +13,7 @@ export type MeProfile = {
   popid: string
   phone: string
   hasPassword: boolean
+  mustChangePassword: boolean
   defaultStoreId: string | null
 }
 
