@@ -49,6 +49,7 @@ import {
   OPPONENT_DISPLAY_NAME_MAX,
   roundTableOutcome,
   summarizeRoundResult,
+  trimOpponentDisplayName,
   type GameResultLetter,
   type ParticipantMatchRoundDTO,
   type SpecialRoundOutcome,
@@ -754,6 +755,8 @@ export default function TournamentMatchRoundsCard({
   /** Solo el reporte propio del rival bloquea edición (no sprites inferidos de bitácora). */
   const editingOpponentDeckLocked =
     editingRoundRow?.opponentDeckFromPlatform === true
+  const editingOpponentNameLocked =
+    editingRoundRow?.opponentNameFromPlatform === true
 
   const slot1Value = deckSlotFromDraft(
     slot1Draft,
@@ -857,9 +860,9 @@ export default function TournamentMatchRoundsCard({
         ? rounds.find(x => x.roundNum === editingRoundNum)
         : undefined
 
-    const opponentDisplayName = opponentName
-      .trim()
-      .slice(0, OPPONENT_DISPLAY_NAME_MAX)
+    const opponentDisplayName = editingOpponentNameLocked
+      ? (trimOpponentDisplayName(previous?.opponentDisplayName) ?? '')
+      : opponentName.trim().slice(0, OPPONENT_DISPLAY_NAME_MAX)
 
     if (special !== 'none') {
       const r: ParticipantMatchRoundDTO = {
@@ -1648,12 +1651,12 @@ export default function TournamentMatchRoundsCard({
                     label="Nombre del rival"
                     placeholder="Ej. Juan Pérez"
                     value={opponentName}
+                    disabled={editingOpponentNameLocked}
                     onChange={e =>
                       setOpponentName(
                         e.target.value.slice(0, OPPONENT_DISPLAY_NAME_MAX)
                       )
                     }
-                    helperText="Opcional. Si la tienda publicó la ronda en el TDF, también puede completarse solo."
                     sx={{ mb: special === 'none' ? 0 : 2 }}
                   />
 
@@ -1785,8 +1788,8 @@ export default function TournamentMatchRoundsCard({
                       </Stack>
 
                       <Stack
-                        direction={{ xs: 'column', sm: 'row' }}
-                        spacing={2}
+                        direction="row"
+                        spacing={{ xs: 1, sm: 2 }}
                         alignItems="flex-start"
                         sx={{ width: '100%' }}
                       >
@@ -1795,22 +1798,25 @@ export default function TournamentMatchRoundsCard({
                             key={idx}
                             sx={{
                               flex: 1,
-                              minWidth: { xs: '100%', sm: 0 },
-                              maxWidth: { sm: 200 }
+                              minWidth: 0
                             }}
                           >
                             <Typography
                               variant="body2"
                               fontWeight={600}
-                              sx={{ mb: 1 }}
+                              sx={{
+                                mb: { xs: 0.75, sm: 1 },
+                                fontSize: '0.8125rem'
+                              }}
                             >
                               Juego {idx + 1}
                             </Typography>
-                            <Box sx={{ mb: 1.5 }}>
+                            <Box sx={{ mb: { xs: 1, sm: 1.5 } }}>
                               <Typography
                                 variant="caption"
                                 color="text.secondary"
                                 display="block"
+                                sx={{ fontSize: '0.65rem', mb: 0.25 }}
                               >
                                 Resultado
                               </Typography>
@@ -1819,10 +1825,20 @@ export default function TournamentMatchRoundsCard({
                                 size="small"
                                 value={g.result}
                                 onChange={(_e, v) => {
-                                  if (v == null) return
                                   patchGame(idx, { result: v })
                                 }}
-                                sx={{ display: 'flex', flexWrap: 'wrap' }}
+                                sx={{
+                                  display: 'flex',
+                                  width: '100%',
+                                  '& .MuiToggleButton-root': {
+                                    flex: 1,
+                                    px: { xs: 0.25, sm: 1 },
+                                    py: { xs: 0.35, sm: 0.5 },
+                                    minWidth: 0,
+                                    fontSize: { xs: '0.7rem', sm: '0.8125rem' },
+                                    lineHeight: 1.2
+                                  }
+                                }}
                               >
                                 <ToggleButton value="W">W</ToggleButton>
                                 <ToggleButton value="L">L</ToggleButton>
@@ -1834,6 +1850,7 @@ export default function TournamentMatchRoundsCard({
                                 variant="caption"
                                 color="text.secondary"
                                 display="block"
+                                sx={{ fontSize: '0.65rem', mb: 0.25 }}
                               >
                                 Sale
                               </Typography>
@@ -1844,6 +1861,18 @@ export default function TournamentMatchRoundsCard({
                                 onChange={(_e, v) => {
                                   if (v == null) return
                                   patchGame(idx, { turn: v })
+                                }}
+                                sx={{
+                                  display: 'flex',
+                                  width: '100%',
+                                  '& .MuiToggleButton-root': {
+                                    flex: 1,
+                                    px: { xs: 0.25, sm: 1 },
+                                    py: { xs: 0.35, sm: 0.5 },
+                                    minWidth: 0,
+                                    fontSize: { xs: '0.7rem', sm: '0.8125rem' },
+                                    lineHeight: 1.2
+                                  }
                                 }}
                               >
                                 <ToggleButton value="first">1º</ToggleButton>
@@ -1890,18 +1919,23 @@ export default function TournamentMatchRoundsCard({
                     size="small"
                     value={special}
                     onChange={(_e, v) => v != null && setSpecial(v)}
-                    sx={{ mb: 2, flexWrap: 'wrap', gap: 0.5 }}
+                    sx={{ mb: 2, flexWrap: 'wrap' }}
                   >
-                    <ToggleButton value="none">Partido normal</ToggleButton>
-                    <ToggleButton value="intentional_draw">
+                    <ToggleButton value="none" sx={{ fontSize: '12px' }}>
+                      Normal
+                    </ToggleButton>
+                    <ToggleButton
+                      value="intentional_draw"
+                      sx={{ fontSize: '12px' }}
+                    >
                       <HandshakeOutlinedIcon sx={{ mr: 0.5, fontSize: 18 }} />
                       ID
                     </ToggleButton>
-                    <ToggleButton value="no_show">
+                    <ToggleButton value="no_show" sx={{ fontSize: '12px' }}>
                       <PersonOffOutlinedIcon sx={{ mr: 0.5, fontSize: 18 }} />
                       No show
                     </ToggleButton>
-                    <ToggleButton value="bye">
+                    <ToggleButton value="bye" sx={{ fontSize: '12px' }}>
                       <WavingHandOutlinedIcon sx={{ mr: 0.5, fontSize: 18 }} />
                       Bye
                     </ToggleButton>
@@ -2233,9 +2267,9 @@ export default function TournamentMatchRoundsCard({
                           role="row"
                           sx={t => ({
                             display: 'grid',
-                            gridTemplateColumns: '44px minmax(0,1fr) auto',
-                            columnGap: 1,
-                            alignItems: 'center',
+                            gridTemplateColumns: 'auto minmax(0,1fr) auto',
+                            columnGap: '8px',
+                            alignItems: { xs: 'flex-start', sm: 'center' },
                             px: 1.25,
                             py: 1,
                             borderRadius: 1,
@@ -2304,9 +2338,12 @@ export default function TournamentMatchRoundsCard({
                                 sx={t => ({
                                   display: 'grid',
                                   gridTemplateColumns:
-                                    '44px minmax(0,1fr) auto',
-                                  columnGap: 1,
-                                  alignItems: 'center',
+                                    'auto minmax(0,1fr) auto',
+                                  columnGap: '8px',
+                                  alignItems: {
+                                    xs: 'flex-start',
+                                    sm: 'center'
+                                  },
                                   px: 1.25,
                                   py: 1.35,
                                   borderRadius: 2,
@@ -2323,6 +2360,7 @@ export default function TournamentMatchRoundsCard({
                                   variant="body2"
                                   sx={{
                                     fontVariantNumeric: 'tabular-nums',
+                                    pt: { xs: 0.15, sm: 0 },
                                     color:
                                       outcome === 'win'
                                         ? MATCH_WIN_COLOR
@@ -2343,14 +2381,58 @@ export default function TournamentMatchRoundsCard({
                                   <MatchRoundOpponentCell
                                     row={row}
                                     slugToLabel={slugToLabel}
-                                    inline
+                                    inline={!isMobileViewport}
+                                    nameOnly={isMobileViewport}
+                                    spriteSize={28}
                                   />
                                 </Box>
                                 <Box
                                   component="span"
                                   role="cell"
-                                  sx={{ justifySelf: 'end' }}
+                                  sx={{
+                                    justifySelf: 'end',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'flex-end',
+                                    gap: 0.5,
+                                    minWidth: 0,
+                                    flexShrink: 0
+                                  }}
                                 >
+                                  {isMobileViewport &&
+                                  row.opponentDeckSlugs.length > 0 ? (
+                                    <Stack
+                                      direction="row"
+                                      spacing={0.25}
+                                      alignItems="center"
+                                      flexWrap="wrap"
+                                      useFlexGap
+                                      sx={{ flexShrink: 0 }}
+                                    >
+                                      {row.opponentDeckSlugs.map(slug => (
+                                        <Box
+                                          key={slug}
+                                          component="img"
+                                          src={getLimitlessPokemonSpriteUrl(
+                                            slug
+                                          )}
+                                          alt=""
+                                          title={slugToLabel?.get(slug) ?? slug}
+                                          sx={{
+                                            width: 28,
+                                            height: 24,
+                                            objectFit: 'contain',
+                                            imageRendering: 'pixelated',
+                                            borderRadius: 0.75,
+                                            border: '1px solid',
+                                            borderColor: 'divider',
+                                            bgcolor: 'background.paper',
+                                            flexShrink: 0
+                                          }}
+                                        />
+                                      ))}
+                                    </Stack>
+                                  ) : null}
                                   <Box
                                     component="span"
                                     sx={{
@@ -2365,6 +2447,7 @@ export default function TournamentMatchRoundsCard({
                                       fontSize: '0.75rem',
                                       letterSpacing: '0.03em',
                                       lineHeight: 1.2,
+                                      flexShrink: 0,
                                       ...shareDrawerResultPillSx(outcome)
                                     }}
                                   >
