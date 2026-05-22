@@ -316,10 +316,7 @@ export default function DashboardQuickActions({
           gridTemplateColumns: {
             xs: 'minmax(0, 1fr)',
             sm: 'minmax(0, 1fr)',
-            md:
-              tileCount === 1
-                ? 'minmax(0, 1fr)'
-                : 'repeat(2, minmax(0, 1fr))'
+            md: tileCount === 1 ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))'
           },
           columnGap: { xs: 0, sm: 1.5, md: 2 },
           rowGap: { xs: 1, sm: 1.125, md: 2 }
