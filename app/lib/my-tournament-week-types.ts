@@ -16,3 +16,9 @@ export type MyTournamentWeekItem = {
   /** Slugs reportados (sprites Limitless), si el usuario guardó su deck. */
   deckPokemonSlugs?: string[]
 }
+
+/** Ítem para la tarjeta de torneos en Inicio (`/dashboard`): solo preinscripciones activas. */
+export type MyHomeTournamentItem = MyTournamentWeekItem & {
+  storeName: string
+  registrationKind: 'pre_registered'
+}

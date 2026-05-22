@@ -17,6 +17,7 @@ import { useSession } from 'next-auth/react'
 import ReportCustomTournamentDialog from '@/components/events/ReportCustomTournamentDialog'
 import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
 import DashboardSuggestionRail from '@/components/dashboard/DashboardSuggestionRail'
+import DashboardHomeTournamentsCard from '@/components/dashboard/DashboardHomeTournamentsCard'
 import DashboardInStoreMailsCard from '@/components/dashboard/DashboardInStoreMailsCard'
 import DashboardQuickActions from '@/components/dashboard/DashboardQuickActions'
 import RecentPublicDecklistsHomeCard from '@/components/dashboard/RecentPublicDecklistsHomeCard'
@@ -77,6 +78,10 @@ export default function DashboardPage() {
             <Stack spacing={3}>
               <Box sx={{ maxWidth: { xs: '100%', sm: 960 } }}>
                 <DashboardInStoreMailsCard />
+              </Box>
+
+              <Box sx={{ maxWidth: { xs: '100%', sm: 960 } }}>
+                <DashboardHomeTournamentsCard />
               </Box>
 
               {showQuickActions ? (

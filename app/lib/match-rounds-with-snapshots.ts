@@ -574,6 +574,137 @@ export function mergeParticipantMatchRoundsWithSnapshots(
   )
 }
 
+/** Rondas del TDF con rival identificado (no bye): permiten guardar sprites antes del cierre. */
+export function roundNumsWithSnapshotOpponentName(
+  myPop: string,
+  snapshots: RoundSnapshotLean[],
+  popToDisplayName: Map<string, string>
+): Set<number> {
+  const out = new Set<number>()
+  if (!myPop || snapshots.length === 0) return out
+  const sorted = [...snapshots].sort(
+    (a, b) => Math.round(Number(a.roundNum)) - Math.round(Number(b.roundNum))
+  )
+  const seen = new Set<number>()
+  for (const snap of snapshots) {
+    const roundNum = Math.round(Number(snap.roundNum))
+    if (!Number.isFinite(roundNum) || roundNum < 1 || seen.has(roundNum))
+      continue
+    seen.add(roundNum)
+    const hit = opponentFromSnapshotForRound(
+      myPop,
+      roundNum,
+      sorted,
+      popToDisplayName
+    )
+    if (hit && !hit.isBye && hit.name.trim()) out.add(roundNum)
+  }
+  return out
+}
+
+function sameStringArray(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false
+  }
+  return true
+}
+
+function roundPersistedFieldsEqual(
+  a: ParticipantMatchRoundDTO,
+  b: ParticipantMatchRoundDTO
+): boolean {
+  if (a.roundNum !== b.roundNum) return false
+  if (
+    trimOpponentDisplayName(a.opponentDisplayName) !==
+    trimOpponentDisplayName(b.opponentDisplayName)
+  ) {
+    return false
+  }
+  if ((a.specialOutcome ?? null) !== (b.specialOutcome ?? null)) return false
+  if (!sameStringArray(a.gameResults, b.gameResults)) return false
+  if (!sameStringArray(a.turnOrders, b.turnOrders)) return false
+  if (!sameStringArray(a.opponentDeckSlugs, b.opponentDeckSlugs)) return false
+  return true
+}
+
+function roundBodyUnchangedExceptDeck(
+  prev: ParticipantMatchRoundDTO,
+  next: ParticipantMatchRoundDTO
+): boolean {
+  if (prev.roundNum !== next.roundNum) return false
+  if (
+    trimOpponentDisplayName(prev.opponentDisplayName) !==
+    trimOpponentDisplayName(next.opponentDisplayName)
+  ) {
+    return false
+  }
+  if ((prev.specialOutcome ?? null) !== (next.specialOutcome ?? null))
+    return false
+  if (!sameStringArray(prev.gameResults, next.gameResults)) return false
+  if (!sameStringArray(prev.turnOrders, next.turnOrders)) return false
+  return true
+}
+
+/**
+ * Torneo oficial aún no cerrado: solo actualizar sprites en rondas con rival del TDF.
+ * Devuelve mensaje de error o null si el payload es válido.
+ */
+export function validateOfficialPreCloseSpriteSave(
+  stored: ParticipantMatchRoundDTO[],
+  incoming: ParticipantMatchRoundDTO[],
+  eligibleRoundNums: Set<number>
+): string | null {
+  const storedMap = new Map(stored.map(r => [r.roundNum, r]))
+  const incomingNums = new Set(incoming.map(r => r.roundNum))
+
+  for (const prev of stored) {
+    if (!incomingNums.has(prev.roundNum)) {
+      return 'No puedes eliminar rondas antes de que el torneo finalice.'
+    }
+  }
+
+  for (const next of incoming) {
+    const prev = storedMap.get(next.roundNum)
+    const eligible = eligibleRoundNums.has(next.roundNum)
+
+    if (!eligible) {
+      if (!prev) {
+        return 'Solo puedes registrar rondas nuevas cuando el torneo esté finalizado.'
+      }
+      if (!roundPersistedFieldsEqual(prev, next)) {
+        return 'Antes del cierre del torneo solo puedes editar sprites en mesas publicadas por la tienda.'
+      }
+      continue
+    }
+
+    if (!prev) {
+      if (next.gameResults.length > 0 || next.turnOrders.length > 0) {
+        return 'Antes del cierre solo puedes guardar los Pokémon del rival.'
+      }
+      if (next.specialOutcome) {
+        return 'Antes del cierre solo puedes guardar los Pokémon del rival.'
+      }
+      if (!trimOpponentDisplayName(next.opponentDisplayName)) {
+        return 'Falta el nombre del rival publicado por la tienda.'
+      }
+      continue
+    }
+
+    if (!roundBodyUnchangedExceptDeck(prev, next)) {
+      return 'Antes del cierre solo puedes actualizar los sprites del rival en esta ronda.'
+    }
+  }
+
+  for (const roundNum of incomingNums) {
+    if (!storedMap.has(roundNum) && !eligibleRoundNums.has(roundNum)) {
+      return 'Solo puedes registrar rondas nuevas cuando el torneo esté finalizado.'
+    }
+  }
+
+  return null
+}
+
 /** Atajo para lean `matchRounds` + snapshots del evento. */
 export function mergeLeanMatchRoundsWithSnapshots(
   myPopId: string | null,

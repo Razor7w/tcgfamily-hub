@@ -41,7 +41,7 @@ function ActionTile({
   title: string
   description: string
   onClick: () => void
-  /** Tipografía más ajustada cuando la grilla muestra 3 columnas. */
+  /** Tipografía más compacta en celdas estrechas (reservado; grilla desktop máx. 2 columnas). */
   dense: boolean
   titleAttr: string
 }) {
@@ -250,7 +250,6 @@ export default function DashboardQuickActions({
   }
 
   const tileCount = items.length
-  const dense = tileCount === 3
 
   const defaultSubtitle =
     tileCount > 1
@@ -313,31 +312,36 @@ export default function DashboardQuickActions({
       <Box
         sx={{
           display: 'grid',
-          // Una columna en xs/sm: evita celdas tan estrechas que el texto se parte con guiones.
+          // Una columna en xs/sm; en desktop máximo 2 por fila.
           gridTemplateColumns: {
             xs: 'minmax(0, 1fr)',
             sm: 'minmax(0, 1fr)',
-            md:
-              tileCount === 1
-                ? 'minmax(0, 1fr)'
-                : tileCount === 2
-                  ? 'repeat(2, minmax(0, 1fr))'
-                  : 'repeat(3, minmax(0, 1fr))'
+            md: tileCount === 1 ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))'
           },
           columnGap: { xs: 0, sm: 1.5, md: 2 },
           rowGap: { xs: 1, sm: 1.125, md: 2 }
         }}
       >
-        {items.map(item => (
-          <ActionTile
+        {items.map((item, index) => (
+          <Box
             key={item.id}
-            icon={item.icon}
-            title={item.title}
-            titleAttr={item.description}
-            description={item.description}
-            onClick={item.onClick}
-            dense={dense}
-          />
+            sx={{
+              minWidth: 0,
+              ...(tileCount === 3 &&
+                index === 2 && {
+                  gridColumn: { md: '1 / -1' }
+                })
+            }}
+          >
+            <ActionTile
+              icon={item.icon}
+              title={item.title}
+              titleAttr={item.description}
+              description={item.description}
+              onClick={item.onClick}
+              dense={false}
+            />
+          </Box>
         ))}
       </Box>
     </Box>

@@ -8,6 +8,7 @@ export async function invalidateStoreScopedDashboardQueries(
     qc.invalidateQueries({ queryKey: ['weekly-events'] }),
     qc.invalidateQueries({ queryKey: ['my-tournaments-week'] }),
     qc.invalidateQueries({ queryKey: ['my-recent-tournaments'] }),
+    qc.invalidateQueries({ queryKey: ['my-home-tournaments'] }),
     qc.invalidateQueries({ queryKey: ['my-tournaments-all'] }),
     qc.invalidateQueries({ queryKey: ['mails', 'me'] }),
     qc.invalidateQueries({ queryKey: ['me', 'store-credit'] })

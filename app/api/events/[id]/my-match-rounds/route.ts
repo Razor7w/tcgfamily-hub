@@ -4,13 +4,17 @@ import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import {
   buildParticipantDeckLookup,
+  buildPopToDisplayNameMap,
   emptyParticipantDeckLookup,
+  roundNumsWithSnapshotOpponentName,
   stripManualOpponentDecksWhenPlatformReported,
+  validateOfficialPreCloseSpriteSave,
   type RoundSnapshotLean
 } from '@/lib/match-rounds-with-snapshots'
 import { canExposeParticipantDecksToOthers } from '@/lib/weekly-events'
 import {
   normalizeMatchRoundsPayload,
+  parseParticipantMatchRoundsFromLean,
   trimOpponentDisplayName
 } from '@/lib/participant-match-round'
 import { popidForStorage } from '@/lib/rut-chile'
@@ -79,6 +83,31 @@ export async function PUT(
     const isCustom =
       (doc as { tournamentOrigin?: string }).tournamentOrigin === 'custom'
 
+    const snapshots = (doc.roundSnapshots ?? []) as RoundSnapshotLean[]
+    const myPop = popidForStorage(
+      typeof part.popId === 'string' ? part.popId : ''
+    )
+
+    if (!isCustom && doc.state !== 'close') {
+      const stored = parseParticipantMatchRoundsFromLean(part.matchRounds)
+      const popToDisplayName = buildPopToDisplayNameMap(
+        (doc.participants ?? []) as { displayName?: string; popId?: string }[]
+      )
+      const eligible = roundNumsWithSnapshotOpponentName(
+        myPop,
+        snapshots,
+        popToDisplayName
+      )
+      const spriteOnlyError = validateOfficialPreCloseSpriteSave(
+        stored,
+        rounds,
+        eligible
+      )
+      if (spriteOnlyError) {
+        return NextResponse.json({ error: spriteOnlyError }, { status: 403 })
+      }
+    }
+
     const w = Math.max(0, Math.min(999, Math.round(Number(part.wins) || 0)))
     const l = Math.max(0, Math.min(999, Math.round(Number(part.losses) || 0)))
     const t = Math.max(0, Math.min(999, Math.round(Number(part.ties) || 0)))
@@ -103,9 +132,6 @@ export async function PUT(
       )
     }
 
-    const myPop = popidForStorage(
-      typeof part.popId === 'string' ? part.popId : ''
-    )
     const tournamentOrigin: 'official' | 'custom' =
       (doc as { tournamentOrigin?: string }).tournamentOrigin === 'custom'
         ? 'custom'
@@ -123,7 +149,6 @@ export async function PUT(
           }[]
         )
       : emptyParticipantDeckLookup()
-    const snapshots = (doc.roundSnapshots ?? []) as RoundSnapshotLean[]
     const roundsToPersist = stripManualOpponentDecksWhenPlatformReported(
       myPop,
       rounds,
