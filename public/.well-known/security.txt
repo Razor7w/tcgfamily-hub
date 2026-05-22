@@ -1,0 +1,5 @@
+Contact: mailto:scarrozapkmn@gmail.com
+Expires: 2027-05-22T12:00:00.000Z
+Preferred-Languages: es, en
+Canonical: https://tcgnexo.cl/.well-known/security.txt
+Policy: https://tcgnexo.cl/
