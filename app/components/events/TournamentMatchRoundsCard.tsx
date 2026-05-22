@@ -8,7 +8,8 @@ import {
   useState,
   type HTMLAttributes,
   type KeyboardEvent,
-  type Key
+  type Key,
+  type ReactNode
 } from 'react'
 import AddIcon from '@mui/icons-material/Add'
 import Alert from '@mui/material/Alert'
@@ -31,12 +32,6 @@ import Divider from '@mui/material/Divider'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
@@ -442,6 +437,10 @@ function RoundMobileCard({
         transition: 'background-color 0.15s ease',
         outlineOffset: 2,
         WebkitTapHighlightColor: 'transparent',
+        boxShadow: {
+          xs: 'none',
+          sm: t => `0 2px 10px ${alpha(t.palette.primary.main, 0.08)}`
+        },
         '&:focus-visible': interactive
           ? {
               outline: `2px solid ${t.palette.primary.main}`
@@ -521,6 +520,64 @@ function RoundMobileCard({
           ) : null}
         </Stack>
       </Stack>
+    </Box>
+  )
+}
+
+/** Bloque del formulario de ronda: título + contenido en superficie aparte. */
+function RoundFormSection({
+  title,
+  description,
+  children
+}: {
+  title: string
+  description?: string
+  children: ReactNode
+}) {
+  return (
+    <Box
+      component="section"
+      sx={t => ({
+        borderRadius: 2,
+        border: '1px solid',
+        borderColor: alpha(t.palette.primary.main, 0.14),
+        bgcolor: alpha(t.palette.primary.main, 0.03),
+        overflow: 'hidden'
+      })}
+    >
+      <Box
+        sx={t => ({
+          px: { xs: 1.5, sm: 2 },
+          py: 1.25,
+          borderBottom: '1px solid',
+          borderColor: alpha(t.palette.primary.main, 0.1),
+          bgcolor: alpha(t.palette.background.paper, 0.9)
+        })}
+      >
+        <Typography
+          variant="caption"
+          fontWeight={800}
+          color="text.secondary"
+          sx={{
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            display: 'block',
+            lineHeight: 1.3
+          }}
+        >
+          {title}
+        </Typography>
+        {description ? (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ mt: 0.35, display: 'block', lineHeight: 1.45 }}
+          >
+            {description}
+          </Typography>
+        ) : null}
+      </Box>
+      <Box sx={{ p: { xs: 1.5, sm: 2 } }}>{children}</Box>
     </Box>
   )
 }
@@ -1342,7 +1399,7 @@ export default function TournamentMatchRoundsCard({
                 : 'Vista de solo lectura: datos que reportó el jugador.'
               : rounds.length === 0
                 ? 'El emparejamiento oficial no se muestra aquí: puedes llevar tu propio registro de mesas.'
-                : 'Pulsa una fila o tarjeta para editarla.'}
+                : 'Pulsa una tarjeta para editar esa ronda.'}
           </Typography>
           {showOfficialRecord ? (
             <Typography
@@ -1399,10 +1456,7 @@ export default function TournamentMatchRoundsCard({
             </Box>
           ) : (
             <>
-              <Stack
-                spacing={1.25}
-                sx={{ display: { xs: 'flex', sm: 'none' }, mb: 2 }}
-              >
+              <Stack spacing={1.25} sx={{ mb: 2 }}>
                 {rounds.map(row => (
                   <RoundMobileCard
                     key={row.roundNum}
@@ -1415,171 +1469,6 @@ export default function TournamentMatchRoundsCard({
                   />
                 ))}
               </Stack>
-              <TableContainer
-                sx={{
-                  mb: 2,
-                  display: { xs: 'none', sm: 'block' },
-                  borderRadius: 2,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  overflow: 'hidden'
-                }}
-              >
-                <Table size="small">
-                  <TableHead>
-                    <TableRow
-                      sx={t => ({
-                        bgcolor: alpha(t.palette.text.primary, 0.04),
-                        '& .MuiTableCell-head': {
-                          fontWeight: 700,
-                          color: 'text.secondary',
-                          fontSize: '0.75rem',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.06em',
-                          whiteSpace: 'nowrap',
-                          verticalAlign: 'middle',
-                          lineHeight: 1.2,
-                          py: 1
-                        }
-                      })}
-                    >
-                      <TableCell width={72}>Ronda</TableCell>
-                      <TableCell sx={{ minWidth: 0 }}>Rival</TableCell>
-                      <TableCell width={120} align="right">
-                        Resultado
-                      </TableCell>
-                      {!readOnly ? <TableCell width={48} /> : null}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {rounds.map(row => {
-                      const outcome = roundTableOutcome(row)
-                      const rowInteractive = !readOnly
-                      return (
-                        <TableRow
-                          key={row.roundNum}
-                          onClick={
-                            rowInteractive
-                              ? () => openEditRound(row)
-                              : undefined
-                          }
-                          onKeyDown={
-                            rowInteractive
-                              ? (e: KeyboardEvent<HTMLTableRowElement>) => {
-                                  if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault()
-                                    openEditRound(row)
-                                  }
-                                }
-                              : undefined
-                          }
-                          tabIndex={rowInteractive ? 0 : undefined}
-                          role={rowInteractive ? 'button' : undefined}
-                          aria-label={
-                            rowInteractive
-                              ? `Editar ronda ${row.roundNum}`
-                              : `Ronda ${row.roundNum}`
-                          }
-                          sx={t => {
-                            const p = matchRowAccentParts(outcome)
-                            return {
-                              cursor: rowInteractive ? 'pointer' : 'default',
-                              borderLeft: '4px solid',
-                              borderLeftColor: p.borderLeftColor,
-                              bgcolor: p.bgcolor,
-                              transition: 'background-color 0.15s ease',
-                              outlineOffset: -2,
-                              '&:focus-visible': rowInteractive
-                                ? {
-                                    outline: `2px solid ${t.palette.primary.main}`
-                                  }
-                                : {},
-                              '&:hover': rowInteractive
-                                ? {
-                                    bgcolor:
-                                      outcome !== 'neutral' && p.hoverBg
-                                        ? p.hoverBg
-                                        : t.palette.action.hover
-                                  }
-                                : {}
-                            }
-                          }}
-                        >
-                          <TableCell sx={{ py: 1.5 }}>
-                            <Typography
-                              fontWeight={800}
-                              variant="body2"
-                              color={
-                                outcome === 'win'
-                                  ? undefined
-                                  : outcome === 'loss' || outcome === 'tie'
-                                    ? undefined
-                                    : 'text.secondary'
-                              }
-                              sx={
-                                outcome === 'win'
-                                  ? { color: MATCH_WIN_COLOR }
-                                  : outcome === 'loss'
-                                    ? { color: MATCH_LOSS_COLOR }
-                                    : outcome === 'tie'
-                                      ? { color: MATCH_TIE_COLOR }
-                                      : undefined
-                              }
-                            >
-                              {row.roundNum}
-                            </Typography>
-                          </TableCell>
-                          <TableCell sx={{ py: 1.5 }}>
-                            <MatchRoundOpponentCell
-                              row={row}
-                              slugToLabel={slugToLabel}
-                              inline
-                            />
-                          </TableCell>
-                          <TableCell align="right" sx={{ py: 1.5 }}>
-                            <Box
-                              component="span"
-                              sx={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                minWidth: 44,
-                                px: 1.25,
-                                py: 0.5,
-                                borderRadius: 2,
-                                fontWeight: 800,
-                                fontSize: '0.8125rem',
-                                letterSpacing: '0.04em',
-                                lineHeight: 1.2,
-                                ...resultPillSx(outcome)
-                              }}
-                            >
-                              {summarizeRoundResult(row)}
-                            </Box>
-                          </TableCell>
-                          {rowInteractive ? (
-                            <TableCell align="right" sx={{ py: 1.5 }}>
-                              {!row.opponentDeckFromPlatform ? (
-                                <IconButton
-                                  size="small"
-                                  aria-label="Eliminar ronda"
-                                  onClick={e => {
-                                    e.stopPropagation()
-                                    handleDeleteRound(row.roundNum)
-                                  }}
-                                  disabled={saveRounds.isPending}
-                                >
-                                  <DeleteOutlineIcon fontSize="small" />
-                                </IconButton>
-                              ) : null}
-                            </TableCell>
-                          ) : null}
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
             </>
           )}
 
@@ -1630,365 +1519,450 @@ export default function TournamentMatchRoundsCard({
               )}
 
               <Collapse in={formOpen}>
-                <Box
+                <Card
                   ref={roundFormScrollRef}
+                  elevation={0}
                   sx={t => ({
                     mt: 2,
-                    p: { xs: 1.5, sm: 2 },
-                    borderRadius: 2,
-                    border: '1px solid',
-                    borderColor: 'divider',
+                    borderRadius: 2.5,
+                    border: '2px solid',
+                    borderColor: isEditing
+                      ? alpha(t.palette.primary.main, 0.38)
+                      : alpha(t.palette.primary.main, 0.22),
                     bgcolor: 'background.paper',
-                    scrollMarginTop: { xs: t.spacing(2), sm: t.spacing(0) }
+                    boxShadow: `0 6px 24px ${alpha(t.palette.primary.main, 0.1)}`,
+                    scrollMarginTop: { xs: t.spacing(2), sm: 0 },
+                    overflow: 'hidden'
                   })}
                 >
-                  <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-                    {isEditing ? 'Editar ronda' : 'Ronda'} {formRoundLabel}
-                  </Typography>
-
-                  <TextField
-                    fullWidth
-                    label="Nombre del rival"
-                    placeholder="Ej. Juan Pérez"
-                    value={opponentName}
-                    disabled={editingOpponentNameLocked}
-                    onChange={e =>
-                      setOpponentName(
-                        e.target.value.slice(0, OPPONENT_DISPLAY_NAME_MAX)
-                      )
-                    }
-                    sx={{ mb: special === 'none' ? 0 : 2 }}
-                  />
-
-                  {special === 'none' ? (
-                    <Stack spacing={2} sx={{ mt: 2 }}>
-                      <Typography variant="body2" fontWeight={600}>
-                        Deck del rival{' '}
-                        <Typography
-                          component="span"
-                          variant="body2"
-                          color="text.secondary"
-                          fontWeight={400}
-                        >
-                          {editingOpponentDeckLocked
-                            ? '(reportado en el torneo)'
-                            : '(opcional)'}
-                        </Typography>
-                      </Typography>
-                      {editingOpponentDeckLocked ? (
-                        <Alert severity="info" sx={{ py: 0.5 }}>
-                          Este rival ya reportó su mazo. Los sprites se muestran
-                          automáticamente y no puedes cambiarlos aquí.
-                        </Alert>
-                      ) : null}
-                      {editingOpponentDeckLocked &&
-                      editingRoundRow &&
-                      editingRoundRow.opponentDeckSlugs.length > 0 ? (
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          {editingRoundRow.opponentDeckSlugs.map(slug => (
-                            <LimitlessSpriteThumb
-                              key={slug}
-                              slug={slug}
-                              size={40}
-                              circular
-                            />
-                          ))}
-                        </Stack>
-                      ) : null}
-                      <Stack
-                        direction={{ xs: 'column', sm: 'row' }}
-                        spacing={2}
-                      >
-                        <Autocomplete
-                          fullWidth
-                          disabled={editingOpponentDeckLocked}
-                          options={optionsForSlot1}
-                          loading={optionsLoading}
-                          value={slot1Value}
-                          onChange={(_e, v) => setSlot1Draft(v)}
-                          inputValue={
-                            slot1Open ? slot1Query : (slot1Value?.label ?? '')
-                          }
-                          onInputChange={(_e, v) => {
-                            if (slot1Open) setSlot1Query(v)
-                          }}
-                          onOpen={() => {
-                            setSlot1Open(true)
-                            setSlot1Query('')
-                          }}
-                          onClose={(_e, reason) => {
-                            setSlot1Open(false)
-                            if (reason !== 'selectOption') setSlot1Query('')
-                          }}
-                          filterOptions={filterPokemonAutocompleteOptions}
-                          getOptionLabel={o => o.label}
-                          isOptionEqualToValue={(a, b) => a.slug === b.slug}
-                          noOptionsText={
-                            !slot1Query.trim()
-                              ? POKEMON_AUTOCOMPLETE_HINT_EMPTY
-                              : POKEMON_AUTOCOMPLETE_NO_MATCH
-                          }
-                          renderOption={(props, option) =>
-                            renderPokemonOption(
-                              props as AutocompleteLiProps,
-                              option
-                            )
-                          }
-                          renderInput={params => (
-                            <TextField
-                              {...params}
-                              label="Pokémon"
-                              placeholder="Busca por nombre…"
-                            />
-                          )}
-                        />
-                        <Autocomplete
-                          fullWidth
-                          disabled={editingOpponentDeckLocked}
-                          options={optionsForSlot2}
-                          loading={optionsLoading}
-                          value={slot2Value}
-                          onChange={(_e, v) => setSlot2Draft(v)}
-                          inputValue={
-                            slot2Open ? slot2Query : (slot2Value?.label ?? '')
-                          }
-                          onInputChange={(_e, v) => {
-                            if (slot2Open) setSlot2Query(v)
-                          }}
-                          onOpen={() => {
-                            setSlot2Open(true)
-                            setSlot2Query('')
-                          }}
-                          onClose={(_e, reason) => {
-                            setSlot2Open(false)
-                            if (reason !== 'selectOption') setSlot2Query('')
-                          }}
-                          filterOptions={filterPokemonAutocompleteOptions}
-                          getOptionLabel={o => o.label}
-                          isOptionEqualToValue={(a, b) => a.slug === b.slug}
-                          noOptionsText={
-                            !slot2Query.trim()
-                              ? POKEMON_AUTOCOMPLETE_HINT_EMPTY
-                              : POKEMON_AUTOCOMPLETE_NO_MATCH
-                          }
-                          renderOption={(props, option) =>
-                            renderPokemonOption(
-                              props as AutocompleteLiProps,
-                              option
-                            )
-                          }
-                          renderInput={params => (
-                            <TextField
-                              {...params}
-                              label="Pokémon"
-                              placeholder="Busca por nombre…"
-                            />
-                          )}
-                        />
-                      </Stack>
-
+                  <Box sx={{ p: { xs: 1.5, sm: 2.25 } }}>
+                    <Stack spacing={2}>
                       <Stack
                         direction="row"
-                        spacing={{ xs: 1, sm: 2 }}
+                        spacing={1.5}
                         alignItems="flex-start"
-                        sx={{ width: '100%' }}
                       >
-                        {gameRows.map((g, idx) => (
-                          <Box
-                            key={idx}
-                            sx={{
-                              flex: 1,
-                              minWidth: 0
-                            }}
+                        <Chip
+                          label={`Ronda ${formRoundLabel}`}
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                          sx={{ fontWeight: 800, flexShrink: 0 }}
+                        />
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography variant="subtitle1" fontWeight={800}>
+                            {isEditing ? 'Editar mesa' : 'Registrar mesa'}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ display: 'block', lineHeight: 1.45 }}
                           >
-                            <Typography
-                              variant="body2"
-                              fontWeight={600}
-                              sx={{
-                                mb: { xs: 0.75, sm: 1 },
-                                fontSize: '0.8125rem'
-                              }}
-                            >
-                              Juego {idx + 1}
+                            Todo lo de abajo corresponde a esta ronda única.
+                          </Typography>
+                        </Box>
+                      </Stack>
+
+                      <RoundFormSection title="Rival">
+                        <TextField
+                          fullWidth
+                          label="Nombre del rival"
+                          placeholder="Ej. Juan Pérez"
+                          value={opponentName}
+                          disabled={editingOpponentNameLocked}
+                          onChange={e =>
+                            setOpponentName(
+                              e.target.value.slice(0, OPPONENT_DISPLAY_NAME_MAX)
+                            )
+                          }
+                        />
+
+                        {special === 'none' ? (
+                          <Stack spacing={2} sx={{ mt: 2 }}>
+                            <Typography variant="body2" fontWeight={600}>
+                              Deck del rival{' '}
+                              <Typography
+                                component="span"
+                                variant="body2"
+                                color="text.secondary"
+                                fontWeight={400}
+                              >
+                                {editingOpponentDeckLocked
+                                  ? '(reportado en el torneo)'
+                                  : '(opcional)'}
+                              </Typography>
                             </Typography>
-                            <Box sx={{ mb: { xs: 1, sm: 1.5 } }}>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                display="block"
-                                sx={{ fontSize: '0.65rem', mb: 0.25 }}
-                              >
-                                Resultado
-                              </Typography>
-                              <ToggleButtonGroup
-                                exclusive
-                                size="small"
-                                value={g.result}
-                                onChange={(_e, v) => {
-                                  patchGame(idx, { result: v })
-                                }}
-                                sx={{
-                                  display: 'flex',
-                                  width: '100%',
-                                  '& .MuiToggleButton-root': {
-                                    flex: 1,
-                                    px: { xs: 0.25, sm: 1 },
-                                    py: { xs: 0.35, sm: 0.5 },
-                                    minWidth: 0,
-                                    fontSize: { xs: '0.7rem', sm: '0.8125rem' },
-                                    lineHeight: 1.2
-                                  }
-                                }}
-                              >
-                                <ToggleButton value="W">W</ToggleButton>
-                                <ToggleButton value="L">L</ToggleButton>
-                                <ToggleButton value="T">T</ToggleButton>
-                              </ToggleButtonGroup>
-                            </Box>
-                            <Box>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                display="block"
-                                sx={{ fontSize: '0.65rem', mb: 0.25 }}
-                              >
-                                Sale
-                              </Typography>
-                              <ToggleButtonGroup
-                                exclusive
-                                size="small"
-                                value={g.turn}
-                                onChange={(_e, v) => {
-                                  if (v == null) return
-                                  patchGame(idx, { turn: v })
-                                }}
-                                sx={{
-                                  display: 'flex',
-                                  width: '100%',
-                                  '& .MuiToggleButton-root': {
-                                    flex: 1,
-                                    px: { xs: 0.25, sm: 1 },
-                                    py: { xs: 0.35, sm: 0.5 },
-                                    minWidth: 0,
-                                    fontSize: { xs: '0.7rem', sm: '0.8125rem' },
-                                    lineHeight: 1.2
-                                  }
-                                }}
-                              >
-                                <ToggleButton value="first">1º</ToggleButton>
-                                <ToggleButton value="second">2º</ToggleButton>
-                              </ToggleButtonGroup>
-                            </Box>
-                            {idx === 2 && needsTiebreakResult ? (
-                              <Typography
-                                variant="caption"
-                                sx={{
-                                  mt: 1,
-                                  display: 'block',
-                                  color: MATCH_TIE_COLOR
-                                }}
-                              >
-                                Desempate obligatorio
-                              </Typography>
+                            {editingOpponentDeckLocked ? (
+                              <Alert severity="info" sx={{ py: 0.5 }}>
+                                Este rival ya reportó su mazo. Los sprites se
+                                muestran automáticamente y no puedes cambiarlos
+                                aquí.
+                              </Alert>
                             ) : null}
-                          </Box>
-                        ))}
+                            {editingOpponentDeckLocked &&
+                            editingRoundRow &&
+                            editingRoundRow.opponentDeckSlugs.length > 0 ? (
+                              <Stack
+                                direction="row"
+                                spacing={1}
+                                alignItems="center"
+                              >
+                                {editingRoundRow.opponentDeckSlugs.map(slug => (
+                                  <LimitlessSpriteThumb
+                                    key={slug}
+                                    slug={slug}
+                                    size={40}
+                                    circular
+                                  />
+                                ))}
+                              </Stack>
+                            ) : null}
+                            <Stack
+                              direction={{ xs: 'column', sm: 'row' }}
+                              spacing={2}
+                            >
+                              <Autocomplete
+                                fullWidth
+                                disabled={editingOpponentDeckLocked}
+                                options={optionsForSlot1}
+                                loading={optionsLoading}
+                                value={slot1Value}
+                                onChange={(_e, v) => setSlot1Draft(v)}
+                                inputValue={
+                                  slot1Open
+                                    ? slot1Query
+                                    : (slot1Value?.label ?? '')
+                                }
+                                onInputChange={(_e, v) => {
+                                  if (slot1Open) setSlot1Query(v)
+                                }}
+                                onOpen={() => {
+                                  setSlot1Open(true)
+                                  setSlot1Query('')
+                                }}
+                                onClose={(_e, reason) => {
+                                  setSlot1Open(false)
+                                  if (reason !== 'selectOption')
+                                    setSlot1Query('')
+                                }}
+                                filterOptions={filterPokemonAutocompleteOptions}
+                                getOptionLabel={o => o.label}
+                                isOptionEqualToValue={(a, b) =>
+                                  a.slug === b.slug
+                                }
+                                noOptionsText={
+                                  !slot1Query.trim()
+                                    ? POKEMON_AUTOCOMPLETE_HINT_EMPTY
+                                    : POKEMON_AUTOCOMPLETE_NO_MATCH
+                                }
+                                renderOption={(props, option) =>
+                                  renderPokemonOption(
+                                    props as AutocompleteLiProps,
+                                    option
+                                  )
+                                }
+                                renderInput={params => (
+                                  <TextField
+                                    {...params}
+                                    label="Pokémon"
+                                    placeholder="Busca por nombre…"
+                                  />
+                                )}
+                              />
+                              <Autocomplete
+                                fullWidth
+                                disabled={editingOpponentDeckLocked}
+                                options={optionsForSlot2}
+                                loading={optionsLoading}
+                                value={slot2Value}
+                                onChange={(_e, v) => setSlot2Draft(v)}
+                                inputValue={
+                                  slot2Open
+                                    ? slot2Query
+                                    : (slot2Value?.label ?? '')
+                                }
+                                onInputChange={(_e, v) => {
+                                  if (slot2Open) setSlot2Query(v)
+                                }}
+                                onOpen={() => {
+                                  setSlot2Open(true)
+                                  setSlot2Query('')
+                                }}
+                                onClose={(_e, reason) => {
+                                  setSlot2Open(false)
+                                  if (reason !== 'selectOption')
+                                    setSlot2Query('')
+                                }}
+                                filterOptions={filterPokemonAutocompleteOptions}
+                                getOptionLabel={o => o.label}
+                                isOptionEqualToValue={(a, b) =>
+                                  a.slug === b.slug
+                                }
+                                noOptionsText={
+                                  !slot2Query.trim()
+                                    ? POKEMON_AUTOCOMPLETE_HINT_EMPTY
+                                    : POKEMON_AUTOCOMPLETE_NO_MATCH
+                                }
+                                renderOption={(props, option) =>
+                                  renderPokemonOption(
+                                    props as AutocompleteLiProps,
+                                    option
+                                  )
+                                }
+                                renderInput={params => (
+                                  <TextField
+                                    {...params}
+                                    label="Pokémon"
+                                    placeholder="Busca por nombre…"
+                                  />
+                                )}
+                              />
+                            </Stack>
+                          </Stack>
+                        ) : null}
+                      </RoundFormSection>
+
+                      {special === 'none' ? (
+                        <RoundFormSection
+                          title="Partidos"
+                          description="Marca W, L o T y quién sale. Pulsa de nuevo para deseleccionar."
+                        >
+                          <Stack
+                            direction="row"
+                            spacing={{ xs: 1, sm: 2 }}
+                            alignItems="flex-start"
+                            sx={{ width: '100%' }}
+                          >
+                            {gameRows.map((g, idx) => (
+                              <Box
+                                key={idx}
+                                sx={t => ({
+                                  flex: 1,
+                                  minWidth: 0,
+                                  p: { xs: 1, sm: 1.25 },
+                                  borderRadius: 1.5,
+                                  border: '1px solid',
+                                  borderColor: 'divider',
+                                  bgcolor: 'background.paper',
+                                  boxShadow: `0 1px 3px ${alpha(t.palette.primary.main, 0.07)}`
+                                })}
+                              >
+                                <Typography
+                                  variant="body2"
+                                  fontWeight={600}
+                                  sx={{
+                                    mb: { xs: 0.75, sm: 1 },
+                                    fontSize: '0.8125rem'
+                                  }}
+                                >
+                                  Juego {idx + 1}
+                                </Typography>
+                                <Box sx={{ mb: { xs: 1, sm: 1.5 } }}>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    display="block"
+                                    sx={{ fontSize: '0.65rem', mb: 0.25 }}
+                                  >
+                                    Resultado
+                                  </Typography>
+                                  <ToggleButtonGroup
+                                    exclusive
+                                    size="small"
+                                    value={g.result}
+                                    onChange={(_e, v) => {
+                                      patchGame(idx, { result: v })
+                                    }}
+                                    sx={{
+                                      display: 'flex',
+                                      width: '100%',
+                                      '& .MuiToggleButton-root': {
+                                        flex: 1,
+                                        px: { xs: 0.25, sm: 1 },
+                                        py: { xs: 0.35, sm: 0.5 },
+                                        minWidth: 0,
+                                        fontSize: {
+                                          xs: '0.7rem',
+                                          sm: '0.8125rem'
+                                        },
+                                        lineHeight: 1.2
+                                      }
+                                    }}
+                                  >
+                                    <ToggleButton value="W">W</ToggleButton>
+                                    <ToggleButton value="L">L</ToggleButton>
+                                    <ToggleButton value="T">T</ToggleButton>
+                                  </ToggleButtonGroup>
+                                </Box>
+                                <Box>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    display="block"
+                                    sx={{ fontSize: '0.65rem', mb: 0.25 }}
+                                  >
+                                    Sale
+                                  </Typography>
+                                  <ToggleButtonGroup
+                                    exclusive
+                                    size="small"
+                                    value={g.turn}
+                                    onChange={(_e, v) => {
+                                      if (v == null) return
+                                      patchGame(idx, { turn: v })
+                                    }}
+                                    sx={{
+                                      display: 'flex',
+                                      width: '100%',
+                                      '& .MuiToggleButton-root': {
+                                        flex: 1,
+                                        px: { xs: 0.25, sm: 1 },
+                                        py: { xs: 0.35, sm: 0.5 },
+                                        minWidth: 0,
+                                        fontSize: {
+                                          xs: '0.7rem',
+                                          sm: '0.8125rem'
+                                        },
+                                        lineHeight: 1.2
+                                      }
+                                    }}
+                                  >
+                                    <ToggleButton value="first">
+                                      1º
+                                    </ToggleButton>
+                                    <ToggleButton value="second">
+                                      2º
+                                    </ToggleButton>
+                                  </ToggleButtonGroup>
+                                </Box>
+                                {idx === 2 && needsTiebreakResult ? (
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      mt: 1,
+                                      display: 'block',
+                                      color: MATCH_TIE_COLOR
+                                    }}
+                                  >
+                                    Desempate obligatorio
+                                  </Typography>
+                                ) : null}
+                              </Box>
+                            ))}
+                          </Stack>
+                        </RoundFormSection>
+                      ) : (
+                        <RoundFormSection
+                          title="Partidos"
+                          description="No aplica con ID, no show o bye."
+                        >
+                          <Typography variant="body2" color="text.secondary">
+                            Este desenlace no usa juegos individuales. Se
+                            guardará solo la marca especial.
+                          </Typography>
+                        </RoundFormSection>
+                      )}
+
+                      <RoundFormSection
+                        title="Otro desenlace"
+                        description="Solo si la mesa no fue un partido normal."
+                      >
+                        <ToggleButtonGroup
+                          exclusive
+                          size="small"
+                          value={special}
+                          onChange={(_e, v) => v != null && setSpecial(v)}
+                          sx={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            width: '100%',
+                            gap: 0.5
+                          }}
+                        >
+                          <ToggleButton value="none" sx={{ fontSize: '12px' }}>
+                            Normal
+                          </ToggleButton>
+                          <ToggleButton
+                            value="intentional_draw"
+                            sx={{ fontSize: '12px' }}
+                          >
+                            <HandshakeOutlinedIcon
+                              sx={{ mr: 0.5, fontSize: 18 }}
+                            />
+                            ID
+                          </ToggleButton>
+                          <ToggleButton
+                            value="no_show"
+                            sx={{ fontSize: '12px' }}
+                          >
+                            <PersonOffOutlinedIcon
+                              sx={{ mr: 0.5, fontSize: 18 }}
+                            />
+                            No show
+                          </ToggleButton>
+                          <ToggleButton value="bye" sx={{ fontSize: '12px' }}>
+                            <WavingHandOutlinedIcon
+                              sx={{ mr: 0.5, fontSize: 18 }}
+                            />
+                            Bye
+                          </ToggleButton>
+                        </ToggleButtonGroup>
+                      </RoundFormSection>
+
+                      {saveRounds.isError ? (
+                        <Typography color="error" variant="body2">
+                          {saveRounds.error instanceof Error
+                            ? saveRounds.error.message
+                            : 'Error'}
+                        </Typography>
+                      ) : null}
+
+                      <Stack
+                        direction={{ xs: 'column', sm: 'row' }}
+                        spacing={1}
+                        sx={t => ({
+                          pt: 0.5,
+                          borderTop: '1px solid',
+                          borderColor: alpha(t.palette.divider, 0.9)
+                        })}
+                      >
+                        <Button
+                          variant="contained"
+                          fullWidth
+                          disabled={
+                            saveRounds.isPending ||
+                            optionsLoading ||
+                            (special === 'none' && !canSaveNormalRound)
+                          }
+                          onClick={handleSaveRound}
+                          sx={t => ({
+                            py: 1.25,
+                            fontWeight: 700,
+                            bgcolor: t.palette.grey[900],
+                            color: t.palette.common.white,
+                            '&:hover': { bgcolor: t.palette.grey[800] }
+                          })}
+                        >
+                          {saveRounds.isPending
+                            ? 'Guardando…'
+                            : isEditing
+                              ? 'Guardar cambios'
+                              : 'Añadir ronda'}
+                        </Button>
+                        <Button
+                          fullWidth
+                          variant="outlined"
+                          onClick={() => {
+                            resetForm()
+                            setFormOpen(false)
+                          }}
+                        >
+                          Cancelar
+                        </Button>
                       </Stack>
                     </Stack>
-                  ) : (
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mb: 2 }}
-                    >
-                      Este desenlace no usa juegos individuales. Se guardará
-                      solo la marca especial.
-                    </Typography>
-                  )}
-
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    display="block"
-                    sx={{ mt: 2, mb: 1 }}
-                  >
-                    Otro desenlace
-                  </Typography>
-                  <ToggleButtonGroup
-                    exclusive
-                    size="small"
-                    value={special}
-                    onChange={(_e, v) => v != null && setSpecial(v)}
-                    sx={{ mb: 2, flexWrap: 'wrap' }}
-                  >
-                    <ToggleButton value="none" sx={{ fontSize: '12px' }}>
-                      Normal
-                    </ToggleButton>
-                    <ToggleButton
-                      value="intentional_draw"
-                      sx={{ fontSize: '12px' }}
-                    >
-                      <HandshakeOutlinedIcon sx={{ mr: 0.5, fontSize: 18 }} />
-                      ID
-                    </ToggleButton>
-                    <ToggleButton value="no_show" sx={{ fontSize: '12px' }}>
-                      <PersonOffOutlinedIcon sx={{ mr: 0.5, fontSize: 18 }} />
-                      No show
-                    </ToggleButton>
-                    <ToggleButton value="bye" sx={{ fontSize: '12px' }}>
-                      <WavingHandOutlinedIcon sx={{ mr: 0.5, fontSize: 18 }} />
-                      Bye
-                    </ToggleButton>
-                  </ToggleButtonGroup>
-
-                  {saveRounds.isError ? (
-                    <Typography color="error" variant="body2" sx={{ mt: 1 }}>
-                      {saveRounds.error instanceof Error
-                        ? saveRounds.error.message
-                        : 'Error'}
-                    </Typography>
-                  ) : null}
-
-                  <Stack
-                    direction={{ xs: 'column', sm: 'row' }}
-                    spacing={1}
-                    sx={{ mt: 2 }}
-                  >
-                    <Button
-                      variant="contained"
-                      fullWidth
-                      disabled={
-                        saveRounds.isPending ||
-                        optionsLoading ||
-                        (special === 'none' && !canSaveNormalRound)
-                      }
-                      onClick={handleSaveRound}
-                      sx={t => ({
-                        py: 1.25,
-                        fontWeight: 700,
-                        bgcolor: t.palette.grey[900],
-                        color: t.palette.common.white,
-                        '&:hover': { bgcolor: t.palette.grey[800] }
-                      })}
-                    >
-                      {saveRounds.isPending
-                        ? 'Guardando…'
-                        : isEditing
-                          ? 'Guardar cambios'
-                          : 'Añadir ronda'}
-                    </Button>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      onClick={() => {
-                        resetForm()
-                        setFormOpen(false)
-                      }}
-                    >
-                      Cancelar
-                    </Button>
-                  </Stack>
-                </Box>
+                  </Box>
+                </Card>
               </Collapse>
             </>
           ) : null}
