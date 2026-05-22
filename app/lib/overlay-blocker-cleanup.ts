@@ -56,19 +56,12 @@ export function cleanupOverlayBlockers(): void {
     node.parentElement?.remove()
   })
 
+  // Solo modales ya ocultos en el árbol. No usar opacity del backdrop: durante el
+  // cierre de Menu/Drawer MUI anima a 0 y remove() aquí provoca NotFoundError en React.
   document.querySelectorAll('.MuiModal-root').forEach(root => {
+    if (!(root instanceof HTMLElement)) return
     const style = window.getComputedStyle(root)
-    if (style.visibility === 'hidden' || style.display === 'none') {
-      root.remove()
-      return
-    }
-    const backdrop = root.querySelector('.MuiBackdrop-root')
-    if (!backdrop) return
-    const backdropStyle = window.getComputedStyle(backdrop)
-    if (
-      backdropStyle.opacity === '0' ||
-      backdropStyle.visibility === 'hidden'
-    ) {
+    if (style.display === 'none' || style.visibility === 'hidden') {
       root.remove()
     }
   })

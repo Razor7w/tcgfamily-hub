@@ -12,7 +12,10 @@ export default function ProductTourRouteCleanup() {
 
   useLayoutEffect(() => {
     setSidebarOpen(false)
-    cleanupOverlayBlockers()
+    const t = window.setTimeout(() => {
+      cleanupOverlayBlockers()
+    }, 320)
+    return () => window.clearTimeout(t)
   }, [pathname, setSidebarOpen])
 
   return null

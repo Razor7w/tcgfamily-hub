@@ -15,7 +15,7 @@ import {
 } from '@/lib/rut-chile'
 import { getRutFieldError } from '@/lib/rut-input'
 
-// GET - Listar todos los usuarios
+// GET - Listar todos los usuarios del sistema (sin filtrar por defaultStoreId ni tienda activa)
 export async function GET() {
   try {
     const gate = await requireStoreOwnerSession()

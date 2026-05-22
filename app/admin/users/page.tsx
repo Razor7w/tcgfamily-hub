@@ -102,6 +102,7 @@ export default function UsersPageRefactored() {
   const [pointsModalUser, setPointsModalUser] = useState<User | null>(null)
   const [page, setPage] = useState(1)
   const [searchName, setSearchName] = useState('')
+  const [searchEmail, setSearchEmail] = useState('')
   const [searchRut, setSearchRut] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -126,11 +127,13 @@ export default function UsersPageRefactored() {
   const hasActiveFilters =
     Boolean(userFilter.role) ||
     Boolean(searchName.trim()) ||
+    Boolean(searchEmail.trim()) ||
     Boolean(searchRut.trim())
 
   const handleClearFilters = () => {
     clearUserFilterStore()
     setSearchName('')
+    setSearchEmail('')
     setSearchRut('')
   }
 
@@ -303,23 +306,28 @@ export default function UsersPageRefactored() {
     }
   }
 
-  // Filtrar usuarios (rol en Zustand; nombre y RUT en estado local)
+  // Filtrar usuarios (rol en Zustand; nombre, correo y RUT en estado local)
   const filteredUsers = useMemo(() => {
     const nameQ = searchName.trim().toLowerCase()
+    const emailQ = searchEmail.trim().toLowerCase()
     return users.filter(user => {
       if (userFilter.role && user.role !== userFilter.role) return false
       if (nameQ) {
         const n = user.name?.toLowerCase() ?? ''
         if (!n.includes(nameQ)) return false
       }
+      if (emailQ) {
+        const e = user.email?.toLowerCase() ?? ''
+        if (!e.includes(emailQ)) return false
+      }
       if (!matchesRutQuery(user.rut, searchRut)) return false
       return true
     })
-  }, [users, userFilter.role, searchName, searchRut])
+  }, [users, userFilter.role, searchName, searchEmail, searchRut])
 
   useEffect(() => {
     setPage(1)
-  }, [userFilter.role, searchName, searchRut])
+  }, [userFilter.role, searchName, searchEmail, searchRut])
 
   const pageCount = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE))
 
@@ -475,6 +483,19 @@ export default function UsersPageRefactored() {
                 />
                 <TextField
                   size="small"
+                  label="Buscar por correo"
+                  placeholder="correo@ejemplo.com"
+                  type="search"
+                  value={searchEmail}
+                  onChange={e => setSearchEmail(e.target.value)}
+                  sx={{
+                    minWidth: { xs: '100%', sm: 200 },
+                    flex: { sm: '1 1 200px' }
+                  }}
+                  inputProps={{ 'aria-label': 'Buscar por correo' }}
+                />
+                <TextField
+                  size="small"
                   label="Buscar por RUT"
                   placeholder="Ej: 12345678 o 12.345.678-9"
                   value={searchRut}
@@ -556,7 +577,8 @@ export default function UsersPageRefactored() {
               No hay usuarios que coincidan
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Ajusta el rol, el nombre o el RUT, o restablece los filtros.
+              Ajusta el rol, el nombre, el correo o el RUT, o restablece los
+              filtros.
             </Typography>
             <Button
               size="small"

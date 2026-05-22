@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -36,30 +37,26 @@ import { onlyDigits } from '@/lib/rut-input'
 import CheckCircle from '@mui/icons-material/CheckCircle'
 import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked'
 import R2UppyProfileImageUploader from '@/components/r2/R2UppyProfileImageUploader'
+import { meProfileQueryKey, useMe, type MeProfile } from '@/hooks/useMe'
 import { useMeStores } from '@/hooks/useMeStores'
-
-type MeResponse = {
-  id: string
-  name: string
-  email: string
-  image: string
-  imageKey?: string
-  rut: string
-  popid: string
-  phone: string
-  hasPassword: boolean
-  defaultStoreId: string | null
-}
 
 type StoreOption = { id: string; name: string }
 
 export default function PerfilPage() {
   const { data: session, status, update } = useSession()
+  const queryClient = useQueryClient()
+  const userId = session?.user?.id ? String(session.user.id) : ''
   const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
-  const [loading, setLoading] = useState(true)
-  const [me, setMe] = useState<MeResponse | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'), {
+    noSsr: true,
+    defaultMatches: false
+  })
+  const {
+    data: me,
+    isPending: mePending,
+    isError: meError,
+    error: meQueryError
+  } = useMe()
 
   const [name, setName] = useState('')
   const [popid, setPopid] = useState('')
@@ -85,33 +82,15 @@ export default function PerfilPage() {
   const [pwErr, setPwErr] = useState<string | null>(null)
   const [savingPw, setSavingPw] = useState(false)
 
+  const formHydratedForUser = useRef<string | null>(null)
   useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetch('/api/me')
-        if (!res.ok) {
-          if (!cancelled) setLoadError('No se pudo cargar el perfil')
-          return
-        }
-        const data = (await res.json()) as MeResponse
-        if (!cancelled) {
-          setMe(data)
-          setName(data.name)
-          setPopid(data.popid)
-          setDefaultStoreId(data.defaultStoreId?.trim() ?? '')
-          setLoadError(null)
-        }
-      } catch {
-        if (!cancelled) setLoadError('No se pudo cargar el perfil')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
+    if (!me) return
+    if (formHydratedForUser.current === me.id) return
+    formHydratedForUser.current = me.id
+    setName(me.name)
+    setPopid(me.popid)
+    setDefaultStoreId(me.defaultStoreId?.trim() ?? '')
+  }, [me])
 
   const storeOptions = useMemo((): StoreOption[] => {
     const rows = meStoresPayload?.stores ?? []
@@ -221,19 +200,21 @@ export default function PerfilPage() {
         setProfileErr(data.error || 'No se pudo guardar.')
         return
       }
-      setMe(prev =>
-        prev
-          ? {
-              ...prev,
-              name: data.name ?? prev.name,
-              popid: data.popid ?? prev.popid,
-              defaultStoreId:
-                data.defaultStoreId !== undefined
-                  ? data.defaultStoreId
-                  : prev.defaultStoreId
-            }
-          : prev
-      )
+      if (userId) {
+        queryClient.setQueryData<MeProfile>(meProfileQueryKey(userId), prev =>
+          prev
+            ? {
+                ...prev,
+                name: data.name ?? prev.name,
+                popid: data.popid ?? prev.popid,
+                defaultStoreId:
+                  data.defaultStoreId !== undefined
+                    ? data.defaultStoreId
+                    : prev.defaultStoreId
+              }
+            : prev
+        )
+      }
       if (data.defaultStoreId !== undefined) {
         setDefaultStoreId((data.defaultStoreId ?? '').trim())
       }
@@ -276,15 +257,17 @@ export default function PerfilPage() {
         setProfileErr(data.error || 'No se pudo actualizar la foto.')
         return
       }
-      setMe(prev =>
-        prev
-          ? {
-              ...prev,
-              image: data.image ?? publicUrl,
-              imageKey: data.imageKey ?? key
-            }
-          : prev
-      )
+      if (userId) {
+        queryClient.setQueryData<MeProfile>(meProfileQueryKey(userId), prev =>
+          prev
+            ? {
+                ...prev,
+                image: data.image ?? publicUrl,
+                imageKey: data.imageKey ?? key
+              }
+            : prev
+        )
+      }
       setProfileMsg('Foto de perfil actualizada.')
       await update({ picture: data.image ?? publicUrl })
     } finally {
@@ -322,7 +305,14 @@ export default function PerfilPage() {
     }
   }
 
-  if (status === 'loading' || loading) {
+  const loadError =
+    meError && meQueryError instanceof Error
+      ? meQueryError.message
+      : meError
+        ? 'No se pudo cargar el perfil'
+        : null
+
+  if (status === 'loading' || mePending) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
         <CircularProgress />

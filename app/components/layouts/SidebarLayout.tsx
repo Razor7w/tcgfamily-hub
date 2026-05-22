@@ -48,18 +48,20 @@ export default function SidebarLayout({
     if (!isDesktop) setSidebarOpen(false)
   }, [pathname, isDesktop, setSidebarOpen])
 
-  if (isDesktop) {
-    return (
-      <Grid container spacing={0}>
-        <Grid size={sidebarSize}>{sidebar}</Grid>
-        <Grid size={contentSize}>{children}</Grid>
-      </Grid>
-    )
-  }
-
+  // Un solo árbol: `children` no cambia de padre al cruzar md (evita re-fetch en /perfil, etc.).
   return (
-    <Box sx={{ width: '100%' }}>
-      {sidebarOpen ? (
+    <Grid container spacing={0} sx={{ width: '100%' }}>
+      <Grid
+        size={sidebarSize}
+        sx={{
+          display: { xs: 'none', md: 'block' },
+          flexShrink: 0
+        }}
+      >
+        {sidebar}
+      </Grid>
+
+      {!isDesktop && sidebarOpen ? (
         <Drawer
           variant="temporary"
           anchor="left"
@@ -78,16 +80,20 @@ export default function SidebarLayout({
           <Box sx={{ overflow: 'auto', py: 2, px: 1 }}>{sidebar}</Box>
         </Drawer>
       ) : null}
-      <Box
-        component="main"
-        sx={{
-          width: '100%',
-          pb: { xs: DASHBOARD_MOBILE_BOTTOM_NAV_CONTENT_PADDING, md: 0 }
-        }}
-      >
-        {children}
-      </Box>
-      <DashboardMobileBottomNav />
-    </Box>
+
+      <Grid size={{ xs: 12, md: contentSize }} sx={{ minWidth: 0 }}>
+        <Box
+          component="main"
+          sx={{
+            width: '100%',
+            pb: { xs: DASHBOARD_MOBILE_BOTTOM_NAV_CONTENT_PADDING, md: 0 }
+          }}
+        >
+          {children}
+        </Box>
+      </Grid>
+
+      {!isDesktop ? <DashboardMobileBottomNav /> : null}
+    </Grid>
   )
 }
