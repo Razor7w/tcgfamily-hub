@@ -516,7 +516,11 @@ export function mergeParticipantMatchRoundsWithSnapshots(
       popToDisplayName
     )
     if (!fromSnap) return base
-    return { ...base, opponentDisplayName: fromSnap.name }
+    return {
+      ...base,
+      opponentDisplayName: fromSnap.name,
+      opponentNameFromPlatform: true
+    }
   })
 
   if (!myPop || sortedSnapshots.length === 0) {
@@ -551,6 +555,7 @@ export function mergeParticipantMatchRoundsWithSnapshots(
     fromTdf.push({
       roundNum,
       opponentDisplayName: fromSnap.name,
+      opponentNameFromPlatform: true,
       opponentDeckSlugs: [],
       gameResults: [],
       turnOrders: [],

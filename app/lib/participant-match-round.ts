@@ -19,6 +19,8 @@ export type ParticipantMatchRoundDTO = {
   roundNum: number
   /** Nombre del rival (manual o resuelto desde emparejamientos TDF). */
   opponentDisplayName?: string | null
+  /** Nombre tomado del emparejamiento TDF (no editable en la bitácora). */
+  opponentNameFromPlatform?: boolean
   opponentDeckSlugs: string[]
   /** Sprites del rival tomados de su reporte en el torneo (no editables en la bitácora). */
   opponentDeckFromPlatform?: boolean

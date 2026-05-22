@@ -15,6 +15,8 @@ type Props = {
   spriteSize?: number
   /** Nombre y sprites del rival en una sola fila (meta / tablas compactas). */
   inline?: boolean
+  /** Solo el nombre del rival (sprites se muestran aparte, p. ej. bajo el resultado en compartir móvil). */
+  nameOnly?: boolean
 }
 
 function slugLabel(slug: string, slugToLabel?: Map<string, string>): string {
@@ -26,7 +28,8 @@ export default function MatchRoundOpponentCell({
   row,
   slugToLabel,
   spriteSize = 36,
-  inline = false
+  inline = false,
+  nameOnly = false
 }: Props) {
   const rawName =
     typeof row.opponentDisplayName === 'string' &&
@@ -75,6 +78,33 @@ export default function MatchRoundOpponentCell({
         ))}
       </Stack>
     ) : null
+
+  if (nameOnly) {
+    if (!name) {
+      return (
+        <Typography variant="body2" color="text.secondary">
+          —
+        </Typography>
+      )
+    }
+    return (
+      <Tooltip title={name} placement="top" enterDelay={400}>
+        <Typography
+          variant="body2"
+          fontWeight={700}
+          noWrap
+          sx={{
+            minWidth: 0,
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}
+        >
+          {name}
+        </Typography>
+      </Tooltip>
+    )
+  }
 
   if (inline) {
     return (
