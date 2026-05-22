@@ -15,19 +15,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    await connectDB()
+
     const storeIdParam = request.nextUrl.searchParams.get('storeId')
     const storeGate = await resolveMailRegisterStoreOid(session, storeIdParam)
     if (!storeGate.ok) return storeGate.response
 
-    await connectDB()
     const primary = await memoPrimaryTcgfamilyStoreObjectId()
+    const storeIdStr = storeGate.activeStoreOid.toString()
     const [usedToday, limit] = await Promise.all([
       countMailsRegisteredTodayBySenderForStore(
         session.user!.id as string,
         storeGate.activeStoreOid,
         primary
       ),
-      getMailRegisterDailyLimitForStore(storeGate.activeStoreOid.toString())
+      getMailRegisterDailyLimitForStore(storeIdStr)
     ])
     const remaining = Math.max(0, limit - usedToday)
 

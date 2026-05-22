@@ -42,18 +42,18 @@ if (!global.mongoose) {
   global.mongoose = cached
 }
 
-let ensuredMailMongoIndexes = false
-
-async function ensureMailCollectionIndexes() {
-  if (ensuredMailMongoIndexes) return
+/**
+ * Índices de `mails` deben existir en Atlas (mongosh); no bloquear requests con syncIndexes.
+ * Solo en local/diagnóstico: `MAIL_SYNC_INDEXES_ON_CONNECT=1`.
+ */
+function scheduleMailIndexSyncIfEnabled() {
+  if (process.env.MAIL_SYNC_INDEXES_ON_CONNECT !== '1') return
   if (process.env.DISABLE_MAIL_INDEX_SYNC === '1') return
-  try {
-    const Mail = (await import('@/models/Mails')).default
-    await Mail.syncIndexes()
-    ensuredMailMongoIndexes = true
-  } catch (e) {
-    console.error('[mongodb] Mail.syncIndexes falló:', e)
-  }
+  void import('@/models/Mails')
+    .then(({ default: Mail }) => Mail.syncIndexes())
+    .catch(e => {
+      console.error('[mongodb] Mail.syncIndexes falló:', e)
+    })
 }
 
 async function connectDB() {
@@ -71,6 +71,7 @@ async function connectDB() {
     cached.promise = mongoose
       .connect(MONGODB_URI, opts)
       .then(mongoose => {
+        scheduleMailIndexSyncIfEnabled()
         return mongoose
       })
       .catch(error => {
@@ -82,7 +83,6 @@ async function connectDB() {
 
   try {
     cached.conn = await cached.promise
-    await ensureMailCollectionIndexes()
   } catch (e) {
     cached.promise = null
     throw e

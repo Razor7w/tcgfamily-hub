@@ -1,7 +1,8 @@
 import mongoose from 'mongoose'
 import connectDB from '@/lib/mongodb'
 import Mail from '@/models/Mails'
-import { getDashboardDocForStore } from '@/lib/dashboard-settings-for-store'
+import DashboardModuleSettings from '@/models/DashboardModuleSettings'
+import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import {
   MAIL_REGISTER_DAILY_LIMIT,
@@ -9,6 +10,37 @@ import {
 } from '@/lib/mail-register-constants'
 
 export { MAIL_REGISTER_DAILY_LIMIT } from '@/lib/mail-register-constants'
+
+/** Lectura ligera del límite (sin crear/guardar documento de configuración). */
+async function readMailRegisterDailyLimitFromDb(
+  storeMongoId: string
+): Promise<number | null> {
+  const activeOid = new mongoose.Types.ObjectId(storeMongoId)
+  const primary = await memoPrimaryTcgfamilyStoreObjectId()
+
+  const select = { mailRegisterDailyLimit: 1 } as const
+  type Row = { mailRegisterDailyLimit?: number } | null
+
+  if (primary?.equals(activeOid)) {
+    const scoped = await DashboardModuleSettings.findOne({ storeId: activeOid })
+      .select(select)
+      .lean<Row>()
+    if (scoped?.mailRegisterDailyLimit != null) {
+      return scoped.mailRegisterDailyLimit
+    }
+    const legacy = await DashboardModuleSettings.findOne({
+      storeId: { $exists: false }
+    })
+      .select(select)
+      .lean<Row>()
+    return legacy?.mailRegisterDailyLimit ?? null
+  }
+
+  const doc = await DashboardModuleSettings.findOne({ storeId: activeOid })
+    .select(select)
+    .lean<Row>()
+  return doc?.mailRegisterDailyLimit ?? null
+}
 
 /** Límite desde admin: cache en memoria por tienda (configurable en /admin/configuracion). */
 const MAIL_LIMIT_CACHE_MS = 60_000
@@ -30,8 +62,7 @@ export async function getMailRegisterDailyLimitForStore(
   }
 
   await connectDB()
-  const doc = await getDashboardDocForStore(storeMongoId)
-  const n = doc.mailRegisterDailyLimit
+  const n = await readMailRegisterDailyLimitFromDb(storeMongoId)
   let value: number
   if (typeof n === 'number' && Number.isFinite(n)) {
     const rounded = Math.round(n)
