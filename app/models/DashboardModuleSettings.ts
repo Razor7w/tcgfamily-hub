@@ -25,6 +25,14 @@ export interface IDashboardModuleSettings extends Document {
   resendNotifyPickupInStoreEnabled: boolean
   /** Máximo de registros de correo (onlyReceptor) por usuario y día (hora Chile). */
   mailRegisterDailyLimit: number
+  /** @deprecated Usar storeCreditTournamentPointsEnabled */
+  tournamentPointsEnabled?: boolean
+  /** Import CSV de saldo en /admin/puntos */
+  storeCreditCsvEnabled: boolean
+  /** Reparto y gestión de puntos por torneo en /admin/puntos */
+  storeCreditTournamentPointsEnabled: boolean
+  /** Nombre visible de los puntos por torneo (vacío = «Puntos por torneo») */
+  tournamentPointsDisplayName?: string
 }
 
 const DashboardModuleSettingsSchema = new Schema<IDashboardModuleSettings>(
@@ -54,7 +62,17 @@ const DashboardModuleSettingsSchema = new Schema<IDashboardModuleSettings>(
       playPokemonDecklistPdf: { type: Boolean, default: true }
     },
     resendNotifyPickupInStoreEnabled: { type: Boolean, default: true },
-    mailRegisterDailyLimit: { type: Number, default: 10, min: 1 }
+    mailRegisterDailyLimit: { type: Number, default: 10, min: 1 },
+    tournamentPointsEnabled: { type: Boolean, default: false },
+    storeCreditCsvEnabled: { type: Boolean, default: true },
+    storeCreditTournamentPointsEnabled: { type: Boolean, default: false },
+    tournamentPointsDisplayName: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: 60,
+      default: undefined
+    }
   },
   { timestamps: true }
 )

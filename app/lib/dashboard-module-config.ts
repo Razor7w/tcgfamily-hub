@@ -1,3 +1,8 @@
+import {
+  DEFAULT_STORE_CREDIT_ADMIN,
+  type StoreCreditAdminSettings
+} from '@/lib/store-credit-admin-settings'
+
 export const DASHBOARD_MODULE_IDS = [
   'weeklyEvents',
   'leagues',
@@ -180,10 +185,13 @@ export const DEFAULT_DASHBOARD_SHORTCUTS: DashboardShortcutsVisibility = {
   playPokemonDecklistPdf: true
 }
 
+export type { StoreCreditAdminSettings } from '@/lib/store-credit-admin-settings'
+
 export type DashboardModuleSettingsDTO = {
   visibility: DashboardModuleVisibility
   order: DashboardModuleId[]
   shortcuts: DashboardShortcutsVisibility
+  storeCredit: StoreCreditAdminSettings
 }
 
 export function isDashboardModuleId(s: string): s is DashboardModuleId {
@@ -312,12 +320,18 @@ export function mergeDashboardSettings(
     ...DEFAULT_DASHBOARD_SHORTCUTS,
     ...partial?.shortcuts
   }
+  const storeCredit: StoreCreditAdminSettings = {
+    ...DEFAULT_STORE_CREDIT_ADMIN,
+    ...partial?.storeCredit
+  }
+
   return {
     visibility: {
       ...visibility,
       recentPublicDecklists: true
     },
     order: canonicalizeDashboardOrder(order),
-    shortcuts
+    shortcuts,
+    storeCredit
   }
 }

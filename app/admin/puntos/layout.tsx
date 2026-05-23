@@ -1,15 +1,11 @@
 'use client'
 
-import DashboardModuleRouteGate from '@/components/dashboard/DashboardModuleRouteGate'
+import AdminStoreCreditRouteGate from '@/components/admin/AdminStoreCreditRouteGate'
 
 export default function AdminPuntosLayout({
   children
 }: {
   children: React.ReactNode
 }) {
-  return (
-    <DashboardModuleRouteGate moduleId="storePoints">
-      {children}
-    </DashboardModuleRouteGate>
-  )
+  return <AdminStoreCreditRouteGate>{children}</AdminStoreCreditRouteGate>
 }

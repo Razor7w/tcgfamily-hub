@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   DashboardModuleSettingsDTO,
-  DashboardShortcutsVisibility
+  DashboardShortcutsVisibility,
+  StoreCreditAdminSettings
 } from '@/lib/dashboard-module-config'
 import { MAIL_REGISTER_DAILY_LIMIT } from '@/lib/mail-register-constants'
 import { useDashboardStoreQueryKey } from '@/hooks/use-dashboard-store-key'
@@ -10,6 +11,7 @@ export type AdminConfiguracionData = {
   settings: DashboardModuleSettingsDTO
   resendNotifyPickupInStoreEnabled: boolean
   mailRegisterDailyLimit: number
+  storeCredit: StoreCreditAdminSettings
 }
 
 /** Configuración admin: bloques del dashboard + correo Resend (requiere owner; alcance = tienda activa). */
@@ -27,6 +29,7 @@ export function useAdminConfiguracion() {
         settings?: DashboardModuleSettingsDTO
         resendNotifyPickupInStoreEnabled?: boolean
         mailRegisterDailyLimit?: number
+        storeCredit?: StoreCreditAdminSettings
       }
       if (!data.settings) {
         throw new Error('Respuesta inválida')
@@ -38,7 +41,14 @@ export function useAdminConfiguracion() {
         mailRegisterDailyLimit:
           typeof data.mailRegisterDailyLimit === 'number'
             ? data.mailRegisterDailyLimit
-            : MAIL_REGISTER_DAILY_LIMIT
+            : MAIL_REGISTER_DAILY_LIMIT,
+        storeCredit: data.storeCredit ??
+          data.settings.storeCredit ?? {
+            csvEnabled: true,
+            tournamentPointsEnabled: false,
+            tournamentPointsCustomName: '',
+            tournamentPointsLabel: 'Puntos por torneo'
+          }
       }
     },
     staleTime: 60_000
@@ -66,6 +76,9 @@ export function useUpdateDashboardModuleSettings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'configuracion'] })
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'tournament-points']
+      })
     }
   })
 }

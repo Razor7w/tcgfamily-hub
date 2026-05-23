@@ -1,5 +1,6 @@
 import type { Types } from 'mongoose'
 import User from '@/models/User'
+import { resolveStoreWalletForUser } from '@/lib/store-credit-resolve'
 
 export type SliceRow = {
   saldo: number
@@ -50,4 +51,34 @@ export async function applyStoreCreditSlice(
   }
 
   await User.updateOne({ _id: userOid }, { $push: { storeCredits: pushDoc } })
+}
+
+/** Suma puntos al saldo de la tienda (sin tocar vencimiento). */
+export async function incrementStoreCreditPoints(
+  userOid: Types.ObjectId,
+  storeOid: Types.ObjectId,
+  primaryStoreOid: Types.ObjectId | null,
+  delta: number
+): Promise<void> {
+  const add = Math.round(Number(delta) || 0)
+  if (add === 0) return
+
+  const user = await User.findById(userOid)
+    .select(
+      'storeCredits storePoints storePointsExpiringNext storePointsExpiryDate'
+    )
+    .lean()
+  if (!user) return
+
+  const wallet = resolveStoreWalletForUser(
+    user as Parameters<typeof resolveStoreWalletForUser>[0],
+    storeOid,
+    primaryStoreOid
+  )
+
+  await applyStoreCreditSlice(userOid, storeOid, {
+    saldo: Math.max(0, wallet.storePoints + add),
+    proximosVencer: wallet.storePointsExpiringNext,
+    expiry: wallet.storePointsExpiryDate
+  })
 }
