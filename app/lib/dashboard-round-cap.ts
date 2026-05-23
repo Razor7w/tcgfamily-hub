@@ -20,15 +20,8 @@ export function normalizeStoredDashboardRoundCap(
   return Math.min(99, Math.max(1, r))
 }
 
-export function effectivePublicRoundNum(
-  roundNum: unknown,
-  dashboardRoundCap: unknown
-): number {
-  const r =
-    typeof roundNum === 'number' && Number.isFinite(roundNum)
-      ? Math.max(0, Math.round(roundNum))
-      : 0
-  const cap = normalizeStoredDashboardRoundCap(dashboardRoundCap)
-  if (cap === undefined) return r
-  return Math.min(r, cap)
+export function effectivePublicRoundNum(roundNum: unknown): number {
+  return typeof roundNum === 'number' && Number.isFinite(roundNum)
+    ? Math.max(0, Math.round(roundNum))
+    : 0
 }

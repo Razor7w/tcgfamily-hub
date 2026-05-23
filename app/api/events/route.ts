@@ -76,7 +76,7 @@ function toPublicEvent(
   league: { name: string; slug: string } | null = null
 ) {
   const startsAt = doc.startsAt
-  const roundNum = effectivePublicRoundNum(doc.roundNum, doc.dashboardRoundCap)
+  const roundNum = effectivePublicRoundNum(doc.roundNum)
   const mine = currentUserId
     ? doc.participants.find(p => p.userId && String(p.userId) === currentUserId)
     : undefined

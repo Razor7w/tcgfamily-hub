@@ -47,8 +47,10 @@ import {
   type DashboardModuleId,
   type DashboardModuleScope,
   type DashboardModuleSettingsDTO,
-  type DashboardShortcutsVisibility
+  type DashboardShortcutsVisibility,
+  type StoreCreditAdminSettings
 } from '@/lib/dashboard-module-config'
+import { validateStoreCreditAdmin } from '@/lib/store-credit-admin-settings'
 import {
   MAIL_REGISTER_DAILY_LIMIT,
   MAIL_REGISTER_DAILY_LIMIT_ADMIN_MAX
@@ -164,6 +166,10 @@ function DashboardModulesEditor({
 }) {
   const update = useUpdateDashboardModuleSettings()
   const [visibility, setVisibility] = useState(initial.visibility)
+  const [storeCredit, setStoreCredit] = useState<StoreCreditAdminSettings>(
+    initial.storeCredit
+  )
+  const [storeCreditError, setStoreCreditError] = useState<string | null>(null)
   const { storeOrder: initStore } = splitDashboardOrder(initial.order)
   const [storeOrder, setStoreOrder] = useState<DashboardModuleId[]>(initStore)
   const [playerOrder, setPlayerOrder] = useState<
@@ -184,24 +190,42 @@ function DashboardModulesEditor({
         ) ||
       JSON.stringify(storeOrder) !==
         JSON.stringify(splitDashboardOrder(initial.order).storeOrder) ||
-      JSON.stringify(playerOrder) !== JSON.stringify(initialEditablePlayer)
+      JSON.stringify(playerOrder) !== JSON.stringify(initialEditablePlayer) ||
+      JSON.stringify(storeCredit) !== JSON.stringify(initial.storeCredit)
     )
-  }, [initial.order, initial.visibility, playerOrder, storeOrder, visibility])
+  }, [
+    initial.order,
+    initial.visibility,
+    initial.storeCredit,
+    playerOrder,
+    storeOrder,
+    storeCredit,
+    visibility
+  ])
 
   const handleSave = () => {
+    const validationError = validateStoreCreditAdmin(storeCredit)
+    if (validationError) {
+      setStoreCreditError(validationError)
+      return
+    }
+    setStoreCreditError(null)
     const payload: DashboardModuleSettingsDTO = {
       visibility: {
         ...visibility,
         recentPublicDecklists: true
       },
       order: mergedOrder,
-      shortcuts: initial.shortcuts
+      shortcuts: initial.shortcuts,
+      storeCredit
     }
     update.mutate(payload)
   }
 
   const resetFromInitial = () => {
     setVisibility(initial.visibility)
+    setStoreCredit(initial.storeCredit)
+    setStoreCreditError(null)
     const { storeOrder: s } = splitDashboardOrder(initial.order)
     setStoreOrder(s)
     setPlayerOrder(playerOrderForAdminEditor(initial.order))
@@ -243,18 +267,74 @@ function DashboardModulesEditor({
               </Typography>
               <Stack spacing={0.5}>
                 {dashboardModuleIdsForAdminEditor(scope).map(id => (
-                  <FormControlLabel
-                    key={id}
-                    control={
-                      <Checkbox
-                        checked={visibility[id]}
-                        onChange={e =>
-                          setVisibility(v => ({ ...v, [id]: e.target.checked }))
-                        }
-                      />
-                    }
-                    label={CONFIGURABLE_MODULE_LABELS[id]}
-                  />
+                  <Box key={id}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={visibility[id]}
+                          onChange={e =>
+                            setVisibility(v => ({
+                              ...v,
+                              [id]: e.target.checked
+                            }))
+                          }
+                        />
+                      }
+                      label={CONFIGURABLE_MODULE_LABELS[id]}
+                    />
+                    {id === 'storePoints' ? (
+                      <Stack spacing={0.25} sx={{ pl: 4, pb: 0.5 }}>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              size="small"
+                              checked={storeCredit.csvEnabled}
+                              onChange={e => {
+                                setStoreCreditError(null)
+                                setStoreCredit(s => ({
+                                  ...s,
+                                  csvEnabled: e.target.checked
+                                }))
+                              }}
+                            />
+                          }
+                          label={
+                            <Typography variant="body2">
+                              1. CSV tienda (importar saldo)
+                            </Typography>
+                          }
+                        />
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              size="small"
+                              checked={storeCredit.tournamentPointsEnabled}
+                              onChange={e => {
+                                setStoreCreditError(null)
+                                setStoreCredit(s => ({
+                                  ...s,
+                                  tournamentPointsEnabled: e.target.checked
+                                }))
+                              }}
+                            />
+                          }
+                          label={
+                            <Typography variant="body2">
+                              2. Puntos torneo (reparto y gestión)
+                            </Typography>
+                          }
+                        />
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ pl: 4.5 }}
+                        >
+                          Al menos una opción activa para mostrar el menú Admin
+                          → Puntos.
+                        </Typography>
+                      </Stack>
+                    ) : null}
+                  </Box>
                 ))}
               </Stack>
             </Box>
@@ -296,6 +376,12 @@ function DashboardModulesEditor({
             </Box>
           ))}
         </Stack>
+
+        {storeCreditError ? (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            {storeCreditError}
+          </Alert>
+        ) : null}
 
         {update.isError ? (
           <Alert severity="error" sx={{ mt: 2 }}>

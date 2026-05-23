@@ -86,10 +86,7 @@ export async function GET(
       )
     }
 
-    const roundNum = effectivePublicRoundNum(
-      doc.roundNum,
-      doc.dashboardRoundCap
-    )
+    const roundNum = effectivePublicRoundNum(doc.roundNum)
 
     const snapshots = doc.roundSnapshots ?? []
     const snap = snapshots.find(s => s.roundNum === roundNum)

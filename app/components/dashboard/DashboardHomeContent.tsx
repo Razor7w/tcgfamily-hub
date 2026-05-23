@@ -30,6 +30,7 @@ import CardMails from '@/components/dashboard/CardMails'
 import MailFlowExplainer from '@/components/mails/MailFlowExplainer'
 import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
 import DashboardStatisticsCard from '@/components/dashboard/DashboardStatisticsCard'
+import StoreHubTournamentPointsCard from '@/components/dashboard/StoreHubTournamentPointsCard'
 import { useStoreCredit } from '@/hooks/useStoreCredit'
 import { useStoreHubHref } from '@/hooks/useStoreHubHref'
 import { useMeStores } from '@/hooks/useMeStores'
@@ -39,6 +40,10 @@ import {
   type DashboardModuleId
 } from '@/lib/dashboard-module-config'
 import { DEFAULT_PRIMARY_STORE_SLUG } from '@/lib/multitenancy/constants'
+import {
+  formatStorePointsClpEquivalent,
+  STORE_POINT_CLP_EQUIVALENCE_LABEL
+} from '@/lib/store-points-clp'
 
 const WeeklyEventsSection = dynamic(
   () => import('@/components/events/WeeklyEventsSection'),
@@ -61,7 +66,7 @@ export default function DashboardHomeContent({
   variant = 'tiendas',
   hubReady = true
 }: DashboardHomeContentProps) {
-  const { visibility, order } = useDashboardModulesFromLayout()
+  const { visibility, order, storeCredit } = useDashboardModulesFromLayout()
   const { data: session } = useSession()
   const { data: meStoresData } = useMeStores()
   const storeHubHref = useStoreHubHref()
@@ -89,7 +94,7 @@ export default function DashboardHomeContent({
     refetch: refetchCredit,
     isFetching: creditFetching
   } = useStoreCredit({
-    enabled: variant === 'tiendas' && hubReady
+    enabled: variant === 'tiendas' && hubReady && storeCredit.csvEnabled
   })
 
   const creditError = creditQueryError
@@ -97,13 +102,7 @@ export default function DashboardHomeContent({
     : null
 
   const pointsCurrency =
-    credit != null
-      ? new Intl.NumberFormat('es-CL', {
-          style: 'currency',
-          currency: 'CLP',
-          maximumFractionDigits: 0
-        }).format(credit.storePoints)
-      : ''
+    credit != null ? formatStorePointsClpEquivalent(credit.storePoints) : ''
 
   const [storePointsInfoOpen, setStorePointsInfoOpen] = useState(false)
   const [registerMailOpen, setRegisterMailOpen] = useState(false)
@@ -209,128 +208,130 @@ export default function DashboardHomeContent({
     </Card>
   ) : null
 
-  const storePointsBlock = visibility.storePoints ? (
-    <Card variant="outlined" sx={{ borderRadius: 2 }}>
-      <CardHeader
-        avatar={<Storefront color="primary" />}
-        title="Crédito de tienda"
-        subheader={
-          isTcgFamilyStore
-            ? 'TCG Family puntos (1 punto ≈ $1 en canje)'
-            : undefined
-        }
-        slotProps={{ title: { variant: 'h6' } }}
-        action={
-          isTcgFamilyStore ? (
-            <IconButton
-              aria-label="Información sobre los puntos TCG Family"
-              onClick={() => setStorePointsInfoOpen(true)}
-              size="small"
-              color="primary"
-            >
-              <InfoOutlined />
-            </IconButton>
-          ) : undefined
-        }
-      />
-      <CardContent sx={{ pt: 0 }}>
-        {creditLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-            <CircularProgress size={28} />
-          </Box>
-        ) : creditError ? (
-          <Stack spacing={1.5} alignItems="flex-start">
-            <Typography color="text.secondary">{creditError}</Typography>
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => refetchCredit()}
-              disabled={creditFetching}
-            >
-              {creditFetching ? 'Cargando…' : 'Reintentar'}
-            </Button>
-          </Stack>
-        ) : credit ? (
-          <Stack spacing={2}>
-            <Box
-              sx={{
-                p: 2.5,
-                borderRadius: 2,
-                bgcolor: theme =>
-                  alpha(
-                    theme.palette.primary.main,
-                    theme.palette.mode === 'dark' ? 0.12 : 0.08
-                  ),
-                border: '1px solid',
-                borderColor: 'divider'
-              }}
-            >
-              <Typography
-                variant="overline"
-                color="text.secondary"
-                sx={{ letterSpacing: 0.5, display: 'block', mb: 0.5 }}
+  const storePointsBlock =
+    visibility.storePoints && storeCredit.csvEnabled ? (
+      <Card variant="outlined" sx={{ borderRadius: 2 }}>
+        <CardHeader
+          avatar={<Storefront color="primary" />}
+          title="Crédito de tienda"
+          subheader={
+            isTcgFamilyStore
+              ? `TCG Family puntos (${STORE_POINT_CLP_EQUIVALENCE_LABEL})`
+              : undefined
+          }
+          slotProps={{ title: { variant: 'h6' } }}
+          action={
+            isTcgFamilyStore ? (
+              <IconButton
+                aria-label="Información sobre los puntos TCG Family"
+                onClick={() => setStorePointsInfoOpen(true)}
+                size="small"
+                color="primary"
               >
-                Saldo actual
-              </Typography>
-              <Typography
-                variant="h3"
-                component="p"
+                <InfoOutlined />
+              </IconButton>
+            ) : undefined
+          }
+        />
+        <CardContent sx={{ pt: 0 }}>
+          {creditLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+              <CircularProgress size={28} />
+            </Box>
+          ) : creditError ? (
+            <Stack spacing={1.5} alignItems="flex-start">
+              <Typography color="text.secondary">{creditError}</Typography>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => refetchCredit()}
+                disabled={creditFetching}
+              >
+                {creditFetching ? 'Cargando…' : 'Reintentar'}
+              </Button>
+            </Stack>
+          ) : credit ? (
+            <Stack spacing={2}>
+              <Box
                 sx={{
-                  fontWeight: 800,
-                  fontVariantNumeric: 'tabular-nums',
-                  lineHeight: 1.15,
-                  mb: 0.5
+                  p: 2.5,
+                  borderRadius: 2,
+                  bgcolor: theme =>
+                    alpha(
+                      theme.palette.primary.main,
+                      theme.palette.mode === 'dark' ? 0.12 : 0.08
+                    ),
+                  border: '1px solid',
+                  borderColor: 'divider'
                 }}
               >
-                {credit.storePoints.toLocaleString('es-CL')}
                 <Typography
-                  component="span"
-                  variant="h5"
+                  variant="overline"
                   color="text.secondary"
-                  sx={{ ml: 1, fontWeight: 600 }}
+                  sx={{ letterSpacing: 0.5, display: 'block', mb: 0.5 }}
                 >
-                  puntos
+                  Saldo actual
                 </Typography>
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Equivalente aproximado: {pointsCurrency}
-              </Typography>
-            </Box>
-
-            {credit.storePointsExpiringNext > 0 && (
-              <>
-                <Divider flexItem />
-                <Box>
-                  <Typography variant="subtitle2" gutterBottom>
-                    Próximos a vencer
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {credit.storePointsExpiringNext.toLocaleString('es-CL')}{' '}
+                <Typography
+                  variant="h3"
+                  component="p"
+                  sx={{
+                    fontWeight: 800,
+                    fontVariantNumeric: 'tabular-nums',
+                    lineHeight: 1.15,
+                    mb: 0.5
+                  }}
+                >
+                  {credit.storePoints.toLocaleString('es-CL')}
+                  <Typography
+                    component="span"
+                    variant="h5"
+                    color="text.secondary"
+                    sx={{ ml: 1, fontWeight: 600 }}
+                  >
                     puntos
-                    {expiryLabel
-                      ? ` · fecha de vencimiento: ${expiryLabel}`
-                      : ''}
                   </Typography>
-                </Box>
-              </>
-            )}
-            {credit.storePointsExpiringNext === 0 && credit.storePoints > 0 && (
-              <Typography variant="body2" color="text.secondary">
-                No hay puntos próximos a vencer con fecha informada en el
-                sistema.
-              </Typography>
-            )}
-            {credit.storePoints === 0 && (
-              <Typography variant="body2" color="text.secondary">
-                Tu saldo es 0. Los puntos se actualizan cuando el administrador
-                importa el reporte de la tienda.
-              </Typography>
-            )}
-          </Stack>
-        ) : null}
-      </CardContent>
-    </Card>
-  ) : null
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Equivalente aproximado: {pointsCurrency}
+                </Typography>
+              </Box>
+
+              {credit.storePointsExpiringNext > 0 && (
+                <>
+                  <Divider flexItem />
+                  <Box>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Próximos a vencer
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {credit.storePointsExpiringNext.toLocaleString('es-CL')}{' '}
+                      puntos
+                      {expiryLabel
+                        ? ` · fecha de vencimiento: ${expiryLabel}`
+                        : ''}
+                    </Typography>
+                  </Box>
+                </>
+              )}
+              {credit.storePointsExpiringNext === 0 &&
+                credit.storePoints > 0 && (
+                  <Typography variant="body2" color="text.secondary">
+                    No hay puntos próximos a vencer con fecha informada en el
+                    sistema.
+                  </Typography>
+                )}
+              {credit.storePoints === 0 && (
+                <Typography variant="body2" color="text.secondary">
+                  Tu saldo es 0. Los puntos se actualizan cuando el
+                  administrador importa el reporte de la tienda.
+                </Typography>
+              )}
+            </Stack>
+          ) : null}
+        </CardContent>
+      </Card>
+    ) : null
 
   const blocks: Record<DashboardModuleId, ReactNode> = {
     weeklyEvents: weeklyEventsForBlocks,
@@ -393,6 +394,9 @@ export default function DashboardHomeContent({
           {storeModuleIdsForRender.map(id => (
             <Box key={id}>{blocks[id]}</Box>
           ))}
+          {visibility.storePoints && storeCredit.tournamentPointsEnabled ? (
+            <StoreHubTournamentPointsCard enabled={hubReady} />
+          ) : null}
         </Stack>
 
         {isTcgFamilyStore ? (
@@ -408,7 +412,7 @@ export default function DashboardHomeContent({
             </DialogTitle>
             <DialogContent>
               <Typography variant="body2" component="p" sx={{ mb: 2 }}>
-                Los TCG Family puntos, tienen equivalencia de $1 cada uno, se
+                Los TCG Family puntos tienen equivalencia de $1.000 cada uno; se
                 obtienen al realizar compras por la web (1% del monto de la
                 compra), al &quot;sacrificar&quot; cartas en la tienda (solo en
                 días de intercambio que son informados previamente) y otros

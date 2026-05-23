@@ -1,18 +1,24 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Alert,
   alpha,
   Box,
   Button,
   Container,
+  Divider,
   Link,
   Stack,
   Typography
 } from '@mui/material'
 import { ArrowBack, CloudUpload } from '@mui/icons-material'
 import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
+import TournamentPointsAwardPanel from '@/components/admin/TournamentPointsAwardPanel'
+import TournamentPointsManagePanel from '@/components/admin/TournamentPointsManagePanel'
+import TournamentPointsCsvImport from '@/components/admin/TournamentPointsCsvImport'
+import TournamentPointsDisplayNameEditor from '@/components/admin/TournamentPointsDisplayNameEditor'
+import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
 
 type ImportResult = {
   ok: boolean
@@ -25,6 +31,17 @@ type ImportResult = {
 }
 
 export default function AdminPuntosPage() {
+  const { storeCredit } = useDashboardModulesFromLayout()
+  const csvEnabled = storeCredit.csvEnabled
+  const tournamentEnabled = storeCredit.tournamentPointsEnabled
+  const [sectionTitle, setSectionTitle] = useState(
+    storeCredit.tournamentPointsLabel
+  )
+
+  useEffect(() => {
+    setSectionTitle(storeCredit.tournamentPointsLabel)
+  }, [storeCredit.tournamentPointsLabel])
+
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -75,7 +92,7 @@ export default function AdminPuntosPage() {
         py: 4
       })}
     >
-      <Container maxWidth="sm">
+      <Container maxWidth="md">
         <Stack spacing={3}>
           <Button
             component={Link}
@@ -90,85 +107,133 @@ export default function AdminPuntosPage() {
           <AdminStorePageHeading>
             <Stack spacing={1}>
               <Typography variant="h4" component="h1">
-                Importar puntos (CSV)
+                Puntos de tienda
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Sube el reporte (CSV con punto y coma, mismo formato que el de
-                ejemplo). Se busca al usuario por RUT (todas las formas
-                guardadas) o por correo (minúsculas). Si vienen ambos, primero
-                se intenta por RUT (incluye filas solo con RUT) y, si no hay
-                coincidencia, por correo. Se sincronizan saldo, próximos puntos
-                a vencer y fecha de vencimiento. No se crean usuarios nuevos.
+                {csvEnabled && tournamentEnabled
+                  ? 'Importación CSV de saldo y reparto por torneo.'
+                  : csvEnabled
+                    ? 'Importación CSV del reporte de saldo.'
+                    : `Reparto y gestión de ${sectionTitle.toLowerCase()}.`}
               </Typography>
             </Stack>
           </AdminStorePageHeading>
-          <Box
-            component="form"
-            onSubmit={onSubmit}
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 2,
-              p: 2,
-              border: 1,
-              borderColor: 'divider',
-              borderRadius: 1
-            }}
-          >
-            <Button
-              component="label"
-              variant="outlined"
-              startIcon={<CloudUpload />}
+
+          {tournamentEnabled ? (
+            <Box
+              sx={{
+                p: 2,
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 2,
+                bgcolor: 'background.paper'
+              }}
             >
-              Elegir archivo .csv
-              <input
-                type="file"
-                name="file"
-                accept=".csv,text/csv"
-                hidden
-                onChange={ev => {
-                  const f = ev.target.files?.[0]
-                  setFile(f ?? null)
-                }}
-              />
-            </Button>
-            {file && (
-              <Typography variant="body2" color="text.secondary">
-                {file.name}
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                {sectionTitle}
               </Typography>
-            )}
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={loading || !file}
-            >
-              {loading ? 'Procesando…' : 'Importar'}
-            </Button>
-          </Box>
-          {message && (
-            <Alert severity={severity} onClose={() => setMessage(null)}>
-              {message}
-            </Alert>
-          )}
-          {result && result.errors.length > 0 && (
-            <Alert severity="warning">
-              <Typography variant="subtitle2" gutterBottom>
-                Avisos / errores parciales
+              <TournamentPointsDisplayNameEditor
+                initialCustomName={storeCredit.tournamentPointsCustomName}
+                onLabelChange={setSectionTitle}
+              />
+              <TournamentPointsCsvImport />
+              <Divider sx={{ my: 3 }} />
+              <TournamentPointsAwardPanel />
+              <Divider sx={{ my: 3 }} />
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+                Gestión y auditoría
+              </Typography>
+              <TournamentPointsManagePanel />
+            </Box>
+          ) : null}
+
+          {csvEnabled ? (
+            <>
+              {tournamentEnabled ? <Divider /> : null}
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Importar saldo (CSV tienda)
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Sube el reporte (CSV con punto y coma). Se busca al usuario por
+                RUT o correo y se sincroniza saldo y vencimientos.
               </Typography>
               <Box
-                component="ul"
-                sx={{ m: 0, pl: 2, maxHeight: 240, overflow: 'auto' }}
+                component="form"
+                onSubmit={onSubmit}
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                  p: 2,
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: 1
+                }}
               >
-                {result.errors.map((err, i) => (
-                  <li key={i}>
-                    <Typography variant="caption" component="span">
-                      {err}
-                    </Typography>
-                  </li>
-                ))}
+                <Button
+                  component="label"
+                  variant="outlined"
+                  startIcon={<CloudUpload />}
+                >
+                  Elegir archivo .csv
+                  <input
+                    type="file"
+                    name="file"
+                    accept=".csv,text/csv"
+                    hidden
+                    onChange={ev => {
+                      const f = ev.target.files?.[0]
+                      setFile(f ?? null)
+                    }}
+                  />
+                </Button>
+                {file ? (
+                  <Typography variant="body2" color="text.secondary">
+                    {file.name}
+                  </Typography>
+                ) : null}
+                <Button
+                  type="submit"
+                  variant="contained"
+                  disabled={loading || !file}
+                >
+                  {loading ? 'Procesando…' : 'Importar'}
+                </Button>
               </Box>
+              {message ? (
+                <Alert severity={severity} onClose={() => setMessage(null)}>
+                  {message}
+                </Alert>
+              ) : null}
+              {result && result.errors.length > 0 ? (
+                <Alert severity="warning">
+                  <Typography variant="subtitle2" gutterBottom>
+                    Avisos / errores parciales
+                  </Typography>
+                  <Box
+                    component="ul"
+                    sx={{ m: 0, pl: 2, maxHeight: 240, overflow: 'auto' }}
+                  >
+                    {result.errors.map((err, i) => (
+                      <li key={i}>
+                        <Typography variant="caption" component="span">
+                          {err}
+                        </Typography>
+                      </li>
+                    ))}
+                  </Box>
+                </Alert>
+              ) : null}
+            </>
+          ) : null}
+
+          {!csvEnabled && !tournamentEnabled ? (
+            <Alert severity="info">
+              Ninguna función de puntos está habilitada. Actívala en{' '}
+              <Link href="/admin/configuracion">Configuración</Link> bajo
+              «Crédito de tienda».
             </Alert>
-          )}
+          ) : null}
         </Stack>
       </Container>
     </Box>

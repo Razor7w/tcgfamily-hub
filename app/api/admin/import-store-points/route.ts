@@ -4,6 +4,7 @@ import { requireStoreStaffSession } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
 import { applyStoreCreditSlice } from '@/lib/store-credit-slice-write'
+import { isStoreCreditCsvEnabledForStore } from '@/lib/tournament-points-settings'
 import {
   canonicalRut,
   mapHeaderRow,
@@ -70,6 +71,17 @@ export async function POST(request: NextRequest) {
     }
 
     await connectDB()
+
+    if (
+      !(await isStoreCreditCsvEnabledForStore(gate.activeStoreOid.toString()))
+    ) {
+      return NextResponse.json(
+        {
+          error: 'La importación CSV de saldo no está habilitada en esta tienda'
+        },
+        { status: 403 }
+      )
+    }
 
     const users = await User.find({
       $or: [

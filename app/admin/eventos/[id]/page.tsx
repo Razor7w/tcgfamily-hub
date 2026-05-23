@@ -23,7 +23,6 @@ import Alert from '@mui/material/Alert'
 import Chip from '@mui/material/Chip'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
-import TextField from '@mui/material/TextField'
 import {
   ArrowBack,
   CheckCircle,
@@ -92,39 +91,18 @@ export default function AdminEventoDetailPage() {
   )
 
   const [tab, setTab] = useState(0)
-  const [dashboardCapInput, setDashboardCapInput] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [leagueIdInput, setLeagueIdInput] = useState('')
   const [settingsSyncKey, setSettingsSyncKey] = useState<string | null>(null)
 
-  const evSettingsKey = ev
-    ? `${ev._id}|${ev.dashboardRoundCap ?? ''}|${ev.leagueId ?? ''}`
-    : `none:${id}`
+  const evSettingsKey = ev ? `${ev._id}|${ev.leagueId ?? ''}` : `none:${id}`
 
   if (evSettingsKey !== settingsSyncKey) {
     setSettingsSyncKey(evSettingsKey)
     if (!ev) {
-      setDashboardCapInput('')
       setLeagueIdInput('')
     } else {
-      const c = ev.dashboardRoundCap ?? 0
-      setDashboardCapInput(c > 0 ? String(c) : '')
       setLeagueIdInput(ev.leagueId ?? '')
-    }
-  }
-
-  const saveDashboardRoundCap = async () => {
-    if (!ev || ev.kind !== 'tournament') return
-    const trimmed = dashboardCapInput.trim()
-    const n = trimmed === '' ? 0 : Number(trimmed)
-    if (!Number.isFinite(n) || n < 0 || n > 99) return
-    try {
-      await updateEv.mutateAsync({
-        id: ev._id,
-        body: { dashboardRoundCap: Math.round(n) }
-      })
-    } catch {
-      /* error en estado */
     }
   }
 
@@ -405,68 +383,6 @@ export default function AdminEventoDetailPage() {
                 </Box>
               ) : null}
 
-              {ev.kind === 'tournament' ? (
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: { xs: 2, sm: 2.25 },
-                    borderRadius: 3,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    bgcolor: theme => theme.palette.action.hover
-                  }}
-                >
-                  <Typography
-                    variant="overline"
-                    color="text.secondary"
-                    fontWeight={700}
-                  >
-                    Dashboard de jugadores
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mt: 0.75, mb: 2, lineHeight: 1.55 }}
-                  >
-                    Limita hasta qué ronda se muestra en el panel y en los
-                    emparejamientos públicos. Útil si sincronizaste una ronda de
-                    más pero el torneo oficial terminó antes. En admin sigues
-                    viendo la ronda real ({ev.roundNum ?? 0}).
-                  </Typography>
-                  <Stack
-                    direction={{ xs: 'column', sm: 'row' }}
-                    spacing={1.5}
-                    alignItems={{ xs: 'stretch', sm: 'flex-start' }}
-                  >
-                    <TextField
-                      label="Mostrar hasta la ronda"
-                      type="number"
-                      value={dashboardCapInput}
-                      onChange={e => setDashboardCapInput(e.target.value)}
-                      inputProps={{ min: 0, max: 99 }}
-                      helperText="0 o vacío = sin tope (se muestra la ronda sincronizada)."
-                      fullWidth
-                      sx={{ maxWidth: { sm: 280 } }}
-                    />
-                    <Button
-                      variant="contained"
-                      onClick={() => void saveDashboardRoundCap()}
-                      disabled={updateEv.isPending}
-                      sx={{ fontWeight: 700, flexShrink: 0 }}
-                    >
-                      Guardar tope
-                    </Button>
-                  </Stack>
-                  {updateEv.isError && updateEv.error instanceof Error ? (
-                    <Alert severity="error" sx={{ mt: 2 }}>
-                      {updateEv.error.message}
-                    </Alert>
-                  ) : null}
-                </Paper>
-              ) : null}
-
-              <Divider sx={{ my: 0.5 }} />
-
               <Paper
                 elevation={0}
                 sx={{
@@ -668,6 +584,8 @@ export default function AdminEventoDetailPage() {
                         eventId={ev._id}
                         registeredPopIds={registeredPopIdsForTdf}
                         syncedRoundNums={syncedRoundNumsForTdf}
+                        savedRoundSnapshots={ev.roundSnapshots ?? []}
+                        eventRoundNum={ev.roundNum ?? 0}
                       />
                     </Box>
                   ) : null}

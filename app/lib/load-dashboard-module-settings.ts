@@ -6,6 +6,7 @@ import {
   mergeDashboardSettings,
   type DashboardModuleSettingsDTO
 } from '@/lib/dashboard-module-config'
+import { mergeStoreCreditAdmin } from '@/lib/store-credit-admin-settings'
 import DashboardModuleSettings from '@/models/DashboardModuleSettings'
 import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
 
@@ -56,8 +57,12 @@ export async function loadDashboardModuleSettings(
     docLean = (await DashboardModuleSettings.findOne().lean()) as typeof docLean
   }
 
-  const d = docLean as typeof docLean
-  return mergeDashboardSettings(
+  const d = docLean as typeof docLean & {
+    storeCreditCsvEnabled?: boolean
+    storeCreditTournamentPointsEnabled?: boolean
+    tournamentPointsEnabled?: boolean
+  }
+  const base = mergeDashboardSettings(
     d
       ? {
           visibility: d.visibility,
@@ -66,4 +71,8 @@ export async function loadDashboardModuleSettings(
         }
       : null
   )
+  return {
+    ...base,
+    storeCredit: mergeStoreCreditAdmin(d ?? null)
+  }
 }

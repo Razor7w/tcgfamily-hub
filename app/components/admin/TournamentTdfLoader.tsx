@@ -1,11 +1,12 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   Alert,
   Box,
   Button,
   Chip,
+  IconButton,
   Paper,
   Stack,
   Table,
@@ -14,31 +15,41 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
   Typography
 } from '@mui/material'
 import {
   CloudUpload,
+  DeleteOutline,
   EventSeat,
   FolderOpen,
   GroupAdd
 } from '@mui/icons-material'
+import InferredTdfStandingsEditor from '@/components/admin/InferredTdfStandingsEditor'
+import { buildInferredStandingsByCategory } from '@/lib/inferred-tdf-standings'
 import { buildFullTournamentUploadPayload } from '@/lib/tournament-tdf-payload'
 import {
   buildMatchRecordsFromMatches,
   buildParticipantRecordsForSyncRound,
   buildPlayerNameLookup,
   buildRecordsBeforeEachMatch,
+  filterMatchesExcludingRounds,
   formatMatchRecordWlt,
   groupMatchesByRound,
   parseTournamentXml,
-  type ParsedMatch
+  tdfStandingsHasPlayers,
+  type ParsedMatch,
+  type TournamentStandingsCategoryPayload
 } from '@/lib/tournament-xml'
 import { popidForStorage, validatePopidOptional } from '@/lib/rut-chile'
 import {
+  useAdminDeleteEventRound,
   useAdminPreinscribeBatch,
   useAdminSyncEventRound,
   useAdminUploadFullTournament,
   useAdminUploadStandingsPod,
+  type AdminSavedRoundPairing,
+  type AdminSavedRoundSnapshot,
   type AdminSyncRoundResult
 } from '@/hooks/useWeeklyEvents'
 
@@ -64,6 +75,8 @@ function standingsCategoryIndex(cat: string): 0 | 1 | 2 | null {
   return null
 }
 
+type DisplayPairing = AdminSavedRoundPairing
+
 type TournamentTdfLoaderProps = {
   /** Si es false, no muestra el párrafo introductorio (p. ej. la página Torneo XML ya lo tiene arriba). */
   showIntro?: boolean
@@ -71,15 +84,142 @@ type TournamentTdfLoaderProps = {
   eventId?: string
   /** POP ID ya presentes en el evento (normalizados con `popidForStorage`), para no duplicar. */
   registeredPopIds?: string[]
-  /** Números de ronda ya guardados en el evento (no repetir «Setear ronda»). */
+  /** Números de ronda ya guardados en el evento. */
   syncedRoundNums?: number[]
+  /** Snapshots persistidos (se muestran sin cargar .tdf). */
+  savedRoundSnapshots?: AdminSavedRoundSnapshot[]
+  /** Ronda operativa actual del evento. */
+  eventRoundNum?: number
+}
+
+function formatWltRecord(r?: {
+  wins: number
+  losses: number
+  ties: number
+}): string {
+  if (!r) return '0-0-0'
+  return `${r.wins}-${r.losses}-${r.ties}`
+}
+
+function RoundPairingsPanel({
+  roundNum,
+  pairings,
+  headerActions,
+  syncedAtLabel
+}: {
+  roundNum: number
+  pairings: DisplayPairing[]
+  headerActions?: ReactNode
+  syncedAtLabel?: string | null
+}) {
+  return (
+    <Paper
+      variant="outlined"
+      sx={{ p: 0, borderRadius: 2, overflow: 'hidden' }}
+    >
+      <Box
+        sx={{
+          px: 2,
+          py: 1,
+          bgcolor: 'action.hover',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
+          flexWrap: 'wrap'
+        }}
+      >
+        <Stack spacing={0.25}>
+          <Typography variant="subtitle2" fontWeight={700}>
+            Ronda {roundNum}
+          </Typography>
+          {syncedAtLabel ? (
+            <Typography variant="caption" color="text.secondary">
+              Guardada {syncedAtLabel}
+            </Typography>
+          ) : null}
+        </Stack>
+        {headerActions}
+      </Box>
+      <TableContainer>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell width={72}>Mesa</TableCell>
+              <TableCell>Jugador 1</TableCell>
+              <TableCell>Jugador 2</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {pairings.map((p, idx) => (
+              <TableRow key={`${roundNum}-${idx}-${p.tableNumber}`}>
+                <TableCell>{p.tableNumber || '—'}</TableCell>
+                <TableCell>
+                  <Typography variant="body2" component="span">
+                    {p.player1Name || p.player1PopId || '—'}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    color="primary"
+                    sx={{ ml: 0.75, fontWeight: 700 }}
+                  >
+                    ({formatWltRecord(p.player1Record)})
+                  </Typography>
+                  {p.player1PopId ? (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      display="block"
+                      sx={{ fontFamily: 'monospace' }}
+                    >
+                      {p.player1PopId}
+                    </Typography>
+                  ) : null}
+                </TableCell>
+                <TableCell>
+                  {p.isBye || !p.player2PopId ? (
+                    <Typography variant="body2" color="text.secondary">
+                      Bye
+                    </Typography>
+                  ) : (
+                    <>
+                      <Typography variant="body2" component="span">
+                        {p.player2Name || p.player2PopId}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        color="primary"
+                        sx={{ ml: 0.75, fontWeight: 700 }}
+                      >
+                        ({formatWltRecord(p.player2Record)})
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        display="block"
+                        sx={{ fontFamily: 'monospace' }}
+                      >
+                        {p.player2PopId}
+                      </Typography>
+                    </>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Paper>
+  )
 }
 
 export default function TournamentTdfLoader({
   showIntro = true,
   eventId,
   registeredPopIds = [],
-  syncedRoundNums = []
+  syncedRoundNums = [],
+  savedRoundSnapshots = [],
+  eventRoundNum = 0
 }: TournamentTdfLoaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [raw, setRaw] = useState('')
@@ -91,30 +231,71 @@ export default function TournamentTdfLoader({
     () => buildPlayerNameLookup(parsed.players),
     [parsed.players]
   )
+  const [excludedTdfRoundNums, setExcludedTdfRoundNums] = useState<Set<number>>(
+    () => new Set()
+  )
+
+  const activeMatches = useMemo(
+    () => filterMatchesExcludingRounds(parsed.matches, excludedTdfRoundNums),
+    [parsed.matches, excludedTdfRoundNums]
+  )
+
   const matchRecords = useMemo(
-    () => buildMatchRecordsFromMatches(parsed.matches),
-    [parsed.matches]
+    () => buildMatchRecordsFromMatches(activeMatches),
+    [activeMatches]
   )
   const recordsBeforeEachMatch = useMemo(
-    () => buildRecordsBeforeEachMatch(parsed.matches),
-    [parsed.matches]
+    () => buildRecordsBeforeEachMatch(activeMatches),
+    [activeMatches]
   )
   const matchIndexByRef = useMemo(() => {
     const map = new Map<ParsedMatch, number>()
-    parsed.matches.forEach((m, i) => map.set(m, i))
+    activeMatches.forEach((m, i) => map.set(m, i))
     return map
-  }, [parsed.matches])
+  }, [activeMatches])
   const rounds = useMemo(
-    () => groupMatchesByRound(parsed.matches),
-    [parsed.matches]
+    () => groupMatchesByRound(activeMatches),
+    [activeMatches]
   )
+
+  /** Última ronda activa (TDF no excluida + guardada en el evento). */
+  const currentLastRoundNum = useMemo(() => {
+    let max = 0
+    for (const n of rounds.keys()) max = Math.max(max, n)
+    for (const s of savedRoundSnapshots) {
+      const n = Math.round(Number(s.roundNum))
+      if (Number.isFinite(n) && !excludedTdfRoundNums.has(n)) {
+        max = Math.max(max, n)
+      }
+    }
+    return max
+  }, [rounds, savedRoundSnapshots, excludedTdfRoundNums])
   const standingsPlayerCount = useMemo(
     () => parsed.standings.reduce((n, pod) => n + pod.players.length, 0),
     [parsed.standings]
   )
 
+  const tdfHasStandingsData = useMemo(
+    () => tdfStandingsHasPlayers(parsed.standings),
+    [parsed.standings]
+  )
+
+  const inferredStandingsSeed = useMemo(() => {
+    if (tdfHasStandingsData || parsed.players.length === 0) return null
+    return buildInferredStandingsByCategory(parsed.players, matchRecords)
+  }, [tdfHasStandingsData, parsed.players, matchRecords])
+
+  /** Overrides manuales; `null` = usar {@link inferredStandingsSeed} del TDF parseado. */
+  const [editedInferredStandings, setEditedInferredStandings] = useState<
+    TournamentStandingsCategoryPayload[] | null
+  >(null)
+
+  const effectiveInferredStandings =
+    editedInferredStandings ?? inferredStandingsSeed
+
   const preinscribeBatch = useAdminPreinscribeBatch()
   const syncRound = useAdminSyncEventRound()
+  const deleteRound = useAdminDeleteEventRound()
   const uploadFullTournament = useAdminUploadFullTournament()
   const uploadStandingsPod = useAdminUploadStandingsPod()
   const [lastRoundSync, setLastRoundSync] =
@@ -134,6 +315,21 @@ export default function TournamentTdfLoader({
       ),
     [syncedRoundNums]
   )
+
+  const savedRoundsSorted = useMemo(
+    () =>
+      [...savedRoundSnapshots].sort(
+        (a, b) => Math.round(a.roundNum) - Math.round(b.roundNum)
+      ),
+    [savedRoundSnapshots]
+  )
+
+  const pendingTdfRounds = useMemo(() => {
+    return [...rounds.entries()].filter(
+      ([roundNum]) =>
+        !syncedRoundSet.has(roundNum) && !excludedTdfRoundNums.has(roundNum)
+    )
+  }, [rounds, syncedRoundSet, excludedTdfRoundNums])
 
   const showEventActions = Boolean(eventId)
 
@@ -168,6 +364,8 @@ export default function TournamentTdfLoader({
       setRaw(text)
       setLastRoundSync(null)
       syncRound.reset()
+      setExcludedTdfRoundNums(new Set())
+      setEditedInferredStandings(null)
       setLoadedFileName(file.name)
       e.target.value = ''
     }
@@ -183,8 +381,9 @@ export default function TournamentTdfLoader({
     <Stack spacing={2}>
       {showIntro ? (
         <Typography variant="body2" color="text.secondary">
-          Carga un archivo <strong>.tdf</strong> o pega el XML para ver
-          jugadores (POP userid) y emparejamientos por ronda.
+          Las <strong>rondas guardadas</strong> del evento se muestran abajo sin
+          cargar archivo. Sube un <strong>.tdf</strong> para preinscribir,
+          setear rondas nuevas o importar el torneo completo.
         </Typography>
       ) : null}
 
@@ -284,70 +483,6 @@ export default function TournamentTdfLoader({
           </Stack>
         </Paper>
       )}
-
-      {showEventActions &&
-      raw.trim() &&
-      !parsed.error &&
-      parsed.players.length > 0 ? (
-        <Stack spacing={1}>
-          <Button
-            type="button"
-            variant="contained"
-            color="success"
-            startIcon={<CloudUpload />}
-            disabled={
-              !eventId ||
-              uploadFullTournament.isPending ||
-              syncRound.isPending ||
-              preinscribeBatch.isPending
-            }
-            onClick={async () => {
-              if (!eventId) return
-              try {
-                const payload = buildFullTournamentUploadPayload(parsed)
-                await uploadFullTournament.mutateAsync({ eventId, payload })
-                setLastRoundSync(null)
-                syncRound.reset()
-              } catch {
-                /* error en estado */
-              }
-            }}
-            sx={{ alignSelf: { xs: 'stretch', sm: 'flex-start' } }}
-          >
-            Subir torneo completo
-          </Button>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ maxWidth: 560, display: 'block' }}
-          >
-            Importa jugadores (actualiza récords), todas las rondas en el
-            historial, clasificación por categoría (Júnior / Sénior / Máster),
-            deja el evento en estado <strong>cerrado</strong> y aplica el
-            emparejamiento de la última ronda al listado.
-          </Typography>
-          {uploadFullTournament.isError ? (
-            <Alert severity="error">
-              {uploadFullTournament.error instanceof Error
-                ? uploadFullTournament.error.message
-                : 'Error al subir el torneo'}
-            </Alert>
-          ) : null}
-          {uploadFullTournament.isSuccess ? (
-            <Alert
-              severity="success"
-              onClose={() => uploadFullTournament.reset()}
-            >
-              Torneo importado: estado{' '}
-              <strong>{uploadFullTournament.data?.state}</strong>,{' '}
-              <strong>{uploadFullTournament.data?.participantCount}</strong>{' '}
-              participantes,{' '}
-              <strong>{uploadFullTournament.data?.roundSnapshotsCount}</strong>{' '}
-              ronda(s) guardada(s).
-            </Alert>
-          ) : null}
-        </Stack>
-      ) : null}
 
       {parsed.players.length > 0 && (
         <>
@@ -461,184 +596,309 @@ export default function TournamentTdfLoader({
         </>
       )}
 
-      {parsed.matches.length > 0 && (
+      {!tdfHasStandingsData &&
+      raw.trim() &&
+      !parsed.error &&
+      parsed.players.length > 0 &&
+      effectiveInferredStandings ? (
         <>
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            Emparejamientos ({parsed.matches.length} partidas)
+            Clasificación propuesta (sin standings en el archivo)
+          </Typography>
+          <InferredTdfStandingsEditor
+            eventId={eventId}
+            standings={effectiveInferredStandings}
+            onStandingsChange={setEditedInferredStandings}
+            names={names}
+            matchRecords={matchRecords}
+          />
+        </>
+      ) : null}
+
+      {showEventActions &&
+      raw.trim() &&
+      !parsed.error &&
+      parsed.players.length > 0 ? (
+        <Stack spacing={1}>
+          <Button
+            type="button"
+            variant="contained"
+            color="success"
+            startIcon={<CloudUpload />}
+            disabled={
+              !eventId ||
+              uploadFullTournament.isPending ||
+              syncRound.isPending ||
+              preinscribeBatch.isPending
+            }
+            onClick={async () => {
+              if (!eventId) return
+              try {
+                const payload = buildFullTournamentUploadPayload(
+                  parsed,
+                  !tdfHasStandingsData
+                    ? (effectiveInferredStandings ?? undefined)
+                    : undefined,
+                  excludedTdfRoundNums
+                )
+                await uploadFullTournament.mutateAsync({ eventId, payload })
+                setLastRoundSync(null)
+                syncRound.reset()
+              } catch {
+                /* error en estado */
+              }
+            }}
+            sx={{ alignSelf: { xs: 'stretch', sm: 'flex-start' } }}
+          >
+            Subir torneo completo
+          </Button>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ maxWidth: 560, display: 'block' }}
+          >
+            Importa jugadores (actualiza récords), todas las rondas en el
+            historial, clasificación por categoría (Júnior / Sénior / Máster),
+            deja el evento en estado <strong>cerrado</strong> y aplica el
+            emparejamiento de la última ronda al listado. Si no hay standings en
+            el archivo, puedes revisar y guardar la clasificación propuesta
+            antes de subir.
+          </Typography>
+          {uploadFullTournament.isError ? (
+            <Alert severity="error">
+              {uploadFullTournament.error instanceof Error
+                ? uploadFullTournament.error.message
+                : 'Error al subir el torneo'}
+            </Alert>
+          ) : null}
+          {uploadFullTournament.isSuccess ? (
+            <Alert
+              severity="success"
+              onClose={() => uploadFullTournament.reset()}
+            >
+              Torneo importado: estado{' '}
+              <strong>{uploadFullTournament.data?.state}</strong>,{' '}
+              <strong>{uploadFullTournament.data?.participantCount}</strong>{' '}
+              participantes,{' '}
+              <strong>{uploadFullTournament.data?.roundSnapshotsCount}</strong>{' '}
+              ronda(s) guardada(s).
+            </Alert>
+          ) : null}
+        </Stack>
+      ) : null}
+
+      {showEventActions && savedRoundsSorted.length > 0 ? (
+        <>
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            flexWrap="wrap"
+            gap={1}
+          >
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Rondas guardadas ({savedRoundsSorted.length})
+            </Typography>
+            {eventRoundNum > 0 ? (
+              <Chip
+                size="small"
+                label={`Ronda activa en panel: ${eventRoundNum}`}
+                variant="outlined"
+              />
+            ) : null}
+          </Stack>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+            Lo que ven los jugadores en el panel. Solo puedes quitar la{' '}
+            <strong>última ronda</strong> (p. ej. si TOM obligó 5 pero la tienda
+            jugó 4); al hacerlo se actualizan W/L/T y la clasificación
+            propuesta.
           </Typography>
           <Stack spacing={2}>
-            {[...rounds.entries()].map(([roundNum, list]) => (
-              <Paper
-                key={roundNum}
-                variant="outlined"
-                sx={{ p: 0, borderRadius: 2, overflow: 'hidden' }}
-              >
-                <Box
-                  sx={{
-                    px: 2,
-                    py: 1,
-                    bgcolor: 'action.hover',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 1,
-                    flexWrap: 'wrap'
-                  }}
-                >
-                  <Typography variant="subtitle2" fontWeight={700}>
-                    Ronda {roundNum}
-                  </Typography>
-                  {showEventActions ? (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      startIcon={<EventSeat />}
-                      disabled={
-                        !eventId ||
-                        syncRound.isPending ||
-                        list.length === 0 ||
-                        syncedRoundSet.has(roundNum)
+            {savedRoundsSorted.map(snap => {
+              const syncedLabel = snap.syncedAt
+                ? new Date(snap.syncedAt).toLocaleString('es-CL', {
+                    dateStyle: 'short',
+                    timeStyle: 'short',
+                    hour12: false
+                  })
+                : null
+              return (
+                <RoundPairingsPanel
+                  key={`saved-${snap.roundNum}`}
+                  roundNum={snap.roundNum}
+                  pairings={snap.pairings ?? []}
+                  syncedAtLabel={syncedLabel}
+                  headerActions={
+                    <Tooltip
+                      title={
+                        snap.roundNum === currentLastRoundNum
+                          ? 'Quitar esta ronda del evento'
+                          : `Solo se puede borrar la última ronda (ronda ${currentLastRoundNum})`
                       }
-                      onClick={async () => {
-                        if (!eventId || list.length === 0) return
-                        try {
-                          const data = await syncRound.mutateAsync({
-                            eventId,
-                            roundNum,
-                            matches: list.map(m => ({
-                              tableNumber: m.tableNumber ?? '',
-                              player1PopId: m.player1UserId,
-                              player2PopId: m.player2UserId
-                            })),
-                            participantRecords:
-                              buildParticipantRecordsForSyncRound(
-                                parsed.matches,
-                                parsed.players,
-                                roundNum
-                              ),
-                            roundSnapshot: {
-                              pairings: list.map(m => {
-                                const mi = matchIndexByRef.get(m)
-                                const before =
-                                  mi !== undefined
-                                    ? recordsBeforeEachMatch[mi]
-                                    : undefined
-                                const p2 = m.player2UserId?.trim() ?? ''
-                                const isBye = Boolean(m.player1UserId && !p2)
-                                return {
+                    >
+                      <span>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          disabled={
+                            !eventId ||
+                            deleteRound.isPending ||
+                            snap.roundNum !== currentLastRoundNum
+                          }
+                          onClick={async () => {
+                            if (!eventId) return
+                            try {
+                              await deleteRound.mutateAsync({
+                                eventId,
+                                roundNum: snap.roundNum
+                              })
+                              setExcludedTdfRoundNums(prev => {
+                                const next = new Set(prev)
+                                next.add(snap.roundNum)
+                                return next
+                              })
+                              setEditedInferredStandings(null)
+                              setLastRoundSync(null)
+                            } catch {
+                              /* error en estado */
+                            }
+                          }}
+                          aria-label={`Borrar ronda ${snap.roundNum}`}
+                        >
+                          <DeleteOutline fontSize="small" />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  }
+                />
+              )
+            })}
+          </Stack>
+          {deleteRound.isError ? (
+            <Alert severity="error">
+              {deleteRound.error instanceof Error
+                ? deleteRound.error.message
+                : 'Error al borrar la ronda'}
+            </Alert>
+          ) : null}
+        </>
+      ) : null}
+
+      {pendingTdfRounds.length > 0 && (
+        <>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            Del archivo .tdf ({parsed.matches.length} partidas)
+          </Typography>
+          <Stack spacing={2}>
+            {pendingTdfRounds.map(([roundNum, list]) => {
+              const pairings: DisplayPairing[] = list.map(m => {
+                const mi = matchIndexByRef.get(m)
+                const before =
+                  mi !== undefined ? recordsBeforeEachMatch[mi] : undefined
+                const p2 = m.player2UserId?.trim() ?? ''
+                const isBye = Boolean(m.player1UserId && !p2)
+                return {
+                  tableNumber: m.tableNumber ?? '',
+                  player1PopId: m.player1UserId,
+                  player2PopId: p2,
+                  player1Name: names.get(m.player1UserId) ?? m.player1UserId,
+                  player2Name: isBye ? '' : (names.get(p2) ?? p2),
+                  player1Record: {
+                    wins: before?.p1.wins ?? 0,
+                    losses: before?.p1.losses ?? 0,
+                    ties: before?.p1.ties ?? 0
+                  },
+                  player2Record: {
+                    wins: before?.p2.wins ?? 0,
+                    losses: before?.p2.losses ?? 0,
+                    ties: before?.p2.ties ?? 0
+                  },
+                  isBye
+                }
+              })
+              return (
+                <RoundPairingsPanel
+                  key={`tdf-${roundNum}`}
+                  roundNum={roundNum}
+                  pairings={pairings}
+                  headerActions={
+                    showEventActions ? (
+                      <Stack direction="row" spacing={0.75} alignItems="center">
+                        <Tooltip
+                          title={
+                            roundNum === currentLastRoundNum
+                              ? 'Excluir esta ronda del TDF (actualiza récords y clasificación)'
+                              : `Solo se puede quitar la última ronda (ronda ${currentLastRoundNum})`
+                          }
+                        >
+                          <span>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="inherit"
+                              startIcon={<DeleteOutline />}
+                              disabled={
+                                deleteRound.isPending ||
+                                roundNum !== currentLastRoundNum
+                              }
+                              onClick={() => {
+                                setExcludedTdfRoundNums(prev => {
+                                  const next = new Set(prev)
+                                  next.add(roundNum)
+                                  return next
+                                })
+                                setEditedInferredStandings(null)
+                              }}
+                            >
+                              Quitar
+                            </Button>
+                          </span>
+                        </Tooltip>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<EventSeat />}
+                          disabled={
+                            !eventId || syncRound.isPending || list.length === 0
+                          }
+                          onClick={async () => {
+                            if (!eventId || list.length === 0) return
+                            try {
+                              const data = await syncRound.mutateAsync({
+                                eventId,
+                                roundNum,
+                                matches: list.map(m => ({
                                   tableNumber: m.tableNumber ?? '',
                                   player1PopId: m.player1UserId,
-                                  player2PopId: p2,
-                                  player1Name:
-                                    names.get(m.player1UserId) ??
-                                    m.player1UserId,
-                                  player2Name: isBye
-                                    ? ''
-                                    : (names.get(p2) ?? p2),
-                                  player1Record: {
-                                    wins: before?.p1.wins ?? 0,
-                                    losses: before?.p1.losses ?? 0,
-                                    ties: before?.p1.ties ?? 0
-                                  },
-                                  player2Record: {
-                                    wins: before?.p2.wins ?? 0,
-                                    losses: before?.p2.losses ?? 0,
-                                    ties: before?.p2.ties ?? 0
-                                  },
-                                  isBye
-                                }
+                                  player2PopId: m.player2UserId
+                                })),
+                                participantRecords:
+                                  buildParticipantRecordsForSyncRound(
+                                    parsed.matches,
+                                    parsed.players,
+                                    roundNum
+                                  ),
+                                roundSnapshot: { pairings }
                               })
+                              setLastRoundSync(data)
+                              setExcludedTdfRoundNums(prev => {
+                                const next = new Set(prev)
+                                next.delete(roundNum)
+                                return next
+                              })
+                            } catch {
+                              setLastRoundSync(null)
                             }
-                          })
-                          setLastRoundSync(data)
-                        } catch {
-                          setLastRoundSync(null)
-                        }
-                      }}
-                    >
-                      Setear ronda
-                    </Button>
-                  ) : null}
-                </Box>
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell width={72}>Mesa</TableCell>
-                        <TableCell>Jugador 1</TableCell>
-                        <TableCell>Jugador 2</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {list.map((m, idx) => {
-                        const mi = matchIndexByRef.get(m)
-                        const before =
-                          mi !== undefined
-                            ? recordsBeforeEachMatch[mi]
-                            : undefined
-                        return (
-                          <TableRow key={`${roundNum}-${idx}-${m.tableNumber}`}>
-                            <TableCell>{m.tableNumber || '—'}</TableCell>
-                            <TableCell>
-                              <Typography variant="body2" component="span">
-                                {names.get(m.player1UserId) ?? m.player1UserId}
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                color="primary"
-                                sx={{ ml: 0.75, fontWeight: 700 }}
-                              >
-                                ({formatMatchRecordWlt(before?.p1)})
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                display="block"
-                                sx={{ fontFamily: 'monospace' }}
-                              >
-                                {m.player1UserId}
-                              </Typography>
-                            </TableCell>
-                            <TableCell>
-                              {m.player2UserId ? (
-                                <>
-                                  <Typography variant="body2" component="span">
-                                    {names.get(m.player2UserId) ??
-                                      m.player2UserId}
-                                  </Typography>
-                                  <Typography
-                                    variant="caption"
-                                    color="primary"
-                                    sx={{ ml: 0.75, fontWeight: 700 }}
-                                  >
-                                    ({formatMatchRecordWlt(before?.p2)})
-                                  </Typography>
-                                  <Typography
-                                    variant="caption"
-                                    color="text.secondary"
-                                    display="block"
-                                    sx={{ fontFamily: 'monospace' }}
-                                  >
-                                    {m.player2UserId}
-                                  </Typography>
-                                </>
-                              ) : (
-                                <Typography
-                                  variant="body2"
-                                  color="text.secondary"
-                                >
-                                  Bye
-                                </Typography>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Paper>
-            ))}
+                          }}
+                        >
+                          Setear ronda
+                        </Button>
+                      </Stack>
+                    ) : null
+                  }
+                />
+              )
+            })}
           </Stack>
           {showEventActions && syncRound.isError ? (
             <Alert severity="error">
@@ -676,7 +936,7 @@ export default function TournamentTdfLoader({
         </>
       )}
 
-      {parsed.standings.length > 0 && (
+      {tdfHasStandingsData && (
         <>
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
             Clasificación
@@ -830,7 +1090,7 @@ export default function TournamentTdfLoader({
         !parsed.error &&
         parsed.players.length === 0 &&
         parsed.matches.length === 0 &&
-        parsed.standings.length === 0 && (
+        !tdfHasStandingsData && (
           <Alert severity="info">
             No se encontraron jugadores, partidas ni clasificación en el XML.
             Revisa que incluya <code>&lt;players&gt;</code>,{' '}

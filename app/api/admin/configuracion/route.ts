@@ -13,6 +13,14 @@ import {
   type DashboardModuleSettingsDTO
 } from '@/lib/dashboard-module-config'
 import { getDashboardDocForStore } from '@/lib/dashboard-settings-for-store'
+import {
+  applyStoreCreditAdminToDoc,
+  mergeStoreCreditAdmin,
+  normalizeTournamentPointsCustomName,
+  resolveTournamentPointsDisplayName,
+  validateStoreCreditAdmin,
+  type StoreCreditAdminSettings
+} from '@/lib/store-credit-admin-settings'
 
 function readPickupNotifyEnabled(
   doc: {
@@ -20,6 +28,22 @@ function readPickupNotifyEnabled(
   } | null
 ): boolean {
   return doc?.resendNotifyPickupInStoreEnabled !== false
+}
+
+function buildStoreCreditFromBody(
+  body: Partial<StoreCreditAdminSettings>
+): StoreCreditAdminSettings {
+  const tournamentPointsCustomName = normalizeTournamentPointsCustomName(
+    body.tournamentPointsCustomName
+  )
+  return {
+    csvEnabled: body.csvEnabled === true,
+    tournamentPointsEnabled: body.tournamentPointsEnabled === true,
+    tournamentPointsCustomName,
+    tournamentPointsLabel: resolveTournamentPointsDisplayName(
+      tournamentPointsCustomName
+    )
+  }
 }
 
 function normalizeMailRegisterDailyLimit(raw: unknown): number {
@@ -43,11 +67,16 @@ export async function GET() {
       shortcuts?: DashboardModuleSettingsDTO['shortcuts']
       resendNotifyPickupInStoreEnabled?: boolean
       mailRegisterDailyLimit?: number
+      tournamentPointsEnabled?: boolean
+      storeCreditCsvEnabled?: boolean
+      storeCreditTournamentPointsEnabled?: boolean
+      tournamentPointsDisplayName?: string
     }
     const raw: Partial<DashboardModuleSettingsDTO> | null = {
       visibility: plain.visibility,
       order: plain.order,
-      shortcuts: plain.shortcuts
+      shortcuts: plain.shortcuts,
+      storeCredit: mergeStoreCreditAdmin(plain)
     }
 
     const settings = mergeDashboardSettings(raw)
@@ -57,7 +86,8 @@ export async function GET() {
         resendNotifyPickupInStoreEnabled: readPickupNotifyEnabled(plain),
         mailRegisterDailyLimit: normalizeMailRegisterDailyLimit(
           plain.mailRegisterDailyLimit
-        )
+        ),
+        storeCredit: settings.storeCredit
       },
       { status: 200 }
     )
@@ -81,6 +111,10 @@ export async function PUT(request: NextRequest) {
     const emailFlag = body?.resendNotifyPickupInStoreEnabled
     const shortcutsBody = body?.shortcuts
     const mailLimitRaw = body?.mailRegisterDailyLimit
+    const storeCreditBody = body?.storeCredit as
+      | Partial<StoreCreditAdminSettings>
+      | undefined
+    const tournamentPointsFlag = body?.tournamentPointsEnabled
 
     const updatingDashboard =
       vis &&
@@ -97,17 +131,25 @@ export async function PUT(request: NextRequest) {
         .playPokemonDecklistPdf === 'boolean'
     const updatingMailRegisterLimit =
       typeof mailLimitRaw === 'number' && Number.isFinite(mailLimitRaw)
+    const updatingTournamentPoints = typeof tournamentPointsFlag === 'boolean'
+    const updatingStoreCredit =
+      storeCreditBody &&
+      typeof storeCreditBody === 'object' &&
+      typeof storeCreditBody.csvEnabled === 'boolean' &&
+      typeof storeCreditBody.tournamentPointsEnabled === 'boolean'
 
     if (
       !updatingDashboard &&
       !updatingEmail &&
       !updatingShortcuts &&
-      !updatingMailRegisterLimit
+      !updatingMailRegisterLimit &&
+      !updatingTournamentPoints &&
+      !updatingStoreCredit
     ) {
       return NextResponse.json(
         {
           error:
-            'Envía visibility+order, shortcuts (createMail, createTournament, playPokemonDecklistPdf), resendNotifyPickupInStoreEnabled (boolean) y/o mailRegisterDailyLimit (número)'
+            'Envía visibility+order, storeCredit (csvEnabled, tournamentPointsEnabled), shortcuts, resendNotifyPickupInStoreEnabled y/o mailRegisterDailyLimit'
         },
         { status: 400 }
       )
@@ -156,6 +198,19 @@ export async function PUT(request: NextRequest) {
         storePoints: vis.storePoints
       }
       doc.order = normalizedOrder
+
+      if (
+        storeCreditBody &&
+        typeof storeCreditBody.csvEnabled === 'boolean' &&
+        typeof storeCreditBody.tournamentPointsEnabled === 'boolean'
+      ) {
+        const next = buildStoreCreditFromBody(storeCreditBody)
+        const validationError = validateStoreCreditAdmin(next)
+        if (validationError) {
+          return NextResponse.json({ error: validationError }, { status: 400 })
+        }
+        applyStoreCreditAdminToDoc(doc, next)
+      }
     }
 
     if (updatingEmail) {
@@ -179,6 +234,20 @@ export async function PUT(request: NextRequest) {
       doc.mailRegisterDailyLimit = normalizeMailRegisterDailyLimit(mailLimitRaw)
     }
 
+    if (updatingTournamentPoints) {
+      doc.storeCreditTournamentPointsEnabled = tournamentPointsFlag
+      doc.tournamentPointsEnabled = tournamentPointsFlag
+    }
+
+    if (updatingStoreCredit && storeCreditBody) {
+      const next = buildStoreCreditFromBody(storeCreditBody)
+      const validationError = validateStoreCreditAdmin(next)
+      if (validationError) {
+        return NextResponse.json({ error: validationError }, { status: 400 })
+      }
+      applyStoreCreditAdminToDoc(doc, next)
+    }
+
     await doc.save()
 
     if (updatingMailRegisterLimit) {
@@ -191,10 +260,12 @@ export async function PUT(request: NextRequest) {
     const settings = mergeDashboardSettings({
       visibility: doc.visibility,
       order: doc.order as DashboardModuleSettingsDTO['order'],
-      shortcuts: dShortcuts
+      shortcuts: dShortcuts,
+      storeCredit: mergeStoreCreditAdmin(doc)
     })
 
     revalidatePath('/', 'layout')
+    revalidatePath('/admin/puntos')
     revalidatePath('/dashboard', 'layout')
     revalidatePath('/dashboard/mi-cuenta')
     revalidatePath('/dashboard/eventos')
@@ -210,7 +281,8 @@ export async function PUT(request: NextRequest) {
         resendNotifyPickupInStoreEnabled: readPickupNotifyEnabled(doc),
         mailRegisterDailyLimit: normalizeMailRegisterDailyLimit(
           doc.mailRegisterDailyLimit
-        )
+        ),
+        storeCredit: settings.storeCredit
       },
       { status: 200 }
     )

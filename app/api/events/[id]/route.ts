@@ -134,10 +134,7 @@ export async function GET(
 
     const myRegistration = viewAs?.displayName ?? null
     const myAttendanceConfirmed = Boolean(viewAs?.confirmed)
-    const roundNum = effectivePublicRoundNum(
-      doc.roundNum,
-      doc.dashboardRoundCap
-    )
+    const roundNum = effectivePublicRoundNum(doc.roundNum)
     const { myTable, myOpponentName } = pairingExtrasForUser(parts, uid)
 
     /** Solo el creador puede borrar un torneo custom (fallback si falta el campo en datos viejos). */

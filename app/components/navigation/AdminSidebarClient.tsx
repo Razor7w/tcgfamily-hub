@@ -29,9 +29,11 @@ export default function AdminSidebarClient({ isOwner }: { isOwner: boolean }) {
   const showWeeklyEvents = visibility.weeklyEvents
   const showLeagues = visibility.leagues
   const showMail = visibility.mail
-  const showStorePoints = visibility.storePoints
+  const { storeCredit } = useDashboardModulesFromLayout()
+  const showStorePointsMenu =
+    storeCredit.csvEnabled || storeCredit.tournamentPointsEnabled
   const hasStoreStaffNav =
-    showWeeklyEvents || showLeagues || showMail || showStorePoints
+    showWeeklyEvents || showLeagues || showMail || showStorePointsMenu
 
   const [open, setOpen] = useState(true)
 
@@ -121,13 +123,13 @@ export default function AdminSidebarClient({ isOwner }: { isOwner: boolean }) {
             </ListItemButton>
           </List>
         ) : null}
-        {showStorePoints ? (
+        {showStorePointsMenu ? (
           <List component="div" disablePadding>
             <ListItemButton sx={{ pl: 4 }} href="/admin/puntos">
               <ListItemIcon>
                 <CloudUpload />
               </ListItemIcon>
-              <ListItemText primary="Puntos (CSV)" />
+              <ListItemText primary="Puntos de tienda" />
             </ListItemButton>
           </List>
         ) : null}

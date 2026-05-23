@@ -231,6 +231,23 @@ export function parseTournamentXml(
   return { meta, players, matches, standings }
 }
 
+/** Partidas del TDF omitiendo rondas excluidas (p. ej. ronda 5 que la tienda no juega). */
+export function filterMatchesExcludingRounds(
+  matches: ParsedMatch[],
+  excludedRoundNums: ReadonlySet<number>
+): ParsedMatch[] {
+  if (excludedRoundNums.size === 0) return matches
+  return matches.filter(m => !excludedRoundNums.has(m.roundNumber))
+}
+
+export function maxRoundNumberInMatches(matches: ParsedMatch[]): number {
+  let max = 0
+  for (const m of matches) {
+    if (Number.isFinite(m.roundNumber)) max = Math.max(max, m.roundNumber)
+  }
+  return max
+}
+
 /** Agrupa partidas por número de ronda (orden ascendente). */
 export function groupMatchesByRound(
   matches: ParsedMatch[]
@@ -242,6 +259,13 @@ export function groupMatchesByRound(
     map.set(m.roundNumber, list)
   }
   return new Map([...map.entries()].sort((a, b) => a[0] - b[0]))
+}
+
+/** True si el XML trae al menos un jugador en algún pod de &lt;standings&gt;. */
+export function tdfStandingsHasPlayers(
+  standings: ParsedStandingsPod[]
+): boolean {
+  return standings.some(pod => pod.players.some(p => p.popId.trim().length > 0))
 }
 
 /** Payload de clasificación por categoría (0 Júnior, 1 Sénior, 2 Máster). */
