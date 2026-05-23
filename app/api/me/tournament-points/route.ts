@@ -5,7 +5,6 @@ import { isTournamentPointsEnabledForStore } from '@/lib/tournament-points-setti
 import { popidForStorage } from '@/lib/rut-chile'
 import User from '@/models/User'
 import WeeklyEvent from '@/models/WeeklyEvent'
-import { LEGACY_IMPORT_EVENT_TITLE_PREFIX } from '@/lib/tournament-points-legacy-label'
 import TournamentPointsAward, {
   type ITournamentPointsAward
 } from '@/models/TournamentPointsAward'
@@ -64,7 +63,9 @@ export async function GET() {
       _id: mongoose.Types.ObjectId
     })[]
 
-    const eventIds = awards.map(a => a.eventId).filter(Boolean)
+    const eventIds = awards
+      .map(a => a.eventId)
+      .filter((id): id is NonNullable<typeof id> => id != null)
     const eventDates = new Map<
       string,
       { startsAt: Date | null; title: string }
@@ -88,10 +89,17 @@ export async function GET() {
     let totalPoints = 0
 
     for (const award of awards) {
-      const eid = String(award.eventId)
-      const meta = eventDates.get(eid)
+      const eid = award.eventId ? String(award.eventId) : String(award._id)
+      const meta = award.eventId
+        ? eventDates.get(String(award.eventId))
+        : undefined
+      const awardedAtDoc = (award as { awardedAt?: Date }).awardedAt
       const awardedAt =
-        award.createdAt instanceof Date ? award.createdAt.toISOString() : null
+        awardedAtDoc instanceof Date
+          ? awardedAtDoc.toISOString()
+          : award.createdAt instanceof Date
+            ? award.createdAt.toISOString()
+            : null
 
       for (const row of award.rows ?? []) {
         const rowPop = popidForStorage(row.popId)
@@ -105,14 +113,9 @@ export async function GET() {
         const pts = Math.max(0, Math.round(Number(row.points) || 0))
         totalPoints += pts
         const eventTitle = award.eventTitle || meta?.title || 'Torneo'
-        const legacyImport =
-          meta?.title?.startsWith(LEGACY_IMPORT_EVENT_TITLE_PREFIX) ?? false
-        const displayStartsAt =
-          legacyImport && awardedAt
-            ? awardedAt
-            : meta?.startsAt
-              ? meta.startsAt.toISOString()
-              : awardedAt
+        const displayStartsAt = meta?.startsAt
+          ? meta.startsAt.toISOString()
+          : awardedAt
 
         entries.push({
           eventId: eid,

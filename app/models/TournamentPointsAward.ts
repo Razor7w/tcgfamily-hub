@@ -10,8 +10,13 @@ export interface ITournamentPointsAwardRow {
 
 export interface ITournamentPointsAward extends Document {
   storeId: Types.ObjectId
-  eventId: Types.ObjectId
+  /** Torneo real en la app; ausente en importaciones CSV históricas. */
+  eventId?: Types.ObjectId
+  /** Clave estable por grupo CSV sin `evento_id` (única por tienda). */
+  importGroupKey?: string
   eventTitle: string
+  /** Fecha mostrada en historial cuando no hay `eventId`. */
+  awardedAt?: Date
   playerCount: number
   topCount: number
   rows: ITournamentPointsAwardRow[]
@@ -40,9 +45,16 @@ const TournamentPointsAwardSchema = new Schema<ITournamentPointsAward>(
     eventId: {
       type: Schema.Types.ObjectId,
       ref: 'WeeklyEvent',
-      required: true
+      required: false
+    },
+    importGroupKey: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: 320
     },
     eventTitle: { type: String, required: true, trim: true, maxlength: 300 },
+    awardedAt: { type: Date, required: false },
     playerCount: { type: Number, required: true, min: 0, max: 9999 },
     topCount: { type: Number, required: true, min: 0, max: 9999 },
     rows: { type: [RowSchema], default: [] },
@@ -51,7 +63,20 @@ const TournamentPointsAwardSchema = new Schema<ITournamentPointsAward>(
   { timestamps: true }
 )
 
-TournamentPointsAwardSchema.index({ storeId: 1, eventId: 1 }, { unique: true })
+TournamentPointsAwardSchema.index(
+  { storeId: 1, eventId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { eventId: { $type: 'objectId' } }
+  }
+)
+TournamentPointsAwardSchema.index(
+  { storeId: 1, importGroupKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { importGroupKey: { $type: 'string' } }
+  }
+)
 
 export default mongoose.models.TournamentPointsAward ||
   mongoose.model<ITournamentPointsAward>(

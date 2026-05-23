@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     const entries = logs.map(l => ({
       id: String(l._id),
       awardId: String(l.awardId),
-      eventId: String(l.eventId),
+      eventId: l.eventId ? String(l.eventId) : null,
       eventTitle: String(l.eventTitle ?? ''),
       action: l.action,
       summary: String(l.summary ?? ''),

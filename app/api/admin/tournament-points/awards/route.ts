@@ -34,7 +34,9 @@ export async function GET() {
       updatedAt?: Date
     })[]
 
-    const eventIds = awards.map(a => a.eventId)
+    const eventIds = awards
+      .map(a => a.eventId)
+      .filter((id): id is NonNullable<typeof id> => id != null)
     const eventMeta = new Map<
       string,
       { startsAt: string | null; title: string }
@@ -55,22 +57,27 @@ export async function GET() {
     }
 
     const list = awards.map(a => {
-      const eid = String(a.eventId)
-      const meta = eventMeta.get(eid)
+      const eid = a.eventId ? String(a.eventId) : null
+      const meta = eid ? eventMeta.get(eid) : undefined
       const rows = a.rows ?? []
+      const awardedAtFromDoc = (a as { awardedAt?: Date }).awardedAt
+      const createdAt = (a as { createdAt?: Date }).createdAt
+      const awardedAtIso =
+        awardedAtFromDoc instanceof Date
+          ? awardedAtFromDoc.toISOString()
+          : createdAt instanceof Date
+            ? createdAt.toISOString()
+            : null
       return {
         id: String(a._id),
         eventId: eid,
         eventTitle: a.eventTitle || meta?.title || 'Torneo',
-        startsAt: meta?.startsAt ?? null,
+        startsAt: meta?.startsAt ?? awardedAtIso,
         playerCount: a.playerCount,
         topCount: a.topCount,
         pointsTotal: rows.reduce((s, r) => s + (r.points ?? 0), 0),
         rowCount: rows.length,
-        awardedAt:
-          (a as { createdAt?: Date }).createdAt instanceof Date
-            ? (a as { createdAt: Date }).createdAt.toISOString()
-            : null,
+        awardedAt: awardedAtIso,
         updatedAt:
           (a as { updatedAt?: Date }).updatedAt instanceof Date
             ? (a as { updatedAt: Date }).updatedAt.toISOString()

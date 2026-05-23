@@ -159,7 +159,7 @@ export default function TournamentPointsCsvImport() {
 
           {importMutation.isSuccess && importMutation.data ? (
             <Alert severity="success" onClose={() => importMutation.reset()}>
-              {importMutation.data.eventsCreated} torneo(s) importado(s),{' '}
+              {importMutation.data.eventsCreated} asignación(es) importada(s),{' '}
               {importMutation.data.rowsImported} fila(s).
               {importMutation.data.eventsSkipped > 0
                 ? ` Omitidos: ${importMutation.data.eventsSkipped}.`

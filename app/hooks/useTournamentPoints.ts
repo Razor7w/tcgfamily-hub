@@ -164,7 +164,7 @@ export function useSaveTournamentPointsAward(eventId: string) {
 
 export type TournamentPointsAwardListItem = {
   id: string
-  eventId: string
+  eventId: string | null
   eventTitle: string
   startsAt: string | null
   playerCount: number
@@ -203,7 +203,7 @@ export type TournamentPointsAggregatedPlayer = {
 export type TournamentPointsAuditEntry = {
   id: string
   awardId: string
-  eventId: string
+  eventId: string | null
   eventTitle: string
   action: 'created' | 'updated' | 'deducted'
   summary: string

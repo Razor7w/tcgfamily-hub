@@ -19,8 +19,8 @@ export function parseLegacyEventDate(
 }
 
 /**
- * Torneo cerrado “contenedor” para puntos históricos sin WeeklyEvent previo.
- * Un documento por tienda + nombre de torneo (+ fecha si se indica).
+ * @deprecated Las importaciones CSV ya no crean WeeklyEvent; usan
+ * `importGroupKey` en `TournamentPointsAward`. Se mantiene por si hay datos legacy.
  */
 export async function findOrCreateLegacyImportEvent(
   storeOid: mongoose.Types.ObjectId,
