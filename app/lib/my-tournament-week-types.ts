@@ -17,8 +17,8 @@ export type MyTournamentWeekItem = {
   deckPokemonSlugs?: string[]
 }
 
-/** Ítem para la tarjeta de torneos en Inicio (`/dashboard`): solo preinscripciones activas. */
+/** Ítem para la tarjeta de torneos en Inicio (`/dashboard`). */
 export type MyHomeTournamentItem = MyTournamentWeekItem & {
   storeName: string
-  registrationKind: 'pre_registered'
+  registrationKind: 'pre_registered' | 'finished'
 }

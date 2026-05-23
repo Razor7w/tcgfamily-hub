@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import ChevronRight from '@mui/icons-material/ChevronRight'
 import EmojiEventsOutlined from '@mui/icons-material/EmojiEventsOutlined'
@@ -8,11 +8,15 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 import Stack from '@mui/material/Stack'
+import Tab from '@mui/material/Tab'
+import Tabs from '@mui/material/Tabs'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import { useMyHomeTournaments } from '@/hooks/useWeeklyEvents'
 import type { MyHomeTournamentItem } from '@/lib/my-tournament-week-types'
 import type { WeeklyEventState } from '@/models/WeeklyEvent'
+
+type HomeTournamentTab = 'upcoming' | 'finished'
 
 type FlatRow = {
   tournament: MyHomeTournamentItem
@@ -44,12 +48,20 @@ function buildFlatRows(tournaments: MyHomeTournamentItem[]): FlatRow[] {
   return rows
 }
 
-function stateShortLabel(s: WeeklyEventState): string {
+function stateShortLabel(
+  s: WeeklyEventState,
+  kind: MyHomeTournamentItem['registrationKind']
+): string {
+  if (kind === 'finished') return 'Finalizado'
   if (s === 'running') return 'En curso'
   return 'Programado'
 }
 
-function stateMetaColor(s: WeeklyEventState): string {
+function stateMetaColor(
+  s: WeeklyEventState,
+  kind: MyHomeTournamentItem['registrationKind']
+): string {
+  if (kind === 'finished') return 'success.main'
   if (s === 'running') return 'warning.dark'
   return 'text.secondary'
 }
@@ -65,8 +77,161 @@ function formatEventStartsAt(iso: string): string {
   })
 }
 
-function subtitleForCount(count: number): string {
-  return count === 1 ? '1 preinscrito' : `${count} preinscritos`
+function wltCompact(t: MyHomeTournamentItem): string | null {
+  const r = t.myMatchRecord
+  if (!r) return null
+  const sum = r.wins + r.losses + r.ties
+  if (sum === 0) return null
+  return `${r.wins}-${r.losses}-${r.ties}`
+}
+
+function TabCount({ count, active }: { count: number; active: boolean }) {
+  if (count <= 0) return null
+  return (
+    <Box
+      component="span"
+      sx={{
+        ml: 0.5,
+        minWidth: 18,
+        height: 18,
+        px: 0.5,
+        borderRadius: 9,
+        display: 'inline-grid',
+        placeItems: 'center',
+        fontSize: '0.6875rem',
+        fontWeight: 800,
+        fontVariantNumeric: 'tabular-nums',
+        lineHeight: 1,
+        bgcolor: t =>
+          active
+            ? alpha(t.palette.primary.main, 0.18)
+            : alpha(t.palette.text.primary, 0.08),
+        color: active ? 'primary.dark' : 'text.secondary'
+      }}
+    >
+      {count}
+    </Box>
+  )
+}
+
+function TournamentRow({
+  t,
+  storeLabel,
+  showStore
+}: {
+  t: MyHomeTournamentItem
+  storeLabel: string
+  showStore: boolean
+}) {
+  const startsAtLabel = formatEventStartsAt(t.startsAt)
+  const isFinished = t.registrationKind === 'finished'
+  const metaState = stateShortLabel(t.state, t.registrationKind)
+  const wlt = wltCompact(t)
+  const href = `/dashboard/torneos-semana/${t.eventId}`
+
+  return (
+    <Box
+      component="li"
+      sx={{
+        '&:hover': {
+          bgcolor: theme => alpha(theme.palette.primary.main, 0.04)
+        },
+        '&:active': {
+          bgcolor: theme => alpha(theme.palette.primary.main, 0.07)
+        }
+      }}
+    >
+      <Box
+        component={Link}
+        href={href}
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: isFinished
+            ? {
+                xs: 'minmax(4.5rem, 28%) minmax(0, 1fr) minmax(5.5rem, 34%)',
+                sm: 'minmax(5rem, 24%) minmax(0, 1fr) minmax(7.5rem, 30%)'
+              }
+            : {
+                xs: 'minmax(4.5rem, 26%) minmax(0, 1fr) auto minmax(5.5rem, 34%)',
+                sm: 'minmax(5rem, 22%) minmax(0, 1fr) auto minmax(7.5rem, 30%)'
+              },
+          columnGap: { xs: 0.75, sm: 1 },
+          alignItems: 'center',
+          px: { xs: 1.5, sm: 2 },
+          py: { xs: 0.85, sm: 0.95 },
+          minHeight: 44,
+          textDecoration: 'none',
+          color: 'inherit',
+          transition: 'background-color 0.2s ease'
+        }}
+      >
+        <Typography
+          variant="caption"
+          component="span"
+          sx={{
+            fontWeight: 700,
+            lineHeight: 1.2,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            color: showStore ? 'text.primary' : 'text.disabled',
+            opacity: showStore ? 1 : 0
+          }}
+          aria-hidden={!showStore}
+        >
+          {storeLabel}
+        </Typography>
+
+        <Typography
+          variant="body2"
+          component="span"
+          noWrap
+          sx={{
+            fontWeight: 700,
+            fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+            minWidth: 0
+          }}
+          title={t.title}
+        >
+          {t.title}
+        </Typography>
+
+        {!isFinished ? (
+          <Typography
+            variant="caption"
+            component="span"
+            sx={{
+              fontWeight: 800,
+              fontVariantNumeric: 'tabular-nums',
+              color: stateMetaColor(t.state, t.registrationKind),
+              px: 0.5,
+              flexShrink: 0
+            }}
+          >
+            {metaState}
+          </Typography>
+        ) : null}
+
+        <Typography
+          variant="caption"
+          component="span"
+          noWrap
+          sx={{
+            fontWeight: 700,
+            fontVariantNumeric: 'tabular-nums',
+            color: 'text.secondary',
+            flexShrink: 0,
+            minWidth: 0,
+            textAlign: 'right',
+            fontSize: { xs: '0.65rem', sm: '0.7rem' }
+          }}
+          title={wlt ? `Récord ${wlt} · ${startsAtLabel}` : startsAtLabel}
+        >
+          {wlt ?? startsAtLabel}
+        </Typography>
+      </Box>
+    </Box>
+  )
 }
 
 export default function DashboardHomeTournamentsCard() {
@@ -75,15 +240,45 @@ export default function DashboardHomeTournamentsCard() {
     () => data?.tournaments ?? [],
     [data?.tournaments]
   )
+  const finishedTournaments = useMemo(
+    () => data?.finishedTournaments ?? [],
+    [data?.finishedTournaments]
+  )
   const flatRows = useMemo(() => buildFlatRows(tournaments), [tournaments])
+  const finishedRows = useMemo(
+    () => buildFlatRows(finishedTournaments),
+    [finishedTournaments]
+  )
   const hiddenCount = data?.hiddenCount ?? 0
-  const storeCount = useMemo(
+  const preRegistered = data?.preRegisteredCount ?? 0
+  const finishedTotal = data?.finishedCount ?? finishedTournaments.length
+
+  const hasUpcoming = tournaments.length > 0
+  const hasFinished = finishedTournaments.length > 0
+  const hasAny = hasUpcoming || hasFinished
+
+  const autoTab = useMemo((): HomeTournamentTab => {
+    if (!hasUpcoming && hasFinished) return 'finished'
+    return 'upcoming'
+  }, [hasUpcoming, hasFinished])
+
+  const [userTab, setUserTab] = useState<HomeTournamentTab | null>(null)
+  const tab = userTab ?? autoTab
+  const showTabs = hasUpcoming && hasFinished
+  const effectiveTab: HomeTournamentTab = showTabs
+    ? tab
+    : hasUpcoming
+      ? 'upcoming'
+      : 'finished'
+
+  const upcomingStoreCount = useMemo(
     () => new Set(flatRows.map(r => r.storeKey)).size,
     [flatRows]
   )
-
-  const preRegistered = data?.preRegisteredCount ?? 0
-  const hasAny = tournaments.length > 0
+  const finishedStoreCount = useMemo(
+    () => new Set(finishedRows.map(r => r.storeKey)).size,
+    [finishedRows]
+  )
 
   if (isPending) {
     return (
@@ -136,7 +331,32 @@ export default function DashboardHomeTournamentsCard() {
     return null
   }
 
-  const subtitle = subtitleForCount(preRegistered)
+  const headerSubtitle =
+    effectiveTab === 'upcoming'
+      ? `${preRegistered === 1 ? '1 preinscrito' : `${preRegistered} preinscritos`}${
+          upcomingStoreCount > 1
+            ? ` · ${upcomingStoreCount} tiendas`
+            : flatRows[0]
+              ? ` · ${flatRows[0].storeLabel}`
+              : ''
+        }`
+      : `${finishedTournaments.length === 1 ? '1 finalizado' : `${finishedTournaments.length} finalizados`}${
+          finishedStoreCount > 1
+            ? ` · ${finishedStoreCount} tiendas`
+            : finishedRows[0]
+              ? ` · ${finishedRows[0].storeLabel}`
+              : ''
+        }`
+
+  const singleFinished =
+    finishedTournaments.length === 1 ? finishedTournaments[0] : null
+  const reportHref = singleFinished
+    ? `/dashboard/torneos-semana/${singleFinished.eventId}`
+    : '/dashboard/torneos-semana'
+  const finishedHiddenCount = Math.max(
+    0,
+    finishedTotal - finishedTournaments.length
+  )
 
   return (
     <Box
@@ -162,7 +382,7 @@ export default function DashboardHomeTournamentsCard() {
         sx={{
           px: { xs: 1.5, sm: 2 },
           pt: { xs: 1.25, sm: 1.5 },
-          pb: 0.75,
+          pb: showTabs ? 0.5 : 0.75,
           background: t =>
             `linear-gradient(90deg, ${alpha(
               t.palette.primary.main,
@@ -191,147 +411,143 @@ export default function DashboardHomeTournamentsCard() {
             component="h2"
             sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}
           >
-            Próximos torneos
+            {showTabs
+              ? 'Mis torneos'
+              : effectiveTab === 'upcoming'
+                ? 'Próximos torneos'
+                : 'Torneo finalizado'}
           </Typography>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ display: 'block', mt: 0.15, fontWeight: 500 }}
-          >
-            {subtitle}
-            {storeCount > 1
-              ? ` · ${storeCount} tiendas`
-              : flatRows[0]
-                ? ` · ${flatRows[0].storeLabel}`
-                : ''}
-          </Typography>
+          {headerSubtitle ? (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: 'block', mt: 0.15, fontWeight: 500 }}
+            >
+              {headerSubtitle}
+            </Typography>
+          ) : null}
         </Box>
       </Stack>
 
-      <Box
-        sx={{
-          borderBottom: '1px solid',
-          borderColor: t => alpha(t.palette.divider, 0.9)
-        }}
-      />
-
-      <Box
-        component="ul"
-        sx={{
-          m: 0,
-          p: 0,
-          listStyle: 'none',
-          '& > li:not(:last-child)': {
+      {showTabs ? (
+        <Tabs
+          value={tab}
+          onChange={(_e, v) => setUserTab(v as HomeTournamentTab)}
+          variant="fullWidth"
+          sx={{
+            minHeight: 40,
+            px: { xs: 1, sm: 1.5 },
             borderBottom: '1px solid',
-            borderColor: t => alpha(t.palette.divider, 0.85)
-          }
-        }}
-      >
-        {flatRows.map(({ tournament: t, storeLabel, showStore }) => {
-          const startsAtLabel = formatEventStartsAt(t.startsAt)
-          const metaState = stateShortLabel(t.state)
-          const href = `/dashboard/torneos-semana/${t.eventId}`
+            borderColor: t => alpha(t.palette.divider, 0.9),
+            '& .MuiTabs-indicator': {
+              height: 2.5,
+              borderRadius: '2px 2px 0 0'
+            },
+            '& .MuiTab-root': {
+              minHeight: 40,
+              py: 0.75,
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: '0.8125rem',
+              letterSpacing: '-0.01em',
+              '&.Mui-selected': { fontWeight: 800 }
+            }
+          }}
+        >
+          <Tab
+            value="upcoming"
+            label={
+              <Stack direction="row" alignItems="center" component="span">
+                Próximos
+                <TabCount count={preRegistered} active={tab === 'upcoming'} />
+              </Stack>
+            }
+          />
+          <Tab
+            value="finished"
+            label={
+              <Stack direction="row" alignItems="center" component="span">
+                Finalizados
+                <TabCount
+                  count={finishedTournaments.length}
+                  active={tab === 'finished'}
+                />
+              </Stack>
+            }
+          />
+        </Tabs>
+      ) : (
+        <Box
+          sx={{
+            borderBottom: '1px solid',
+            borderColor: t => alpha(t.palette.divider, 0.9)
+          }}
+        />
+      )}
 
-          return (
-            <Box
-              component="li"
-              key={t.eventId}
-              sx={{
-                '&:hover': {
-                  bgcolor: t => alpha(t.palette.primary.main, 0.04)
-                },
-                '&:active': {
-                  bgcolor: t => alpha(t.palette.primary.main, 0.07)
-                }
-              }}
-            >
-              <Box
-                component={Link}
-                href={href}
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: {
-                    xs: 'minmax(4.5rem, 26%) minmax(0, 1fr) auto minmax(5.5rem, 34%)',
-                    sm: 'minmax(5rem, 22%) minmax(0, 1fr) auto minmax(7.5rem, 30%)'
-                  },
-                  columnGap: { xs: 0.75, sm: 1 },
-                  alignItems: 'center',
-                  px: { xs: 1.5, sm: 2 },
-                  py: { xs: 0.85, sm: 0.95 },
-                  minHeight: 44,
-                  textDecoration: 'none',
-                  color: 'inherit',
-                  transition: 'background-color 0.2s ease'
-                }}
-              >
-                <Typography
-                  variant="caption"
-                  component="span"
-                  sx={{
-                    fontWeight: 700,
-                    lineHeight: 1.2,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    color: showStore ? 'text.primary' : 'text.disabled',
-                    opacity: showStore ? 1 : 0
-                  }}
-                  aria-hidden={!showStore}
-                >
-                  {storeLabel}
-                </Typography>
-
-                <Typography
-                  variant="body2"
-                  component="span"
-                  noWrap
-                  sx={{
-                    fontWeight: 700,
-                    fontSize: { xs: '0.8125rem', sm: '0.875rem' },
-                    minWidth: 0
-                  }}
-                  title={t.title}
-                >
-                  {t.title}
-                </Typography>
-
-                <Typography
-                  variant="caption"
-                  component="span"
-                  sx={{
-                    fontWeight: 800,
-                    fontVariantNumeric: 'tabular-nums',
-                    color: stateMetaColor(t.state),
-                    px: 0.5,
-                    flexShrink: 0
-                  }}
-                  title="Preinscrito"
-                >
-                  {metaState}
-                </Typography>
-
-                <Typography
-                  variant="caption"
-                  component="span"
-                  noWrap
-                  sx={{
-                    fontWeight: 700,
-                    fontVariantNumeric: 'tabular-nums',
-                    color: 'text.secondary',
-                    flexShrink: 0,
-                    minWidth: 0,
-                    textAlign: 'right',
-                    fontSize: { xs: '0.65rem', sm: '0.7rem' }
-                  }}
-                  title={startsAtLabel}
-                >
-                  {startsAtLabel}
-                </Typography>
-              </Box>
-            </Box>
-          )
-        })}
-      </Box>
+      {effectiveTab === 'upcoming' ? (
+        hasUpcoming ? (
+          <Box
+            component="ul"
+            sx={{
+              m: 0,
+              p: 0,
+              listStyle: 'none',
+              '& > li:not(:last-child)': {
+                borderBottom: '1px solid',
+                borderColor: t => alpha(t.palette.divider, 0.85)
+              }
+            }}
+          >
+            {flatRows.map(row => (
+              <TournamentRow
+                key={row.tournament.eventId}
+                t={row.tournament}
+                storeLabel={row.storeLabel}
+                showStore={row.showStore}
+              />
+            ))}
+          </Box>
+        ) : (
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ px: 2, py: 2.5, lineHeight: 1.55 }}
+          >
+            No tienes torneos preinscritos activos.
+          </Typography>
+        )
+      ) : hasFinished ? (
+        <Box
+          component="ul"
+          sx={{
+            m: 0,
+            p: 0,
+            listStyle: 'none',
+            '& > li:not(:last-child)': {
+              borderBottom: '1px solid',
+              borderColor: t => alpha(t.palette.divider, 0.85)
+            }
+          }}
+        >
+          {finishedRows.map(row => (
+            <TournamentRow
+              key={row.tournament.eventId}
+              t={row.tournament}
+              storeLabel={row.storeLabel}
+              showStore={row.showStore}
+            />
+          ))}
+        </Box>
+      ) : (
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ px: 2, py: 2.5, lineHeight: 1.55 }}
+        >
+          No hay torneos finalizados recientes.
+        </Typography>
+      )}
 
       <Stack
         direction="row"
@@ -345,7 +561,7 @@ export default function DashboardHomeTournamentsCard() {
           bgcolor: t => alpha(t.palette.primary.main, 0.04)
         }}
       >
-        {hiddenCount > 0 ? (
+        {effectiveTab === 'upcoming' && hiddenCount > 0 ? (
           <Typography
             variant="caption"
             color="text.secondary"
@@ -353,26 +569,58 @@ export default function DashboardHomeTournamentsCard() {
           >
             +{hiddenCount} más
           </Typography>
+        ) : effectiveTab === 'finished' && finishedHiddenCount > 0 ? (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontWeight: 600 }}
+          >
+            +{finishedHiddenCount} más
+          </Typography>
         ) : (
           <Box />
         )}
-        <Button
-          component={Link}
-          href="/dashboard/torneos-semana"
-          size="small"
-          color="primary"
-          endIcon={<ChevronRight sx={{ fontSize: 18 }} />}
-          sx={{
-            fontWeight: 700,
-            textTransform: 'none',
-            minWidth: 0,
-            py: 0.5,
-            transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-            '&:active': { transform: 'scale(0.98)' }
-          }}
-        >
-          Ver todos
-        </Button>
+        {effectiveTab === 'finished' && singleFinished ? (
+          <Button
+            component={Link}
+            href={reportHref}
+            size="small"
+            variant="contained"
+            color="primary"
+            endIcon={<ChevronRight sx={{ fontSize: 18 }} />}
+            sx={{
+              fontWeight: 700,
+              textTransform: 'none',
+              minWidth: 0,
+              py: 0.5,
+              ml: 'auto',
+              boxShadow: 'none',
+              transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+              '&:active': { transform: 'scale(0.98)' }
+            }}
+          >
+            Reportar rondas
+          </Button>
+        ) : (
+          <Button
+            component={Link}
+            href="/dashboard/torneos-semana"
+            size="small"
+            color="primary"
+            endIcon={<ChevronRight sx={{ fontSize: 18 }} />}
+            sx={{
+              fontWeight: 700,
+              textTransform: 'none',
+              minWidth: 0,
+              py: 0.5,
+              ml: 'auto',
+              transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+              '&:active': { transform: 'scale(0.98)' }
+            }}
+          >
+            Ver todos
+          </Button>
+        )}
       </Stack>
     </Box>
   )

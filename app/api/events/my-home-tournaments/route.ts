@@ -22,7 +22,9 @@ function storeKeyFor(t: MyHomeTournamentItem): string {
 
 function limitPerStore(
   items: MyHomeTournamentItem[],
-  maxPerStore: number
+  maxPerStore: number,
+  /** Próximos: más cercano primero; finalizados: más reciente primero. */
+  sortDir: 'asc' | 'desc' = 'asc'
 ): MyHomeTournamentItem[] {
   const byStore = new Map<string, MyHomeTournamentItem[]>()
   for (const t of items) {
@@ -32,20 +34,46 @@ function limitPerStore(
     byStore.set(key, list)
   }
 
+  const cmp = (a: MyHomeTournamentItem, b: MyHomeTournamentItem) => {
+    const ta = new Date(a.startsAt).getTime()
+    const tb = new Date(b.startsAt).getTime()
+    return sortDir === 'asc' ? ta - tb : tb - ta
+  }
+
   const out: MyHomeTournamentItem[] = []
   for (const list of byStore.values()) {
-    const sorted = [...list].sort(
-      (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
-    )
+    const sorted = [...list].sort(cmp)
     out.push(...sorted.slice(0, maxPerStore))
   }
-  return out.sort(
-    (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
-  )
+  return out.sort(cmp)
+}
+
+/** Un torneo finalizado por tienda (el más reciente en cada una). */
+function lastFinishedPerStore(
+  items: MyHomeTournamentItem[]
+): MyHomeTournamentItem[] {
+  return limitPerStore(items, 1, 'desc')
+}
+
+function mapToHomeItem(
+  d: {
+    state?: string
+    storeId?: unknown
+    tournamentOrigin?: string
+  },
+  base: NonNullable<ReturnType<typeof buildMyTournamentWeekItemFromLean>>,
+  registrationKind: MyHomeTournamentItem['registrationKind']
+): MyHomeTournamentItem {
+  const storeName = storeNameFromLean(d.storeId)
+  return {
+    ...base,
+    storeName,
+    registrationKind
+  }
 }
 
 /**
- * Torneos del inicio: solo preinscripciones activas (programado / en curso, sin finalizar).
+ * Torneos del inicio: preinscripciones activas + último finalizado por tienda.
  */
 export async function GET() {
   try {
@@ -72,37 +100,62 @@ export async function GET() {
 
     await connectDB()
 
-    const docs = await WeeklyEvent.find({
-      kind: 'tournament',
-      tournamentOrigin: { $ne: 'custom' },
-      state: { $in: ['schedule', 'running'] },
+    const participantFilter = {
+      kind: 'tournament' as const,
+      tournamentOrigin: { $ne: 'custom' as const },
       participants: { $elemMatch: { userId: uid } }
-    })
-      .populate({ path: 'storeId', select: 'name slug' })
-      .sort({ startsAt: 1 })
-      .limit(80)
-      .lean()
+    }
 
-    const allItems = docs
+    const [upcomingDocs, finishedDocs] = await Promise.all([
+      WeeklyEvent.find({
+        ...participantFilter,
+        state: { $in: ['schedule', 'running'] }
+      })
+        .populate({ path: 'storeId', select: 'name slug' })
+        .sort({ startsAt: 1 })
+        .limit(80)
+        .lean(),
+      WeeklyEvent.find({
+        ...participantFilter,
+        state: 'close'
+      })
+        .populate({ path: 'storeId', select: 'name slug' })
+        .sort({ startsAt: -1 })
+        .limit(80)
+        .lean()
+    ])
+
+    const allUpcoming = upcomingDocs
       .map(d => {
         const base = buildMyTournamentWeekItemFromLean(d, userId, userPopId)
-        if (!base) return null
-        if (base.state === 'close') return null
-        const storeName = storeNameFromLean(d.storeId)
-        return {
-          ...base,
-          storeName,
-          registrationKind: 'pre_registered'
-        } satisfies MyHomeTournamentItem
+        if (!base || base.state === 'close') return null
+        return mapToHomeItem(d, base, 'pre_registered')
       })
       .filter((x): x is MyHomeTournamentItem => x !== null)
 
-    const preRegisteredCount = allItems.length
-    const tournaments = limitPerStore(allItems, PER_STORE_LIMIT)
-    const hiddenCount = allItems.length - tournaments.length
+    const preRegisteredCount = allUpcoming.length
+    const tournaments = limitPerStore(allUpcoming, PER_STORE_LIMIT)
+    const hiddenCount = allUpcoming.length - tournaments.length
+
+    const allFinished = finishedDocs
+      .map(d => {
+        const base = buildMyTournamentWeekItemFromLean(d, userId, userPopId)
+        if (!base) return null
+        return mapToHomeItem(d, base, 'finished')
+      })
+      .filter((x): x is MyHomeTournamentItem => x !== null)
+
+    const finishedCount = allFinished.length
+    const finishedTournaments = lastFinishedPerStore(allFinished)
 
     return NextResponse.json(
-      { tournaments, preRegisteredCount, hiddenCount },
+      {
+        tournaments,
+        preRegisteredCount,
+        hiddenCount,
+        finishedTournaments,
+        finishedCount
+      },
       { status: 200 }
     )
   } catch (error) {
