@@ -182,6 +182,8 @@ export function useMyHomeTournaments() {
     tournaments: MyHomeTournamentItem[]
     preRegisteredCount: number
     hiddenCount: number
+    finishedTournaments: MyHomeTournamentItem[]
+    finishedCount: number
   }>({
     queryKey: ['my-home-tournaments'],
     queryFn: async () => {
