@@ -10,6 +10,30 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [1.3.0] - 2026-05-23
+
+**Puntos por torneo** en admin y hub de tienda: reparto tras torneos cerrados, gestión unificada por jugador, importación histórica CSV y nombre personalizable de los puntos.
+
+### Añadido
+
+- **Módulo Admin → Puntos de tienda** con dos funciones configurables bajo «Crédito de tienda»: **CSV tienda** (saldo por reporte) y **Puntos torneo** (reparto y gestión); menú visible si al menos una está activa.
+- **Reparto por torneo** (`TournamentPointsAwardPanel`): torneos finalizados, distribución sugerida (1 pt/jugador inscrito, top mitad), tabla editable y aplicación al saldo con auditoría.
+- **Gestión y auditoría** (`TournamentPointsManagePanel`): lista **unificada por jugador** (cuenta/POP), descuento con motivo obligatorio repartido en FIFO entre asignaciones, pestaña de historial.
+- **Importación CSV** de asignaciones históricas o por `evento_id`; duplicados de POP en el mismo torneo **suman** puntos.
+- **Nombre personalizable** de los puntos (`/admin/puntos`, campo «¿Cómo quieres que se llamen tus puntos?»); por defecto «Puntos por torneo»; API `PATCH /api/admin/tournament-points/settings`.
+- **Tarjeta en hub del jugador** (`StoreHubTournamentPointsCard`): total, último torneo e historial reciente; oculta **Crédito de tienda** si CSV está desactivado.
+- Modelos `TournamentPointsAward`, `TournamentPointsAuditLog`; APIs admin (`awards`, `deduct`, `import`, `events`, `audit-log`) y `GET /api/me/tournament-points`.
+
+### Cambiado
+
+- Configuración de dashboard: flags `storeCreditCsvEnabled`, `storeCreditTournamentPointsEnabled` y `tournamentPointsDisplayName` por tienda.
+- `GET /api/admin/tournament-points/awards` devuelve jugadores **agregados** (`players`) en lugar de una fila por torneo/importación.
+
+### Corregido
+
+- Fecha de importación histórica usa el día de importación (no 2020-01-01 por defecto).
+- React 19: sin `setState` en efectos en paneles de reparto y gestión (`TournamentPointsAwardPanel`, `TournamentPointsManagePanel`).
+
 ## [1.2.0] - 2026-05-21
 
 Correo en el dashboard, login con Google más claro y barra móvil con acceso a tus correos.
