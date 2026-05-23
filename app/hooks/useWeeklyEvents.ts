@@ -700,6 +700,24 @@ export type AdminEventParticipant = {
   createdAt?: string
 }
 
+export type AdminSavedRoundPairing = {
+  tableNumber: string
+  player1PopId: string
+  player2PopId: string
+  player1Name: string
+  player2Name: string
+  player1Record: { wins: number; losses: number; ties: number }
+  player2Record: { wins: number; losses: number; ties: number }
+  isBye: boolean
+}
+
+export type AdminSavedRoundSnapshot = {
+  roundNum: number
+  syncedAt?: string
+  pairings: AdminSavedRoundPairing[]
+  skipped?: { tableNumber: string; reason: string }[]
+}
+
 export interface AdminWeeklyEvent {
   _id: string
   startsAt: string
@@ -723,7 +741,7 @@ export interface AdminWeeklyEvent {
   leagueId?: string | null
   league?: { name: string; slug: string } | null
   /** Snapshots guardados al pulsar «Setear ronda» (persistidos en Mongo). */
-  roundSnapshots?: { roundNum: number; syncedAt?: string }[]
+  roundSnapshots?: AdminSavedRoundSnapshot[]
   /** Clasificación final por categoría (0 Júnior, 1 Sénior, 2 Máster). */
   tournamentStandings?: {
     categoryIndex: number
@@ -962,6 +980,37 @@ export function useAdminSyncEventRound() {
         )
       }
       return data as AdminSyncRoundResult
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-weekly-events'] })
+      queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
+      queryClient.invalidateQueries({ queryKey: ['event-current-round'] })
+      queryClient.invalidateQueries({ queryKey: ['league-public'] })
+    }
+  })
+}
+
+export function useAdminDeleteEventRound() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { eventId: string; roundNum: number }) => {
+      const res = await fetch(
+        `/api/admin/events/${input.eventId}/rounds/${input.roundNum}`,
+        { method: 'DELETE' }
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === 'string'
+            ? data.error
+            : 'Error al borrar la ronda'
+        )
+      }
+      return data as {
+        ok: boolean
+        roundNum: number
+        roundSnapshotsCount: number
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-weekly-events'] })

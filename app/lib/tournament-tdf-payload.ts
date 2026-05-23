@@ -1,11 +1,15 @@
+import { buildInferredStandingsByCategory } from '@/lib/inferred-tdf-standings'
 import {
   buildMatchRecordsFromMatches,
   buildPlayerNameLookup,
   buildRecordsBeforeEachMatch,
+  filterMatchesExcludingRounds,
   foldStandingsByCategory,
   groupMatchesByRound,
+  tdfStandingsHasPlayers,
   type ParseTournamentXmlResult,
-  type ParsedMatch
+  type ParsedMatch,
+  type TournamentStandingsCategoryPayload
 } from '@/lib/tournament-xml'
 
 export type FullTournamentUploadPairingRow = {
@@ -43,15 +47,21 @@ export type FullTournamentUploadPayload = {
  * a partir del XML ya parseado (misma lógica que «Setear ronda» por ronda).
  */
 export function buildFullTournamentUploadPayload(
-  parsed: ParseTournamentXmlResult
+  parsed: ParseTournamentXmlResult,
+  standingsOverride?: TournamentStandingsCategoryPayload[],
+  excludedRoundNums: ReadonlySet<number> = new Set()
 ): FullTournamentUploadPayload {
   const names = buildPlayerNameLookup(parsed.players)
-  const matchRecords = buildMatchRecordsFromMatches(parsed.matches)
-  const recordsBeforeEachMatch = buildRecordsBeforeEachMatch(parsed.matches)
+  const activeMatches = filterMatchesExcludingRounds(
+    parsed.matches,
+    excludedRoundNums
+  )
+  const matchRecords = buildMatchRecordsFromMatches(activeMatches)
+  const recordsBeforeEachMatch = buildRecordsBeforeEachMatch(activeMatches)
   const matchIndexByRef = new Map<ParsedMatch, number>()
-  parsed.matches.forEach((m, i) => matchIndexByRef.set(m, i))
+  activeMatches.forEach((m, i) => matchIndexByRef.set(m, i))
 
-  const rounds = groupMatchesByRound(parsed.matches)
+  const rounds = groupMatchesByRound(activeMatches)
   const roundSnapshots: FullTournamentUploadSnapshot[] = []
 
   for (const [roundNum, list] of rounds) {
@@ -101,10 +111,16 @@ export function buildFullTournamentUploadPayload(
     }
   })
 
+  const standings =
+    standingsOverride ??
+    (tdfStandingsHasPlayers(parsed.standings)
+      ? foldStandingsByCategory(parsed.standings)
+      : buildInferredStandingsByCategory(parsed.players, matchRecords))
+
   return {
     roundNum,
     roundSnapshots,
     participants,
-    standings: foldStandingsByCategory(parsed.standings)
+    standings
   }
 }
