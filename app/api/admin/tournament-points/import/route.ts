@@ -19,11 +19,7 @@ import {
   parseTournamentPointsCsv,
   type TournamentPointsCsvRow
 } from '@/lib/tournament-points-csv'
-import {
-  displayTitleFromLegacyEvent,
-  findOrCreateLegacyImportEvent,
-  legacyImportGroupKey
-} from '@/lib/tournament-points-legacy-event'
+import { normalizeLegacyTournamentLabel } from '@/lib/tournament-points-legacy-label'
 import TournamentPointsAward from '@/models/TournamentPointsAward'
 import type { IWeeklyEvent } from '@/models/WeeklyEvent'
 
@@ -33,14 +29,27 @@ const MAX_GROUPS_PER_IMPORT = 40
 const MAX_ROWS_PER_EVENT = 64
 const MAX_RAW_ROWS_PER_GROUP = 500
 
-async function resolveEventForGroup(
+type ResolvedImportGroup =
+  | {
+      kind: 'event'
+      doc: IWeeklyEvent
+      displayTitle: string
+    }
+  | {
+      kind: 'csv'
+      importGroupKey: string
+      displayTitle: string
+      awardedAt: Date
+    }
+
+async function resolveImportGroup(
   gate: {
     activeStoreOid: mongoose.Types.ObjectId
-    primaryStoreOid?: mongoose.Types.ObjectId | null
   },
+  groupKey: string,
   sample: TournamentPointsCsvRow,
   importPerformedAt: Date
-): Promise<{ doc: IWeeklyEvent; displayTitle: string } | { error: string }> {
+): Promise<ResolvedImportGroup | { error: string }> {
   if (sample.eventId) {
     const doc = await weeklyOfficialByIdForStaffGate(
       gate,
@@ -50,27 +59,22 @@ async function resolveEventForGroup(
       return { error: `Torneo no encontrado o sin acceso: ${sample.eventId}` }
     }
     return {
+      kind: 'event',
       doc,
       displayTitle: String(doc.title ?? '').slice(0, 300)
     }
   }
 
-  const legacyDate =
+  const awardedAt =
     sample.eventDate && !Number.isNaN(sample.eventDate.getTime())
       ? sample.eventDate
       : importPerformedAt
 
-  const doc = await findOrCreateLegacyImportEvent(
-    gate.activeStoreOid,
-    sample.tournamentKey,
-    legacyDate
-  )
   return {
-    doc,
-    displayTitle: displayTitleFromLegacyEvent(String(doc.title ?? '')).slice(
-      0,
-      300
-    )
+    kind: 'csv',
+    importGroupKey: groupKey,
+    displayTitle: normalizeLegacyTournamentLabel(sample.tournamentKey),
+    awardedAt
   }
 }
 
@@ -153,7 +157,7 @@ export async function POST(request: NextRequest) {
     let skippedNoUser = 0
     const errors = [...parseErrors]
 
-    for (const [, rawEventRows] of byGroup) {
+    for (const [groupKey, rawEventRows] of byGroup) {
       const { merged: eventRows, combinedPopRows } =
         mergeImportCsvRowsByPopId(rawEventRows)
       if (combinedPopRows > 0) {
@@ -171,8 +175,9 @@ export async function POST(request: NextRequest) {
       }
 
       const sample = eventRows[0]!
-      const resolved = await resolveEventForGroup(
+      const resolved = await resolveImportGroup(
         gate,
+        groupKey,
         sample,
         importPerformedAt
       )
@@ -182,19 +187,22 @@ export async function POST(request: NextRequest) {
         continue
       }
 
-      const { doc, displayTitle } = resolved
+      const { displayTitle } = resolved
 
-      const existing = await TournamentPointsAward.findOne({
-        storeId: gate.activeStoreOid,
-        eventId: doc._id
-      })
+      const existing =
+        resolved.kind === 'event'
+          ? await TournamentPointsAward.findOne({
+              storeId: gate.activeStoreOid,
+              eventId: resolved.doc._id
+            })
+          : await TournamentPointsAward.findOne({
+              storeId: gate.activeStoreOid,
+              importGroupKey: resolved.importGroupKey
+            })
+
       if (existing) {
-        const label =
-          sample.eventId != null
-            ? displayTitle
-            : legacyImportGroupKey(sample.tournamentKey, sample.eventDate)
         errors.push(
-          `«${label}» ya tiene puntos asignados (omite o edita en gestión)`
+          `«${displayTitle}» ya tiene puntos asignados (omite o edita en gestión)`
         )
         eventsSkipped++
         continue
@@ -227,11 +235,19 @@ export async function POST(request: NextRequest) {
         skippedNoUser += result.skippedNoUser
       }
 
-      const playerCount = Math.max(doc.participants?.length ?? 0, parsed.length)
+      const playerCount =
+        resolved.kind === 'event'
+          ? Math.max(resolved.doc.participants?.length ?? 0, parsed.length)
+          : parsed.length
 
       const award = await TournamentPointsAward.create({
         storeId: gate.activeStoreOid,
-        eventId: doc._id,
+        ...(resolved.kind === 'event'
+          ? { eventId: resolved.doc._id }
+          : {
+              importGroupKey: resolved.importGroupKey,
+              awardedAt: resolved.awardedAt
+            }),
         eventTitle: displayTitle,
         playerCount,
         topCount: parsed.length,
@@ -247,7 +263,10 @@ export async function POST(request: NextRequest) {
       await writeTournamentPointsAuditLog({
         storeId: gate.activeStoreOid,
         awardId: award._id as mongoose.Types.ObjectId,
-        eventId: doc._id as mongoose.Types.ObjectId,
+        eventId:
+          resolved.kind === 'event'
+            ? (resolved.doc._id as mongoose.Types.ObjectId)
+            : undefined,
         eventTitle: displayTitle,
         action: 'created',
         changedByUserId: staffOid,

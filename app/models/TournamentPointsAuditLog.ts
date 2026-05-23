@@ -17,7 +17,7 @@ export interface ITournamentPointsAuditChange {
 export interface ITournamentPointsAuditLog extends Document {
   storeId: Types.ObjectId
   awardId: Types.ObjectId
-  eventId: Types.ObjectId
+  eventId?: Types.ObjectId
   eventTitle: string
   action: TournamentPointsAuditAction
   changedByUserId?: Types.ObjectId
@@ -61,7 +61,7 @@ const TournamentPointsAuditLogSchema = new Schema<ITournamentPointsAuditLog>(
     eventId: {
       type: Schema.Types.ObjectId,
       ref: 'WeeklyEvent',
-      required: true
+      required: false
     },
     eventTitle: { type: String, required: true, trim: true, maxlength: 300 },
     action: {

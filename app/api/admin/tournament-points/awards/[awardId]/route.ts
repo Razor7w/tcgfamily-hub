@@ -124,7 +124,7 @@ export async function PATCH(
     await writeTournamentPointsAuditLog({
       storeId: gate.activeStoreOid,
       awardId: award._id as mongoose.Types.ObjectId,
-      eventId: award.eventId as mongoose.Types.ObjectId,
+      eventId: award.eventId as mongoose.Types.ObjectId | undefined,
       eventTitle: award.eventTitle,
       action: 'deducted',
       changedByUserId: staffOid,

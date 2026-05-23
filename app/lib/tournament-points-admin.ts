@@ -299,7 +299,7 @@ export function buildAuditSummary(
 export async function writeTournamentPointsAuditLog(input: {
   storeId: mongoose.Types.ObjectId
   awardId: mongoose.Types.ObjectId
-  eventId: mongoose.Types.ObjectId
+  eventId?: mongoose.Types.ObjectId
   eventTitle: string
   action: TournamentPointsAuditAction
   changedByUserId?: mongoose.Types.ObjectId
@@ -618,7 +618,7 @@ export async function deductTournamentPointsForPlayer(input: {
     await writeTournamentPointsAuditLog({
       storeId: input.storeOid,
       awardId: slice.award._id as mongoose.Types.ObjectId,
-      eventId: slice.award.eventId as mongoose.Types.ObjectId,
+      eventId: slice.award.eventId as mongoose.Types.ObjectId | undefined,
       eventTitle: slice.award.eventTitle,
       action: 'deducted',
       changedByUserId: input.changedByUserId,
