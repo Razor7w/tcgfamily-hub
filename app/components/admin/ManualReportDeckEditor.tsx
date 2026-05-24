@@ -65,6 +65,8 @@ export default function ManualReportDeckEditor({
 }: Props) {
   const theme = useTheme()
   const userId = participant.userId ?? ''
+  const participantId = participant.participantId ?? ''
+  const hasAccount = Boolean(userId)
   const save = useOwnerSaveParticipantDeck(eventId)
   const { data: allOptions = [], isPending: speciesLoading } =
     usePokemonSpeciesOptions()
@@ -115,37 +117,49 @@ export default function ManualReportDeckEditor({
     return m
   }, [allOptions])
 
+  const participantDeckSlugsKey = participant.deckPokemonSlugs.join('|')
+  const tournamentDecklistRefKey = participant.tournamentDecklistRef
+    ? `${participant.tournamentDecklistRef.decklistId}:${participant.tournamentDecklistRef.listKind}:${participant.tournamentDecklistRef.variantId ?? ''}`
+    : ''
+  const playerDecklistsKey = playerDecklists.map(d => d.id).join(',')
+
   useEffect(() => {
-    if (!userId || speciesLoading || allOptions.length === 0) return
-    const fromDisplay = initialDecklistPickFromTournament(
-      participant.tournamentDecklistRef,
-      participant.tournamentDecklistDisplay,
-      participant.deckPokemonSlugs
-    )
-    const pick =
-      fromDisplay ??
-      findDecklistPickByRef(flatDeckOptions, participant.tournamentDecklistRef)
+    if (speciesLoading || allOptions.length === 0) return
+    const fromDisplay = hasAccount
+      ? initialDecklistPickFromTournament(
+          participant.tournamentDecklistRef,
+          participant.tournamentDecklistDisplay,
+          participant.deckPokemonSlugs
+        )
+      : null
+    const pick = hasAccount
+      ? (fromDisplay ??
+        findDecklistPickByRef(
+          flatDeckOptions,
+          participant.tournamentDecklistRef
+        ))
+      : null
     const slugSource =
       pick?.pokemonSlugs?.length && pick.pokemonSlugs.some(Boolean)
         ? pick.pokemonSlugs
         : participant.deckPokemonSlugs
     const a = slugSource[0] ? (optionBySlug.get(slugSource[0]) ?? null) : null
     const b = slugSource[1] ? (optionBySlug.get(slugSource[1]) ?? null) : null
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     setDecklistPick(pick)
     setSlot1(a)
     setSlot2(b)
     setValidationHint(null)
+    // Solo re-sincronizar al cambiar de jugador o datos guardados del servidor.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- flatDeckOptions/optionBySlug cambian referencia sin cambiar datos
   }, [
-    userId,
+    hasAccount,
     speciesLoading,
     allOptions.length,
-    optionBySlug,
     participant.participantId,
-    participant.deckPokemonSlugs,
-    participant.tournamentDecklistRef,
-    participant.tournamentDecklistDisplay,
-    flatDeckOptions
+    participantDeckSlugsKey,
+    tournamentDecklistRefKey,
+    playerDecklistsKey
   ])
 
   const applyDecklistPick = (opt: SavedDecklistTournamentOption | null) => {
@@ -166,29 +180,27 @@ export default function ManualReportDeckEditor({
       return
     }
     const tournamentDecklistRef: MyTournamentDecklistRefDTO | null =
-      decklistPick
+      hasAccount && decklistPick
         ? {
             decklistId: decklistPick.decklistId,
             listKind: decklistPick.listKind,
             variantId: decklistPick.variantId
           }
         : null
+    if (!hasAccount && !participantId) {
+      setValidationHint(
+        'Este inscrito no tiene ID de participante; vuelve a importar el torneo o vincula por POP.'
+      )
+      return
+    }
     save.mutate(
-      { userId, pokemon, tournamentDecklistRef },
+      {
+        userId: hasAccount ? userId : null,
+        participantId: hasAccount ? null : participantId,
+        pokemon,
+        tournamentDecklistRef
+      },
       { onSuccess: () => onSaved?.() }
-    )
-  }
-
-  if (!userId) {
-    return (
-      <Typography
-        variant="body2"
-        color="text.secondary"
-        sx={{ lineHeight: 1.6 }}
-      >
-        Este participante no tiene cuenta vinculada. Solo puedes asignar deck a
-        jugadores con `userId` en la preinscripción.
-      </Typography>
     )
   }
 
@@ -207,9 +219,22 @@ export default function ManualReportDeckEditor({
           {participant.displayName}
         </Typography>
         <Typography variant="caption" color="text.secondary" display="block">
-          {participant.userEmail || participant.userName || userId}
-          {participant.popId ? ` · POP ${participant.popId}` : ''}
+          {hasAccount
+            ? participant.userEmail || participant.userName || userId
+            : participant.popId
+              ? `POP ${participant.popId}`
+              : 'Sin cuenta vinculada'}
+          {hasAccount && participant.popId ? ` · POP ${participant.popId}` : ''}
         </Typography>
+        {!hasAccount ? (
+          <Chip
+            size="small"
+            label="Solo sprites"
+            color="warning"
+            variant="outlined"
+            sx={{ mt: 1, fontWeight: 600 }}
+          />
+        ) : null}
       </Box>
 
       {speciesLoading ? (
@@ -221,24 +246,36 @@ export default function ManualReportDeckEditor({
         </Stack>
       ) : (
         <>
-          <SavedDecklistVariantPicker
-            value={decklistPick}
-            onChange={applyDecklistPick}
-            disabled={save.isPending}
-            label="Mazo guardado del jugador"
-            helperText="Opcional: referencia al listado en su biblioteca."
-            showViewDecklistButton={false}
-            decklistsOverride={playerDecklists}
-            decklistsLoadingOverride={listsLoading}
-            decklistsErrorOverride={
-              listsError && listsErrorObj instanceof Error
-                ? listsErrorObj
-                : listsError
-                  ? new Error('Error al cargar listas')
-                  : null
-            }
-            emptyListsMessage="Este jugador no tiene listas guardadas en su cuenta."
-          />
+          {hasAccount ? (
+            <SavedDecklistVariantPicker
+              value={decklistPick}
+              onChange={applyDecklistPick}
+              disabled={save.isPending}
+              label="Mazo guardado del jugador"
+              helperText="Opcional: referencia al listado en su biblioteca."
+              showViewDecklistButton={false}
+              decklistsOverride={playerDecklists}
+              decklistsLoadingOverride={listsLoading}
+              decklistsErrorOverride={
+                listsError && listsErrorObj instanceof Error
+                  ? listsErrorObj
+                  : listsError
+                    ? new Error('Error al cargar listas')
+                    : null
+              }
+              emptyListsMessage="Este jugador no tiene listas guardadas en su cuenta."
+            />
+          ) : (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ lineHeight: 1.55 }}
+            >
+              Sin cuenta en la plataforma: solo puedes asignar sprites del mazo
+              (metagame y meta del torneo). Para listado guardado, vincula la
+              cuenta por POP en el evento.
+            </Typography>
+          )}
 
           <Typography
             variant="caption"

@@ -147,21 +147,29 @@ export function useOwnerSaveParticipantDeck(eventId: string | null) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (input: {
-      userId: string
+      userId: string | null
+      participantId: string | null
       pokemon: string[]
       tournamentDecklistRef: MyTournamentDecklistRefDTO | null
     }) => {
       if (!eventId?.trim()) throw new Error('Evento requerido')
+      const body: Record<string, unknown> = {
+        pokemon: input.pokemon,
+        tournamentDecklistRef: input.tournamentDecklistRef
+      }
+      if (input.userId?.trim()) {
+        body.userId = input.userId.trim()
+      } else if (input.participantId?.trim()) {
+        body.participantId = input.participantId.trim()
+      } else {
+        throw new Error('Falta userId o participantId')
+      }
       const res = await fetch(
         `/api/admin/owner/manual-report/events/${encodeURIComponent(eventId)}/participant-deck`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: input.userId,
-            pokemon: input.pokemon,
-            tournamentDecklistRef: input.tournamentDecklistRef
-          })
+          body: JSON.stringify(body)
         }
       )
       const data = await res.json().catch(() => ({}))
@@ -183,6 +191,7 @@ export function useOwnerSaveParticipantDeck(eventId: string | null) {
       })
       queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-event-detail'] })
+      queryClient.invalidateQueries({ queryKey: ['tournament-meta'] })
     }
   })
 }

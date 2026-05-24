@@ -6,10 +6,29 @@ import connectDB from '@/lib/mongodb'
 import { normalizeParticipantDeckPokemonSlugs } from '@/lib/participant-deck-pokemon'
 import { parseTournamentDecklistRefBody } from '@/lib/tournament-decklist-ref'
 import { validateTournamentDecklistRefForUser } from '@/lib/validate-tournament-decklist-ref'
-import WeeklyEvent from '@/models/WeeklyEvent'
+import WeeklyEvent, { type IWeeklyParticipant } from '@/models/WeeklyEvent'
+
+type WeeklyParticipantDoc = IWeeklyParticipant & {
+  _id?: mongoose.Types.ObjectId
+}
+
+function findParticipant(
+  participants: WeeklyParticipantDoc[],
+  userId: string,
+  participantId: string
+): WeeklyParticipantDoc | undefined {
+  if (userId) {
+    return participants.find(p => p.userId && String(p.userId) === userId)
+  }
+  if (participantId) {
+    return participants.find(p => p._id && String(p._id) === participantId)
+  }
+  return undefined
+}
 
 /**
- * Owner HQ: asigna sprites y referencia de decklist a un participante con cuenta.
+ * Owner HQ: asigna sprites (y opcionalmente listado guardado) a un participante inscrito.
+ * Con cuenta: `userId`. Sin cuenta: `participantId` (solo sprites).
  */
 export async function PUT(
   request: Request,
@@ -37,8 +56,26 @@ export async function PUT(
         : {}
 
     const targetUserId = typeof rec.userId === 'string' ? rec.userId.trim() : ''
-    if (!targetUserId || !mongoose.Types.ObjectId.isValid(targetUserId)) {
-      return NextResponse.json({ error: 'userId inválido' }, { status: 400 })
+    const targetParticipantId =
+      typeof rec.participantId === 'string' ? rec.participantId.trim() : ''
+
+    const hasUserId =
+      Boolean(targetUserId) && mongoose.Types.ObjectId.isValid(targetUserId)
+    const hasParticipantId =
+      Boolean(targetParticipantId) &&
+      mongoose.Types.ObjectId.isValid(targetParticipantId)
+
+    if (!hasUserId && !hasParticipantId) {
+      return NextResponse.json(
+        { error: 'Indica userId o participantId del inscrito' },
+        { status: 400 }
+      )
+    }
+    if (hasUserId && hasParticipantId) {
+      return NextResponse.json(
+        { error: 'Indica solo userId o participantId, no ambos' },
+        { status: 400 }
+      )
     }
 
     const pokemonRaw = 'pokemon' in rec ? rec.pokemon : undefined
@@ -60,7 +97,6 @@ export async function PUT(
     }
 
     await connectDB()
-    const uid = new mongoose.Types.ObjectId(targetUserId)
 
     const doc = await WeeklyEvent.findOne({
       _id: new mongoose.Types.ObjectId(eventId.trim()),
@@ -81,8 +117,11 @@ export async function PUT(
       )
     }
 
-    const part = doc.participants.find(
-      p => p.userId && String(p.userId) === String(uid)
+    const participants = doc.participants as WeeklyParticipantDoc[]
+    const part = findParticipant(
+      participants,
+      hasUserId ? targetUserId : '',
+      hasParticipantId ? targetParticipantId : ''
     )
     if (!part) {
       return NextResponse.json(
@@ -91,9 +130,25 @@ export async function PUT(
       )
     }
 
+    const linkedUserId = part.userId != null ? String(part.userId).trim() : ''
+
+    if (!linkedUserId && 'tournamentDecklistRef' in rec) {
+      const refParsed = parseTournamentDecklistRefBody(rec)
+      if (refParsed !== null && refParsed !== undefined) {
+        return NextResponse.json(
+          {
+            error:
+              'Sin cuenta vinculada: solo puedes asignar sprites, no listado guardado'
+          },
+          { status: 400 }
+        )
+      }
+    }
+
     part.deckPokemonSlugs = slugs
 
-    if ('tournamentDecklistRef' in rec) {
+    if (linkedUserId && 'tournamentDecklistRef' in rec) {
+      const uid = new mongoose.Types.ObjectId(linkedUserId)
       const refParsed = parseTournamentDecklistRefBody(rec)
       if (refParsed === null) {
         part.tournamentDecklistRef = undefined
@@ -123,6 +178,8 @@ export async function PUT(
           variantId: checked.value.variantId ?? undefined
         }
       }
+    } else if (!linkedUserId) {
+      part.tournamentDecklistRef = undefined
     }
 
     doc.markModified('participants')
