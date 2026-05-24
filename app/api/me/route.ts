@@ -11,6 +11,7 @@ import {
   validateRegisterName
 } from '@/lib/password-rules'
 import { validatePopidOptional, popidForStorage } from '@/lib/rut-chile'
+import { linkTournamentParticipantsToUserByPop } from '@/lib/link-tournament-participants-by-pop'
 import { canUserActivateDashboardStore } from '@/lib/multitenancy/session-store-hydrate'
 
 function isR2KeyForUser(userId: string, key: string): boolean {
@@ -217,13 +218,18 @@ export async function PATCH(request: NextRequest) {
       user.name = nameStr.trim()
     }
 
+    let popChanged = false
+    let newPopNorm = ''
     if (hasPop) {
       const popStr = typeof popid === 'string' ? popid : ''
       const popErr = validatePopidOptional(popStr)
       if (popErr) {
         return NextResponse.json({ error: popErr }, { status: 400 })
       }
-      user.popid = popidForStorage(popStr)
+      const previousPop = popidForStorage(user.popid ?? '')
+      newPopNorm = popidForStorage(popStr)
+      popChanged = newPopNorm !== previousPop
+      user.popid = newPopNorm
     }
 
     if (hasDefaultStore) {
@@ -298,6 +304,17 @@ export async function PATCH(request: NextRequest) {
     }
 
     await user.save()
+
+    if (popChanged && newPopNorm) {
+      try {
+        await linkTournamentParticipantsToUserByPop(
+          user._id as mongoose.Types.ObjectId,
+          newPopNorm
+        )
+      } catch (e) {
+        console.error('linkTournamentParticipantsToUserByPop (me):', e)
+      }
+    }
 
     const hasPassword = Boolean(user.passwordHash)
 

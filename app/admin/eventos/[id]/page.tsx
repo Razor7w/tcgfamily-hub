@@ -41,6 +41,7 @@ import {
   useAdminEvents,
   useAdminLeagues,
   useConfirmParticipantParticipation,
+  useLinkParticipantByPop,
   useUpdateAdminEvent
 } from '@/hooks/useWeeklyEvents'
 
@@ -68,6 +69,7 @@ export default function AdminEventoDetailPage() {
   const { data, isPending, isError, error, refetch } = useAdminEvents()
   const { data: leaguesData } = useAdminLeagues()
   const confirmParticipation = useConfirmParticipantParticipation()
+  const linkByPop = useLinkParticipantByPop()
   const updateEv = useUpdateAdminEvent()
 
   const ev = useMemo(
@@ -515,14 +517,53 @@ export default function AdminEventoDetailPage() {
                                   POP: {p.popId}
                                 </Typography>
                                 {!p.userId ? (
-                                  <Typography
-                                    variant="caption"
-                                    color="warning.main"
-                                    component="p"
-                                    sx={{ mt: 0.35, lineHeight: 1.3 }}
+                                  <Stack
+                                    direction="row"
+                                    spacing={0.75}
+                                    alignItems="center"
+                                    flexWrap="wrap"
+                                    useFlexGap
+                                    sx={{ mt: 0.5 }}
                                   >
-                                    Sin cuenta vinculada
-                                  </Typography>
+                                    <Typography
+                                      variant="caption"
+                                      color="warning.main"
+                                      sx={{ lineHeight: 1.3 }}
+                                    >
+                                      Sin cuenta vinculada
+                                    </Typography>
+                                    {p.popId && p.popId !== '—' ? (
+                                      <Button
+                                        size="small"
+                                        variant="outlined"
+                                        color="warning"
+                                        disabled={linkByPop.isPending}
+                                        onClick={async () => {
+                                          try {
+                                            const result =
+                                              await linkByPop.mutateAsync({
+                                                eventId: ev._id,
+                                                popId: p.popId
+                                              })
+                                            if (!result.alreadyLinked) {
+                                              await refetch()
+                                            }
+                                          } catch {
+                                            /* error en estado del hook */
+                                          }
+                                        }}
+                                        sx={{
+                                          textTransform: 'none',
+                                          fontWeight: 700,
+                                          py: 0,
+                                          minHeight: 26,
+                                          fontSize: '0.7rem'
+                                        }}
+                                      >
+                                        Vincular por POP
+                                      </Button>
+                                    ) : null}
+                                  </Stack>
                                 ) : null}
                               </Box>
                               <IconButton

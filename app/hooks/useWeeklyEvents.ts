@@ -804,6 +804,45 @@ export function useCreateAdminEvent() {
   })
 }
 
+export function useLinkParticipantByPop() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { eventId: string; popId: string }) => {
+      const res = await fetch(
+        `/api/admin/events/${input.eventId}/participants/link-by-pop`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ popId: input.popId })
+        }
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === 'string'
+            ? data.error
+            : 'Error al vincular cuenta'
+        )
+      }
+      return data as {
+        ok: boolean
+        userId: string
+        userName: string
+        userEmail: string
+        alreadyLinked: boolean
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-weekly-events'] })
+      queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
+      queryClient.invalidateQueries({ queryKey: ['my-tournaments-week'] })
+      queryClient.invalidateQueries({ queryKey: ['my-tournaments-all'] })
+      queryClient.invalidateQueries({ queryKey: ['my-home-tournaments'] })
+      queryClient.invalidateQueries({ queryKey: ['my-recent-tournaments'] })
+    }
+  })
+}
+
 export function useConfirmParticipantParticipation() {
   const queryClient = useQueryClient()
   return useMutation({

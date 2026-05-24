@@ -539,10 +539,7 @@ function MetagameStatsGrid({
       }}
     >
       <MobileStat label="Share" value={formatShare(sharePercent)} />
-      <MobileStat
-        label="Score"
-        value={formatScore(wins, losses, ties)}
-      />
+      <MobileStat label="Score" value={formatScore(wins, losses, ties)} />
       <MobileStat label="Win %" value={formatWinPercent(winPercent)} />
     </Box>
   )
@@ -563,12 +560,7 @@ function MetagameVariantMobileCard({
         bgcolor: alpha(t.palette.text.primary, 0.02)
       })}
     >
-      <Stack
-        direction="row"
-        spacing={1}
-        alignItems="center"
-        sx={{ mb: 1 }}
-      >
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
         <MetagameDeckSprites slugs={variant.deckSlugs} />
         <Typography
           variant="body2"
@@ -648,9 +640,20 @@ function MetagameMobileCard({ row }: { row: TournamentMetagameRow }) {
         winPercent={row.winPercent}
       />
       {row.variants.length > 0 ? (
-        <Stack spacing={1} sx={{ mt: 1.25, pt: 1.25, borderTop: '1px dashed', borderColor: 'divider' }}>
+        <Stack
+          spacing={1}
+          sx={{
+            mt: 1.25,
+            pt: 1.25,
+            borderTop: '1px dashed',
+            borderColor: 'divider'
+          }}
+        >
           {row.variants.map(variant => (
-            <MetagameVariantMobileCard key={variant.deckKey} variant={variant} />
+            <MetagameVariantMobileCard
+              key={variant.deckKey}
+              variant={variant}
+            />
           ))}
         </Stack>
       ) : null}
@@ -696,19 +699,31 @@ function MetagameVariantTableRow({
       </TableCell>
       <TableCell
         align="right"
-        sx={{ fontVariantNumeric: 'tabular-nums', color: 'text.secondary', py: 0.75 }}
+        sx={{
+          fontVariantNumeric: 'tabular-nums',
+          color: 'text.secondary',
+          py: 0.75
+        }}
       >
         {formatShare(variant.sharePercent)}
       </TableCell>
       <TableCell
         align="right"
-        sx={{ fontVariantNumeric: 'tabular-nums', color: 'text.secondary', py: 0.75 }}
+        sx={{
+          fontVariantNumeric: 'tabular-nums',
+          color: 'text.secondary',
+          py: 0.75
+        }}
       >
         {formatScore(variant.wins, variant.losses, variant.ties)}
       </TableCell>
       <TableCell
         align="right"
-        sx={{ fontVariantNumeric: 'tabular-nums', color: 'text.secondary', py: 0.75 }}
+        sx={{
+          fontVariantNumeric: 'tabular-nums',
+          color: 'text.secondary',
+          py: 0.75
+        }}
       >
         {formatWinPercent(variant.winPercent)}
       </TableCell>

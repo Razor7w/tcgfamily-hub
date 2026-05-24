@@ -296,8 +296,7 @@ export async function buildTournamentMetaPayload(
       null
     if (matchRounds.length > 0) {
       const fromRounds = matchRecordFromRounds(matchRounds)
-      const roundGames =
-        fromRounds.wins + fromRounds.losses + fromRounds.ties
+      const roundGames = fromRounds.wins + fromRounds.losses + fromRounds.ties
       if (roundGames > 0 || tournamentOrigin === 'custom') {
         matchRecord = fromRounds
       }

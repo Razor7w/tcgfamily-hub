@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import mongoose from 'mongoose'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
 import { rutMatchVariants } from '@/lib/store-points-csv'
+import { linkTournamentParticipantsToUserByPop } from '@/lib/link-tournament-participants-by-pop'
 import {
   popidForStorage,
   rutForStorage,
@@ -83,9 +85,24 @@ export async function POST(request: NextRequest) {
     }
 
     user.rut = rutStored
-    user.popid = popidForStorage(popidStr)
+    const popNorm = popidForStorage(popidStr)
+    user.popid = popNorm
     user.defaultStoreId = storeResolved.objectId
     await user.save()
+
+    if (popNorm) {
+      try {
+        await linkTournamentParticipantsToUserByPop(
+          user._id as mongoose.Types.ObjectId,
+          popNorm
+        )
+      } catch (e) {
+        console.error(
+          'linkTournamentParticipantsToUserByPop (oauth-onboarding):',
+          e
+        )
+      }
+    }
 
     return NextResponse.json({
       ok: true,

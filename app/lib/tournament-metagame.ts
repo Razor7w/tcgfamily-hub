@@ -40,9 +40,7 @@ export function deckNameFromSlugs(slugs: string[]): string {
 
 /** Agrupa metagame por el primer Pokémon del deck (sprite 1). */
 export function primaryDeckSpriteKey(slugs: string[]): string {
-  const first = slugs
-    .map(s => s.trim().toLowerCase())
-    .find(s => s.length > 0)
+  const first = slugs.map(s => s.trim().toLowerCase()).find(s => s.length > 0)
   return first ?? '__empty__'
 }
 
@@ -171,8 +169,7 @@ export function aggregateTournamentMetagame(
     rows.push({
       deckKey,
       deckSlugs: soleVariant?.deckSlugs ?? deckSlugs,
-      deckName:
-        soleVariant?.deckName ?? deckNameFromPrimarySpriteKey(deckKey),
+      deckName: soleVariant?.deckName ?? deckNameFromPrimarySpriteKey(deckKey),
       count: primary.count,
       sharePercent: (primary.count / fieldTotal) * 100,
       wins: primary.wins,
