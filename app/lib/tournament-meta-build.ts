@@ -294,22 +294,26 @@ export async function buildTournamentMetaPayload(
 
     let matchRecord: { wins: number; losses: number; ties: number } | null =
       null
-    if (tournamentOrigin === 'custom' && matchRounds.length > 0) {
-      matchRecord = matchRecordFromRounds(matchRounds)
-    } else if (userId) {
+    if (matchRounds.length > 0) {
+      const fromRounds = matchRecordFromRounds(matchRounds)
+      const roundGames =
+        fromRounds.wins + fromRounds.losses + fromRounds.ties
+      if (roundGames > 0 || tournamentOrigin === 'custom') {
+        matchRecord = fromRounds
+      }
+    }
+    if (matchRecord == null && tournamentOrigin === 'official' && tdfFinal) {
+      matchRecord = tdfFinal
+    }
+    if (matchRecord == null && (userId || popIdStored)) {
       matchRecord = {
         wins: Math.max(0, Math.min(999, Math.round(Number(p.wins) || 0))),
         losses: Math.max(0, Math.min(999, Math.round(Number(p.losses) || 0))),
         ties: Math.max(0, Math.min(999, Math.round(Number(p.ties) || 0)))
       }
-      if (
-        matchRecord.wins === 0 &&
-        matchRecord.losses === 0 &&
-        matchRecord.ties === 0 &&
-        matchRounds.length > 0
-      ) {
-        matchRecord = matchRecordFromRounds(matchRounds)
-      }
+    }
+    if (matchRecord == null && matchRounds.length > 0) {
+      matchRecord = matchRecordFromRounds(matchRounds)
     }
 
     participants.push({

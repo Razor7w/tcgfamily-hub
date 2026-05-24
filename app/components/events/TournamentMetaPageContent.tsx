@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { Fragment, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -32,6 +32,7 @@ import {
   useTournamentMeta,
   type TournamentMetaParticipant,
   type TournamentMetagameRow,
+  type TournamentMetagameVariantRow,
   type TournamentStandingsCategory,
   type TournamentStandingsMeta,
   type TournamentStandingsRow
@@ -516,6 +517,90 @@ function StandingsMobileCard({
   )
 }
 
+function MetagameStatsGrid({
+  sharePercent,
+  wins,
+  losses,
+  ties,
+  winPercent
+}: {
+  sharePercent: number
+  wins: number
+  losses: number
+  ties: number
+  winPercent: number | null
+}) {
+  return (
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+        gap: 1.25
+      }}
+    >
+      <MobileStat label="Share" value={formatShare(sharePercent)} />
+      <MobileStat
+        label="Score"
+        value={formatScore(wins, losses, ties)}
+      />
+      <MobileStat label="Win %" value={formatWinPercent(winPercent)} />
+    </Box>
+  )
+}
+
+function MetagameVariantMobileCard({
+  variant
+}: {
+  variant: TournamentMetagameVariantRow
+}) {
+  return (
+    <Box
+      sx={t => ({
+        pl: 1.5,
+        py: 1,
+        borderLeft: '2px solid',
+        borderColor: alpha(t.palette.primary.main, 0.35),
+        bgcolor: alpha(t.palette.text.primary, 0.02)
+      })}
+    >
+      <Stack
+        direction="row"
+        spacing={1}
+        alignItems="center"
+        sx={{ mb: 1 }}
+      >
+        <MetagameDeckSprites slugs={variant.deckSlugs} />
+        <Typography
+          variant="body2"
+          fontWeight={600}
+          color="text.secondary"
+          sx={{ flex: 1, minWidth: 0, lineHeight: 1.25 }}
+        >
+          {variant.deckName}
+        </Typography>
+        <Typography
+          variant="caption"
+          fontWeight={700}
+          sx={{
+            fontVariantNumeric: 'tabular-nums',
+            color: 'text.secondary',
+            flexShrink: 0
+          }}
+        >
+          ×{variant.count}
+        </Typography>
+      </Stack>
+      <MetagameStatsGrid
+        sharePercent={variant.sharePercent}
+        wins={variant.wins}
+        losses={variant.losses}
+        ties={variant.ties}
+        winPercent={variant.winPercent}
+      />
+    </Box>
+  )
+}
+
 function MetagameMobileCard({ row }: { row: TournamentMetagameRow }) {
   return (
     <Box
@@ -555,21 +640,79 @@ function MetagameMobileCard({ row }: { row: TournamentMetagameRow }) {
           ×{row.count}
         </Typography>
       </Stack>
-      <Box
+      <MetagameStatsGrid
+        sharePercent={row.sharePercent}
+        wins={row.wins}
+        losses={row.losses}
+        ties={row.ties}
+        winPercent={row.winPercent}
+      />
+      {row.variants.length > 0 ? (
+        <Stack spacing={1} sx={{ mt: 1.25, pt: 1.25, borderTop: '1px dashed', borderColor: 'divider' }}>
+          {row.variants.map(variant => (
+            <MetagameVariantMobileCard key={variant.deckKey} variant={variant} />
+          ))}
+        </Stack>
+      ) : null}
+    </Box>
+  )
+}
+
+function MetagameVariantTableRow({
+  variant
+}: {
+  variant: TournamentMetagameVariantRow
+}) {
+  return (
+    <TableRow
+      sx={t => ({
+        bgcolor: alpha(t.palette.text.primary, 0.02),
+        '& td': { borderBottomColor: alpha(t.palette.divider, 0.6) }
+      })}
+    >
+      <TableCell sx={{ py: 0.75, pl: 2.5 }}>
+        <MetagameDeckSprites slugs={variant.deckSlugs} />
+      </TableCell>
+      <TableCell
+        align="right"
         sx={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-          gap: 1.25
+          fontVariantNumeric: 'tabular-nums',
+          fontWeight: 600,
+          color: 'text.secondary',
+          py: 0.75
         }}
       >
-        <MobileStat label="Share" value={formatShare(row.sharePercent)} />
-        <MobileStat
-          label="Score"
-          value={formatScore(row.wins, row.losses, row.ties)}
-        />
-        <MobileStat label="Win %" value={formatWinPercent(row.winPercent)} />
-      </Box>
-    </Box>
+        {variant.count}
+      </TableCell>
+      <TableCell
+        sx={{
+          fontWeight: 500,
+          color: 'text.secondary',
+          py: 0.75,
+          pl: 3
+        }}
+      >
+        {variant.deckName}
+      </TableCell>
+      <TableCell
+        align="right"
+        sx={{ fontVariantNumeric: 'tabular-nums', color: 'text.secondary', py: 0.75 }}
+      >
+        {formatShare(variant.sharePercent)}
+      </TableCell>
+      <TableCell
+        align="right"
+        sx={{ fontVariantNumeric: 'tabular-nums', color: 'text.secondary', py: 0.75 }}
+      >
+        {formatScore(variant.wins, variant.losses, variant.ties)}
+      </TableCell>
+      <TableCell
+        align="right"
+        sx={{ fontVariantNumeric: 'tabular-nums', color: 'text.secondary', py: 0.75 }}
+      >
+        {formatWinPercent(variant.winPercent)}
+      </TableCell>
+    </TableRow>
   )
 }
 
@@ -867,42 +1010,50 @@ function TournamentMetagameTable({ rows }: { rows: TournamentMetagameRow[] }) {
           </TableHead>
           <TableBody>
             {rows.map(row => (
-              <TableRow key={row.deckKey} hover>
-                <TableCell sx={{ py: 1.25 }}>
-                  <MetagameDeckSprites slugs={row.deckSlugs} />
-                </TableCell>
-                <TableCell
-                  align="right"
-                  sx={{
-                    fontVariantNumeric: 'tabular-nums',
-                    fontWeight: 700,
-                    py: 1.25
-                  }}
-                >
-                  {row.count}
-                </TableCell>
-                <TableCell sx={{ fontWeight: 600, py: 1.25 }}>
-                  {row.deckName}
-                </TableCell>
-                <TableCell
-                  align="right"
-                  sx={{ fontVariantNumeric: 'tabular-nums', py: 1.25 }}
-                >
-                  {formatShare(row.sharePercent)}
-                </TableCell>
-                <TableCell
-                  align="right"
-                  sx={{ fontVariantNumeric: 'tabular-nums', py: 1.25 }}
-                >
-                  {formatScore(row.wins, row.losses, row.ties)}
-                </TableCell>
-                <TableCell
-                  align="right"
-                  sx={{ fontVariantNumeric: 'tabular-nums', py: 1.25 }}
-                >
-                  {formatWinPercent(row.winPercent)}
-                </TableCell>
-              </TableRow>
+              <Fragment key={row.deckKey}>
+                <TableRow hover>
+                  <TableCell sx={{ py: 1.25 }}>
+                    <MetagameDeckSprites slugs={row.deckSlugs} />
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{
+                      fontVariantNumeric: 'tabular-nums',
+                      fontWeight: 700,
+                      py: 1.25
+                    }}
+                  >
+                    {row.count}
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 600, py: 1.25 }}>
+                    {row.deckName}
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{ fontVariantNumeric: 'tabular-nums', py: 1.25 }}
+                  >
+                    {formatShare(row.sharePercent)}
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{ fontVariantNumeric: 'tabular-nums', py: 1.25 }}
+                  >
+                    {formatScore(row.wins, row.losses, row.ties)}
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{ fontVariantNumeric: 'tabular-nums', py: 1.25 }}
+                  >
+                    {formatWinPercent(row.winPercent)}
+                  </TableCell>
+                </TableRow>
+                {row.variants.map(variant => (
+                  <MetagameVariantTableRow
+                    key={`${row.deckKey}-${variant.deckKey}`}
+                    variant={variant}
+                  />
+                ))}
+              </Fragment>
             ))}
           </TableBody>
         </Table>
@@ -973,25 +1124,23 @@ function ParticipantMetaCard({
             {formatPersonDisplayName(p.displayName)}
           </Typography>
         </Stack>
-        {p.matchRecord ? (
-          <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
-            <RecordMetric
-              label="Victorias"
-              value={p.matchRecord.wins}
-              accent={MATCH_WIN_COLOR}
-            />
-            <RecordMetric
-              label="Derrotas"
-              value={p.matchRecord.losses}
-              accent={MATCH_LOSS_COLOR}
-            />
-            <RecordMetric
-              label="Empates"
-              value={p.matchRecord.ties}
-              accent={MATCH_TIE_COLOR}
-            />
-          </Stack>
-        ) : null}
+        <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
+          <RecordMetric
+            label="Victorias"
+            value={p.matchRecord?.wins ?? 0}
+            accent={MATCH_WIN_COLOR}
+          />
+          <RecordMetric
+            label="Derrotas"
+            value={p.matchRecord?.losses ?? 0}
+            accent={MATCH_LOSS_COLOR}
+          />
+          <RecordMetric
+            label="Empates"
+            value={p.matchRecord?.ties ?? 0}
+            accent={MATCH_TIE_COLOR}
+          />
+        </Stack>
       </Box>
 
       <Stack spacing={0} sx={{ p: { xs: 2, sm: 2.5 } }}>
@@ -1255,8 +1404,9 @@ export default function TournamentMetaPageContent() {
                     {tab === 'metagame' ? (
                       <Stack spacing={1.5}>
                         <Typography variant="body2" color="text.secondary">
-                          Agrupado por combinación de Pokémon del mazo. Solo
-                          jugadores que jugaron el torneo y reportaron sprites.
+                          Agrupado por el primer Pokémon del mazo; debajo, el
+                          desglose de variantes. Solo jugadores que jugaron el
+                          torneo y reportaron sprites.
                         </Typography>
                         <TournamentMetagameTable rows={metagame} />
                       </Stack>

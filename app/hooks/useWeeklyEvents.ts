@@ -266,6 +266,18 @@ export type TournamentMetaParticipant = {
   standingIsDnf: boolean
 }
 
+export type TournamentMetagameVariantRow = {
+  deckKey: string
+  deckSlugs: string[]
+  deckName: string
+  count: number
+  sharePercent: number
+  wins: number
+  losses: number
+  ties: number
+  winPercent: number | null
+}
+
 export type TournamentMetagameRow = {
   deckKey: string
   deckSlugs: string[]
@@ -276,6 +288,7 @@ export type TournamentMetagameRow = {
   losses: number
   ties: number
   winPercent: number | null
+  variants: TournamentMetagameVariantRow[]
 }
 
 export type TournamentMetaStore = {
