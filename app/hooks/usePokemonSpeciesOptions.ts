@@ -2,6 +2,7 @@
 
 import { createFilterOptions } from '@mui/material/Autocomplete'
 import { useQuery } from '@tanstack/react-query'
+import { CUSTOM_LIMITLESS_SPRITE_OPTIONS } from '@/lib/limitless-pokemon-sprite'
 
 export type PokemonSpeciesOption = {
   slug: string
@@ -73,7 +74,11 @@ function shouldIncludePokemonSlug(slug: string): boolean {
  * @see https://r2.limitlesstcg.net/pokemon/gen9/dudunsparce.png
  */
 const CANONICAL_SPECIES_ALIASES: PokemonSpeciesOption[] = [
-  { slug: 'dudunsparce', label: 'Dudunsparce' }
+  { slug: 'dudunsparce', label: 'Dudunsparce' },
+  { slug: 'ogerpon', label: 'Ogerpon' },
+  { slug: 'ogerpon-cornerstone', label: 'Ogerpon Cornerstone' },
+  { slug: 'ogerpon-hearthflame', label: 'Ogerpon Hearthflame' },
+  { slug: 'ogerpon-wellspring', label: 'Ogerpon Wellspring' }
 ]
 
 /**
@@ -97,11 +102,17 @@ async function fetchBaseAndMegaForms(): Promise<PokemonSpeciesOption[]> {
   const rows: PokemonSpeciesOption[] = []
   for (const r of data.results) {
     if (!shouldIncludePokemonSlug(r.name)) continue
-    if (slugSet.has(r.name)) continue
-    slugSet.add(r.name)
-    rows.push({ slug: r.name, label: slugToLabel(r.name) })
+    const slug = r.name.endsWith('-mask')
+      ? r.name.slice(0, -'-mask'.length)
+      : r.name
+    if (slugSet.has(slug)) continue
+    slugSet.add(slug)
+    rows.push({ slug, label: slugToLabel(slug) })
   }
-  for (const alias of CANONICAL_SPECIES_ALIASES) {
+  for (const alias of [
+    ...CANONICAL_SPECIES_ALIASES,
+    ...CUSTOM_LIMITLESS_SPRITE_OPTIONS
+  ]) {
     if (!slugSet.has(alias.slug)) {
       slugSet.add(alias.slug)
       rows.push(alias)
@@ -116,7 +127,7 @@ async function fetchBaseAndMegaForms(): Promise<PokemonSpeciesOption[]> {
  */
 export function usePokemonSpeciesOptions() {
   return useQuery({
-    queryKey: ['pokemon-base-and-mega-forms', 'v4'],
+    queryKey: ['pokemon-base-and-mega-forms', 'v7'],
     queryFn: fetchBaseAndMegaForms,
     staleTime: 1000 * 60 * 60 * 24,
     gcTime: 1000 * 60 * 60 * 24 * 7

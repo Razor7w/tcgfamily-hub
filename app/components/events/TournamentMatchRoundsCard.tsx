@@ -54,7 +54,8 @@ import {
 import MatchRoundOpponentCell from '@/components/events/MatchRoundOpponentCell'
 import {
   getLimitlessPokemonSpriteUrl,
-  limitlessSpriteDimensions
+  limitlessSpriteDimensions,
+  limitlessSpriteImageRendering
 } from '@/lib/limitless-pokemon-sprite'
 import {
   filterPokemonAutocompleteOptions,
@@ -257,7 +258,7 @@ function LimitlessSpriteThumb({
           display: 'block',
           objectFit: 'contain',
           objectPosition: 'center',
-          imageRendering: 'pixelated'
+          imageRendering: limitlessSpriteImageRendering(slug)
         }}
       />
     </Box>
@@ -2497,7 +2498,10 @@ export default function TournamentMatchRoundsCard({
                                             width: 28,
                                             height: 24,
                                             objectFit: 'contain',
-                                            imageRendering: 'pixelated',
+                                            imageRendering:
+                                              limitlessSpriteImageRendering(
+                                                slug
+                                              ),
                                             borderRadius: 0.75,
                                             border: '1px solid',
                                             borderColor: 'divider',

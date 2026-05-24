@@ -16,7 +16,8 @@ import {
 } from '@/hooks/usePokemonSpeciesOptions'
 import {
   getLimitlessPokemonSpriteUrl,
-  limitlessSpriteDimensions
+  limitlessSpriteDimensions,
+  limitlessSpriteImageRendering
 } from '@/lib/limitless-pokemon-sprite'
 
 type AutocompleteLiProps = HTMLAttributes<HTMLLIElement> & { key?: Key }
@@ -53,7 +54,7 @@ function SpriteThumb({ slug, size = 28 }: { slug: string; size?: number }) {
         minWidth: `${w}px`,
         minHeight: `${h}px`,
         display: 'block',
-        imageRendering: 'pixelated',
+        imageRendering: limitlessSpriteImageRendering(slug),
         objectFit: 'contain',
         flexShrink: 0
       }}
