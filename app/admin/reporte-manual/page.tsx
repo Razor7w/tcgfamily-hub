@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined'
 import FilterListIcon from '@mui/icons-material/FilterList'
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline'
@@ -14,6 +14,7 @@ import Container from '@mui/material/Container'
 import Divider from '@mui/material/Divider'
 import Grid from '@mui/material/Grid'
 import Paper from '@mui/material/Paper'
+import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -36,6 +37,7 @@ const STATE_LABEL: Record<string, string> = {
 function formatEventWhen(iso: string) {
   const d = new Date(iso)
   return d.toLocaleString('es-CL', {
+    timeZone: 'America/Santiago',
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -43,6 +45,15 @@ function formatEventWhen(iso: string) {
     minute: '2-digit',
     hour12: false
   })
+}
+
+/** Evita SSR de Autocomplete MUI (ids estables tras hidratar). */
+function useClientReady() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  )
 }
 
 function StepBadge({ n, label }: { n: number; label: string }) {
@@ -92,6 +103,7 @@ export default function ReporteManualPage() {
   )
   const [participantPick, setParticipantPick] =
     useState<OwnerManualReportParticipant | null>(null)
+  const clientReady = useClientReady()
 
   const storesQuery = useOwnerManualReportStores()
   const eventsQuery = useOwnerManualReportEvents(storeFilter?.id ?? null)
@@ -101,15 +113,15 @@ export default function ReporteManualPage() {
 
   const storeOptions = useMemo(() => storesQuery.data ?? [], [storesQuery.data])
 
-  const participantsWithAccount = useMemo(() => {
-    const list = eventDetailQuery.data?.participants ?? []
-    return list.filter(p => Boolean(p.userId))
-  }, [eventDetailQuery.data?.participants])
+  const eventParticipants = useMemo(
+    () => eventDetailQuery.data?.participants ?? [],
+    [eventDetailQuery.data?.participants]
+  )
 
-  const linkedParticipants = useMemo(() => {
-    const list = eventDetailQuery.data?.participants ?? []
-    return list.filter(p => !p.userId)
-  }, [eventDetailQuery.data?.participants])
+  const participantsWithoutAccountCount = useMemo(
+    () => eventParticipants.filter(p => !p.userId).length,
+    [eventParticipants]
+  )
 
   const panelSx = {
     p: { xs: 2, sm: 2.5 },
@@ -174,9 +186,9 @@ export default function ReporteManualPage() {
                 sx={{ lineHeight: 1.65 }}
               >
                 Herramienta exclusiva del owner: elige un torneo Pokémon de
-                cualquier tienda y asigna sprites o listado guardado a un
-                jugador inscrito. Los datos no se muestran a otros
-                participantes.
+                cualquier tienda y asigna sprites a cualquier inscrito (con o
+                sin cuenta). El listado guardado solo si el jugador tiene cuenta
+                vinculada. Los datos no se muestran a otros participantes.
               </Typography>
             </Box>
             <Chip
@@ -194,197 +206,237 @@ export default function ReporteManualPage() {
             <Grid size={{ xs: 12, md: 5 }}>
               <Paper elevation={0} sx={panelSx}>
                 <StepBadge n={1} label="Contexto" />
-                <Stack spacing={2.5} divider={<Divider flexItem />}>
-                  <Box>
-                    <Stack
-                      direction="row"
-                      spacing={0.75}
-                      alignItems="center"
-                      sx={{ mb: 1 }}
-                    >
-                      <StorefrontOutlinedIcon fontSize="small" color="action" />
-                      <Typography variant="subtitle2" fontWeight={700}>
-                        Tienda
-                      </Typography>
-                    </Stack>
-                    <Autocomplete
-                      options={storeOptions}
-                      loading={storesQuery.isPending}
-                      value={storeFilter}
-                      onChange={(_e, v) => {
-                        setStoreFilter(v)
-                        setEventPick(null)
-                        setParticipantPick(null)
-                      }}
-                      getOptionLabel={o => o.name}
-                      isOptionEqualToValue={(a, b) => a.id === b.id}
-                      renderInput={params => (
-                        <TextField
-                          {...params}
-                          placeholder="Todas las tiendas"
-                          size="small"
-                          helperText="Vacío = ver torneos de todas las tiendas"
+                {!clientReady ? (
+                  <Stack spacing={2}>
+                    <Skeleton variant="rounded" height={56} />
+                    <Skeleton variant="rounded" height={56} />
+                    <Skeleton variant="rounded" height={56} />
+                  </Stack>
+                ) : (
+                  <Stack spacing={2.5} divider={<Divider flexItem />}>
+                    <Box>
+                      <Stack
+                        direction="row"
+                        spacing={0.75}
+                        alignItems="center"
+                        sx={{ mb: 1 }}
+                      >
+                        <StorefrontOutlinedIcon
+                          fontSize="small"
+                          color="action"
                         />
-                      )}
-                    />
-                  </Box>
-
-                  <Box>
-                    <Stack
-                      direction="row"
-                      spacing={0.75}
-                      alignItems="center"
-                      sx={{ mb: 1 }}
-                    >
-                      <FilterListIcon fontSize="small" color="action" />
-                      <Typography variant="subtitle2" fontWeight={700}>
-                        Evento
-                      </Typography>
-                    </Stack>
-                    {eventsQuery.isPending ? (
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <CircularProgress size={20} />
-                        <Typography variant="body2" color="text.secondary">
-                          Cargando torneos…
+                        <Typography variant="subtitle2" fontWeight={700}>
+                          Tienda
                         </Typography>
                       </Stack>
-                    ) : eventsQuery.isError ? (
-                      <Alert severity="error" variant="outlined">
-                        {eventsQuery.error instanceof Error
-                          ? eventsQuery.error.message
-                          : 'Error'}
-                      </Alert>
-                    ) : (
                       <Autocomplete
-                        options={eventsQuery.data ?? []}
-                        value={eventPick}
+                        id="owner-manual-report-store"
+                        options={storeOptions}
+                        loading={storesQuery.isPending}
+                        value={storeFilter}
                         onChange={(_e, v) => {
-                          setEventPick(v)
+                          setStoreFilter(v)
+                          setEventPick(null)
                           setParticipantPick(null)
                         }}
-                        getOptionLabel={e =>
-                          `${e.title} · ${formatEventWhen(e.startsAt)}`
-                        }
-                        isOptionEqualToValue={(a, b) => a._id === b._id}
-                        renderOption={(props, option) => {
-                          const { key, ...rest } = props
-                          return (
-                            <li key={key} {...rest}>
-                              <Stack spacing={0.25} sx={{ py: 0.5 }}>
-                                <Typography variant="body2" fontWeight={600}>
-                                  {option.title}
-                                </Typography>
-                                <Typography
-                                  variant="caption"
-                                  color="text.secondary"
-                                >
-                                  {option.storeName} ·{' '}
-                                  {formatEventWhen(option.startsAt)} ·{' '}
-                                  {STATE_LABEL[option.state] ?? option.state}
-                                </Typography>
-                              </Stack>
-                            </li>
-                          )
-                        }}
+                        getOptionLabel={o => o.name}
+                        isOptionEqualToValue={(a, b) => a.id === b.id}
                         renderInput={params => (
                           <TextField
                             {...params}
+                            id="owner-manual-report-store"
+                            placeholder="Todas las tiendas"
                             size="small"
-                            placeholder="Buscar torneo Pokémon"
+                            helperText="Vacío = ver torneos de todas las tiendas"
                           />
                         )}
                       />
-                    )}
-                  </Box>
+                    </Box>
 
-                  <Box>
-                    <Stack
-                      direction="row"
-                      spacing={0.75}
-                      alignItems="center"
-                      sx={{ mb: 1 }}
-                    >
-                      <PersonOutlineIcon fontSize="small" color="action" />
-                      <Typography variant="subtitle2" fontWeight={700}>
-                        Jugador
-                      </Typography>
-                    </Stack>
-                    {!eventPick ? (
-                      <Typography variant="body2" color="text.secondary">
-                        Selecciona un evento primero.
-                      </Typography>
-                    ) : eventDetailQuery.isPending ? (
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <CircularProgress size={20} />
-                        <Typography variant="body2" color="text.secondary">
-                          Cargando inscritos…
+                    <Box>
+                      <Stack
+                        direction="row"
+                        spacing={0.75}
+                        alignItems="center"
+                        sx={{ mb: 1 }}
+                      >
+                        <FilterListIcon fontSize="small" color="action" />
+                        <Typography variant="subtitle2" fontWeight={700}>
+                          Evento
                         </Typography>
                       </Stack>
-                    ) : (
-                      <Autocomplete
-                        options={participantsWithAccount}
-                        value={participantPick}
-                        onChange={(_e, v) => setParticipantPick(v)}
-                        getOptionLabel={p => p.displayName}
-                        isOptionEqualToValue={(a, b) =>
-                          a.participantId === b.participantId
-                        }
-                        renderOption={(props, p) => {
-                          const { key, ...rest } = props
-                          const hasDeck = p.deckPokemonSlugs.length > 0
-                          return (
-                            <li key={key} {...rest}>
-                              <Stack
-                                direction="row"
-                                alignItems="center"
-                                justifyContent="space-between"
-                                spacing={1}
-                                sx={{ width: '100%', py: 0.25 }}
-                              >
-                                <Box>
+                      {eventsQuery.isPending ? (
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <CircularProgress size={20} />
+                          <Typography variant="body2" color="text.secondary">
+                            Cargando torneos…
+                          </Typography>
+                        </Stack>
+                      ) : eventsQuery.isError ? (
+                        <Alert severity="error" variant="outlined">
+                          {eventsQuery.error instanceof Error
+                            ? eventsQuery.error.message
+                            : 'Error'}
+                        </Alert>
+                      ) : (
+                        <Autocomplete
+                          id="owner-manual-report-event"
+                          options={eventsQuery.data ?? []}
+                          value={eventPick}
+                          onChange={(_e, v) => {
+                            setEventPick(v)
+                            setParticipantPick(null)
+                          }}
+                          getOptionLabel={e =>
+                            `${e.title} · ${formatEventWhen(e.startsAt)}`
+                          }
+                          isOptionEqualToValue={(a, b) => a._id === b._id}
+                          renderOption={(props, option) => {
+                            const { key, ...rest } = props
+                            return (
+                              <li key={key} {...rest}>
+                                <Stack spacing={0.25} sx={{ py: 0.5 }}>
                                   <Typography variant="body2" fontWeight={600}>
-                                    {p.displayName}
+                                    {option.title}
                                   </Typography>
                                   <Typography
                                     variant="caption"
                                     color="text.secondary"
                                   >
-                                    {p.userEmail ||
-                                      p.popId ||
-                                      'Cuenta vinculada'}
+                                    {option.storeName} ·{' '}
+                                    {formatEventWhen(option.startsAt)} ·{' '}
+                                    {STATE_LABEL[option.state] ?? option.state}
                                   </Typography>
-                                </Box>
-                                <Chip
-                                  size="small"
-                                  label={hasDeck ? 'Con deck' : 'Sin deck'}
-                                  color={hasDeck ? 'success' : 'default'}
-                                  variant="outlined"
-                                />
-                              </Stack>
-                            </li>
-                          )
-                        }}
-                        renderInput={params => (
-                          <TextField
-                            {...params}
-                            size="small"
-                            placeholder="Jugador con cuenta"
-                          />
-                        )}
-                      />
-                    )}
-                    {linkedParticipants.length > 0 ? (
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{ display: 'block', mt: 1, lineHeight: 1.5 }}
+                                </Stack>
+                              </li>
+                            )
+                          }}
+                          renderInput={params => (
+                            <TextField
+                              {...params}
+                              id="owner-manual-report-event"
+                              size="small"
+                              placeholder="Buscar torneo Pokémon"
+                            />
+                          )}
+                        />
+                      )}
+                    </Box>
+
+                    <Box>
+                      <Stack
+                        direction="row"
+                        spacing={0.75}
+                        alignItems="center"
+                        sx={{ mb: 1 }}
                       >
-                        {linkedParticipants.length} inscrito(s) sin cuenta no
-                        aparecen en esta lista.
-                      </Typography>
-                    ) : null}
-                  </Box>
-                </Stack>
+                        <PersonOutlineIcon fontSize="small" color="action" />
+                        <Typography variant="subtitle2" fontWeight={700}>
+                          Jugador
+                        </Typography>
+                      </Stack>
+                      {!eventPick ? (
+                        <Typography variant="body2" color="text.secondary">
+                          Selecciona un evento primero.
+                        </Typography>
+                      ) : eventDetailQuery.isPending ? (
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <CircularProgress size={20} />
+                          <Typography variant="body2" color="text.secondary">
+                            Cargando inscritos…
+                          </Typography>
+                        </Stack>
+                      ) : (
+                        <Autocomplete
+                          id="owner-manual-report-participant"
+                          options={eventParticipants}
+                          value={participantPick}
+                          onChange={(_e, v) => setParticipantPick(v)}
+                          getOptionLabel={p => p.displayName}
+                          isOptionEqualToValue={(a, b) =>
+                            a.participantId === b.participantId
+                          }
+                          renderOption={(props, p) => {
+                            const { key, ...rest } = props
+                            const hasDeck = p.deckPokemonSlugs.length > 0
+                            const hasAccount = Boolean(p.userId)
+                            return (
+                              <li key={key} {...rest}>
+                                <Stack
+                                  direction="row"
+                                  alignItems="center"
+                                  justifyContent="space-between"
+                                  spacing={1}
+                                  sx={{ width: '100%', py: 0.25 }}
+                                >
+                                  <Box sx={{ minWidth: 0 }}>
+                                    <Typography
+                                      variant="body2"
+                                      fontWeight={600}
+                                    >
+                                      {p.displayName}
+                                    </Typography>
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                      noWrap
+                                    >
+                                      {hasAccount
+                                        ? p.userEmail || p.popId || 'Con cuenta'
+                                        : p.popId
+                                          ? `POP ${p.popId} · sin cuenta`
+                                          : 'Sin cuenta'}
+                                    </Typography>
+                                  </Box>
+                                  <Stack
+                                    direction="row"
+                                    spacing={0.5}
+                                    flexShrink={0}
+                                  >
+                                    {!hasAccount ? (
+                                      <Chip
+                                        size="small"
+                                        label="Solo sprites"
+                                        color="warning"
+                                        variant="outlined"
+                                        sx={{ fontSize: '0.65rem' }}
+                                      />
+                                    ) : null}
+                                    <Chip
+                                      size="small"
+                                      label={hasDeck ? 'Con deck' : 'Sin deck'}
+                                      color={hasDeck ? 'success' : 'default'}
+                                      variant="outlined"
+                                    />
+                                  </Stack>
+                                </Stack>
+                              </li>
+                            )
+                          }}
+                          renderInput={params => (
+                            <TextField
+                              {...params}
+                              id="owner-manual-report-participant"
+                              size="small"
+                              placeholder="Buscar inscrito"
+                            />
+                          )}
+                        />
+                      )}
+                      {participantsWithoutAccountCount > 0 ? (
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ display: 'block', mt: 1, lineHeight: 1.5 }}
+                        >
+                          {participantsWithoutAccountCount} inscrito(s) sin
+                          cuenta: puedes asignarles sprites aquí (no listado
+                          guardado).
+                        </Typography>
+                      ) : null}
+                    </Box>
+                  </Stack>
+                )}
               </Paper>
             </Grid>
 

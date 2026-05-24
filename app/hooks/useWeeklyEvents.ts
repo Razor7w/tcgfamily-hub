@@ -266,6 +266,18 @@ export type TournamentMetaParticipant = {
   standingIsDnf: boolean
 }
 
+export type TournamentMetagameVariantRow = {
+  deckKey: string
+  deckSlugs: string[]
+  deckName: string
+  count: number
+  sharePercent: number
+  wins: number
+  losses: number
+  ties: number
+  winPercent: number | null
+}
+
 export type TournamentMetagameRow = {
   deckKey: string
   deckSlugs: string[]
@@ -276,6 +288,7 @@ export type TournamentMetagameRow = {
   losses: number
   ties: number
   winPercent: number | null
+  variants: TournamentMetagameVariantRow[]
 }
 
 export type TournamentMetaStore = {
@@ -787,6 +800,45 @@ export function useCreateAdminEvent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-weekly-events'] })
       queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
+    }
+  })
+}
+
+export function useLinkParticipantByPop() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { eventId: string; popId: string }) => {
+      const res = await fetch(
+        `/api/admin/events/${input.eventId}/participants/link-by-pop`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ popId: input.popId })
+        }
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === 'string'
+            ? data.error
+            : 'Error al vincular cuenta'
+        )
+      }
+      return data as {
+        ok: boolean
+        userId: string
+        userName: string
+        userEmail: string
+        alreadyLinked: boolean
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-weekly-events'] })
+      queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
+      queryClient.invalidateQueries({ queryKey: ['my-tournaments-week'] })
+      queryClient.invalidateQueries({ queryKey: ['my-tournaments-all'] })
+      queryClient.invalidateQueries({ queryKey: ['my-home-tournaments'] })
+      queryClient.invalidateQueries({ queryKey: ['my-recent-tournaments'] })
     }
   })
 }

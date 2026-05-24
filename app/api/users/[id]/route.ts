@@ -9,6 +9,7 @@ import {
   rutForStorage,
   validatePopidOptional
 } from '@/lib/rut-chile'
+import { linkTournamentParticipantsToUserByPop } from '@/lib/link-tournament-participants-by-pop'
 import { getRutFieldError } from '@/lib/rut-input'
 import {
   isoOrNull,
@@ -168,14 +169,27 @@ export async function PUT(
         user.rut = ''
       }
     }
+    let popChanged = false
+    let newPopNorm = ''
     if (popid !== undefined) {
       const popidStr = typeof popid === 'string' ? popid : ''
       const popErr = validatePopidOptional(popidStr)
       if (popErr) return NextResponse.json({ error: popErr }, { status: 400 })
-      user.popid = popidForStorage(popidStr)
+      const previousPop = popidForStorage(user.popid ?? '')
+      newPopNorm = popidForStorage(popidStr)
+      popChanged = newPopNorm !== previousPop
+      user.popid = newPopNorm
     }
 
     await user.save()
+
+    if (popChanged && newPopNorm) {
+      try {
+        await linkTournamentParticipantsToUserByPop(userId, newPopNorm)
+      } catch (e) {
+        console.error('linkTournamentParticipantsToUserByPop (admin user):', e)
+      }
+    }
 
     const w = resolveStoreWalletForUser(
       user.toObject() as LeanUserWallet,
