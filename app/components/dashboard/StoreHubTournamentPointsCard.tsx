@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -18,10 +19,11 @@ import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import { EmojiEventsOutlined, InfoOutlined } from '@mui/icons-material'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
+import { useMeStores } from '@/hooks/useMeStores'
 import { useMyTournamentPoints } from '@/hooks/useMyTournamentPoints'
 import {
   formatStorePointsClpEquivalent,
-  STORE_POINT_CLP_EQUIVALENCE_LABEL
+  storePointClpEquivalenceLabel
 } from '@/lib/store-points-clp'
 
 type StoreHubTournamentPointsCardProps = {
@@ -42,15 +44,31 @@ function formatEventDate(iso: string | null): string {
 export default function StoreHubTournamentPointsCard({
   enabled: fetchEnabled = true
 }: StoreHubTournamentPointsCardProps) {
+  const { data: session } = useSession()
+  const { data: meStoresData } = useMeStores()
   const { storeCredit } = useDashboardModulesFromLayout()
   const tournamentPointsLabel = storeCredit.tournamentPointsLabel
   const { data, isPending, isError, refetch, isFetching } =
     useMyTournamentPoints({ enabled: fetchEnabled })
   const [infoOpen, setInfoOpen] = useState(false)
 
+  const activeStoreSlug = useMemo(() => {
+    const activeStoreId = session?.user?.activeStoreId?.trim() ?? ''
+    if (!activeStoreId) return null
+    const hit = (meStoresData?.stores ?? []).find(
+      r => String(r.id) === activeStoreId
+    )
+    const slug =
+      typeof hit?.slug === 'string' ? hit.slug.trim().toLowerCase() : ''
+    return slug || null
+  }, [session?.user?.activeStoreId, meStoresData?.stores])
+
+  const pointsEquivalenceLabel = storePointClpEquivalenceLabel(activeStoreSlug)
+
   const pointsCurrency = useMemo(
-    () => formatStorePointsClpEquivalent(data?.totalPoints ?? 0),
-    [data?.totalPoints]
+    () =>
+      formatStorePointsClpEquivalent(data?.totalPoints ?? 0, activeStoreSlug),
+    [data?.totalPoints, activeStoreSlug]
   )
 
   if (!fetchEnabled) return null
@@ -145,8 +163,7 @@ export default function StoreHubTournamentPointsCard({
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Equivalente aproximado: {pointsCurrency} (
-                  {STORE_POINT_CLP_EQUIVALENCE_LABEL}, igual que el crédito de
-                  tienda)
+                  {pointsEquivalenceLabel}).
                 </Typography>
               </Box>
 
@@ -217,8 +234,7 @@ export default function StoreHubTournamentPointsCard({
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
             La tienda puede repartir puntos tras un torneo cerrado según la
             mitad superior de la clasificación. Esos puntos se suman a tu
-            crédito de tienda (mismo valor: {STORE_POINT_CLP_EQUIVALENCE_LABEL}
-            ).
+            crédito de tienda (mismo valor: {pointsEquivalenceLabel}).
           </Typography>
           <Typography variant="body2" color="text.secondary">
             {storeCredit.csvEnabled

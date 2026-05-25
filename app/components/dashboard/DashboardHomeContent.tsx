@@ -42,7 +42,7 @@ import {
 import { DEFAULT_PRIMARY_STORE_SLUG } from '@/lib/multitenancy/constants'
 import {
   formatStorePointsClpEquivalent,
-  STORE_POINT_CLP_EQUIVALENCE_LABEL
+  storePointClpEquivalenceLabel
 } from '@/lib/store-points-clp'
 
 const WeeklyEventsSection = dynamic(
@@ -102,7 +102,15 @@ export default function DashboardHomeContent({
     : null
 
   const pointsCurrency =
-    credit != null ? formatStorePointsClpEquivalent(credit.storePoints) : ''
+    credit != null
+      ? formatStorePointsClpEquivalent(
+          credit.storePoints,
+          resolvedActiveStoreSlug
+        )
+      : ''
+  const pointsEquivalenceLabel = storePointClpEquivalenceLabel(
+    resolvedActiveStoreSlug
+  )
 
   const [storePointsInfoOpen, setStorePointsInfoOpen] = useState(false)
   const [registerMailOpen, setRegisterMailOpen] = useState(false)
@@ -215,8 +223,10 @@ export default function DashboardHomeContent({
           avatar={<Storefront color="primary" />}
           title="Crédito de tienda"
           subheader={
-            isTcgFamilyStore
-              ? `TCG Family puntos (${STORE_POINT_CLP_EQUIVALENCE_LABEL})`
+            resolvedActiveStoreSlug
+              ? isTcgFamilyStore
+                ? `TCG Family puntos (${pointsEquivalenceLabel})`
+                : pointsEquivalenceLabel
               : undefined
           }
           slotProps={{ title: { variant: 'h6' } }}
@@ -412,11 +422,11 @@ export default function DashboardHomeContent({
             </DialogTitle>
             <DialogContent>
               <Typography variant="body2" component="p" sx={{ mb: 2 }}>
-                Los TCG Family puntos tienen equivalencia de $1.000 cada uno; se
-                obtienen al realizar compras por la web (1% del monto de la
-                compra), al &quot;sacrificar&quot; cartas en la tienda (solo en
-                días de intercambio que son informados previamente) y otros
-                métodos informados por los canales de la comunidad.
+                Los TCG Family puntos valen $1 cada uno en canje; se obtienen al
+                realizar compras por la web (1% del monto de la compra), al
+                &quot;sacrificar&quot; cartas en la tienda (solo en días de
+                intercambio que son informados previamente) y otros métodos
+                informados por los canales de la comunidad.
               </Typography>
               <Typography variant="body2" component="p" sx={{ mb: 2 }}>
                 Se debe tener un mínimo de 5000 puntos para poder canjearlos y
