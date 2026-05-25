@@ -1,6 +1,7 @@
 'use client'
 
 import { Fragment, useMemo, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import {
   Alert,
   Box,
@@ -27,6 +28,7 @@ import {
   RemoveCircleOutline
 } from '@mui/icons-material'
 import { formatStorePointsClpEquivalent } from '@/lib/store-points-clp'
+import { useMeStores } from '@/hooks/useMeStores'
 import TournamentPointsCsvImport from '@/components/admin/TournamentPointsCsvImport'
 import {
   useDeductTournamentPointsPlayer,
@@ -172,11 +174,24 @@ function AuditEntryRow({ entry }: { entry: TournamentPointsAuditEntry }) {
 }
 
 export default function TournamentPointsManagePanel() {
+  const { data: session } = useSession()
+  const { data: meStoresData } = useMeStores()
   const [tab, setTab] = useState(0)
   const [search, setSearch] = useState('')
   const [deductKey, setDeductKey] = useState<string | null>(null)
   const [subtractAmount, setSubtractAmount] = useState('')
   const [reason, setReason] = useState('')
+
+  const activeStoreSlug = useMemo(() => {
+    const activeStoreId = session?.user?.activeStoreId?.trim() ?? ''
+    if (!activeStoreId) return null
+    const hit = (meStoresData?.stores ?? []).find(
+      r => String(r.id) === activeStoreId
+    )
+    const slug =
+      typeof hit?.slug === 'string' ? hit.slug.trim().toLowerCase() : ''
+    return slug || null
+  }, [session?.user?.activeStoreId, meStoresData?.stores])
 
   const awardsQuery = useTournamentPointsAwards(true)
   const auditQuery = useTournamentPointsAuditLog(tab === 1)
@@ -295,7 +310,7 @@ export default function TournamentPointsManagePanel() {
               <Typography variant="body2" color="text.secondary">
                 <strong>{filteredPlayers.length}</strong> jugador(es) ·{' '}
                 <strong>{pointsSum}</strong> pts (
-                {formatStorePointsClpEquivalent(pointsSum)})
+                {formatStorePointsClpEquivalent(pointsSum, activeStoreSlug)})
               </Typography>
 
               {filteredPlayers.length === 0 ? (

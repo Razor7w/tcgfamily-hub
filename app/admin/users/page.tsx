@@ -60,7 +60,10 @@ import {
   type User,
   type CreateUserData
 } from '@/hooks/useUsers'
+import { useSession } from 'next-auth/react'
 import { useAppStore } from '@/store/useAppStore'
+import { useMeStores } from '@/hooks/useMeStores'
+import { formatStorePointsClpEquivalent } from '@/lib/store-points-clp'
 import { formatRutOnBlur, getRutFieldError, onlyDigits } from '@/lib/rut-input'
 import { validatePopidOptional } from '@/lib/rut-chile'
 import { format } from 'rut.js'
@@ -116,7 +119,20 @@ export default function UsersPageRefactored() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Hooks de TanStack Query - ¡Mucho más simple!
+  const { data: session } = useSession()
+  const { data: meStoresData } = useMeStores()
   const { data: users = [], isLoading, error } = useUsers()
+
+  const activeStoreSlug = useMemo(() => {
+    const activeStoreId = session?.user?.activeStoreId?.trim() ?? ''
+    if (!activeStoreId) return null
+    const hit = (meStoresData?.stores ?? []).find(
+      r => String(r.id) === activeStoreId
+    )
+    const slug =
+      typeof hit?.slug === 'string' ? hit.slug.trim().toLowerCase() : ''
+    return slug || null
+  }, [session?.user?.activeStoreId, meStoresData?.stores])
   const createUser = useCreateUser()
   const updateUser = useUpdateUser()
   const deleteUser = useDeleteUser()
@@ -1076,11 +1092,10 @@ export default function UsersPageRefactored() {
                     sx={{ mt: 0.5 }}
                   >
                     Equivalente aprox.:{' '}
-                    {new Intl.NumberFormat('es-CL', {
-                      style: 'currency',
-                      currency: 'CLP',
-                      maximumFractionDigits: 0
-                    }).format(pointsModalUser.storePoints ?? 0)}
+                    {formatStorePointsClpEquivalent(
+                      pointsModalUser.storePoints ?? 0,
+                      activeStoreSlug
+                    )}
                   </Typography>
                 </Box>
                 <Box>
