@@ -286,6 +286,93 @@ export function useUpdateMail() {
   })
 }
 
+export interface BulkWithdrawMailsResult {
+  updatedCount: number
+  matchedCount: number
+}
+
+export interface BulkReceiveInStoreMailsResult extends BulkWithdrawMailsResult {
+  receivedInStoreAt: string
+}
+
+/** Marcar varios correos como retirados en una sola petición (admin). */
+export function useBulkWithdrawMails() {
+  const queryClient = useQueryClient()
+  const storeKey = useDashboardStoreQueryKey()
+
+  return useMutation({
+    mutationFn: async (mailIds: string[]) => {
+      const response = await fetch('/api/mail/bulk-withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mailIds })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Error al marcar correos como retirados')
+      }
+
+      return response.json() as Promise<BulkWithdrawMailsResult>
+    },
+    onSuccess: (_, mailIds) => {
+      const idSet = new Set(mailIds)
+      queryClient.setQueryData<{ mails: Mail[] }>(['mails', storeKey], old => {
+        if (!old?.mails) return old
+        return {
+          mails: old.mails.map(m =>
+            idSet.has(m._id) ? { ...m, isRecived: true } : m
+          )
+        }
+      })
+      queryClient.invalidateQueries({ queryKey: ['mails', 'me'] })
+    }
+  })
+}
+
+/** Marcar varios correos como recibidos en tienda en una sola petición (admin). */
+export function useBulkReceiveInStoreMails() {
+  const queryClient = useQueryClient()
+  const storeKey = useDashboardStoreQueryKey()
+
+  return useMutation({
+    mutationFn: async (mailIds: string[]) => {
+      const response = await fetch('/api/mail/bulk-receive-in-store', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mailIds })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(
+          error.error || 'Error al marcar correos como recibidos en tienda'
+        )
+      }
+
+      return response.json() as Promise<BulkReceiveInStoreMailsResult>
+    },
+    onSuccess: (result, mailIds) => {
+      const idSet = new Set(mailIds)
+      queryClient.setQueryData<{ mails: Mail[] }>(['mails', storeKey], old => {
+        if (!old?.mails) return old
+        return {
+          mails: old.mails.map(m =>
+            idSet.has(m._id)
+              ? {
+                  ...m,
+                  isRecivedInStore: true,
+                  receivedInStoreAt: result.receivedInStoreAt
+                }
+              : m
+          )
+        }
+      })
+      queryClient.invalidateQueries({ queryKey: ['mails', 'me'] })
+    }
+  })
+}
+
 // Hook para eliminar un mail por ID
 export function useDeleteMail() {
   const queryClient = useQueryClient()
