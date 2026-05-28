@@ -38,6 +38,8 @@ import {
   useMails,
   useCreateMail,
   useUpdateMail,
+  useBulkWithdrawMails,
+  useBulkReceiveInStoreMails,
   useDeleteMail,
   type Mail,
   type CreateMailData,
@@ -115,10 +117,14 @@ export default function MailsPage() {
     useState<FilterToRecipient | null>(null)
   const [page, setPage] = useState(1)
   const [mailToDelete, setMailToDelete] = useState<Mail | null>(null)
+  const [bulkWithdrawOpen, setBulkWithdrawOpen] = useState(false)
+  const [bulkReceiveInStoreOpen, setBulkReceiveInStoreOpen] = useState(false)
 
   const { data: mailsRes, isLoading, error } = useMails()
   const createMail = useCreateMail()
   const updateMail = useUpdateMail()
+  const bulkWithdraw = useBulkWithdrawMails()
+  const bulkReceiveInStore = useBulkReceiveInStoreMails()
   const deleteMail = useDeleteMail()
   const createUser = useCreateUser()
 
@@ -191,6 +197,23 @@ export default function MailsPage() {
     const start = (page - 1) * PAGE_SIZE
     return mails.slice(start, start + PAGE_SIZE)
   }, [mails, page])
+
+  /** En tienda y pendientes de retiro (excluye «No recibido en tienda»). */
+  const bulkWithdrawTargets = useMemo(() => {
+    if (!filterToRecipient) return []
+    return mails.filter(m => !m.isRecived && Boolean(m.isRecivedInStore))
+  }, [mails, filterToRecipient])
+
+  /** Sin ingresar en tienda, filtrados por remitente. */
+  const bulkReceiveInStoreTargets = useMemo(() => {
+    if (!filterFromUser) return []
+    return mails.filter(m => !m.isRecived && !m.isRecivedInStore)
+  }, [mails, filterFromUser])
+
+  const mailActionsDisabled =
+    updateMail.isPending ||
+    bulkWithdraw.isPending ||
+    bulkReceiveInStore.isPending
 
   const fromIdTrim = formData.fromUserId.trim()
   const toIdTrim = formData.toUserId.trim()
@@ -421,6 +444,50 @@ export default function MailsPage() {
       })
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Error al actualizar'
+      setSnackbar({ open: true, message: msg, severity: 'error' })
+    }
+  }
+
+  const handleConfirmBulkWithdraw = async () => {
+    const ids = bulkWithdrawTargets.map(m => m._id)
+    if (ids.length === 0) return
+    try {
+      const result = await bulkWithdraw.mutateAsync(ids)
+      setBulkWithdrawOpen(false)
+      setSnackbar({
+        open: true,
+        message:
+          result.updatedCount === 1
+            ? '1 correo marcado como retirado'
+            : `${result.updatedCount} correos marcados como retirados`,
+        severity: 'success'
+      })
+    } catch (e) {
+      const msg =
+        e instanceof Error ? e.message : 'Error al marcar como retirados'
+      setSnackbar({ open: true, message: msg, severity: 'error' })
+    }
+  }
+
+  const handleConfirmBulkReceiveInStore = async () => {
+    const ids = bulkReceiveInStoreTargets.map(m => m._id)
+    if (ids.length === 0) return
+    try {
+      const result = await bulkReceiveInStore.mutateAsync(ids)
+      setBulkReceiveInStoreOpen(false)
+      setSnackbar({
+        open: true,
+        message:
+          result.updatedCount === 1
+            ? '1 correo marcado como recibido en tienda'
+            : `${result.updatedCount} correos marcados como recibidos en tienda`,
+        severity: 'success'
+      })
+    } catch (e) {
+      const msg =
+        e instanceof Error
+          ? e.message
+          : 'Error al marcar como recibidos en tienda'
       setSnackbar({ open: true, message: msg, severity: 'error' })
     }
   }
@@ -675,6 +742,53 @@ export default function MailsPage() {
           </Stack>
         </Paper>
 
+        {filterFromUser && bulkReceiveInStoreTargets.length > 1 ? (
+          <Alert
+            severity="info"
+            sx={{ mb: 2, borderRadius: 2, alignItems: 'center' }}
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                variant="outlined"
+                startIcon={<StorefrontIcon />}
+                onClick={() => setBulkReceiveInStoreOpen(true)}
+                disabled={mailActionsDisabled}
+                sx={{ whiteSpace: 'nowrap' }}
+              >
+                Marcar {bulkReceiveInStoreTargets.length} como recibidos
+              </Button>
+            }
+          >
+            Hay {bulkReceiveInStoreTargets.length} correos sin ingresar en
+            tienda de <strong>{filterFromUserLabel(filterFromUser)}</strong>.
+          </Alert>
+        ) : null}
+
+        {filterToRecipient && bulkWithdrawTargets.length > 1 ? (
+          <Alert
+            severity="info"
+            sx={{ mb: 2, borderRadius: 2, alignItems: 'center' }}
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                variant="outlined"
+                startIcon={<MarkEmailReadIcon />}
+                onClick={() => setBulkWithdrawOpen(true)}
+                disabled={mailActionsDisabled}
+                sx={{ whiteSpace: 'nowrap' }}
+              >
+                Marcar {bulkWithdrawTargets.length} como retirados
+              </Button>
+            }
+          >
+            Hay {bulkWithdrawTargets.length} correos en tienda pendientes de
+            retiro para{' '}
+            <strong>{filterToRecipientLabel(filterToRecipient)}</strong>.
+          </Alert>
+        ) : null}
+
         {mails.length === 0 ? (
           <Paper
             variant="outlined"
@@ -846,10 +960,7 @@ export default function MailsPage() {
                                   mail.isRecivedInStore ? 'default' : 'primary'
                                 }
                                 onClick={() => handleToggleRecivedInStore(mail)}
-                                disabled={
-                                  updateMail.isPending &&
-                                  updateMail.variables?.mailId === mail._id
-                                }
+                                disabled={mailActionsDisabled}
                               >
                                 {mail.isRecivedInStore ? (
                                   <StorefrontOutlinedIcon fontSize="small" />
@@ -885,10 +996,7 @@ export default function MailsPage() {
                                 size="small"
                                 color={mail.isRecived ? 'default' : 'primary'}
                                 onClick={() => handleToggleRecived(mail)}
-                                disabled={
-                                  updateMail.isPending &&
-                                  updateMail.variables?.mailId === mail._id
-                                }
+                                disabled={mailActionsDisabled}
                               >
                                 {mail.isRecived ? (
                                   <MarkEmailUnreadIcon fontSize="small" />
@@ -973,6 +1081,89 @@ export default function MailsPage() {
             </Box>
           </>
         )}
+
+        <Dialog
+          open={bulkReceiveInStoreOpen}
+          onClose={() =>
+            !bulkReceiveInStore.isPending && setBulkReceiveInStoreOpen(false)
+          }
+          maxWidth="xs"
+          fullWidth
+          aria-labelledby="admin-bulk-receive-in-store-title"
+        >
+          <DialogTitle id="admin-bulk-receive-in-store-title">
+            ¿Marcar todos como recibidos en tienda?
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary">
+              Se marcarán{' '}
+              <strong>{bulkReceiveInStoreTargets.length} correos</strong> como
+              recibidos en tienda de{' '}
+              <strong>
+                {filterFromUser ? filterFromUserLabel(filterFromUser) : ''}
+              </strong>
+              . Solo se incluyen correos en estado{' '}
+              <strong>No recibido en tienda</strong>.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button
+              onClick={() => setBulkReceiveInStoreOpen(false)}
+              disabled={bulkReceiveInStore.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              color="primary"
+              variant="contained"
+              onClick={() => void handleConfirmBulkReceiveInStore()}
+              disabled={bulkReceiveInStore.isPending}
+            >
+              {bulkReceiveInStore.isPending ? 'Marcando…' : 'Confirmar ingreso'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={bulkWithdrawOpen}
+          onClose={() => !bulkWithdraw.isPending && setBulkWithdrawOpen(false)}
+          maxWidth="xs"
+          fullWidth
+          aria-labelledby="admin-bulk-withdraw-title"
+        >
+          <DialogTitle id="admin-bulk-withdraw-title">
+            ¿Marcar todos como retirados?
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary">
+              Se marcarán <strong>{bulkWithdrawTargets.length} correos</strong>{' '}
+              como retirados para{' '}
+              <strong>
+                {filterToRecipient
+                  ? filterToRecipientLabel(filterToRecipient)
+                  : ''}
+              </strong>
+              . Solo se incluyen correos marcados como{' '}
+              <strong>En tienda</strong>.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button
+              onClick={() => setBulkWithdrawOpen(false)}
+              disabled={bulkWithdraw.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              color="primary"
+              variant="contained"
+              onClick={() => void handleConfirmBulkWithdraw()}
+              disabled={bulkWithdraw.isPending}
+            >
+              {bulkWithdraw.isPending ? 'Marcando…' : 'Confirmar retiro'}
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         <Dialog
           open={mailToDelete !== null}
