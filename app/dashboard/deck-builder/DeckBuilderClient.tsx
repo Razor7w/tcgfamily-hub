@@ -1,12 +1,19 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState
+} from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import AddIcon from '@mui/icons-material/Add'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import ContentPasteIcon from '@mui/icons-material/ContentPaste'
 import FilterListIcon from '@mui/icons-material/FilterList'
+import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined'
 import PostAddIcon from '@mui/icons-material/PostAdd'
 import RemoveIcon from '@mui/icons-material/Remove'
 import SearchIcon from '@mui/icons-material/Search'
@@ -30,8 +37,10 @@ import CircularProgress from '@mui/material/CircularProgress'
 import LinearProgress from '@mui/material/LinearProgress'
 import ButtonBase from '@mui/material/ButtonBase'
 import { alpha, type SxProps, type Theme } from '@mui/material/styles'
+import DecklistImageDialog from '@/components/decklist/DecklistImageDialog'
 import { DECKLIST_NUEVO_SESSION_TEXT_KEY } from '@/lib/decklist-nuevo-prefill'
 import {
+  flatCardsFromDecklistText,
   limitlessCardImageUrl,
   parseDecklistText,
   type DeckSectionId
@@ -139,6 +148,8 @@ const deckPanelSx: SxProps<Theme> = {
   border: '1px solid',
   borderColor: 'divider',
   bgcolor: 'background.paper',
+  minWidth: 0,
+  overflow: 'hidden',
   boxShadow: t =>
     t.palette.mode === 'dark'
       ? 'none'
@@ -165,20 +176,33 @@ const deckCountBadgeSx: SxProps<Theme> = {
   '& .MuiChip-label': { px: 1.25, py: 0 }
 }
 
-const mazoActionsSx: SxProps<Theme> = {
-  flexShrink: 0,
+const mazoActionsGridSx: SxProps<Theme> = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
   gap: 1,
-  width: { xs: '100%', md: 'auto' },
-  '& .MuiButton-root': { flex: { xs: 1, sm: 'none' } }
+  width: '100%',
+  minWidth: 0,
+  '& .MuiButton-root': {
+    width: '100%',
+    minWidth: 0,
+    justifyContent: 'center',
+    whiteSpace: 'normal',
+    lineHeight: 1.25,
+    textAlign: 'center'
+  },
+  '& .MuiButton-startIcon': {
+    marginRight: 0.5,
+    marginLeft: 0
+  }
 }
 
 const mazoBtnBase: SxProps<Theme> = {
   textTransform: 'none',
   fontWeight: 700,
-  px: 1.75,
-  py: 0.85,
+  px: 1.25,
+  py: 0.9,
   borderRadius: 1.25,
-  whiteSpace: 'nowrap',
+  fontSize: '0.8125rem',
   ...btnPressFeedback
 }
 
@@ -239,6 +263,56 @@ const drawerDoneBtnSx: SxProps<Theme> = {
   py: 1.25
 }
 
+const deckLineRowSx: SxProps<Theme> = {
+  display: 'grid',
+  gridTemplateColumns: '44px minmax(0, 1fr)',
+  gridTemplateRows: 'auto auto',
+  columnGap: 1.25,
+  rowGap: 0.5,
+  py: 1.25,
+  px: 1.5,
+  alignItems: 'start',
+  minWidth: 0,
+  bgcolor: t => alpha(t.palette.text.primary, 0.015),
+  transition: 'background-color 0.15s ease',
+  '&:hover': { bgcolor: t => alpha(t.palette.primary.main, 0.05) }
+}
+
+const deckLineThumbSx: SxProps<Theme> = {
+  gridRow: '1 / 3',
+  gridColumn: 1,
+  width: 44,
+  height: 62,
+  borderRadius: 1,
+  overflow: 'hidden',
+  bgcolor: 'action.hover',
+  boxShadow: t => `0 2px 8px -4px ${alpha(t.palette.common.black, 0.2)}`
+}
+
+const deckLineNameSx: SxProps<Theme> = {
+  gridColumn: 2,
+  gridRow: 1,
+  minWidth: 0,
+  fontWeight: 700,
+  letterSpacing: '-0.01em',
+  lineHeight: 1.3,
+  display: '-webkit-box',
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: 'vertical',
+  overflow: 'hidden',
+  textWrap: 'pretty'
+}
+
+const deckLineMetaSx: SxProps<Theme> = {
+  gridColumn: 2,
+  gridRow: 2,
+  minWidth: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 0.75
+}
+
 const deckLineStepperSx: SxProps<Theme> = {
   flexShrink: 0,
   border: '1px solid',
@@ -248,10 +322,25 @@ const deckLineStepperSx: SxProps<Theme> = {
   bgcolor: t => alpha(t.palette.text.primary, 0.03),
   '& .MuiIconButton-root': {
     borderRadius: 0,
-    width: 36,
-    height: 36,
+    width: 30,
+    height: 30,
     '&:hover': { bgcolor: t => alpha(t.palette.primary.main, 0.1) }
   }
+}
+
+const deckLineCountSx: SxProps<Theme> = {
+  minWidth: 22,
+  textAlign: 'center',
+  fontVariantNumeric: 'tabular-nums',
+  color: 'primary.dark',
+  borderLeft: '1px solid',
+  borderRight: '1px solid',
+  borderColor: 'divider',
+  py: 0.5,
+  px: 0.35,
+  fontSize: '0.8125rem',
+  fontWeight: 800,
+  lineHeight: 1.2
 }
 
 /** Filas del mazo: 1 col en móvil, 2 en desktop (md+). */
@@ -381,6 +470,7 @@ export default function DeckBuilderClient() {
   const [snack, setSnack] = useState<string | null>(null)
   const [pasteOpen, setPasteOpen] = useState(false)
   const [pasteText, setPasteText] = useState('')
+  const [imageOpen, setImageOpen] = useState(false)
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(searchText.trim()), 380)
@@ -546,6 +636,11 @@ export default function DeckBuilderClient() {
   const exportText = useMemo(
     () => buildDecklistExportText(Object.values(deck)),
     [deck]
+  )
+
+  const flatCardsForImage = useMemo(
+    () => flatCardsFromDecklistText(exportText),
+    [exportText]
   )
 
   const copyExport = async () => {
@@ -771,84 +866,84 @@ export default function DeckBuilderClient() {
               order: { xs: 1, lg: 0 }
             }}
           >
-            <Stack spacing={2} sx={{ mb: 2.5 }}>
+            <Stack spacing={1.5} sx={{ mb: 2.5, minWidth: 0 }}>
               <Stack
-                direction={{ xs: 'column', lg: 'row' }}
-                alignItems={{ xs: 'stretch', lg: 'center' }}
-                justifyContent="space-between"
-                spacing={1.5}
+                direction="row"
+                alignItems="center"
+                spacing={1.25}
                 useFlexGap
+                flexWrap="wrap"
               >
-                <Stack spacing={1} sx={{ minWidth: 0, flex: 1 }}>
-                  <Stack
-                    direction="row"
-                    alignItems="center"
-                    spacing={1.25}
-                    useFlexGap
-                    flexWrap="wrap"
-                  >
-                    <Typography
-                      variant="h6"
-                      component="h2"
-                      sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}
-                    >
-                      Mazo
-                    </Typography>
-                    <Chip
-                      label={`${totalCards} / ${MAX_DECK}`}
-                      size="small"
-                      color={totalCards === MAX_DECK ? 'success' : 'default'}
-                      sx={deckCountBadgeSx}
-                    />
-                  </Stack>
-                  <LinearProgress
-                    variant="determinate"
-                    value={Math.min(100, (totalCards / MAX_DECK) * 100)}
-                    aria-label="Progreso del mazo"
-                    sx={{
-                      height: 6,
-                      borderRadius: 1,
-                      bgcolor: t => alpha(t.palette.primary.main, 0.1),
-                      '& .MuiLinearProgress-bar': { borderRadius: 1 }
-                    }}
-                  />
-                </Stack>
-                <Stack
-                  direction={{ xs: 'column', sm: 'row' }}
-                  useFlexGap
-                  sx={mazoActionsSx}
+                <Typography
+                  variant="h6"
+                  component="h2"
+                  sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}
                 >
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    disableElevation
-                    startIcon={<ContentPasteIcon />}
-                    onClick={() => void pasteFromClipboard()}
-                    sx={mazoBtnSoft}
-                  >
-                    Pegar lista
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    startIcon={<ContentCopyIcon />}
-                    disabled={!exportText}
-                    onClick={() => void copyExport()}
-                    sx={mazoBtnOutlined}
-                  >
-                    Copiar listado
-                  </Button>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<PostAddIcon />}
-                    onClick={goToCreateList}
-                    sx={mazoBtnPrimary}
-                  >
-                    Crear lista
-                  </Button>
-                </Stack>
+                  Mazo
+                </Typography>
+                <Chip
+                  label={`${totalCards} / ${MAX_DECK}`}
+                  size="small"
+                  color={totalCards === MAX_DECK ? 'success' : 'default'}
+                  sx={deckCountBadgeSx}
+                />
               </Stack>
+              <LinearProgress
+                variant="determinate"
+                value={Math.min(100, (totalCards / MAX_DECK) * 100)}
+                aria-label="Progreso del mazo"
+                sx={{
+                  height: 6,
+                  borderRadius: 1,
+                  bgcolor: t => alpha(t.palette.primary.main, 0.1),
+                  '& .MuiLinearProgress-bar': { borderRadius: 1 }
+                }}
+              />
+              <Box sx={mazoActionsGridSx}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  disableElevation
+                  startIcon={<ContentPasteIcon />}
+                  onClick={() => void pasteFromClipboard()}
+                  sx={mazoBtnSoft}
+                >
+                  Pegar lista
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  size="small"
+                  startIcon={<ContentCopyIcon />}
+                  disabled={!exportText}
+                  onClick={() => void copyExport()}
+                  sx={mazoBtnOutlined}
+                >
+                  Copiar listado
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  size="small"
+                  startIcon={<ImageOutlinedIcon />}
+                  disabled={flatCardsForImage.length === 0}
+                  onClick={() => startTransition(() => setImageOpen(true))}
+                  sx={mazoBtnOutlined}
+                >
+                  Ver imagen
+                </Button>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  startIcon={<PostAddIcon />}
+                  onClick={goToCreateList}
+                  sx={mazoBtnPrimary}
+                >
+                  Crear lista
+                </Button>
+              </Box>
             </Stack>
             {Object.keys(deck).length === 0 ? (
               <Box
@@ -929,35 +1024,8 @@ export default function DeckBuilderClient() {
                         {section.lines.map(line => {
                           const src = thumbUrl(line.set, line.number, line.name)
                           return (
-                            <Stack
-                              key={line.key}
-                              direction="row"
-                              spacing={1.5}
-                              alignItems="center"
-                              sx={{
-                                py: 1.25,
-                                px: 1.5,
-                                bgcolor: t =>
-                                  alpha(t.palette.text.primary, 0.015),
-                                transition: 'background-color 0.15s ease',
-                                '&:hover': {
-                                  bgcolor: t =>
-                                    alpha(t.palette.primary.main, 0.05)
-                                }
-                              }}
-                            >
-                              <Box
-                                sx={{
-                                  width: 48,
-                                  height: 67,
-                                  flexShrink: 0,
-                                  borderRadius: 1,
-                                  overflow: 'hidden',
-                                  bgcolor: 'action.hover',
-                                  boxShadow: t =>
-                                    `0 2px 8px -4px ${alpha(t.palette.common.black, 0.2)}`
-                                }}
-                              >
+                            <Box key={line.key} sx={deckLineRowSx}>
+                              <Box sx={deckLineThumbSx}>
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                   src={src}
@@ -969,72 +1037,62 @@ export default function DeckBuilderClient() {
                                   }}
                                 />
                               </Box>
-                              <Box sx={{ minWidth: 0, flex: 1 }}>
-                                <Typography
-                                  variant="body2"
-                                  fontWeight={700}
-                                  noWrap
-                                  sx={{ letterSpacing: '-0.01em' }}
-                                >
-                                  {line.name}
-                                </Typography>
+                              <Typography
+                                variant="body2"
+                                component="p"
+                                title={line.name}
+                                sx={deckLineNameSx}
+                              >
+                                {line.name}
+                              </Typography>
+                              <Box sx={deckLineMetaSx}>
                                 <Typography
                                   variant="caption"
                                   color="text.secondary"
+                                  noWrap
                                   sx={{
                                     fontVariantNumeric: 'tabular-nums',
-                                    fontWeight: 600
+                                    fontWeight: 600,
+                                    minWidth: 0
                                   }}
                                 >
                                   {line.set} · {line.number}
                                 </Typography>
+                                <Stack
+                                  direction="row"
+                                  alignItems="center"
+                                  sx={deckLineStepperSx}
+                                >
+                                  <IconButton
+                                    size="small"
+                                    aria-label="Quitar una copia"
+                                    onClick={() => removeCard(line.key)}
+                                  >
+                                    <RemoveIcon sx={{ fontSize: 18 }} />
+                                  </IconButton>
+                                  <Typography
+                                    component="span"
+                                    sx={deckLineCountSx}
+                                  >
+                                    {line.count}
+                                  </Typography>
+                                  <IconButton
+                                    size="small"
+                                    aria-label="Añadir una copia"
+                                    disabled={
+                                      (!isEnergyCardExemptFromFourCopyLimit(
+                                        line.name
+                                      ) &&
+                                        line.count >= MAX_COPIES) ||
+                                      totalCards >= MAX_DECK
+                                    }
+                                    onClick={() => addOneFromDeckLine(line)}
+                                  >
+                                    <AddIcon sx={{ fontSize: 18 }} />
+                                  </IconButton>
+                                </Stack>
                               </Box>
-                              <Stack
-                                direction="row"
-                                alignItems="center"
-                                sx={deckLineStepperSx}
-                              >
-                                <IconButton
-                                  size="small"
-                                  aria-label="Quitar una copia"
-                                  onClick={() => removeCard(line.key)}
-                                >
-                                  <RemoveIcon fontSize="small" />
-                                </IconButton>
-                                <Typography
-                                  component="span"
-                                  variant="body2"
-                                  fontWeight={800}
-                                  sx={{
-                                    minWidth: 28,
-                                    textAlign: 'center',
-                                    fontVariantNumeric: 'tabular-nums',
-                                    color: 'primary.dark',
-                                    borderLeft: '1px solid',
-                                    borderRight: '1px solid',
-                                    borderColor: 'divider',
-                                    py: 0.75,
-                                    px: 0.5
-                                  }}
-                                >
-                                  {line.count}
-                                </Typography>
-                                <IconButton
-                                  size="small"
-                                  aria-label="Añadir una copia"
-                                  disabled={
-                                    (!isEnergyCardExemptFromFourCopyLimit(
-                                      line.name
-                                    ) &&
-                                      line.count >= MAX_COPIES) ||
-                                    totalCards >= MAX_DECK
-                                  }
-                                  onClick={() => addOneFromDeckLine(line)}
-                                >
-                                  <AddIcon fontSize="small" />
-                                </IconButton>
-                              </Stack>
-                            </Stack>
+                            </Box>
                           )
                         })}
                       </Box>
@@ -1413,6 +1471,16 @@ export default function DeckBuilderClient() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {imageOpen ? (
+        <DecklistImageDialog
+          open={imageOpen}
+          onClose={() => setImageOpen(false)}
+          cards={flatCardsForImage}
+          title="Mazo"
+          deckText={exportText}
+        />
+      ) : null}
 
       <Snackbar
         open={Boolean(snack)}

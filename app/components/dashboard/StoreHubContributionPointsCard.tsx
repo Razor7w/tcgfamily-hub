@@ -583,8 +583,9 @@ export default function StoreHubContributionPointsCard({
               ) : (
                 <Typography variant="body2" color="text.secondary">
                   Preinscríbete en torneos oficiales (+1 pt), suma más al cerrar
-                  el evento (+10 pts), reporta mazo y bitácora, o completa el
-                  ciclo de un correo en tienda para empezar a sumar puntos.
+                  si jugaste el evento (+10 pts), reporta mazo y bitácora, o
+                  completa el ciclo de un correo en tienda para empezar a sumar
+                  puntos.
                 </Typography>
               )}
               {leaderboardMonth?.enabled ||
@@ -666,7 +667,8 @@ export default function StoreHubContributionPointsCard({
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
             Reconocen tu participación en la comunidad de la tienda:
-            preinscripción web y cierre de torneos oficiales, reportes de mazo y
+            preinscripción web, puntos al cerrar un torneo oficial solo si
+            jugaste (clasificación TDF o récord W/L/T), reportes de mazo y
             bitácora, correos recibidos o retirados en tienda y otras acciones
             configuradas. No se canjean como crédito de tienda.
           </Typography>
