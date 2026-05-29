@@ -7,6 +7,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import LayersIcon from '@mui/icons-material/Layers'
 import PublicIcon from '@mui/icons-material/Public'
 import SearchIcon from '@mui/icons-material/Search'
+import ViewModuleIcon from '@mui/icons-material/ViewModule'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Container from '@mui/material/Container'
@@ -162,6 +163,16 @@ export default function DecklistsPage() {
                 sx={{ fontWeight: 600, py: 1.15, px: 2 }}
               >
                 Listas públicas
+              </Button>
+              <Button
+                component={Link}
+                href="/dashboard/deck-builder"
+                variant="outlined"
+                color="primary"
+                startIcon={<ViewModuleIcon />}
+                sx={{ fontWeight: 600, py: 1.15, px: 2 }}
+              >
+                Armar mazo
               </Button>
               <Button
                 component={Link}
