@@ -19,6 +19,7 @@ import {
 } from '@/lib/participant-match-round'
 import { popidForStorage } from '@/lib/rut-chile'
 import { applyMatchRoundContributionAwards } from '@/lib/contribution-points/match-round-contribution-awards'
+import { resolveWeeklyEventStoreIdForContribution } from '@/lib/contribution-points/resolve-event-store-id'
 import { resolveTournamentContributionOrigin } from '@/lib/contribution-points/tournament-origin'
 import WeeklyEvent from '@/models/WeeklyEvent'
 import type { IParticipantMatchRound } from '@/models/WeeklyEvent'
@@ -175,6 +176,16 @@ export async function PUT(
     })
 
     part.matchRounds = toSave
+
+    const activeStoreId = (
+      session.user as { activeStoreId?: string } | undefined
+    )?.activeStoreId
+    const storeIdForContribution =
+      await resolveWeeklyEventStoreIdForContribution(doc, activeStoreId)
+    if (!doc.storeId && storeIdForContribution) {
+      doc.storeId = storeIdForContribution
+    }
+
     doc.markModified('participants')
     await doc.save()
 
@@ -182,10 +193,9 @@ export async function PUT(
       ReturnType<typeof applyMatchRoundContributionAwards>
     > = []
 
-    const storeId = doc.storeId
-    if (storeId) {
+    if (storeIdForContribution) {
       contributionPointsAwarded = await applyMatchRoundContributionAwards({
-        storeId,
+        storeId: storeIdForContribution,
         userId: uid,
         eventId: doc._id,
         eventTitle: String(doc.title ?? 'Torneo'),

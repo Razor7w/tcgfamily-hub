@@ -6,6 +6,7 @@ import { normalizeParticipantDeckPokemonSlugs } from '@/lib/participant-deck-pok
 import { parseTournamentDecklistRefBody } from '@/lib/tournament-decklist-ref'
 import { validateTournamentDecklistRefForUser } from '@/lib/validate-tournament-decklist-ref'
 import { applyDeckContributionAwards } from '@/lib/contribution-points/deck-contribution-awards'
+import { resolveWeeklyEventStoreIdForContribution } from '@/lib/contribution-points/resolve-event-store-id'
 import { resolveTournamentContributionOrigin } from '@/lib/contribution-points/tournament-origin'
 import WeeklyEvent from '@/models/WeeklyEvent'
 
@@ -131,6 +132,15 @@ export async function PUT(
       }
     }
 
+    const activeStoreId = (
+      session.user as { activeStoreId?: string } | undefined
+    )?.activeStoreId
+    const storeIdForContribution =
+      await resolveWeeklyEventStoreIdForContribution(doc, activeStoreId)
+    if (!doc.storeId && storeIdForContribution) {
+      doc.storeId = storeIdForContribution
+    }
+
     doc.markModified('participants')
     await doc.save()
 
@@ -138,10 +148,9 @@ export async function PUT(
       ReturnType<typeof applyDeckContributionAwards>
     > = []
 
-    const storeId = doc.storeId
-    if (storeId) {
+    if (storeIdForContribution) {
       contributionPointsAwarded = await applyDeckContributionAwards({
-        storeId,
+        storeId: storeIdForContribution,
         userId: uid,
         eventId: doc._id,
         eventTitle: String(doc.title ?? 'Torneo'),
