@@ -34,6 +34,10 @@ import {
   type TournamentStandingsMetaDTO
 } from '@/lib/tournament-standings-meta'
 import { buildContributionBadgesForUsers } from '@/lib/contribution-points/build-contribution-badges'
+import {
+  buildPlayedPopIdSet,
+  participantPlayedTournament
+} from '@/lib/tournament-participant-played'
 
 type LeanParticipant = {
   displayName?: string
@@ -124,66 +128,6 @@ function hasReportedMeta(p: TournamentMetaParticipantDTO): boolean {
   return (
     p.deckPokemonSlugs.length > 0 || p.hasDecklist || p.matchRounds.length > 0
   )
-}
-
-/** POP IDs que figuraron en el torneo (clasificación TDF o emparejamientos sincronizados). */
-function buildPlayedPopIdSet(doc: LeanEvent): Set<string> {
-  const set = new Set<string>()
-
-  for (const cat of doc.tournamentStandings ?? []) {
-    for (const row of cat.finished ?? []) {
-      const n = popidForStorage(row.popId)
-      if (n) set.add(n)
-    }
-    for (const row of cat.dnf ?? []) {
-      const n = popidForStorage(row.popId)
-      if (n) set.add(n)
-    }
-  }
-
-  if (set.size === 0) {
-    for (const snap of doc.roundSnapshots ?? []) {
-      for (const pairing of snap.pairings ?? []) {
-        for (const raw of [pairing.player1PopId, pairing.player2PopId]) {
-          const n = popidForStorage(typeof raw === 'string' ? raw : '')
-          if (n) set.add(n)
-        }
-      }
-    }
-  }
-
-  return set
-}
-
-function participantPlayedTournament(
-  p: LeanParticipant,
-  playedPopIds: Set<string>,
-  tournamentOrigin: 'official' | 'custom'
-): boolean {
-  if (tournamentOrigin === 'custom') {
-    const rounds = parseParticipantMatchRoundsFromLean(p.matchRounds)
-    if (rounds.length > 0) return true
-    if (
-      p.manualPlacement &&
-      typeof p.manualPlacement.categoryIndex === 'number'
-    ) {
-      return true
-    }
-    const pop = popidForStorage(typeof p.popId === 'string' ? p.popId : '')
-    return Boolean(pop && playedPopIds.size > 0 && playedPopIds.has(pop))
-  }
-
-  const pop = popidForStorage(typeof p.popId === 'string' ? p.popId : '')
-  if (pop && playedPopIds.has(pop)) return true
-
-  if (playedPopIds.size === 0) {
-    const w = Math.max(0, Math.round(Number(p.wins) || 0))
-    const l = Math.max(0, Math.round(Number(p.losses) || 0))
-    const t = Math.max(0, Math.round(Number(p.ties) || 0))
-    return w + l + t > 0
-  }
-
-  return false
 }
 
 async function resolveTournamentMetaStore(

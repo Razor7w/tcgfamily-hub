@@ -1,11 +1,19 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState
+} from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import AddIcon from '@mui/icons-material/Add'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
+import ContentPasteIcon from '@mui/icons-material/ContentPaste'
 import FilterListIcon from '@mui/icons-material/FilterList'
+import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined'
 import PostAddIcon from '@mui/icons-material/PostAdd'
 import RemoveIcon from '@mui/icons-material/Remove'
 import SearchIcon from '@mui/icons-material/Search'
@@ -26,12 +34,20 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import CircularProgress from '@mui/material/CircularProgress'
+import LinearProgress from '@mui/material/LinearProgress'
 import ButtonBase from '@mui/material/ButtonBase'
-import { alpha } from '@mui/material/styles'
+import { alpha, type SxProps, type Theme } from '@mui/material/styles'
+import DecklistImageDialog from '@/components/decklist/DecklistImageDialog'
 import { DECKLIST_NUEVO_SESSION_TEXT_KEY } from '@/lib/decklist-nuevo-prefill'
-import { limitlessCardImageUrl } from '@/lib/decklist'
+import {
+  flatCardsFromDecklistText,
+  limitlessCardImageUrl,
+  parseDecklistText,
+  type DeckSectionId
+} from '@/lib/decklist'
 import {
   buildDecklistExportText,
+  deckSectionFromCardType,
   isEnergyCardExemptFromFourCopyLimit,
   type DeckBuilderLine,
   type LimitlessDmCardDetail,
@@ -42,6 +58,15 @@ import {
 
 const MAX_DECK = 60
 const MAX_COPIES = 4
+
+const DECK_SECTION_ORDER = ['pokemon', 'trainer', 'energy'] as const
+
+const DECK_SECTION_LABELS: Record<(typeof DECK_SECTION_ORDER)[number], string> =
+  {
+    pokemon: 'Pokémon',
+    trainer: 'Trainer',
+    energy: 'Energy'
+  }
 
 const FORMAT_OPTIONS: { value: LimitlessDmFormat; label: string }[] = [
   { value: 'standard', label: 'Standard' },
@@ -61,6 +86,297 @@ const TYPE_OPTIONS: { value: LimitlessDmTypeFilter; label: string }[] = [
   { value: 'basic_energy', label: 'Basic Energy' },
   { value: 'special_energy', label: 'Special Energy' }
 ]
+
+const btnPressFeedback: SxProps<Theme> = {
+  transition:
+    'background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.12s ease',
+  '&:active': { transform: 'translateY(1px)' }
+}
+
+const formatToggleGroupSx: SxProps<Theme> = {
+  flexWrap: 'wrap',
+  gap: 0.75,
+  ...btnPressFeedback,
+  '& .MuiToggleButton-root': {
+    fontWeight: 700,
+    textTransform: 'none',
+    px: 2.25,
+    py: 0.9,
+    borderRadius: '10px !important',
+    borderWidth: 2,
+    borderColor: t => alpha(t.palette.primary.main, 0.38),
+    color: 'primary.dark',
+    '&.Mui-selected': {
+      bgcolor: 'primary.main',
+      color: 'primary.contrastText',
+      borderColor: 'primary.main',
+      boxShadow: t => `0 3px 10px -3px ${alpha(t.palette.primary.main, 0.5)}`,
+      '&:hover': { bgcolor: 'primary.dark' }
+    },
+    '&:hover': { bgcolor: t => alpha(t.palette.primary.main, 0.1) }
+  }
+}
+
+function typeFilterButtonSx(active: boolean): SxProps<Theme> {
+  return {
+    py: 1,
+    textTransform: 'none',
+    fontWeight: 700,
+    ...btnPressFeedback,
+    ...(active
+      ? {
+          boxShadow: t =>
+            `0 2px 8px -3px ${alpha(t.palette.primary.main, 0.45)}`
+        }
+      : {
+          borderWidth: 2,
+          borderColor: t => alpha(t.palette.primary.main, 0.42),
+          color: 'primary.dark',
+          bgcolor: 'background.paper',
+          '&:hover': {
+            borderWidth: 2,
+            borderColor: 'primary.main',
+            bgcolor: t => alpha(t.palette.primary.main, 0.08)
+          }
+        })
+  }
+}
+
+const deckPanelSx: SxProps<Theme> = {
+  p: { xs: 2, sm: 2.5 },
+  borderRadius: 2,
+  border: '1px solid',
+  borderColor: 'divider',
+  bgcolor: 'background.paper',
+  minWidth: 0,
+  overflow: 'hidden',
+  boxShadow: t =>
+    t.palette.mode === 'dark'
+      ? 'none'
+      : `0 1px 0 ${alpha(t.palette.primary.main, 0.05)}, 0 16px 48px -28px ${alpha(t.palette.primary.main, 0.14)}`
+}
+
+const sectionLabelSx: SxProps<Theme> = {
+  fontWeight: 700,
+  fontSize: '0.75rem',
+  letterSpacing: '0.06em',
+  textTransform: 'none',
+  color: 'text.secondary'
+}
+
+const deckCountBadgeSx: SxProps<Theme> = {
+  fontWeight: 800,
+  fontVariantNumeric: 'tabular-nums',
+  height: 30,
+  borderRadius: 1,
+  border: '1px solid',
+  borderColor: t => alpha(t.palette.primary.main, 0.28),
+  bgcolor: t => alpha(t.palette.primary.main, 0.1),
+  color: 'primary.dark',
+  '& .MuiChip-label': { px: 1.25, py: 0 }
+}
+
+const mazoActionsGridSx: SxProps<Theme> = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  gap: 1,
+  width: '100%',
+  minWidth: 0,
+  '& .MuiButton-root': {
+    width: '100%',
+    minWidth: 0,
+    justifyContent: 'center',
+    whiteSpace: 'normal',
+    lineHeight: 1.25,
+    textAlign: 'center'
+  },
+  '& .MuiButton-startIcon': {
+    marginRight: 0.5,
+    marginLeft: 0
+  }
+}
+
+const mazoBtnBase: SxProps<Theme> = {
+  textTransform: 'none',
+  fontWeight: 700,
+  px: 1.25,
+  py: 0.9,
+  borderRadius: 1.25,
+  fontSize: '0.8125rem',
+  ...btnPressFeedback
+}
+
+const mazoBtnSoft: SxProps<Theme> = {
+  ...mazoBtnBase,
+  bgcolor: t => alpha(t.palette.primary.main, 0.16),
+  color: 'primary.dark',
+  border: '2px solid',
+  borderColor: t => alpha(t.palette.primary.main, 0.32),
+  boxShadow: 'none',
+  '&:hover': {
+    bgcolor: t => alpha(t.palette.primary.main, 0.24),
+    borderColor: 'primary.main',
+    boxShadow: t => `0 4px 12px -4px ${alpha(t.palette.primary.main, 0.42)}`
+  }
+}
+
+const mazoBtnOutlined: SxProps<Theme> = {
+  ...mazoBtnBase,
+  borderWidth: 2,
+  borderColor: t => alpha(t.palette.primary.main, 0.48),
+  bgcolor: 'background.paper',
+  color: 'primary.dark',
+  '&:hover': {
+    borderWidth: 2,
+    borderColor: 'primary.main',
+    bgcolor: t => alpha(t.palette.primary.main, 0.06),
+    boxShadow: t => `0 4px 12px -4px ${alpha(t.palette.primary.main, 0.35)}`
+  },
+  '&.Mui-disabled': { borderWidth: 2, opacity: 0.55 }
+}
+
+const mazoBtnPrimary: SxProps<Theme> = {
+  ...mazoBtnBase,
+  fontWeight: 800,
+  boxShadow: t => `0 4px 14px -4px ${alpha(t.palette.primary.main, 0.5)}`,
+  '&:hover': {
+    boxShadow: t => `0 6px 18px -6px ${alpha(t.palette.primary.main, 0.55)}`
+  }
+}
+
+const mobileFiltersBtnSx: SxProps<Theme> = {
+  ...mazoBtnBase,
+  borderWidth: 2,
+  borderColor: 'primary.main',
+  bgcolor: t => alpha(t.palette.primary.main, 0.1),
+  color: 'primary.dark',
+  fontWeight: 800,
+  '&:hover': {
+    bgcolor: t => alpha(t.palette.primary.main, 0.18),
+    borderWidth: 2
+  }
+}
+
+const drawerDoneBtnSx: SxProps<Theme> = {
+  ...mazoBtnPrimary,
+  mt: 1,
+  py: 1.25
+}
+
+const deckLineRowSx: SxProps<Theme> = {
+  display: 'grid',
+  gridTemplateColumns: '44px minmax(0, 1fr)',
+  gridTemplateRows: 'auto auto',
+  columnGap: 1.25,
+  rowGap: 0.5,
+  py: 1.25,
+  px: 1.5,
+  alignItems: 'start',
+  minWidth: 0,
+  bgcolor: t => alpha(t.palette.text.primary, 0.015),
+  transition: 'background-color 0.15s ease',
+  '&:hover': { bgcolor: t => alpha(t.palette.primary.main, 0.05) }
+}
+
+const deckLineThumbSx: SxProps<Theme> = {
+  gridRow: '1 / 3',
+  gridColumn: 1,
+  width: 44,
+  height: 62,
+  borderRadius: 1,
+  overflow: 'hidden',
+  bgcolor: 'action.hover',
+  boxShadow: t => `0 2px 8px -4px ${alpha(t.palette.common.black, 0.2)}`
+}
+
+const deckLineNameSx: SxProps<Theme> = {
+  gridColumn: 2,
+  gridRow: 1,
+  minWidth: 0,
+  fontWeight: 700,
+  letterSpacing: '-0.01em',
+  lineHeight: 1.3,
+  display: '-webkit-box',
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: 'vertical',
+  overflow: 'hidden',
+  textWrap: 'pretty'
+}
+
+const deckLineMetaSx: SxProps<Theme> = {
+  gridColumn: 2,
+  gridRow: 2,
+  minWidth: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 0.75
+}
+
+const deckLineStepperSx: SxProps<Theme> = {
+  flexShrink: 0,
+  border: '1px solid',
+  borderColor: 'divider',
+  borderRadius: 1,
+  overflow: 'hidden',
+  bgcolor: t => alpha(t.palette.text.primary, 0.03),
+  '& .MuiIconButton-root': {
+    borderRadius: 0,
+    width: 30,
+    height: 30,
+    '&:hover': { bgcolor: t => alpha(t.palette.primary.main, 0.1) }
+  }
+}
+
+const deckLineCountSx: SxProps<Theme> = {
+  minWidth: 22,
+  textAlign: 'center',
+  fontVariantNumeric: 'tabular-nums',
+  color: 'primary.dark',
+  borderLeft: '1px solid',
+  borderRight: '1px solid',
+  borderColor: 'divider',
+  py: 0.5,
+  px: 0.35,
+  fontSize: '0.8125rem',
+  fontWeight: 800,
+  lineHeight: 1.2
+}
+
+/** Filas del mazo: 1 col en móvil, 2 en desktop (md+). */
+const deckLinesGridSx: SxProps<Theme> = {
+  display: 'grid',
+  gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' },
+  '& > *': {
+    minWidth: 0,
+    borderTop: '1px solid',
+    borderColor: 'divider'
+  },
+  '& > *:nth-of-type(odd)': {
+    borderRight: { xs: 'none', md: '1px solid' },
+    borderColor: 'divider'
+  }
+}
+
+const searchFieldSx: SxProps<Theme> = {
+  order: { xs: 0, md: 1 },
+  '& .MuiOutlinedInput-root': {
+    bgcolor: 'background.paper',
+    borderRadius: 1.5,
+    transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
+    '& fieldset': {
+      borderWidth: 2,
+      borderColor: t => alpha(t.palette.primary.main, 0.22)
+    },
+    '&:hover fieldset': {
+      borderColor: t => alpha(t.palette.primary.main, 0.4)
+    },
+    '&.Mui-focused': {
+      boxShadow: t => `0 0 0 3px ${alpha(t.palette.primary.main, 0.12)}`,
+      '& fieldset': { borderColor: 'primary.main', borderWidth: 2 }
+    }
+  }
+}
 
 function cardKey(set: string, number: string | number) {
   return `${set.toUpperCase()}-${String(number)}`
@@ -83,6 +399,65 @@ function typeLabel(v: LimitlessDmTypeFilter) {
   return TYPE_OPTIONS.find(o => o.value === v)?.label ?? v
 }
 
+function cardTypeFromDeckSection(id: DeckSectionId): string {
+  if (id === 'pokemon') return 'pokemon'
+  if (id === 'energy') return 'energy'
+  return 'trainer'
+}
+
+function deckLinesFromPastedText(text: string): {
+  lines: DeckBuilderLine[]
+  unknownCount: number
+  trimmedCopies: number
+} {
+  const parsed = parseDecklistText(text)
+  const aggregated = new Map<string, DeckBuilderLine>()
+
+  for (const section of parsed.sections) {
+    const cardType = cardTypeFromDeckSection(section.id)
+    for (const card of section.cards) {
+      const key = cardKey(card.set, card.number)
+      const prev = aggregated.get(key)
+      if (prev) prev.count += card.count
+      else {
+        aggregated.set(key, {
+          key,
+          count: card.count,
+          name: card.name,
+          set: card.set.toUpperCase(),
+          number: String(card.number),
+          cardType
+        })
+      }
+    }
+  }
+
+  const lines: DeckBuilderLine[] = []
+  let total = 0
+  let trimmedCopies = 0
+
+  for (const line of aggregated.values()) {
+    let count = line.count
+    if (!isEnergyCardExemptFromFourCopyLimit(line.name) && count > MAX_COPIES) {
+      trimmedCopies += count - MAX_COPIES
+      count = MAX_COPIES
+    }
+    const room = MAX_DECK - total
+    if (room <= 0) {
+      trimmedCopies += count
+      continue
+    }
+    if (count > room) {
+      trimmedCopies += count - room
+      count = room
+    }
+    total += count
+    lines.push({ ...line, count })
+  }
+
+  return { lines, unknownCount: parsed.unknownLines.length, trimmedCopies }
+}
+
 export default function DeckBuilderClient() {
   const router = useRouter()
   const [searchText, setSearchText] = useState('')
@@ -93,6 +468,9 @@ export default function DeckBuilderClient() {
   const [deck, setDeck] = useState<Record<string, DeckBuilderLine>>({})
   const [detailHit, setDetailHit] = useState<LimitlessDmSearchHit | null>(null)
   const [snack, setSnack] = useState<string | null>(null)
+  const [pasteOpen, setPasteOpen] = useState(false)
+  const [pasteText, setPasteText] = useState('')
+  const [imageOpen, setImageOpen] = useState(false)
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(searchText.trim()), 380)
@@ -145,6 +523,24 @@ export default function DeckBuilderClient() {
     () => Object.values(deck).reduce((s, x) => s + x.count, 0),
     [deck]
   )
+
+  const deckSections = useMemo(() => {
+    const buckets: Record<
+      (typeof DECK_SECTION_ORDER)[number],
+      DeckBuilderLine[]
+    > = { pokemon: [], trainer: [], energy: [] }
+    for (const line of Object.values(deck)) {
+      buckets[deckSectionFromCardType(line.cardType)].push(line)
+    }
+    for (const id of DECK_SECTION_ORDER) {
+      buckets[id].sort((a, b) => a.name.localeCompare(b.name, 'es'))
+    }
+    return DECK_SECTION_ORDER.map(id => ({
+      id,
+      label: DECK_SECTION_LABELS[id],
+      lines: buckets[id]
+    })).filter(s => s.lines.length > 0)
+  }, [deck])
 
   const addCard = useCallback(
     (hit: LimitlessDmSearchHit, detail: LimitlessDmCardDetail | null) => {
@@ -242,6 +638,11 @@ export default function DeckBuilderClient() {
     [deck]
   )
 
+  const flatCardsForImage = useMemo(
+    () => flatCardsFromDecklistText(exportText),
+    [exportText]
+  )
+
   const copyExport = async () => {
     if (!exportText) return
     try {
@@ -250,6 +651,53 @@ export default function DeckBuilderClient() {
     } catch {
       setSnack('No se pudo copiar')
     }
+  }
+
+  const applyPastedDecklistText = useCallback((text: string): boolean => {
+    const { lines, unknownCount, trimmedCopies } = deckLinesFromPastedText(text)
+    if (lines.length === 0) {
+      setSnack(
+        unknownCount > 0
+          ? 'No se reconocieron cartas. Usá líneas tipo «4 Nombre SET 123».'
+          : 'El texto está vacío o no tiene cartas válidas.'
+      )
+      return false
+    }
+    const next: Record<string, DeckBuilderLine> = {}
+    for (const line of lines) next[line.key] = line
+    setDeck(next)
+    const total = lines.reduce((s, l) => s + l.count, 0)
+    const parts = [`${total} cartas importadas`]
+    if (unknownCount > 0) {
+      parts.push(`${unknownCount} línea(s) sin reconocer`)
+    }
+    if (trimmedCopies > 0) {
+      parts.push(`${trimmedCopies} copia(s) omitidas (máx. 4 o 60)`)
+    }
+    setSnack(parts.join('. '))
+    return true
+  }, [])
+
+  const pasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (!text.trim()) {
+        setPasteText('')
+        setPasteOpen(true)
+        return
+      }
+      if (!applyPastedDecklistText(text)) {
+        setPasteText(text)
+        setPasteOpen(true)
+      }
+    } catch {
+      setPasteText('')
+      setPasteOpen(true)
+    }
+  }
+
+  const importPastedFromDialog = () => {
+    if (applyPastedDecklistText(pasteText)) setPasteOpen(false)
   }
 
   const goToCreateList = () => {
@@ -278,28 +726,28 @@ export default function DeckBuilderClient() {
           >
             Herramientas
           </Typography>
-          <Typography variant="h4" component="h1" sx={{ fontWeight: 800 }}>
+          <Typography
+            variant="h4"
+            component="h1"
+            sx={{
+              fontWeight: 800,
+              letterSpacing: '-0.03em',
+              textWrap: 'balance'
+            }}
+          >
             Armar mazo
           </Typography>
           <Typography
             variant="body2"
             color="text.secondary"
-            sx={{ maxWidth: '62ch' }}
+            sx={{ maxWidth: '62ch', lineHeight: 1.6, textWrap: 'pretty' }}
           >
             Haz clic en un resultado para ajustar copias con −1 / +1, y llevate
             el listado a «Crear lista» o copialo al portapapeles.
           </Typography>
         </Stack>
 
-        <Paper
-          elevation={0}
-          sx={{
-            p: { xs: 2, sm: 2.5 },
-            borderRadius: 3,
-            border: '1px solid',
-            borderColor: 'divider'
-          }}
-        >
+        <Paper elevation={0} sx={deckPanelSx}>
           <Stack spacing={2} useFlexGap sx={{ flexDirection: 'column' }}>
             {/* Misma estructura en SSR y cliente: visibilidad y orden vía `sx` (media queries) */}
             <Box
@@ -309,18 +757,17 @@ export default function DeckBuilderClient() {
               }}
             >
               <Stack spacing={2}>
-                <Typography variant="subtitle2" fontWeight={800}>
+                <Typography component="p" sx={sectionLabelSx}>
                   Formato
                 </Typography>
                 <ToggleButtonGroup
                   exclusive
-                  size="small"
                   value={format}
                   onChange={(_, v: LimitlessDmFormat | null) => {
                     if (v) setFormat(v)
                   }}
                   aria-label="Formato de juego"
-                  sx={{ flexWrap: 'wrap' }}
+                  sx={formatToggleGroupSx}
                 >
                   {FORMAT_OPTIONS.map(o => (
                     <ToggleButton key={o.value} value={o.value}>
@@ -329,7 +776,7 @@ export default function DeckBuilderClient() {
                   ))}
                 </ToggleButtonGroup>
 
-                <Typography variant="subtitle2" fontWeight={800}>
+                <Typography component="p" sx={sectionLabelSx}>
                   Tipo de carta
                 </Typography>
                 <Box
@@ -349,9 +796,9 @@ export default function DeckBuilderClient() {
                       variant={
                         typeFilter === o.value ? 'contained' : 'outlined'
                       }
-                      size="small"
+                      color="primary"
                       onClick={() => setTypeFilter(o.value)}
-                      sx={{ py: 0.75, textTransform: 'none', fontWeight: 600 }}
+                      sx={typeFilterButtonSx(typeFilter === o.value)}
                     >
                       {o.label}
                     </Button>
@@ -361,6 +808,7 @@ export default function DeckBuilderClient() {
             </Box>
 
             <TextField
+              id="deck-builder-card-search"
               fullWidth
               size="small"
               placeholder="Nombre de carta (ej. wooper)"
@@ -372,7 +820,7 @@ export default function DeckBuilderClient() {
                 )
               }}
               aria-label="Buscar cartas"
-              sx={{ order: { xs: 0, md: 1 } }}
+              sx={searchFieldSx}
             />
             <Button
               type="button"
@@ -381,10 +829,10 @@ export default function DeckBuilderClient() {
               startIcon={<FilterListIcon />}
               onClick={() => setFilterDrawerOpen(true)}
               sx={{
+                ...mobileFiltersBtnSx,
                 order: { xs: 1, md: 2 },
                 display: { xs: 'inline-flex', md: 'none' },
                 alignSelf: 'flex-start',
-                fontWeight: 700,
                 flexWrap: 'wrap'
               }}
               aria-expanded={filterDrawerOpen}
@@ -412,168 +860,262 @@ export default function DeckBuilderClient() {
           <Paper
             elevation={0}
             sx={{
+              ...deckPanelSx,
               flex: 1,
               minWidth: 0,
-              order: { xs: 1, lg: 0 },
-              p: { xs: 2, sm: 2.5 },
-              borderRadius: 3,
-              border: '1px solid',
-              borderColor: 'divider'
+              order: { xs: 1, lg: 0 }
             }}
           >
-            <Stack
-              direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-              flexWrap="wrap"
-              useFlexGap
-              spacing={1}
-              sx={{ mb: 2, rowGap: 1 }}
-            >
-              <Typography variant="h6" component="h2" sx={{ fontWeight: 800 }}>
-                Mazo
-              </Typography>
+            <Stack spacing={1.5} sx={{ mb: 2.5, minWidth: 0 }}>
               <Stack
                 direction="row"
                 alignItems="center"
-                spacing={1}
-                flexWrap="wrap"
+                spacing={1.25}
                 useFlexGap
-                sx={{ ml: { xs: 0, sm: 'auto' } }}
+                flexWrap="wrap"
               >
+                <Typography
+                  variant="h6"
+                  component="h2"
+                  sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}
+                >
+                  Mazo
+                </Typography>
+                <Chip
+                  label={`${totalCards} / ${MAX_DECK}`}
+                  size="small"
+                  color={totalCards === MAX_DECK ? 'success' : 'default'}
+                  sx={deckCountBadgeSx}
+                />
+              </Stack>
+              <LinearProgress
+                variant="determinate"
+                value={Math.min(100, (totalCards / MAX_DECK) * 100)}
+                aria-label="Progreso del mazo"
+                sx={{
+                  height: 6,
+                  borderRadius: 1,
+                  bgcolor: t => alpha(t.palette.primary.main, 0.1),
+                  '& .MuiLinearProgress-bar': { borderRadius: 1 }
+                }}
+              />
+              <Box sx={mazoActionsGridSx}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  disableElevation
+                  startIcon={<ContentPasteIcon />}
+                  onClick={() => void pasteFromClipboard()}
+                  sx={mazoBtnSoft}
+                >
+                  Pegar lista
+                </Button>
                 <Button
                   variant="outlined"
+                  color="primary"
                   size="small"
                   startIcon={<ContentCopyIcon />}
                   disabled={!exportText}
                   onClick={() => void copyExport()}
-                  sx={{ textTransform: 'none', fontWeight: 600 }}
+                  sx={mazoBtnOutlined}
                 >
                   Copiar listado
                 </Button>
                 <Button
                   variant="outlined"
+                  color="primary"
+                  size="small"
+                  startIcon={<ImageOutlinedIcon />}
+                  disabled={flatCardsForImage.length === 0}
+                  onClick={() => startTransition(() => setImageOpen(true))}
+                  sx={mazoBtnOutlined}
+                >
+                  Ver imagen
+                </Button>
+                <Button
+                  variant="contained"
+                  color="primary"
                   size="small"
                   startIcon={<PostAddIcon />}
                   onClick={goToCreateList}
-                  sx={{ textTransform: 'none', fontWeight: 600 }}
+                  sx={mazoBtnPrimary}
                 >
                   Crear lista
                 </Button>
-                <Chip
-                  label={`${totalCards} / ${MAX_DECK}`}
-                  color={totalCards === MAX_DECK ? 'success' : 'default'}
-                  size="small"
-                  sx={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}
-                />
-              </Stack>
+              </Box>
             </Stack>
             {Object.keys(deck).length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                Añade cartas desde la búsqueda (detalle → +1).
-              </Typography>
+              <Box
+                sx={{
+                  py: 4,
+                  px: 2,
+                  textAlign: 'center',
+                  borderRadius: 1.5,
+                  border: '1px dashed',
+                  borderColor: t => alpha(t.palette.primary.main, 0.28),
+                  bgcolor: t => alpha(t.palette.primary.main, 0.04)
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 0.5 }}
+                >
+                  El mazo está vacío
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Buscá cartas a la derecha o usá «Pegar lista» para importar un
+                  bloque de texto.
+                </Typography>
+              </Box>
             ) : (
-              <Stack spacing={1}>
-                {Object.values(deck)
-                  .sort((a, b) => a.name.localeCompare(b.name))
-                  .map(line => {
-                    const src = thumbUrl(line.set, line.number, line.name)
-                    return (
+              <Box
+                sx={{
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 1.5,
+                  overflow: 'hidden'
+                }}
+              >
+                {deckSections.map((section, sectionIndex) => {
+                  const sectionTotal = section.lines.reduce(
+                    (s, l) => s + l.count,
+                    0
+                  )
+                  return (
+                    <Box key={section.id}>
                       <Stack
-                        key={line.key}
                         direction="row"
-                        spacing={1.25}
-                        alignItems="center"
+                        alignItems="baseline"
+                        justifyContent="space-between"
                         sx={{
-                          py: 1,
-                          px: 1.25,
-                          borderRadius: 2,
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          bgcolor: t => alpha(t.palette.text.primary, 0.02)
+                          px: 1.5,
+                          py: 0.85,
+                          ...(sectionIndex > 0 && {
+                            borderTop: '1px solid',
+                            borderColor: 'divider'
+                          }),
+                          bgcolor: t => alpha(t.palette.primary.main, 0.06)
                         }}
                       >
-                        <Chip
-                          label={line.count}
-                          size="small"
-                          color="primary"
-                          sx={{ fontWeight: 800, minWidth: 36 }}
-                        />
-                        <Box
+                        <Typography
+                          component="p"
                           sx={{
-                            width: 44,
-                            height: 62,
-                            flexShrink: 0,
-                            borderRadius: 0.75,
-                            overflow: 'hidden',
-                            bgcolor: 'action.hover'
+                            ...sectionLabelSx,
+                            color: 'primary.dark',
+                            fontWeight: 800
                           }}
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={src}
-                            alt=""
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover'
-                            }}
-                          />
-                        </Box>
-                        <Box sx={{ minWidth: 0, flex: 1 }}>
-                          <Typography variant="body2" fontWeight={700} noWrap>
-                            {line.name}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {line.set} {line.number}
-                          </Typography>
-                        </Box>
-                        <Stack direction="row" spacing={0} alignItems="center">
-                          <IconButton
-                            size="small"
-                            aria-label="Quitar una copia"
-                            onClick={() => removeCard(line.key)}
-                          >
-                            <RemoveIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            aria-label="Añadir una copia"
-                            disabled={
-                              (!isEnergyCardExemptFromFourCopyLimit(
-                                line.name
-                              ) &&
-                                line.count >= MAX_COPIES) ||
-                              totalCards >= MAX_DECK
-                            }
-                            onClick={() => addOneFromDeckLine(line)}
-                          >
-                            <AddIcon fontSize="small" />
-                          </IconButton>
-                        </Stack>
+                          {section.label}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{
+                            fontWeight: 700,
+                            fontVariantNumeric: 'tabular-nums'
+                          }}
+                        >
+                          {sectionTotal}
+                        </Typography>
                       </Stack>
-                    )
-                  })}
-              </Stack>
+                      <Box sx={deckLinesGridSx}>
+                        {section.lines.map(line => {
+                          const src = thumbUrl(line.set, line.number, line.name)
+                          return (
+                            <Box key={line.key} sx={deckLineRowSx}>
+                              <Box sx={deckLineThumbSx}>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={src}
+                                  alt=""
+                                  style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover'
+                                  }}
+                                />
+                              </Box>
+                              <Typography
+                                variant="body2"
+                                component="p"
+                                title={line.name}
+                                sx={deckLineNameSx}
+                              >
+                                {line.name}
+                              </Typography>
+                              <Box sx={deckLineMetaSx}>
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                  noWrap
+                                  sx={{
+                                    fontVariantNumeric: 'tabular-nums',
+                                    fontWeight: 600,
+                                    minWidth: 0
+                                  }}
+                                >
+                                  {line.set} · {line.number}
+                                </Typography>
+                                <Stack
+                                  direction="row"
+                                  alignItems="center"
+                                  sx={deckLineStepperSx}
+                                >
+                                  <IconButton
+                                    size="small"
+                                    aria-label="Quitar una copia"
+                                    onClick={() => removeCard(line.key)}
+                                  >
+                                    <RemoveIcon sx={{ fontSize: 18 }} />
+                                  </IconButton>
+                                  <Typography
+                                    component="span"
+                                    sx={deckLineCountSx}
+                                  >
+                                    {line.count}
+                                  </Typography>
+                                  <IconButton
+                                    size="small"
+                                    aria-label="Añadir una copia"
+                                    disabled={
+                                      (!isEnergyCardExemptFromFourCopyLimit(
+                                        line.name
+                                      ) &&
+                                        line.count >= MAX_COPIES) ||
+                                      totalCards >= MAX_DECK
+                                    }
+                                    onClick={() => addOneFromDeckLine(line)}
+                                  >
+                                    <AddIcon sx={{ fontSize: 18 }} />
+                                  </IconButton>
+                                </Stack>
+                              </Box>
+                            </Box>
+                          )
+                        })}
+                      </Box>
+                    </Box>
+                  )
+                })}
+              </Box>
             )}
           </Paper>
 
           <Paper
             elevation={0}
             sx={{
+              ...deckPanelSx,
               flex: 1.15,
               minWidth: 0,
-              order: { xs: 0 },
-              p: { xs: 2, sm: 2.5 },
-              borderRadius: 3,
-              border: '1px solid',
-              borderColor: 'divider'
+              order: { xs: 0 }
             }}
           >
             <Typography
               variant="h6"
               component="h2"
-              sx={{ fontWeight: 800, mb: 2 }}
+              sx={{ fontWeight: 800, letterSpacing: '-0.02em', mb: 2 }}
             >
               Resultados
             </Typography>
@@ -582,13 +1124,37 @@ export default function DeckBuilderClient() {
                 <CircularProgress size={32} />
               </Box>
             ) : debounced.length < 1 ? (
-              <Typography variant="body2" color="text.secondary">
-                Escribí al menos una letra para buscar.
-              </Typography>
+              <Box
+                sx={{
+                  py: 5,
+                  px: 2,
+                  textAlign: 'center',
+                  borderRadius: 1.5,
+                  bgcolor: t => alpha(t.palette.text.primary, 0.03)
+                }}
+              >
+                <SearchIcon
+                  sx={{ fontSize: 32, color: 'action.disabled', mb: 1 }}
+                  aria-hidden
+                />
+                <Typography variant="body2" color="text.secondary">
+                  Escribí al menos una letra para buscar.
+                </Typography>
+              </Box>
             ) : results.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                Sin resultados. Probá otro nombre o cambiá formato / tipo.
-              </Typography>
+              <Box
+                sx={{
+                  py: 5,
+                  px: 2,
+                  textAlign: 'center',
+                  borderRadius: 1.5,
+                  bgcolor: t => alpha(t.palette.text.primary, 0.03)
+                }}
+              >
+                <Typography variant="body2" color="text.secondary">
+                  Sin resultados. Probá otro nombre o cambiá formato / tipo.
+                </Typography>
+              </Box>
             ) : (
               <Box
                 sx={{
@@ -614,7 +1180,7 @@ export default function DeckBuilderClient() {
                         alignItems: 'stretch',
                         textAlign: 'left',
                         textTransform: 'none',
-                        borderRadius: 2,
+                        borderRadius: 1.5,
                         border: '1px solid',
                         borderColor: 'divider',
                         bgcolor: 'background.paper',
@@ -622,9 +1188,11 @@ export default function DeckBuilderClient() {
                           'border-color 0.2s, box-shadow 0.2s, transform 0.15s',
                         '&:hover': {
                           borderColor: 'primary.main',
+                          transform: 'translateY(-2px)',
                           boxShadow: t =>
-                            `0 8px 24px -12px ${alpha(t.palette.primary.main, 0.35)}`
-                        }
+                            `0 10px 28px -14px ${alpha(t.palette.primary.main, 0.38)}`
+                        },
+                        '&:active': { transform: 'translateY(0)' }
                       }}
                     >
                       <Box
@@ -706,18 +1274,17 @@ export default function DeckBuilderClient() {
           spacing={2}
           sx={{ overflow: 'auto', maxHeight: 'calc(100% - 48px)' }}
         >
-          <Typography variant="subtitle2" fontWeight={800}>
+          <Typography component="p" sx={sectionLabelSx}>
             Formato
           </Typography>
           <ToggleButtonGroup
             exclusive
-            size="small"
             value={format}
             onChange={(_, v: LimitlessDmFormat | null) => {
               if (v) setFormat(v)
             }}
             aria-label="Formato de juego"
-            sx={{ flexWrap: 'wrap', gap: 0.5 }}
+            sx={formatToggleGroupSx}
           >
             {FORMAT_OPTIONS.map(o => (
               <ToggleButton key={o.value} value={o.value}>
@@ -726,7 +1293,7 @@ export default function DeckBuilderClient() {
             ))}
           </ToggleButtonGroup>
 
-          <Typography variant="subtitle2" fontWeight={800}>
+          <Typography component="p" sx={sectionLabelSx}>
             Tipo de carta
           </Typography>
           <Box
@@ -740,9 +1307,9 @@ export default function DeckBuilderClient() {
               <Button
                 key={o.value}
                 variant={typeFilter === o.value ? 'contained' : 'outlined'}
-                size="small"
+                color="primary"
                 onClick={() => setTypeFilter(o.value)}
-                sx={{ py: 0.75, textTransform: 'none', fontWeight: 600 }}
+                sx={typeFilterButtonSx(typeFilter === o.value)}
               >
                 {o.label}
               </Button>
@@ -750,9 +1317,10 @@ export default function DeckBuilderClient() {
           </Box>
           <Button
             variant="contained"
+            color="primary"
             fullWidth
             onClick={() => setFilterDrawerOpen(false)}
-            sx={{ fontWeight: 800, mt: 1 }}
+            sx={drawerDoneBtnSx}
           >
             Listo
           </Button>
@@ -867,6 +1435,52 @@ export default function DeckBuilderClient() {
           <Button onClick={() => setDetailHit(null)}>Cerrar</Button>
         </DialogActions>
       </Dialog>
+
+      <Dialog
+        open={pasteOpen}
+        onClose={() => setPasteOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>Pegar listado</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Pegá el bloque completo (Pokémon, Trainer, Energy…). Cada carta en
+            una línea tipo «4 Nombre SET 123».
+          </Typography>
+          <TextField
+            id="deck-builder-paste-list"
+            multiline
+            minRows={10}
+            fullWidth
+            value={pasteText}
+            onChange={e => setPasteText(e.target.value)}
+            placeholder={`Pokémon: 21\n4 Cynthia's Gible DRI 102\n\nTrainer: 31\n...`}
+            aria-label="Texto del listado a importar"
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setPasteOpen(false)}>Cancelar</Button>
+          <Button
+            variant="contained"
+            onClick={importPastedFromDialog}
+            disabled={!pasteText.trim()}
+            sx={{ fontWeight: 700 }}
+          >
+            Importar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {imageOpen ? (
+        <DecklistImageDialog
+          open={imageOpen}
+          onClose={() => setImageOpen(false)}
+          cards={flatCardsForImage}
+          title="Mazo"
+          deckText={exportText}
+        />
+      ) : null}
 
       <Snackbar
         open={Boolean(snack)}

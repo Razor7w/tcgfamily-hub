@@ -46,6 +46,8 @@ export interface PublicWeeklyEvent {
   participantCount: number
   canPreRegister: boolean
   myRegistration: string | null
+  /** Jugó el torneo (clasificación TDF, emparejamientos o récord); false si solo preinscripción. */
+  myPlayedTournament?: boolean
   /** Confirmado por admin en el panel (asistencia). */
   myAttendanceConfirmed: boolean
   /** Mesa si estás inscrito; null si no. */

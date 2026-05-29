@@ -19,6 +19,11 @@ import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
 import { canEditParticipantDeck } from '@/lib/can-edit-participant-deck'
 import { serializeTournamentDecklistRef } from '@/lib/weekly-event-view-as'
+import {
+  buildPlayedPopIdSet,
+  participantPlayedTournament
+} from '@/lib/tournament-participant-played'
+import type { RoundSnapshotLean } from '@/lib/match-rounds-with-snapshots'
 
 function publicLeagueFromLeanDoc(d: Record<string, unknown>): {
   name: string
@@ -51,6 +56,8 @@ function toPublicEvent(
     roundNum?: number
     dashboardRoundCap?: number
     tournamentStandings?: TournamentStandingLean[] | undefined
+    roundSnapshots?: RoundSnapshotLean[]
+    tournamentOrigin?: string
     participants: {
       _id: unknown
       displayName: string
@@ -62,6 +69,12 @@ function toPublicEvent(
       wins?: unknown
       losses?: unknown
       ties?: unknown
+      matchRounds?: unknown
+      manualPlacement?: {
+        categoryIndex?: number
+        place?: number | null
+        isDnf?: boolean
+      }
       deckPokemonSlugs?: string[]
       tournamentDecklistRef?: {
         decklistId?: unknown
@@ -112,11 +125,22 @@ function toPublicEvent(
   const myTournamentDecklistRef = serializeTournamentDecklistRef(
     mine?.tournamentDecklistRef
   )
+
+  const tournamentOrigin: 'official' | 'custom' =
+    doc.tournamentOrigin === 'custom' ? 'custom' : 'official'
+  const playedPopIds = buildPlayedPopIdSet({
+    tournamentStandings: doc.tournamentStandings,
+    roundSnapshots: doc.roundSnapshots
+  })
+  const myPlayedTournament = mine
+    ? participantPlayedTournament(mine, playedPopIds, tournamentOrigin)
+    : false
   const canEditMyDeck = canEditParticipantDeck({
     myRegistration,
     kind: doc.kind,
     game: doc.game,
-    state: eventState
+    state: eventState,
+    myPlayedTournament
   })
 
   const tournamentClosed = doc.kind === 'tournament' && doc.state === 'close'
@@ -149,6 +173,7 @@ function toPublicEvent(
     participantCount: doc.participants.length,
     canPreRegister: canPreRegisterNow(eventState),
     myRegistration,
+    myPlayedTournament,
     myAttendanceConfirmed,
     myTable,
     myOpponentName,
@@ -270,6 +295,10 @@ export async function GET(request: NextRequest) {
           tournamentStandings: (
             d as { tournamentStandings?: TournamentStandingLean[] }
           ).tournamentStandings,
+          roundSnapshots: (d as { roundSnapshots?: RoundSnapshotLean[] })
+            .roundSnapshots,
+          tournamentOrigin: (d as { tournamentOrigin?: string })
+            .tournamentOrigin,
           participants: (d.participants ?? []) as unknown as {
             _id: unknown
             displayName: string

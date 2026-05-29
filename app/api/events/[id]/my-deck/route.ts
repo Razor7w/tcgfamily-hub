@@ -8,6 +8,13 @@ import { validateTournamentDecklistRefForUser } from '@/lib/validate-tournament-
 import { applyDeckContributionAwards } from '@/lib/contribution-points/deck-contribution-awards'
 import { resolveWeeklyEventStoreIdForContribution } from '@/lib/contribution-points/resolve-event-store-id'
 import { resolveTournamentContributionOrigin } from '@/lib/contribution-points/tournament-origin'
+import { canEditParticipantDeck } from '@/lib/can-edit-participant-deck'
+import {
+  buildPlayedPopIdSet,
+  participantPlayedTournament
+} from '@/lib/tournament-participant-played'
+import type { TournamentStandingLean } from '@/lib/weekly-event-public'
+import type { RoundSnapshotLean } from '@/lib/match-rounds-with-snapshots'
 import WeeklyEvent from '@/models/WeeklyEvent'
 
 /** Guarda o actualiza los hasta 2 Pokémon del deck reportado por el usuario en este torneo. */
@@ -83,6 +90,47 @@ export async function PUT(
     if (!part) {
       return NextResponse.json(
         { error: 'Debes estar preinscrito en este torneo' },
+        { status: 403 }
+      )
+    }
+
+    const tournamentOrigin: 'official' | 'custom' =
+      (doc as { tournamentOrigin?: string }).tournamentOrigin === 'custom'
+        ? 'custom'
+        : 'official'
+    const eventState =
+      doc.state === 'schedule' ||
+      doc.state === 'running' ||
+      doc.state === 'close'
+        ? doc.state
+        : 'schedule'
+    const leanDoc = doc as {
+      tournamentStandings?: TournamentStandingLean[]
+      roundSnapshots?: RoundSnapshotLean[]
+    }
+    const playedPopIds = buildPlayedPopIdSet({
+      tournamentStandings: leanDoc.tournamentStandings,
+      roundSnapshots: leanDoc.roundSnapshots
+    })
+    const myPlayedTournament = participantPlayedTournament(
+      part,
+      playedPopIds,
+      tournamentOrigin
+    )
+    if (
+      !canEditParticipantDeck({
+        myRegistration: part.displayName,
+        kind: doc.kind,
+        game: doc.game,
+        state: eventState,
+        myPlayedTournament
+      })
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'No puedes registrar deck: el torneo terminó y tu POP ID no figura entre los jugadores que participaron.'
+        },
         { status: 403 }
       )
     }

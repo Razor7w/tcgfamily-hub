@@ -12,8 +12,14 @@ import {
 } from '@/lib/contribution-points/tournament-origin'
 import { resolveWeeklyEventStoreIdForContribution } from '@/lib/contribution-points/resolve-event-store-id'
 import type { ContributionPointsAwardedItem } from '@/lib/contribution-points-public'
+import {
+  buildPlayedPopIdSet,
+  participantPlayedTournament,
+  type LeanParticipantForPlayedCheck
+} from '@/lib/tournament-participant-played'
+import type { TournamentStandingLean } from '@/lib/weekly-event-public'
 
-type LeanParticipant = {
+type LeanParticipant = LeanParticipantForPlayedCheck & {
   userId?: unknown
 }
 
@@ -23,6 +29,13 @@ type LeanEventForTournamentContribution = {
   title?: string
   storeId?: unknown
   tournamentOrigin?: string
+  tournamentStandings?: TournamentStandingLean[]
+  roundSnapshots?: Array<{
+    pairings?: Array<{
+      player1PopId?: string
+      player2PopId?: string
+    }>
+  }>
   participants?: LeanParticipant[]
 }
 
@@ -133,7 +146,7 @@ export async function applyTournamentParticipatedContributionAward(input: {
   ]
 }
 
-/** Al cerrar torneo oficial: puntos a inscritos con cuenta en la lista final. */
+/** Al cerrar torneo oficial: puntos solo a quienes jugaron (TDF, snapshots o récord W/L/T). */
 export async function applyTournamentParticipationAwardsOnEventClose(
   event: LeanEventForTournamentContribution,
   fallbackStoreId?: string | mongoose.Types.ObjectId | null
@@ -148,10 +161,20 @@ export async function applyTournamentParticipationAwardsOnEventClose(
       ? event.title.trim()
       : 'Torneo'
 
+  const tournamentOrigin = resolveTournamentContributionOrigin(
+    event.tournamentOrigin
+  )
+  const playedPopIds = buildPlayedPopIdSet(event)
+
   for (const participant of event.participants ?? []) {
     if (
       !participant.userId ||
       !mongoose.Types.ObjectId.isValid(String(participant.userId))
+    ) {
+      continue
+    }
+    if (
+      !participantPlayedTournament(participant, playedPopIds, tournamentOrigin)
     ) {
       continue
     }

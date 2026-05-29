@@ -48,5 +48,5 @@ export const CONTRIBUTION_ACTION_LABELS: Record<
   mail_received_in_store: 'Correo recibido en tienda',
   mail_withdrawn_in_store: 'Correo retirado en tienda',
   tournament_pre_registered: 'Preinscripción web en torneo oficial',
-  tournament_participated: 'Torneo oficial cerrado (inscrito con cuenta)'
+  tournament_participated: 'Torneo oficial cerrado (jugó el evento)'
 }
