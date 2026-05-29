@@ -97,7 +97,9 @@ export function officialUserPlayedClosedTournament(
   const playedPopIds = buildPlayedPopIdSet(doc)
   if (playedPopIds.size > 0) {
     const sessionPop = popidForStorage(userPopId)
-    const partPop = popidForStorage(typeof mine.popId === 'string' ? mine.popId : '')
+    const partPop = popidForStorage(
+      typeof mine.popId === 'string' ? mine.popId : ''
+    )
     if (sessionPop && playedPopIds.has(sessionPop)) return true
     if (partPop && playedPopIds.has(partPop)) return true
     return false
