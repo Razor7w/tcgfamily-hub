@@ -36,6 +36,8 @@ export interface IUser extends Document {
   storePointsExpiryDate?: Date
   /** Wallet por tienda (import CSV y UI usan tienda activa). */
   storeCredits: IUserStoreCreditSlice[]
+  /** Ocultar insignia de contribución en meta de torneo y rankings. */
+  contributionHideBadge?: boolean
   accounts: mongoose.Types.ObjectId[]
   sessions: mongoose.Types.ObjectId[]
 }
@@ -118,6 +120,10 @@ const UserSchema = new Schema<IUser>(
         )
       ],
       default: []
+    },
+    contributionHideBadge: {
+      type: Boolean,
+      default: false
     },
     accounts: [{ type: Schema.Types.ObjectId, ref: 'Account' }],
     sessions: [{ type: Schema.Types.ObjectId, ref: 'Session' }]

@@ -7,6 +7,7 @@ import connectDB from '@/lib/mongodb'
 import Mails from '@/models/Mails'
 import User from '@/models/User'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
+import { applyMailReceivedInStoreContributionAward } from '@/lib/contribution-points/mail-contribution-awards'
 
 const MAX_BULK_RECEIVE = 100
 
@@ -61,18 +62,32 @@ export async function POST(request: NextRequest) {
       isRecivedInStore: false
     }
 
-    const pending = await Mails.find(filter).select('_id toUserId code').lean<
-      Array<{
-        _id: mongoose.Types.ObjectId
-        toUserId?: unknown
-        code?: string
-      }>
-    >()
+    const pending = await Mails.find(filter)
+      .select('_id fromUserId toUserId code storeId')
+      .lean<
+        Array<{
+          _id: mongoose.Types.ObjectId
+          fromUserId?: mongoose.Types.ObjectId
+          toUserId?: unknown
+          code?: string
+          storeId?: mongoose.Types.ObjectId
+        }>
+      >()
 
     const now = new Date()
     const result = await Mails.updateMany(filter, {
       $set: { isRecivedInStore: true, receivedInStoreAt: now }
     })
+
+    for (const mail of pending) {
+      if (!mail.fromUserId) continue
+      const storeIdForPoints = mail.storeId ?? gate.activeStoreOid
+      await applyMailReceivedInStoreContributionAward({
+        storeId: storeIdForPoints,
+        fromUserId: mail.fromUserId,
+        mailId: mail._id
+      })
+    }
 
     if (pending.length > 0) {
       try {

@@ -14,6 +14,7 @@ import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import Link from 'next/link'
 import { DecklistSpritePair } from '@/components/decklist/DecklistPokemonSlotPickers'
+import OwnerTopContributionBadge from '@/components/contribution/OwnerTopContributionBadge'
 import { useRecentPublicDecklists } from '@/hooks/useSavedDecklists'
 
 const PREVIEW_LIMIT = 4
@@ -254,6 +255,14 @@ export default function RecentPublicDecklistsHomeCard() {
                         >
                           {row.ownerName} · {sub}
                         </Typography>
+                        {row.ownerTopContribution ? (
+                          <Box sx={{ mt: 0.25, maxWidth: '100%' }}>
+                            <OwnerTopContributionBadge
+                              badge={row.ownerTopContribution}
+                              stopParentNavigation
+                            />
+                          </Box>
+                        ) : null}
                       </Stack>
                     </Stack>
                   </ButtonBase>

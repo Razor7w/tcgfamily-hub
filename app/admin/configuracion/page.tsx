@@ -37,6 +37,7 @@ import {
   useUpdateMailRegisterDailyLimit,
   useUpdateResendPickupNotifySettings
 } from '@/hooks/useDashboardModules'
+import ContributionPointsEnableCard from '@/components/admin/ContributionPointsEnableCard'
 import {
   composePersistedDashboardOrderFromAdminState,
   configurableDashboardVisibilitySnapshot,
@@ -217,7 +218,8 @@ function DashboardModulesEditor({
       },
       order: mergedOrder,
       shortcuts: initial.shortcuts,
-      storeCredit
+      storeCredit,
+      contributionPoints: initial.contributionPoints
     }
     update.mutate(payload)
   }
@@ -997,6 +999,13 @@ export default function AdminConfiguracionPage() {
               key={`dash-${dataUpdatedAt}`}
               initial={mergeDashboardSettings(data.settings)}
             />
+            <ContributionPointsEnableCard
+              key={`contrib-${dataUpdatedAt}`}
+              initial={
+                data.contributionPoints ??
+                mergeDashboardSettings(data.settings).contributionPoints
+              }
+            />
             <MailRegisterDailyLimitCard
               key={`mail-limit-${dataUpdatedAt}`}
               initialLimit={data.mailRegisterDailyLimit}
@@ -1015,6 +1024,10 @@ export default function AdminConfiguracionPage() {
             <DashboardModulesEditor
               key="defaults"
               initial={mergeDashboardSettings(null)}
+            />
+            <ContributionPointsEnableCard
+              key="contrib-defaults"
+              initial={mergeDashboardSettings(null).contributionPoints}
             />
             <MailRegisterDailyLimitCard
               key="mail-limit-defaults"

@@ -67,6 +67,9 @@ import TournamentDeckSpritesSummary from '@/components/events/TournamentDeckSpri
 import TournamentMetaExploreCta from '@/components/events/TournamentMetaExploreCta'
 import TournamentReportRoundsCta from '@/components/events/TournamentReportRoundsCta'
 import TournamentFinishedStandingsPanel from '@/components/events/TournamentFinishedStandingsPanel'
+import { useContributionAwardSnackbar } from '@/hooks/useContributionAwardSnackbar'
+import { formatPreRegisterContributionToastMessage } from '@/lib/contribution-points-feedback'
+import type { ContributionPointsAwardedItem } from '@/lib/contribution-points-public'
 
 type WeeklyEventsSectionProps = {
   showSeeAllLink?: boolean
@@ -115,6 +118,17 @@ export default function WeeklyEventsSection({
   const { data, isPending, isError, error, refetch } = useWeekEvents(weekAnchor)
   const register = useRegisterWeeklyEvent()
   const unregister = useUnregisterWeeklyEvent()
+  const { notifyMessage, snackbar: contributionSnackbar } =
+    useContributionAwardSnackbar()
+
+  const handlePreRegisterSuccess = useCallback(
+    (contributionPointsAwarded?: ContributionPointsAwardedItem[]) => {
+      notifyMessage(
+        formatPreRegisterContributionToastMessage(contributionPointsAwarded)
+      )
+    },
+    [notifyMessage]
+  )
 
   const events = useMemo(() => data?.events ?? [], [data?.events])
 
@@ -256,606 +270,402 @@ export default function WeeklyEventsSection({
     : 0
 
   return (
-    <Card
-      component="section"
-      elevation={0}
-      sx={{
-        borderRadius: { xs: 3, sm: 4 },
-        border: '1px solid',
-        borderColor: t => alpha(t.palette.text.primary, 0.08),
-        overflow: 'hidden',
-        bgcolor: 'background.paper',
-        boxShadow: '0 20px 40px -20px rgba(24, 24, 27, 0.12)'
-      }}
-    >
-      <WeeklyEventsSectionHeader showSeeAllLink={showSeeAllLink} />
-
-      <CardContent
+    <>
+      <Card
+        component="section"
+        elevation={0}
         sx={{
-          p: { xs: 2, sm: 3 },
-          pt: { xs: 2, sm: 2.5 },
-          '&:last-child': { pb: { xs: 2.5, sm: 3 } }
+          borderRadius: { xs: 3, sm: 4 },
+          border: '1px solid',
+          borderColor: t => alpha(t.palette.text.primary, 0.08),
+          overflow: 'hidden',
+          bgcolor: 'background.paper',
+          boxShadow: '0 20px 40px -20px rgba(24, 24, 27, 0.12)'
         }}
       >
-        <Box sx={{ mb: 2 }}>
-          <WeekRangeNavigator
-            weekAnchor={weekAnchor}
-            onWeekAnchorChange={d => setWeekAnchor(d)}
-          />
-        </Box>
+        <WeeklyEventsSectionHeader showSeeAllLink={showSeeAllLink} />
 
-        <WeeklyEventsDayStrip
-          stripRef={dayPickerStripRef}
-          dayPickerButtonRefs={dayPickerButtonRefs}
-          dayKeys={dayKeys}
-          weekStart={weekStart}
-          selectedOffset={selectedOffset}
-          onSelectOffset={setSelectedOffset}
-          countsByDay={countsByDay}
-        />
-
-        {isPending ? (
-          <WeeklyEventsSectionSkeleton />
-        ) : isError ? (
-          <Alert
-            severity="error"
-            variant="outlined"
-            action={
-              <Button color="inherit" size="small" onClick={() => refetch()}>
-                Reintentar
-              </Button>
-            }
-          >
-            {error instanceof Error
-              ? error.message
-              : 'No se pudieron cargar los eventos'}
-          </Alert>
-        ) : !eventsForDay.length && events.length > 0 ? (
-          <WeeklyEventsOtherDaysEmptyPanel
-            eventsWeekSorted={eventsWeekSorted}
-            weekStart={weekStart}
-            onPickEvent={(dayOffset, eventId) => {
-              setSelectedOffset(dayOffset)
-              setSelectedEventId(eventId)
-            }}
-          />
-        ) : !eventsForDay.length ? (
-          <WeeklyEventsWeekEmptyPanel />
-        ) : (
-          <>
-            <WeeklyEventsSameDayEventChips
-              eventsForDay={eventsForDay}
-              selectedEventId={resolvedSelectedEventId}
-              onSelectEventId={setSelectedEventId}
+        <CardContent
+          sx={{
+            p: { xs: 2, sm: 3 },
+            pt: { xs: 2, sm: 2.5 },
+            '&:last-child': { pb: { xs: 2.5, sm: 3 } }
+          }}
+        >
+          <Box sx={{ mb: 2 }}>
+            <WeekRangeNavigator
+              weekAnchor={weekAnchor}
+              onWeekAnchorChange={d => setWeekAnchor(d)}
             />
+          </Box>
 
-            {selectedEvent ? (
-              <>
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="flex-start"
-                  gap={2}
-                  sx={{ mb: 2 }}
-                >
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography
-                      variant="overline"
-                      color="text.secondary"
-                      sx={{ letterSpacing: '0.12em', fontWeight: 700 }}
-                    >
-                      Horario
-                    </Typography>
-                    <Typography
-                      variant="subtitle1"
-                      fontWeight={700}
-                      sx={{
-                        lineHeight: 1.35,
-                        letterSpacing: '-0.02em',
-                        mt: 0.25
-                      }}
-                    >
-                      {formatWhen(selectedEvent.startsAt)}
-                    </Typography>
-                  </Box>
+          <WeeklyEventsDayStrip
+            stripRef={dayPickerStripRef}
+            dayPickerButtonRefs={dayPickerButtonRefs}
+            dayKeys={dayKeys}
+            weekStart={weekStart}
+            selectedOffset={selectedOffset}
+            onSelectOffset={setSelectedOffset}
+            countsByDay={countsByDay}
+          />
+
+          {isPending ? (
+            <WeeklyEventsSectionSkeleton />
+          ) : isError ? (
+            <Alert
+              severity="error"
+              variant="outlined"
+              action={
+                <Button color="inherit" size="small" onClick={() => refetch()}>
+                  Reintentar
+                </Button>
+              }
+            >
+              {error instanceof Error
+                ? error.message
+                : 'No se pudieron cargar los eventos'}
+            </Alert>
+          ) : !eventsForDay.length && events.length > 0 ? (
+            <WeeklyEventsOtherDaysEmptyPanel
+              eventsWeekSorted={eventsWeekSorted}
+              weekStart={weekStart}
+              onPickEvent={(dayOffset, eventId) => {
+                setSelectedOffset(dayOffset)
+                setSelectedEventId(eventId)
+              }}
+            />
+          ) : !eventsForDay.length ? (
+            <WeeklyEventsWeekEmptyPanel />
+          ) : (
+            <>
+              <WeeklyEventsSameDayEventChips
+                eventsForDay={eventsForDay}
+                selectedEventId={resolvedSelectedEventId}
+                onSelectEventId={setSelectedEventId}
+              />
+
+              {selectedEvent ? (
+                <>
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="flex-start"
+                    gap={2}
+                    sx={{ mb: 2 }}
+                  >
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography
+                        variant="overline"
+                        color="text.secondary"
+                        sx={{ letterSpacing: '0.12em', fontWeight: 700 }}
+                      >
+                        Horario
+                      </Typography>
+                      <Typography
+                        variant="subtitle1"
+                        fontWeight={700}
+                        sx={{
+                          lineHeight: 1.35,
+                          letterSpacing: '-0.02em',
+                          mt: 0.25
+                        }}
+                      >
+                        {formatWhen(selectedEvent.startsAt)}
+                      </Typography>
+                    </Box>
+                    {!selectedUnlimitedCapacity ? (
+                      <Chip
+                        icon={<Groups sx={{ fontSize: '18px !important' }} />}
+                        label={`${selectedEvent.participantCount}/${selectedEvent.maxParticipants}`}
+                        size="small"
+                        variant="outlined"
+                        sx={{
+                          fontWeight: 700,
+                          flexShrink: 0,
+                          fontVariantNumeric: 'tabular-nums',
+                          borderRadius: 2,
+                          borderColor: t => alpha(t.palette.text.primary, 0.16)
+                        }}
+                      />
+                    ) : null}
+                  </Stack>
+
                   {!selectedUnlimitedCapacity ? (
-                    <Chip
-                      icon={<Groups sx={{ fontSize: '18px !important' }} />}
-                      label={`${selectedEvent.participantCount}/${selectedEvent.maxParticipants}`}
-                      size="small"
-                      variant="outlined"
-                      sx={{
-                        fontWeight: 700,
-                        flexShrink: 0,
-                        fontVariantNumeric: 'tabular-nums',
-                        borderRadius: 2,
-                        borderColor: t => alpha(t.palette.text.primary, 0.16)
-                      }}
-                    />
+                    <LinearCapacity value={fillPct} />
                   ) : null}
-                </Stack>
 
-                {!selectedUnlimitedCapacity ? (
-                  <LinearCapacity value={fillPct} />
-                ) : null}
-
-                <Stack
-                  direction={{ xs: 'column', md: 'row' }}
-                  spacing={2}
-                  alignItems="stretch"
-                  sx={{ mt: 2.5 }}
-                >
-                  <Box sx={{ flex: isMdUp ? 7 : undefined, minWidth: 0 }}>
-                    <Card
-                      variant="outlined"
-                      sx={{
-                        height: '100%',
-                        borderRadius: 3,
-                        borderColor: t => alpha(t.palette.text.primary, 0.1),
-                        bgcolor: t => alpha(t.palette.text.primary, 0.02),
-                        boxShadow: 'none'
-                      }}
-                    >
-                      <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-                        <Typography
-                          variant="overline"
-                          color="primary"
-                          sx={{ fontWeight: 800, letterSpacing: '0.1em' }}
-                        >
-                          Detalle del evento
-                        </Typography>
-                        <Stack spacing={1.75} sx={{ mt: 1 }}>
-                          <Stack
-                            direction="row"
-                            spacing={1.25}
-                            alignItems="flex-start"
+                  <Stack
+                    direction={{ xs: 'column', md: 'row' }}
+                    spacing={2}
+                    alignItems="stretch"
+                    sx={{ mt: 2.5 }}
+                  >
+                    <Box sx={{ flex: isMdUp ? 7 : undefined, minWidth: 0 }}>
+                      <Card
+                        variant="outlined"
+                        sx={{
+                          height: '100%',
+                          borderRadius: 3,
+                          borderColor: t => alpha(t.palette.text.primary, 0.1),
+                          bgcolor: t => alpha(t.palette.text.primary, 0.02),
+                          boxShadow: 'none'
+                        }}
+                      >
+                        <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                          <Typography
+                            variant="overline"
+                            color="primary"
+                            sx={{ fontWeight: 800, letterSpacing: '0.1em' }}
                           >
-                            <EmojiEvents
-                              sx={{
-                                color: 'warning.main',
-                                mt: 0.25,
-                                flexShrink: 0
-                              }}
-                            />
-                            <Typography
-                              variant="h6"
-                              component="h3"
-                              sx={{ fontWeight: 700, lineHeight: 1.3 }}
-                            >
-                              {selectedEvent.title}
-                            </Typography>
-                          </Stack>
-                          <Typography variant="body2" color="text.secondary">
-                            {formatWhen(selectedEvent.startsAt)}
+                            Detalle del evento
                           </Typography>
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            alignItems="center"
-                            flexWrap="wrap"
-                            useFlexGap
-                          >
-                            <Chip
-                              size="small"
-                              label={gameLabel(selectedEvent.game)}
-                              variant="outlined"
-                            />
-                            <Chip
-                              size="small"
-                              label={kindLabel(selectedEvent.kind)}
-                              variant="outlined"
-                            />
-                            {selectedEvent.kind === 'tournament' &&
-                            selectedEvent.game === 'pokemon' &&
-                            selectedEvent.pokemonSubtype ? (
-                              <Chip
-                                size="small"
-                                label={pokemonSubtypeLabel(
-                                  selectedEvent.pokemonSubtype
-                                )}
-                                color="primary"
-                                variant="outlined"
-                              />
-                            ) : null}
-                            {selectedEvent.kind === 'tournament' &&
-                            selectedEvent.league &&
-                            selectedEvent.league.slug ? (
-                              <Chip
-                                component={Link}
-                                href={`/ligas/${encodeURIComponent(selectedEvent.league.slug)}`}
-                                target="_blank"
-                                scroll={false}
-                                clickable
-                                size="small"
-                                icon={
-                                  <Leaderboard
-                                    sx={{
-                                      fontSize: '16px !important',
-                                      color: 'secondary.main'
-                                    }}
-                                  />
-                                }
-                                label={selectedEvent.league.name}
-                                title={`Ver clasificación de la liga: ${selectedEvent.league.name}`}
-                                aria-label={`Abrir liga ${selectedEvent.league.name}`}
-                                variant="outlined"
-                                sx={{
-                                  maxWidth: { xs: '100%', sm: 240 },
-                                  fontWeight: 700,
-                                  borderColor: t =>
-                                    alpha(t.palette.secondary.main, 0.45),
-                                  color: 'secondary.main',
-                                  bgcolor: t =>
-                                    alpha(t.palette.secondary.main, 0.06),
-                                  transition: t =>
-                                    t.transitions.create(
-                                      [
-                                        'background-color',
-                                        'border-color',
-                                        'box-shadow'
-                                      ],
-                                      {
-                                        duration:
-                                          t.transitions.duration.shortest
-                                      }
-                                    ),
-                                  '&:hover': {
-                                    bgcolor: t =>
-                                      alpha(t.palette.secondary.main, 0.12),
-                                    borderColor: 'secondary.main',
-                                    boxShadow: t =>
-                                      `0 1px 4px ${alpha(t.palette.secondary.main, 0.25)}`
-                                  },
-                                  '&:focus-visible': {
-                                    outline: '2px solid',
-                                    outlineColor: 'secondary.main',
-                                    outlineOffset: 2
-                                  },
-                                  '& .MuiChip-label': {
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    px: 0.5
-                                  }
-                                }}
-                              />
-                            ) : null}
-                            {selectedEvent.kind === 'tournament' &&
-                            selectedEvent.roundNum > 0 ? (
-                              <Chip
-                                size="small"
-                                label={`Ronda ${selectedEvent.roundNum}`}
-                                variant="outlined"
-                                sx={{
-                                  borderColor: t =>
-                                    alpha(t.palette.text.primary, 0.2),
-                                  color: 'text.secondary',
-                                  fontVariantNumeric: 'tabular-nums'
-                                }}
-                              />
-                            ) : null}
-                          </Stack>
-                          {selectedEvent.formatNotes ? (
-                            <Typography
-                              variant="body2"
-                              sx={{ lineHeight: 1.6 }}
-                            >
-                              {selectedEvent.formatNotes}
-                            </Typography>
-                          ) : null}
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            alignItems="center"
-                          >
-                            <LocalActivity fontSize="small" color="action" />
-                            <Typography
-                              variant="body2"
-                              fontWeight={700}
-                              color="text.primary"
-                            >
-                              {formatPrice(selectedEvent)}
-                            </Typography>
-                          </Stack>
-                          {selectedEvent.prizesNotes ? (
+                          <Stack spacing={1.75} sx={{ mt: 1 }}>
                             <Stack
                               direction="row"
-                              spacing={1}
+                              spacing={1.25}
                               alignItems="flex-start"
                             >
                               <EmojiEvents
-                                fontSize="small"
-                                color="action"
-                                sx={{ mt: 0.35, flexShrink: 0 }}
+                                sx={{
+                                  color: 'warning.main',
+                                  mt: 0.25,
+                                  flexShrink: 0
+                                }}
                               />
                               <Typography
-                                variant="body2"
-                                sx={{ lineHeight: 1.55 }}
+                                variant="h6"
+                                component="h3"
+                                sx={{ fontWeight: 700, lineHeight: 1.3 }}
                               >
-                                {selectedEvent.prizesNotes}
+                                {selectedEvent.title}
                               </Typography>
                             </Stack>
-                          ) : null}
-                          {selectedEvent.location ? (
+                            <Typography variant="body2" color="text.secondary">
+                              {formatWhen(selectedEvent.startsAt)}
+                            </Typography>
                             <Stack
                               direction="row"
                               spacing={1}
-                              alignItems="flex-start"
+                              alignItems="center"
+                              flexWrap="wrap"
+                              useFlexGap
                             >
-                              <Place
-                                fontSize="small"
-                                color="action"
-                                sx={{ mt: 0.35, flexShrink: 0 }}
+                              <Chip
+                                size="small"
+                                label={gameLabel(selectedEvent.game)}
+                                variant="outlined"
                               />
-                              <Typography
-                                variant="body2"
-                                sx={{ lineHeight: 1.55 }}
-                              >
-                                {selectedEvent.location}
-                              </Typography>
-                            </Stack>
-                          ) : null}
-                        </Stack>
-                        {selectedEvent.kind === 'tournament' &&
-                        selectedEvent.game === 'pokemon' &&
-                        (selectedEvent.state === 'close' ||
-                          (selectedEvent.state === 'running' &&
-                            Boolean(selectedEvent.myRegistration))) ? (
-                          <>
-                            <Divider sx={{ mt: 2.5 }} />
-                            <Stack spacing={2} sx={{ pt: 2.5 }}>
-                              {selectedEvent.myRegistration ? (
-                                <TournamentReportRoundsCta
-                                  eventId={selectedEvent._id}
+                              <Chip
+                                size="small"
+                                label={kindLabel(selectedEvent.kind)}
+                                variant="outlined"
+                              />
+                              {selectedEvent.kind === 'tournament' &&
+                              selectedEvent.game === 'pokemon' &&
+                              selectedEvent.pokemonSubtype ? (
+                                <Chip
+                                  size="small"
+                                  label={pokemonSubtypeLabel(
+                                    selectedEvent.pokemonSubtype
+                                  )}
+                                  color="primary"
+                                  variant="outlined"
                                 />
                               ) : null}
-                              {selectedEvent.state === 'close' ? (
-                                <TournamentMetaExploreCta
-                                  eventId={selectedEvent._id}
-                                />
-                              ) : null}
-                            </Stack>
-                          </>
-                        ) : null}
-                      </CardContent>
-                    </Card>
-                  </Box>
-
-                  <Box sx={{ flex: isMdUp ? 5 : undefined, minWidth: 0 }}>
-                    <Card
-                      variant="outlined"
-                      sx={{
-                        height: '100%',
-                        borderRadius: 3,
-                        borderColor: t => alpha(t.palette.primary.main, 0.22),
-                        bgcolor: t => alpha(t.palette.primary.main, 0.04),
-                        boxShadow: t =>
-                          `inset 0 1px 0 ${alpha(t.palette.common.white, 0.55)}`
-                      }}
-                    >
-                      <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-                        {selectedEvent.kind === 'tournament' &&
-                        selectedEvent.state === 'close' ? (
-                          <Stack spacing={2.5}>
-                            <Box>
-                              <Typography
-                                variant="overline"
-                                color="primary"
-                                sx={{
-                                  fontWeight: 800,
-                                  letterSpacing: '0.08em'
-                                }}
-                              >
-                                Clasificación final
-                              </Typography>
-                            </Box>
-                            {selectedEvent.myRegistration ? (
-                              <Stack spacing={1.5}>
-                                <Typography variant="body2">
-                                  Lista como{' '}
-                                  <Box
-                                    component="strong"
-                                    sx={{ color: 'text.primary' }}
-                                  >
-                                    {selectedEvent.myRegistration}
-                                  </Box>
-                                </Typography>
-                                {selectedEvent.canEditMyDeck ? (
-                                  <Stack spacing={1.25}>
-                                    <TournamentDeckSpritesSummary
-                                      slugs={
-                                        selectedEvent.myDeckPokemonSlugs ?? []
-                                      }
+                              {selectedEvent.kind === 'tournament' &&
+                              selectedEvent.league &&
+                              selectedEvent.league.slug ? (
+                                <Chip
+                                  component={Link}
+                                  href={`/ligas/${encodeURIComponent(selectedEvent.league.slug)}`}
+                                  target="_blank"
+                                  scroll={false}
+                                  clickable
+                                  size="small"
+                                  icon={
+                                    <Leaderboard
+                                      sx={{
+                                        fontSize: '16px !important',
+                                        color: 'secondary.main'
+                                      }}
                                     />
-                                    <Button
-                                      type="button"
-                                      variant="outlined"
-                                      color="primary"
-                                      fullWidth
-                                      size="medium"
-                                      startIcon={<Style aria-hidden />}
-                                      onClick={() =>
-                                        setDeckDialogOpenForEventId(
-                                          selectedEvent._id
-                                        )
-                                      }
-                                    >
-                                      {(selectedEvent.myDeckPokemonSlugs
-                                        ?.length ?? 0) > 0
-                                        ? 'Editar decklist'
-                                        : 'Añadir decklist'}
-                                    </Button>
-                                    <Typography
-                                      variant="caption"
-                                      color="text.secondary"
-                                    >
-                                      Puedes registrar tu mazo aunque el torneo
-                                      ya terminó. Solo tú ves el listado
-                                      completo.
-                                    </Typography>
-                                  </Stack>
-                                ) : (selectedEvent.myDeckPokemonSlugs?.length ??
-                                    0) > 0 ? (
-                                  <TournamentDeckSpritesSummary
-                                    slugs={
-                                      selectedEvent.myDeckPokemonSlugs ?? []
+                                  }
+                                  label={selectedEvent.league.name}
+                                  title={`Ver clasificación de la liga: ${selectedEvent.league.name}`}
+                                  aria-label={`Abrir liga ${selectedEvent.league.name}`}
+                                  variant="outlined"
+                                  sx={{
+                                    maxWidth: { xs: '100%', sm: 240 },
+                                    fontWeight: 700,
+                                    borderColor: t =>
+                                      alpha(t.palette.secondary.main, 0.45),
+                                    color: 'secondary.main',
+                                    bgcolor: t =>
+                                      alpha(t.palette.secondary.main, 0.06),
+                                    transition: t =>
+                                      t.transitions.create(
+                                        [
+                                          'background-color',
+                                          'border-color',
+                                          'box-shadow'
+                                        ],
+                                        {
+                                          duration:
+                                            t.transitions.duration.shortest
+                                        }
+                                      ),
+                                    '&:hover': {
+                                      bgcolor: t =>
+                                        alpha(t.palette.secondary.main, 0.12),
+                                      borderColor: 'secondary.main',
+                                      boxShadow: t =>
+                                        `0 1px 4px ${alpha(t.palette.secondary.main, 0.25)}`
+                                    },
+                                    '&:focus-visible': {
+                                      outline: '2px solid',
+                                      outlineColor: 'secondary.main',
+                                      outlineOffset: 2
+                                    },
+                                    '& .MuiChip-label': {
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      px: 0.5
                                     }
-                                  />
-                                ) : null}
-                              </Stack>
-                            ) : (
+                                  }}
+                                />
+                              ) : null}
+                              {selectedEvent.kind === 'tournament' &&
+                              selectedEvent.roundNum > 0 ? (
+                                <Chip
+                                  size="small"
+                                  label={`Ronda ${selectedEvent.roundNum}`}
+                                  variant="outlined"
+                                  sx={{
+                                    borderColor: t =>
+                                      alpha(t.palette.text.primary, 0.2),
+                                    color: 'text.secondary',
+                                    fontVariantNumeric: 'tabular-nums'
+                                  }}
+                                />
+                              ) : null}
+                            </Stack>
+                            {selectedEvent.formatNotes ? (
                               <Typography
                                 variant="body2"
-                                color="text.secondary"
+                                sx={{ lineHeight: 1.6 }}
                               >
-                                No estás inscrito en este torneo con tu cuenta.
+                                {selectedEvent.formatNotes}
                               </Typography>
-                            )}
-                            {selectedEvent.myRegistration ? (
-                              <Stack
-                                spacing={1.25}
-                                sx={{
-                                  py: 1.25,
-                                  px: 1.5,
-                                  borderRadius: 2,
-                                  bgcolor: t =>
-                                    alpha(t.palette.success.main, 0.06),
-                                  border: 1,
-                                  borderColor: t =>
-                                    alpha(t.palette.success.main, 0.28)
-                                }}
+                            ) : null}
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems="center"
+                            >
+                              <LocalActivity fontSize="small" color="action" />
+                              <Typography
+                                variant="body2"
+                                fontWeight={700}
+                                color="text.primary"
                               >
-                                <Stack
-                                  direction="row"
-                                  spacing={1}
-                                  alignItems="center"
+                                {formatPrice(selectedEvent)}
+                              </Typography>
+                            </Stack>
+                            {selectedEvent.prizesNotes ? (
+                              <Stack
+                                direction="row"
+                                spacing={1}
+                                alignItems="flex-start"
+                              >
+                                <EmojiEvents
+                                  fontSize="small"
+                                  color="action"
+                                  sx={{ mt: 0.35, flexShrink: 0 }}
+                                />
+                                <Typography
+                                  variant="body2"
+                                  sx={{ lineHeight: 1.55 }}
                                 >
-                                  <EmojiEvents
-                                    fontSize="small"
-                                    color="success"
-                                  />
-                                  <Typography
-                                    variant="caption"
-                                    color="text.secondary"
-                                    fontWeight={700}
-                                  >
-                                    Tu resultado
-                                  </Typography>
-                                </Stack>
-                                {selectedEvent.myTournamentPlacement ? (
-                                  <Typography variant="body2">
-                                    {selectedEvent.myTournamentPlacement
-                                      .isDnf ? (
-                                      <>
-                                        Clasificación en{' '}
-                                        <strong>
-                                          {
-                                            selectedEvent.myTournamentPlacement
-                                              .categoryLabel
-                                          }
-                                        </strong>
-                                        :{' '}
-                                        <Box component="span" fontWeight={700}>
-                                          DNF (no terminó)
-                                        </Box>
-                                      </>
-                                    ) : (
-                                      <>
-                                        Puesto{' '}
-                                        <strong>
-                                          {
-                                            selectedEvent.myTournamentPlacement
-                                              .place
-                                          }
-                                          º
-                                        </strong>{' '}
-                                        en categoría{' '}
-                                        <strong>
-                                          {
-                                            selectedEvent.myTournamentPlacement
-                                              .categoryLabel
-                                          }
-                                        </strong>
-                                      </>
-                                    )}
-                                  </Typography>
-                                ) : (
-                                  <Typography
-                                    variant="body2"
-                                    color="text.secondary"
-                                  >
-                                    No figuras en la clasificación publicada
-                                    (revisa que tu POP ID coincida con el del
-                                    torneo).
-                                  </Typography>
-                                )}
-                                {selectedEvent.myMatchRecord ? (
-                                  <Typography
-                                    variant="body2"
-                                    color="text.secondary"
-                                  >
-                                    Récord final (W / L / T):{' '}
-                                    <Box
-                                      component="span"
-                                      fontWeight={700}
-                                      color="text.primary"
-                                    >
-                                      {selectedEvent.myMatchRecord.wins} /{' '}
-                                      {selectedEvent.myMatchRecord.losses} /{' '}
-                                      {selectedEvent.myMatchRecord.ties}
-                                    </Box>
-                                  </Typography>
-                                ) : null}
+                                  {selectedEvent.prizesNotes}
+                                </Typography>
                               </Stack>
                             ) : null}
-                            <TournamentFinishedStandingsPanel
-                              eventId={selectedEvent._id}
-                              categories={selectedEvent.standingsTopByCategory}
-                              onOpenFullStandings={() =>
-                                setFullStandingsOpenForEventId(
-                                  selectedEvent._id
-                                )
-                              }
-                            />
+                            {selectedEvent.location ? (
+                              <Stack
+                                direction="row"
+                                spacing={1}
+                                alignItems="flex-start"
+                              >
+                                <Place
+                                  fontSize="small"
+                                  color="action"
+                                  sx={{ mt: 0.35, flexShrink: 0 }}
+                                />
+                                <Typography
+                                  variant="body2"
+                                  sx={{ lineHeight: 1.55 }}
+                                >
+                                  {selectedEvent.location}
+                                </Typography>
+                              </Stack>
+                            ) : null}
                           </Stack>
-                        ) : (
-                          <>
-                            {!selectedEventClosed ? (
-                              <>
+                          {selectedEvent.kind === 'tournament' &&
+                          selectedEvent.game === 'pokemon' &&
+                          (selectedEvent.state === 'close' ||
+                            (selectedEvent.state === 'running' &&
+                              Boolean(selectedEvent.myRegistration))) ? (
+                            <>
+                              <Divider sx={{ mt: 2.5 }} />
+                              <Stack spacing={2} sx={{ pt: 2.5 }}>
+                                {selectedEvent.myRegistration ? (
+                                  <TournamentReportRoundsCta
+                                    eventId={selectedEvent._id}
+                                  />
+                                ) : null}
+                                {selectedEvent.state === 'close' ? (
+                                  <TournamentMetaExploreCta
+                                    eventId={selectedEvent._id}
+                                  />
+                                ) : null}
+                              </Stack>
+                            </>
+                          ) : null}
+                        </CardContent>
+                      </Card>
+                    </Box>
+
+                    <Box sx={{ flex: isMdUp ? 5 : undefined, minWidth: 0 }}>
+                      <Card
+                        variant="outlined"
+                        sx={{
+                          height: '100%',
+                          borderRadius: 3,
+                          borderColor: t => alpha(t.palette.primary.main, 0.22),
+                          bgcolor: t => alpha(t.palette.primary.main, 0.04),
+                          boxShadow: t =>
+                            `inset 0 1px 0 ${alpha(t.palette.common.white, 0.55)}`
+                        }}
+                      >
+                        <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                          {selectedEvent.kind === 'tournament' &&
+                          selectedEvent.state === 'close' ? (
+                            <Stack spacing={2.5}>
+                              <Box>
                                 <Typography
                                   variant="overline"
                                   color="primary"
-                                  sx={{ fontWeight: 700 }}
+                                  sx={{
+                                    fontWeight: 800,
+                                    letterSpacing: '0.08em'
+                                  }}
                                 >
-                                  Tu inscripción
+                                  Clasificación final
                                 </Typography>
-                                <Typography
-                                  variant="body2"
-                                  color="text.secondary"
-                                  sx={{ mt: 0.5, mb: 2 }}
-                                >
-                                  Un nombre público en la lista. Puedes ver
-                                  quién más va.
-                                </Typography>
-                              </>
-                            ) : null}
-                            {regReason ? (
-                              <Alert
-                                severity="info"
-                                variant="outlined"
-                                sx={{ mb: 2 }}
-                              >
-                                {regReason}
-                              </Alert>
-                            ) : null}
-                            {selectedEvent.myRegistration ? (
-                              <Stack spacing={2} sx={{ mb: 1 }}>
-                                <Stack
-                                  direction="row"
-                                  alignItems="center"
-                                  spacing={1}
-                                  flexWrap="wrap"
-                                >
-                                  <Typography variant="body2" component="span">
+                              </Box>
+                              {selectedEvent.myRegistration ? (
+                                <Stack spacing={1.5}>
+                                  <Typography variant="body2">
                                     Lista como{' '}
                                     <Box
                                       component="strong"
@@ -864,294 +674,536 @@ export default function WeeklyEventsSection({
                                       {selectedEvent.myRegistration}
                                     </Box>
                                   </Typography>
-                                </Stack>
-                                {selectedEvent.canEditMyDeck ? (
-                                  <Stack spacing={1.25}>
+                                  {selectedEvent.canEditMyDeck ? (
+                                    <Stack spacing={1.25}>
+                                      <TournamentDeckSpritesSummary
+                                        slugs={
+                                          selectedEvent.myDeckPokemonSlugs ?? []
+                                        }
+                                      />
+                                      <Button
+                                        type="button"
+                                        variant="outlined"
+                                        color="primary"
+                                        fullWidth
+                                        size="medium"
+                                        startIcon={<Style aria-hidden />}
+                                        onClick={() =>
+                                          setDeckDialogOpenForEventId(
+                                            selectedEvent._id
+                                          )
+                                        }
+                                      >
+                                        {(selectedEvent.myDeckPokemonSlugs
+                                          ?.length ?? 0) > 0
+                                          ? 'Editar decklist'
+                                          : 'Añadir decklist'}
+                                      </Button>
+                                      <Typography
+                                        variant="caption"
+                                        color="text.secondary"
+                                      >
+                                        Puedes registrar tu mazo aunque el
+                                        torneo ya terminó. Solo tú ves el
+                                        listado completo.
+                                      </Typography>
+                                    </Stack>
+                                  ) : (selectedEvent.myDeckPokemonSlugs
+                                      ?.length ?? 0) > 0 ? (
                                     <TournamentDeckSpritesSummary
                                       slugs={
                                         selectedEvent.myDeckPokemonSlugs ?? []
                                       }
                                     />
-                                    <Button
-                                      type="button"
-                                      variant="outlined"
-                                      color="primary"
-                                      fullWidth
-                                      size="medium"
-                                      startIcon={<Style aria-hidden />}
-                                      onClick={() =>
-                                        setDeckDialogOpenForEventId(
-                                          selectedEvent._id
-                                        )
-                                      }
-                                    >
-                                      {(selectedEvent.myDeckPokemonSlugs
-                                        ?.length ?? 0) > 0
-                                        ? 'Editar decklist'
-                                        : 'Añadir decklist'}
-                                    </Button>
+                                  ) : null}
+                                </Stack>
+                              ) : (
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                >
+                                  No estás inscrito en este torneo con tu
+                                  cuenta.
+                                </Typography>
+                              )}
+                              {selectedEvent.myRegistration ? (
+                                <Stack
+                                  spacing={1.25}
+                                  sx={{
+                                    py: 1.25,
+                                    px: 1.5,
+                                    borderRadius: 2,
+                                    bgcolor: t =>
+                                      alpha(t.palette.success.main, 0.06),
+                                    border: 1,
+                                    borderColor: t =>
+                                      alpha(t.palette.success.main, 0.28)
+                                  }}
+                                >
+                                  <Stack
+                                    direction="row"
+                                    spacing={1}
+                                    alignItems="center"
+                                  >
+                                    <EmojiEvents
+                                      fontSize="small"
+                                      color="success"
+                                    />
                                     <Typography
                                       variant="caption"
                                       color="text.secondary"
+                                      fontWeight={700}
                                     >
-                                      Solo tú ves el listado completo; otros
-                                      jugadores no tienen acceso a esta
-                                      información.
+                                      Tu resultado
                                     </Typography>
                                   </Stack>
-                                ) : (selectedEvent.myDeckPokemonSlugs?.length ??
-                                    0) > 0 ? (
-                                  <TournamentDeckSpritesSummary
-                                    slugs={
-                                      selectedEvent.myDeckPokemonSlugs ?? []
-                                    }
-                                  />
-                                ) : null}
-                                {selectedEvent.kind === 'tournament' &&
-                                selectedEvent.state === 'running' ? (
-                                  <>
-                                    <Stack
-                                      spacing={1}
-                                      sx={{
-                                        py: 1.25,
-                                        px: 1.5,
-                                        borderRadius: 2,
-                                        bgcolor: t =>
-                                          alpha(t.palette.secondary.main, 0.06),
-                                        border: 1,
-                                        borderColor: t =>
-                                          alpha(t.palette.secondary.main, 0.22)
-                                      }}
-                                    >
-                                      <Typography
-                                        variant="caption"
-                                        color="text.secondary"
-                                        fontWeight={700}
-                                      >
-                                        Emparejamiento
-                                      </Typography>
-                                      {selectedEvent.roundNum > 0 ? (
-                                        <Typography variant="body2">
-                                          Ronda{' '}
+                                  {selectedEvent.myTournamentPlacement ? (
+                                    <Typography variant="body2">
+                                      {selectedEvent.myTournamentPlacement
+                                        .isDnf ? (
+                                        <>
+                                          Clasificación en{' '}
                                           <strong>
-                                            {selectedEvent.roundNum}
+                                            {
+                                              selectedEvent
+                                                .myTournamentPlacement
+                                                .categoryLabel
+                                            }
                                           </strong>
-                                        </Typography>
-                                      ) : (
-                                        <Typography
-                                          variant="body2"
-                                          color="text.secondary"
-                                        >
-                                          Ronda aún no publicada
-                                        </Typography>
-                                      )}
-                                      <Stack
-                                        direction="row"
-                                        spacing={1}
-                                        alignItems="center"
-                                      >
-                                        <TableRestaurant
-                                          fontSize="small"
-                                          color="action"
-                                        />
-                                        <Typography variant="body2">
-                                          Mesa{' '}
-                                          <strong>
-                                            {selectedEvent.myTable != null &&
-                                            selectedEvent.myTable.trim() !== ''
-                                              ? selectedEvent.myTable
-                                              : '—'}
-                                          </strong>
-                                        </Typography>
-                                      </Stack>
-                                      <Stack
-                                        direction="row"
-                                        spacing={1}
-                                        alignItems="center"
-                                      >
-                                        <PersonOutline
-                                          fontSize="small"
-                                          color="action"
-                                        />
-                                        <Typography variant="body2">
-                                          Oponente{' '}
-                                          <strong>
-                                            {selectedEvent.myOpponentName ??
-                                              '—'}
-                                          </strong>
-                                        </Typography>
-                                      </Stack>
-                                      {selectedEvent.myMatchRecord ? (
-                                        <Typography
-                                          variant="body2"
-                                          color="text.secondary"
-                                        >
-                                          Récord (W / L / T):{' '}
+                                          :{' '}
                                           <Box
                                             component="span"
                                             fontWeight={700}
-                                            color="text.primary"
                                           >
-                                            {selectedEvent.myMatchRecord.wins} /{' '}
-                                            {selectedEvent.myMatchRecord.losses}{' '}
-                                            / {selectedEvent.myMatchRecord.ties}
+                                            DNF (no terminó)
                                           </Box>
-                                        </Typography>
-                                      ) : null}
-                                    </Stack>
-                                    <Button
-                                      type="button"
-                                      variant="outlined"
-                                      color="secondary"
-                                      fullWidth
-                                      size="medium"
-                                      sx={{ mt: 1 }}
-                                      startIcon={<GridView aria-hidden />}
-                                      onClick={() =>
-                                        setCurrentRoundOpenForEventId(
-                                          selectedEvent._id
-                                        )
-                                      }
+                                        </>
+                                      ) : (
+                                        <>
+                                          Puesto{' '}
+                                          <strong>
+                                            {
+                                              selectedEvent
+                                                .myTournamentPlacement.place
+                                            }
+                                            º
+                                          </strong>{' '}
+                                          en categoría{' '}
+                                          <strong>
+                                            {
+                                              selectedEvent
+                                                .myTournamentPlacement
+                                                .categoryLabel
+                                            }
+                                          </strong>
+                                        </>
+                                      )}
+                                    </Typography>
+                                  ) : (
+                                    <Typography
+                                      variant="body2"
+                                      color="text.secondary"
                                     >
-                                      Ver emparejamientos de la ronda
-                                    </Button>
-                                  </>
-                                ) : null}
-                                {!selectedEventClosed ? (
-                                  <>
-                                    {selectedEvent.myAttendanceConfirmed ? (
-                                      <Alert
-                                        severity="success"
-                                        variant="filled"
-                                        icon={<Verified />}
-                                        sx={{ alignItems: 'center' }}
+                                      No figuras en la clasificación publicada
+                                      (revisa que tu POP ID coincida con el del
+                                      torneo).
+                                    </Typography>
+                                  )}
+                                  {selectedEvent.myMatchRecord ? (
+                                    <Typography
+                                      variant="body2"
+                                      color="text.secondary"
+                                    >
+                                      Récord final (W / L / T):{' '}
+                                      <Box
+                                        component="span"
+                                        fontWeight={700}
+                                        color="text.primary"
                                       >
-                                        <Typography
-                                          variant="body2"
-                                          fontWeight={600}
-                                        >
-                                          Asistencia confirmada por la tienda
-                                        </Typography>
-                                      </Alert>
-                                    ) : selectedEvent.canUnregister ? (
-                                      <Button
-                                        type="button"
-                                        variant="outlined"
-                                        color="error"
-                                        fullWidth
-                                        size="large"
-                                        disabled={unregister.isPending}
-                                        onClick={async () => {
-                                          if (!selectedEvent) return
-                                          try {
-                                            await unregister.mutateAsync(
-                                              selectedEvent._id
-                                            )
-                                          } catch {
-                                            /* error en estado */
-                                          }
-                                        }}
-                                      >
-                                        {unregister.isPending
-                                          ? 'Quitando…'
-                                          : 'Desinscribirse'}
-                                      </Button>
-                                    ) : !selectedEvent.canPreRegister ? (
-                                      <Alert severity="info" variant="outlined">
-                                        No puedes desinscribirte: el torneo ya
-                                        está cerrado.
-                                      </Alert>
-                                    ) : null}
-                                    {unregister.isError ? (
-                                      <Alert
-                                        severity="error"
-                                        variant="outlined"
-                                      >
-                                        {unregister.error instanceof Error
-                                          ? unregister.error.message
-                                          : 'Error'}
-                                      </Alert>
-                                    ) : null}
-                                  </>
-                                ) : null}
-                              </Stack>
-                            ) : (
-                              <WeeklyEventPreRegisterForm
-                                key={`${selectedEvent._id}-${session?.user?.name ?? ''}-${session?.user?.popid ?? ''}`}
-                                selectedEvent={selectedEvent}
-                                defaultName={session?.user?.name?.trim() ?? ''}
-                                popId={session?.user?.popid ?? ''}
-                                regReason={regReason}
-                                register={register}
-                              />
-                            )}
-
-                            {!selectedEventClosed ? (
-                              <Button
-                                type="button"
-                                variant="outlined"
-                                color="inherit"
-                                fullWidth
-                                size="medium"
-                                sx={{ mt: 2 }}
-                                startIcon={<Groups />}
-                                onClick={() =>
-                                  setParticipantsOpenForEventId(
+                                        {selectedEvent.myMatchRecord.wins} /{' '}
+                                        {selectedEvent.myMatchRecord.losses} /{' '}
+                                        {selectedEvent.myMatchRecord.ties}
+                                      </Box>
+                                    </Typography>
+                                  ) : null}
+                                </Stack>
+                              ) : null}
+                              <TournamentFinishedStandingsPanel
+                                eventId={selectedEvent._id}
+                                categories={
+                                  selectedEvent.standingsTopByCategory
+                                }
+                                onOpenFullStandings={() =>
+                                  setFullStandingsOpenForEventId(
                                     selectedEvent._id
                                   )
                                 }
-                              >
-                                Ver lista de participantes
-                                {selectedEvent.participantCount > 0
-                                  ? ` (${selectedEvent.participantCount})`
-                                  : ''}
-                              </Button>
-                            ) : null}
-                          </>
-                        )}
+                              />
+                            </Stack>
+                          ) : (
+                            <>
+                              {!selectedEventClosed ? (
+                                <>
+                                  <Typography
+                                    variant="overline"
+                                    color="primary"
+                                    sx={{ fontWeight: 700 }}
+                                  >
+                                    Tu inscripción
+                                  </Typography>
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{ mt: 0.5, mb: 2 }}
+                                  >
+                                    Un nombre público en la lista. Puedes ver
+                                    quién más va.
+                                  </Typography>
+                                </>
+                              ) : null}
+                              {regReason ? (
+                                <Alert
+                                  severity="info"
+                                  variant="outlined"
+                                  sx={{ mb: 2 }}
+                                >
+                                  {regReason}
+                                </Alert>
+                              ) : null}
+                              {selectedEvent.myRegistration ? (
+                                <Stack spacing={2} sx={{ mb: 1 }}>
+                                  <Stack
+                                    direction="row"
+                                    alignItems="center"
+                                    spacing={1}
+                                    flexWrap="wrap"
+                                  >
+                                    <Typography
+                                      variant="body2"
+                                      component="span"
+                                    >
+                                      Lista como{' '}
+                                      <Box
+                                        component="strong"
+                                        sx={{ color: 'text.primary' }}
+                                      >
+                                        {selectedEvent.myRegistration}
+                                      </Box>
+                                    </Typography>
+                                  </Stack>
+                                  {selectedEvent.canEditMyDeck ? (
+                                    <Stack spacing={1.25}>
+                                      <TournamentDeckSpritesSummary
+                                        slugs={
+                                          selectedEvent.myDeckPokemonSlugs ?? []
+                                        }
+                                      />
+                                      <Button
+                                        type="button"
+                                        variant="outlined"
+                                        color="primary"
+                                        fullWidth
+                                        size="medium"
+                                        startIcon={<Style aria-hidden />}
+                                        onClick={() =>
+                                          setDeckDialogOpenForEventId(
+                                            selectedEvent._id
+                                          )
+                                        }
+                                      >
+                                        {(selectedEvent.myDeckPokemonSlugs
+                                          ?.length ?? 0) > 0
+                                          ? 'Editar decklist'
+                                          : 'Añadir decklist'}
+                                      </Button>
+                                      <Typography
+                                        variant="caption"
+                                        color="text.secondary"
+                                      >
+                                        Solo tú ves el listado completo; otros
+                                        jugadores no tienen acceso a esta
+                                        información.
+                                      </Typography>
+                                    </Stack>
+                                  ) : (selectedEvent.myDeckPokemonSlugs
+                                      ?.length ?? 0) > 0 ? (
+                                    <TournamentDeckSpritesSummary
+                                      slugs={
+                                        selectedEvent.myDeckPokemonSlugs ?? []
+                                      }
+                                    />
+                                  ) : null}
+                                  {selectedEvent.kind === 'tournament' &&
+                                  selectedEvent.state === 'running' ? (
+                                    <>
+                                      <Stack
+                                        spacing={1}
+                                        sx={{
+                                          py: 1.25,
+                                          px: 1.5,
+                                          borderRadius: 2,
+                                          bgcolor: t =>
+                                            alpha(
+                                              t.palette.secondary.main,
+                                              0.06
+                                            ),
+                                          border: 1,
+                                          borderColor: t =>
+                                            alpha(
+                                              t.palette.secondary.main,
+                                              0.22
+                                            )
+                                        }}
+                                      >
+                                        <Typography
+                                          variant="caption"
+                                          color="text.secondary"
+                                          fontWeight={700}
+                                        >
+                                          Emparejamiento
+                                        </Typography>
+                                        {selectedEvent.roundNum > 0 ? (
+                                          <Typography variant="body2">
+                                            Ronda{' '}
+                                            <strong>
+                                              {selectedEvent.roundNum}
+                                            </strong>
+                                          </Typography>
+                                        ) : (
+                                          <Typography
+                                            variant="body2"
+                                            color="text.secondary"
+                                          >
+                                            Ronda aún no publicada
+                                          </Typography>
+                                        )}
+                                        <Stack
+                                          direction="row"
+                                          spacing={1}
+                                          alignItems="center"
+                                        >
+                                          <TableRestaurant
+                                            fontSize="small"
+                                            color="action"
+                                          />
+                                          <Typography variant="body2">
+                                            Mesa{' '}
+                                            <strong>
+                                              {selectedEvent.myTable != null &&
+                                              selectedEvent.myTable.trim() !==
+                                                ''
+                                                ? selectedEvent.myTable
+                                                : '—'}
+                                            </strong>
+                                          </Typography>
+                                        </Stack>
+                                        <Stack
+                                          direction="row"
+                                          spacing={1}
+                                          alignItems="center"
+                                        >
+                                          <PersonOutline
+                                            fontSize="small"
+                                            color="action"
+                                          />
+                                          <Typography variant="body2">
+                                            Oponente{' '}
+                                            <strong>
+                                              {selectedEvent.myOpponentName ??
+                                                '—'}
+                                            </strong>
+                                          </Typography>
+                                        </Stack>
+                                        {selectedEvent.myMatchRecord ? (
+                                          <Typography
+                                            variant="body2"
+                                            color="text.secondary"
+                                          >
+                                            Récord (W / L / T):{' '}
+                                            <Box
+                                              component="span"
+                                              fontWeight={700}
+                                              color="text.primary"
+                                            >
+                                              {selectedEvent.myMatchRecord.wins}{' '}
+                                              /{' '}
+                                              {
+                                                selectedEvent.myMatchRecord
+                                                  .losses
+                                              }{' '}
+                                              /{' '}
+                                              {selectedEvent.myMatchRecord.ties}
+                                            </Box>
+                                          </Typography>
+                                        ) : null}
+                                      </Stack>
+                                      <Button
+                                        type="button"
+                                        variant="outlined"
+                                        color="secondary"
+                                        fullWidth
+                                        size="medium"
+                                        sx={{ mt: 1 }}
+                                        startIcon={<GridView aria-hidden />}
+                                        onClick={() =>
+                                          setCurrentRoundOpenForEventId(
+                                            selectedEvent._id
+                                          )
+                                        }
+                                      >
+                                        Ver emparejamientos de la ronda
+                                      </Button>
+                                    </>
+                                  ) : null}
+                                  {!selectedEventClosed ? (
+                                    <>
+                                      {selectedEvent.myAttendanceConfirmed ? (
+                                        <Alert
+                                          severity="success"
+                                          variant="filled"
+                                          icon={<Verified />}
+                                          sx={{ alignItems: 'center' }}
+                                        >
+                                          <Typography
+                                            variant="body2"
+                                            fontWeight={600}
+                                          >
+                                            Asistencia confirmada por la tienda
+                                          </Typography>
+                                        </Alert>
+                                      ) : selectedEvent.canUnregister ? (
+                                        <Button
+                                          type="button"
+                                          variant="outlined"
+                                          color="error"
+                                          fullWidth
+                                          size="large"
+                                          disabled={unregister.isPending}
+                                          onClick={async () => {
+                                            if (!selectedEvent) return
+                                            try {
+                                              await unregister.mutateAsync(
+                                                selectedEvent._id
+                                              )
+                                            } catch {
+                                              /* error en estado */
+                                            }
+                                          }}
+                                        >
+                                          {unregister.isPending
+                                            ? 'Quitando…'
+                                            : 'Desinscribirse'}
+                                        </Button>
+                                      ) : !selectedEvent.canPreRegister ? (
+                                        <Alert
+                                          severity="info"
+                                          variant="outlined"
+                                        >
+                                          No puedes desinscribirte: el torneo ya
+                                          está cerrado.
+                                        </Alert>
+                                      ) : null}
+                                      {unregister.isError ? (
+                                        <Alert
+                                          severity="error"
+                                          variant="outlined"
+                                        >
+                                          {unregister.error instanceof Error
+                                            ? unregister.error.message
+                                            : 'Error'}
+                                        </Alert>
+                                      ) : null}
+                                    </>
+                                  ) : null}
+                                </Stack>
+                              ) : (
+                                <WeeklyEventPreRegisterForm
+                                  key={`${selectedEvent._id}-${session?.user?.name ?? ''}-${session?.user?.popid ?? ''}`}
+                                  selectedEvent={selectedEvent}
+                                  defaultName={
+                                    session?.user?.name?.trim() ?? ''
+                                  }
+                                  popId={session?.user?.popid ?? ''}
+                                  regReason={regReason}
+                                  register={register}
+                                  onPreRegisterSuccess={
+                                    handlePreRegisterSuccess
+                                  }
+                                />
+                              )}
 
-                        <ReportDeckDialog
-                          open={deckDialogOpenForEventId === selectedEvent._id}
-                          onClose={() => setDeckDialogOpenForEventId(null)}
-                          eventId={selectedEvent._id}
-                          eventTitle={selectedEvent.title}
-                          initialSlugs={selectedEvent.myDeckPokemonSlugs ?? []}
-                          initialDecklistRef={
-                            selectedEvent.myTournamentDecklistRef ?? null
-                          }
-                          title="Tu deck para el torneo"
-                        />
+                              {!selectedEventClosed ? (
+                                <Button
+                                  type="button"
+                                  variant="outlined"
+                                  color="inherit"
+                                  fullWidth
+                                  size="medium"
+                                  sx={{ mt: 2 }}
+                                  startIcon={<Groups />}
+                                  onClick={() =>
+                                    setParticipantsOpenForEventId(
+                                      selectedEvent._id
+                                    )
+                                  }
+                                >
+                                  Ver lista de participantes
+                                  {selectedEvent.participantCount > 0
+                                    ? ` (${selectedEvent.participantCount})`
+                                    : ''}
+                                </Button>
+                              ) : null}
+                            </>
+                          )}
 
-                        <WeeklyParticipantsDialog
-                          open={participantsModalOpen}
-                          onClose={() => setParticipantsOpenForEventId(null)}
-                          eventTitle={selectedEvent.title}
-                          participantNames={selectedEvent.participantNames}
-                        />
+                          <ReportDeckDialog
+                            open={
+                              deckDialogOpenForEventId === selectedEvent._id
+                            }
+                            onClose={() => setDeckDialogOpenForEventId(null)}
+                            eventId={selectedEvent._id}
+                            eventTitle={selectedEvent.title}
+                            initialSlugs={
+                              selectedEvent.myDeckPokemonSlugs ?? []
+                            }
+                            initialDecklistRef={
+                              selectedEvent.myTournamentDecklistRef ?? null
+                            }
+                            title="Tu deck para el torneo"
+                          />
 
-                        <WeeklyFullStandingsDialog
-                          open={fullStandingsModalOpen}
-                          onClose={() => setFullStandingsOpenForEventId(null)}
-                          eventTitle={selectedEvent.title}
-                          eventId={selectedEvent._id}
-                          fullStandingsQuery={fullStandingsQuery}
-                        />
+                          <WeeklyParticipantsDialog
+                            open={participantsModalOpen}
+                            onClose={() => setParticipantsOpenForEventId(null)}
+                            eventTitle={selectedEvent.title}
+                            participantNames={selectedEvent.participantNames}
+                          />
 
-                        <WeeklyCurrentRoundDialog
-                          open={currentRoundModalOpen}
-                          onClose={() => setCurrentRoundOpenForEventId(null)}
-                          eventTitle={selectedEvent.title}
-                          currentRoundQuery={currentRoundQuery}
-                        />
-                      </CardContent>
-                    </Card>
-                  </Box>
-                </Stack>
-              </>
-            ) : null}
-          </>
-        )}
-      </CardContent>
-    </Card>
+                          <WeeklyFullStandingsDialog
+                            open={fullStandingsModalOpen}
+                            onClose={() => setFullStandingsOpenForEventId(null)}
+                            eventTitle={selectedEvent.title}
+                            eventId={selectedEvent._id}
+                            fullStandingsQuery={fullStandingsQuery}
+                          />
+
+                          <WeeklyCurrentRoundDialog
+                            open={currentRoundModalOpen}
+                            onClose={() => setCurrentRoundOpenForEventId(null)}
+                            eventTitle={selectedEvent.title}
+                            currentRoundQuery={currentRoundQuery}
+                          />
+                        </CardContent>
+                      </Card>
+                    </Box>
+                  </Stack>
+                </>
+              ) : null}
+            </>
+          )}
+        </CardContent>
+      </Card>
+      {contributionSnackbar}
+    </>
   )
 }

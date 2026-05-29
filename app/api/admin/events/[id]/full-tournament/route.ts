@@ -12,6 +12,7 @@ import type {
 } from '@/models/WeeklyEvent'
 import { normalizeDisplayName } from '@/lib/weekly-events'
 import { popidForStorage, validatePopidOptional } from '@/lib/rut-chile'
+import { applyTournamentParticipationAwardsOnEventClose } from '@/lib/contribution-points/tournament-contribution-awards'
 
 const NAME_MAX = 200
 const MAX_PAIRINGS = 512
@@ -383,6 +384,11 @@ export async function POST(
     doc.markModified('roundSnapshots')
     doc.markModified('tournamentStandings')
     await doc.save()
+
+    await applyTournamentParticipationAwardsOnEventClose(
+      doc,
+      gate.activeStoreOid
+    )
 
     return NextResponse.json(
       {

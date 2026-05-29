@@ -9,6 +9,7 @@ import {
   type PublicWeeklyEvent,
   useRegisterWeeklyEvent
 } from '@/hooks/useWeeklyEvents'
+import type { ContributionPointsAwardedItem } from '@/lib/contribution-points-public'
 
 type RegisterMutation = ReturnType<typeof useRegisterWeeklyEvent>
 
@@ -17,13 +18,17 @@ export default function WeeklyEventPreRegisterForm({
   defaultName,
   popId,
   regReason,
-  register
+  register,
+  onPreRegisterSuccess
 }: {
   selectedEvent: PublicWeeklyEvent
   defaultName: string
   popId: string
   regReason: string | null
   register: RegisterMutation
+  onPreRegisterSuccess: (
+    contributionPointsAwarded?: ContributionPointsAwardedItem[]
+  ) => void
 }) {
   const [nameInput, setNameInput] = useState(defaultName)
   const canSubmit =
@@ -54,19 +59,22 @@ export default function WeeklyEventPreRegisterForm({
         size="large"
         fullWidth
         disabled={!canSubmit}
-        onClick={async () => {
+        onClick={() => {
           if (!selectedEvent) return
-          try {
-            await register.mutateAsync({
+          register.mutate(
+            {
               eventId: selectedEvent._id,
               displayName: nameInput.trim(),
               popId: popId.trim(),
               table: '',
               opponentId: ''
-            })
-          } catch {
-            /* error en estado */
-          }
+            },
+            {
+              onSuccess: data => {
+                onPreRegisterSuccess(data.contributionPointsAwarded)
+              }
+            }
+          )
         }}
       >
         {register.isPending ? 'Enviando…' : 'Preinscribirme'}

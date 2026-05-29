@@ -33,6 +33,7 @@ import {
   lookupParticipantStanding,
   type TournamentStandingsMetaDTO
 } from '@/lib/tournament-standings-meta'
+import { buildContributionBadgesForUsers } from '@/lib/contribution-points/build-contribution-badges'
 
 type LeanParticipant = {
   displayName?: string
@@ -89,6 +90,7 @@ export type TournamentMetaParticipantDTO = {
   matchRecord: { wins: number; losses: number; ties: number } | null
   standingPlace: number | null
   standingIsDnf: boolean
+  contributionBadge?: { tierIndex: number; label: string } | null
 }
 
 export type TournamentMetaPayload = {
@@ -350,6 +352,29 @@ export async function buildTournamentMetaPayload(
     compareParticipantsByStanding(a, b, popStandingSort)
   )
 
+  let badgeByUserId = new Map<string, { tierIndex: number; label: string }>()
+  if (
+    doc.storeId &&
+    mongoose.Types.ObjectId.isValid(String(doc.storeId)) &&
+    tournamentOrigin === 'official'
+  ) {
+    const userIds = reportedOnly
+      .map(p => p.userId)
+      .filter((id): id is string => typeof id === 'string' && id.length > 0)
+    badgeByUserId = await buildContributionBadgesForUsers({
+      storeId: new mongoose.Types.ObjectId(String(doc.storeId)),
+      userIds
+    })
+  }
+
+  const participantsWithBadges = reportedOnly.map(p => ({
+    ...p,
+    contributionBadge:
+      p.userId && badgeByUserId.has(p.userId)
+        ? badgeByUserId.get(p.userId)!
+        : null
+  }))
+
   const stateRaw =
     doc.state === 'schedule' || doc.state === 'running' || doc.state === 'close'
       ? doc.state
@@ -368,8 +393,8 @@ export async function buildTournamentMetaPayload(
       tournamentOrigin
     },
     store,
-    participants: reportedOnly,
-    metagame: aggregateTournamentMetagame(reportedOnly),
+    participants: participantsWithBadges,
+    metagame: aggregateTournamentMetagame(participantsWithBadges),
     standings
   }
 }

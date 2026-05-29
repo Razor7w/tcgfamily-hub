@@ -18,6 +18,9 @@ import {
   trimOpponentDisplayName
 } from '@/lib/participant-match-round'
 import { popidForStorage } from '@/lib/rut-chile'
+import { applyMatchRoundContributionAwards } from '@/lib/contribution-points/match-round-contribution-awards'
+import { resolveWeeklyEventStoreIdForContribution } from '@/lib/contribution-points/resolve-event-store-id'
+import { resolveTournamentContributionOrigin } from '@/lib/contribution-points/tournament-origin'
 import WeeklyEvent from '@/models/WeeklyEvent'
 import type { IParticipantMatchRound } from '@/models/WeeklyEvent'
 
@@ -132,10 +135,9 @@ export async function PUT(
       )
     }
 
-    const tournamentOrigin: 'official' | 'custom' =
-      (doc as { tournamentOrigin?: string }).tournamentOrigin === 'custom'
-        ? 'custom'
-        : 'official'
+    const tournamentOrigin = resolveTournamentContributionOrigin(
+      (doc as { tournamentOrigin?: string }).tournamentOrigin
+    )
     const exposeOpponentDecksToOthers = canExposeParticipantDecksToOthers({
       state: doc.state,
       tournamentOrigin
@@ -157,6 +159,8 @@ export async function PUT(
       exposeOpponentDecksToOthers
     )
 
+    const storedRounds = parseParticipantMatchRoundsFromLean(part.matchRounds)
+
     const toSave: IParticipantMatchRound[] = roundsToPersist.map(r => {
       const opponentDisplayName = trimOpponentDisplayName(r.opponentDisplayName)
       return {
@@ -172,10 +176,39 @@ export async function PUT(
     })
 
     part.matchRounds = toSave
+
+    const activeStoreId = (
+      session.user as { activeStoreId?: string } | undefined
+    )?.activeStoreId
+    const storeIdForContribution =
+      await resolveWeeklyEventStoreIdForContribution(doc, activeStoreId)
+    if (!doc.storeId && storeIdForContribution) {
+      doc.storeId = storeIdForContribution
+    }
+
     doc.markModified('participants')
     await doc.save()
 
-    return NextResponse.json({ ok: true, rounds: toSave }, { status: 200 })
+    let contributionPointsAwarded: Awaited<
+      ReturnType<typeof applyMatchRoundContributionAwards>
+    > = []
+
+    if (storeIdForContribution) {
+      contributionPointsAwarded = await applyMatchRoundContributionAwards({
+        storeId: storeIdForContribution,
+        userId: uid,
+        eventId: doc._id,
+        eventTitle: String(doc.title ?? 'Torneo'),
+        tournamentOrigin,
+        stored: storedRounds,
+        next: roundsToPersist
+      })
+    }
+
+    return NextResponse.json(
+      { ok: true, rounds: toSave, contributionPointsAwarded },
+      { status: 200 }
+    )
   } catch (error) {
     console.error('PUT /api/events/[id]/my-match-rounds:', error)
     return NextResponse.json(

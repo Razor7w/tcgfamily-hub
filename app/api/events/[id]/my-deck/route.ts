@@ -5,6 +5,9 @@ import connectDB from '@/lib/mongodb'
 import { normalizeParticipantDeckPokemonSlugs } from '@/lib/participant-deck-pokemon'
 import { parseTournamentDecklistRefBody } from '@/lib/tournament-decklist-ref'
 import { validateTournamentDecklistRefForUser } from '@/lib/validate-tournament-decklist-ref'
+import { applyDeckContributionAwards } from '@/lib/contribution-points/deck-contribution-awards'
+import { resolveWeeklyEventStoreIdForContribution } from '@/lib/contribution-points/resolve-event-store-id'
+import { resolveTournamentContributionOrigin } from '@/lib/contribution-points/tournament-origin'
 import WeeklyEvent from '@/models/WeeklyEvent'
 
 /** Guarda o actualiza los hasta 2 Pokémon del deck reportado por el usuario en este torneo. */
@@ -84,6 +87,17 @@ export async function PUT(
       )
     }
 
+    const previousSlugs = Array.isArray(part.deckPokemonSlugs)
+      ? [...part.deckPokemonSlugs]
+      : []
+    const previousDecklistRef = part.tournamentDecklistRef
+      ? {
+          decklistId: part.tournamentDecklistRef.decklistId,
+          listKind: part.tournamentDecklistRef.listKind,
+          variantId: part.tournamentDecklistRef.variantId
+        }
+      : null
+
     part.deckPokemonSlugs = slugs
 
     if ('tournamentDecklistRef' in bodyObj) {
@@ -118,11 +132,46 @@ export async function PUT(
       }
     }
 
+    const activeStoreId = (
+      session.user as { activeStoreId?: string } | undefined
+    )?.activeStoreId
+    const storeIdForContribution =
+      await resolveWeeklyEventStoreIdForContribution(doc, activeStoreId)
+    if (!doc.storeId && storeIdForContribution) {
+      doc.storeId = storeIdForContribution
+    }
+
     doc.markModified('participants')
     await doc.save()
 
+    let contributionPointsAwarded: Awaited<
+      ReturnType<typeof applyDeckContributionAwards>
+    > = []
+
+    if (storeIdForContribution) {
+      contributionPointsAwarded = await applyDeckContributionAwards({
+        storeId: storeIdForContribution,
+        userId: uid,
+        eventId: doc._id,
+        eventTitle: String(doc.title ?? 'Torneo'),
+        tournamentOrigin: resolveTournamentContributionOrigin(
+          (doc as { tournamentOrigin?: string }).tournamentOrigin
+        ),
+        previousSlugs,
+        nextSlugs: slugs,
+        previousDecklistRef,
+        nextDecklistRef: part.tournamentDecklistRef
+          ? {
+              decklistId: part.tournamentDecklistRef.decklistId,
+              listKind: part.tournamentDecklistRef.listKind,
+              variantId: part.tournamentDecklistRef.variantId
+            }
+          : null
+      })
+    }
+
     return NextResponse.json(
-      { ok: true, deckPokemonSlugs: slugs },
+      { ok: true, deckPokemonSlugs: slugs, contributionPointsAwarded },
       { status: 200 }
     )
   } catch (error) {

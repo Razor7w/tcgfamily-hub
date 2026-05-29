@@ -45,6 +45,7 @@ import {
   useSaveMyDeck,
   type MyTournamentDecklistRefDTO
 } from '@/hooks/useWeeklyEvents'
+import { useContributionAwardSnackbar } from '@/hooks/useContributionAwardSnackbar'
 
 type AutocompleteLiProps = HTMLAttributes<HTMLLIElement> & { key?: Key }
 
@@ -348,6 +349,8 @@ export default function ReportDeckDialog({
     usePokemonSpeciesOptions()
   const { data: savedDecklists = [] } = useSavedDecklistsList()
   const saveDeck = useSaveMyDeck(eventId)
+  const { notifyAwarded, snackbar: contributionSnackbar } =
+    useContributionAwardSnackbar()
 
   const resolvedInitialPick = useMemo(() => {
     if (initialDecklistPick) return initialDecklistPick
@@ -477,7 +480,12 @@ export default function ReportDeckDialog({
         : null
     saveDeck.mutate(
       { pokemon, tournamentDecklistRef },
-      { onSuccess: () => onClose() }
+      {
+        onSuccess: data => {
+          notifyAwarded(data.contributionPointsAwarded)
+          onClose()
+        }
+      }
     )
   }
 
@@ -539,58 +547,64 @@ export default function ReportDeckDialog({
 
   if (isMobile) {
     return (
-      <Drawer
-        anchor="bottom"
-        open={open}
-        onClose={handleClose}
-        PaperProps={{
-          sx: {
-            borderTopLeftRadius: 16,
-            borderTopRightRadius: 16,
-            maxHeight: '92dvh'
-          }
-        }}
-      >
-        <Box sx={{ px: 2, pt: 1.5, pb: 2, position: 'relative' }}>
-          <Typography variant="h6" fontWeight={700} sx={{ pr: 5, mb: 0.5 }}>
-            {dialogTitle}
-          </Typography>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            display="block"
-            sx={{ mb: 1.5 }}
-          >
-            {eventTitle}
-          </Typography>
-          {closeButton}
-          <Box sx={{ overflow: 'auto', maxHeight: 'calc(92dvh - 140px)' }}>
-            {formBody}
+      <>
+        <Drawer
+          anchor="bottom"
+          open={open}
+          onClose={handleClose}
+          PaperProps={{
+            sx: {
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              maxHeight: '92dvh'
+            }
+          }}
+        >
+          <Box sx={{ px: 2, pt: 1.5, pb: 2, position: 'relative' }}>
+            <Typography variant="h6" fontWeight={700} sx={{ pr: 5, mb: 0.5 }}>
+              {dialogTitle}
+            </Typography>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              display="block"
+              sx={{ mb: 1.5 }}
+            >
+              {eventTitle}
+            </Typography>
+            {closeButton}
+            <Box sx={{ overflow: 'auto', maxHeight: 'calc(92dvh - 140px)' }}>
+              {formBody}
+            </Box>
+            <Stack
+              direction="row"
+              spacing={1}
+              justifyContent="flex-end"
+              sx={{ mt: 2 }}
+            >
+              {actions}
+            </Stack>
           </Box>
-          <Stack
-            direction="row"
-            spacing={1}
-            justifyContent="flex-end"
-            sx={{ mt: 2 }}
-          >
-            {actions}
-          </Stack>
-        </Box>
-      </Drawer>
+        </Drawer>
+        {contributionSnackbar}
+      </>
     )
   }
 
   return (
-    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ pr: 6 }}>
-        {dialogTitle}
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          {eventTitle}
-        </Typography>
-        {closeButton}
-      </DialogTitle>
-      <DialogContent dividers>{formBody}</DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>{actions}</DialogActions>
-    </Dialog>
+    <>
+      <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ pr: 6 }}>
+          {dialogTitle}
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            {eventTitle}
+          </Typography>
+          {closeButton}
+        </DialogTitle>
+        <DialogContent dividers>{formBody}</DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>{actions}</DialogActions>
+      </Dialog>
+      {contributionSnackbar}
+    </>
   )
 }

@@ -10,6 +10,8 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { alpha, useTheme } from '@mui/material/styles'
 import PublicDecklistVariantsPanel from '@/components/decklist/PublicDecklistVariantsPanel'
+import type { OwnerTopContributionBadgeData } from '@/components/contribution/OwnerTopContributionBadge'
+import OwnerTopContributionBadge from '@/components/contribution/OwnerTopContributionBadge'
 import type { DecklistVariantDTO } from '@/components/decklist/DecklistVariantsPanel'
 import { DecklistSpritePair } from '@/components/decklist/DecklistPokemonSlotPickers'
 
@@ -19,6 +21,7 @@ export type PublicDecklistDetailProps = {
   updatedAtLabel: string
   ownerName: string
   ownerImage: string | null
+  ownerTopContribution: OwnerTopContributionBadgeData | null
   baseDeckText: string
   principalVariantId: string | null
   variants: DecklistVariantDTO[]
@@ -30,6 +33,7 @@ export default function PublicDecklistDetailClient({
   updatedAtLabel,
   ownerName,
   ownerImage,
+  ownerTopContribution,
   baseDeckText,
   principalVariantId,
   variants
@@ -142,6 +146,11 @@ export default function PublicDecklistDetailClient({
                   >
                     Dueño del mazo · Actualizado {updatedAtLabel}
                   </Typography>
+                  {ownerTopContribution ? (
+                    <Box sx={{ mt: 0.5 }}>
+                      <OwnerTopContributionBadge badge={ownerTopContribution} />
+                    </Box>
+                  ) : null}
                 </Stack>
                 <Box
                   sx={{

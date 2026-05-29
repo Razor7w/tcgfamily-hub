@@ -10,6 +10,12 @@ import {
   normalizeDisplayName
 } from '@/lib/weekly-events'
 import { popidForStorage } from '@/lib/rut-chile'
+import {
+  applyTournamentPreRegisteredContributionAward,
+  isTournamentContributionEvent
+} from '@/lib/contribution-points/tournament-contribution-awards'
+import { resolveWeeklyEventStoreIdForContribution } from '@/lib/contribution-points/resolve-event-store-id'
+import type { ContributionPointsAwardedItem } from '@/lib/contribution-points-public'
 
 export async function POST(
   request: Request,
@@ -93,6 +99,15 @@ export async function POST(
       userDoc && typeof userDoc.popid === 'string' ? userDoc.popid : ''
     )
 
+    const activeStoreId = (
+      session.user as { activeStoreId?: string } | undefined
+    )?.activeStoreId
+    const storeIdForContribution =
+      await resolveWeeklyEventStoreIdForContribution(existing, activeStoreId)
+    if (!existing.storeId && storeIdForContribution) {
+      existing.storeId = storeIdForContribution
+    }
+
     existing.participants.push({
       displayName,
       userId,
@@ -103,13 +118,25 @@ export async function POST(
     })
     await existing.save()
 
+    let contributionPointsAwarded: ContributionPointsAwardedItem[] = []
+    if (isTournamentContributionEvent(existing) && storeIdForContribution) {
+      contributionPointsAwarded =
+        await applyTournamentPreRegisteredContributionAward({
+          storeId: storeIdForContribution,
+          userId,
+          eventId: existing._id,
+          eventTitle: String(existing.title ?? 'Torneo')
+        })
+    }
+
     return NextResponse.json(
       {
         ok: true,
         participantNames: existing.participants.map(
           (p: { displayName: string }) => p.displayName
         ),
-        participantCount: existing.participants.length
+        participantCount: existing.participants.length,
+        contributionPointsAwarded
       },
       { status: 200 }
     )

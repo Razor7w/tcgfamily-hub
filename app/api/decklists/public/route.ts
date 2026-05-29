@@ -5,6 +5,7 @@ import { ownerPublicDisplay } from '@/lib/public-decklist-owner'
 import connectDB from '@/lib/mongodb'
 import SavedDecklist from '@/models/SavedDecklist'
 import User from '@/models/User'
+import { buildTopStoreContributionBadgesForUsers } from '@/lib/contribution-points/build-top-store-contribution-badges'
 
 const PUBLIC_DECKLIST_LIMIT = 300
 
@@ -37,13 +38,16 @@ export async function GET(request: Request) {
       .select('name pokemonSlugs updatedAt userId')
       .lean()
 
-    const ownerIds = [
+    const ownerIdStrs = [
       ...new Set(rows.map(r => String(r.userId)).filter(Boolean))
-    ].map(id => new mongoose.Types.ObjectId(id))
+    ]
+    const ownerOids = ownerIdStrs
+      .filter(id => mongoose.Types.ObjectId.isValid(id))
+      .map(id => new mongoose.Types.ObjectId(id))
 
     const owners =
-      ownerIds.length > 0
-        ? await User.find({ _id: { $in: ownerIds } })
+      ownerOids.length > 0
+        ? await User.find({ _id: { $in: ownerOids } })
             .select('name email image')
             .lean()
         : []
@@ -63,12 +67,20 @@ export async function GET(request: Request) {
       ownerById.set(String(u._id), { displayName, imageUrl })
     }
 
+    const contributionBadges =
+      ownerIdStrs.length > 0
+        ? await buildTopStoreContributionBadgesForUsers({
+            userIds: ownerIdStrs
+          })
+        : new Map()
+
     const decklists = rows.map(r => {
       const oid = String(r.userId)
       const o = ownerById.get(oid) ?? {
         displayName: 'Usuario',
         imageUrl: null as string | null
       }
+      const badge = contributionBadges.get(oid)
       return {
         id: String(r._id),
         name: r.name,
@@ -76,7 +88,17 @@ export async function GET(request: Request) {
         ownerId: oid,
         ownerName: o.displayName,
         ownerImage: o.imageUrl,
-        updatedAt: (r.updatedAt as Date).toISOString()
+        updatedAt: (r.updatedAt as Date).toISOString(),
+        ownerTopContribution: badge
+          ? {
+              label: badge.label,
+              storeName: badge.storeName,
+              storeSlug: badge.storeSlug,
+              totalPoints: badge.totalPoints,
+              monthPoints: badge.monthPoints,
+              monthLabel: badge.monthLabel
+            }
+          : null
       }
     })
 

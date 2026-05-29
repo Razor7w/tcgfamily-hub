@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   DashboardModuleSettingsDTO,
   DashboardShortcutsVisibility,
-  StoreCreditAdminSettings
+  StoreCreditAdminSettings,
+  ContributionPointsAdminSettings
 } from '@/lib/dashboard-module-config'
 import { MAIL_REGISTER_DAILY_LIMIT } from '@/lib/mail-register-constants'
 import { useDashboardStoreQueryKey } from '@/hooks/use-dashboard-store-key'
@@ -12,6 +13,7 @@ export type AdminConfiguracionData = {
   resendNotifyPickupInStoreEnabled: boolean
   mailRegisterDailyLimit: number
   storeCredit: StoreCreditAdminSettings
+  contributionPoints: ContributionPointsAdminSettings
 }
 
 /** Configuración admin: bloques del dashboard + correo Resend (requiere owner; alcance = tienda activa). */
@@ -30,6 +32,7 @@ export function useAdminConfiguracion() {
         resendNotifyPickupInStoreEnabled?: boolean
         mailRegisterDailyLimit?: number
         storeCredit?: StoreCreditAdminSettings
+        contributionPoints?: ContributionPointsAdminSettings
       }
       if (!data.settings) {
         throw new Error('Respuesta inválida')
@@ -48,6 +51,26 @@ export function useAdminConfiguracion() {
             tournamentPointsEnabled: false,
             tournamentPointsCustomName: '',
             tournamentPointsLabel: 'Puntos por torneo'
+          },
+        contributionPoints: data.contributionPoints ??
+          data.settings.contributionPoints ?? {
+            enabled: false,
+            tierThresholds: [700, 1500, 5000],
+            tierLabels: [
+              'Colaborador emergente',
+              'Colaborador destacado',
+              'Colaborador estrella'
+            ],
+            pointRules: {
+              own_deck_reported: 20,
+              decklist_ref: 5,
+              opponent_sprites: 6,
+              round_complete: 4,
+              mail_received_in_store: 3,
+              mail_withdrawn_in_store: 3,
+              tournament_pre_registered: 1,
+              tournament_participated: 10
+            }
           }
       }
     },
@@ -79,6 +102,31 @@ export function useUpdateDashboardModuleSettings() {
       queryClient.invalidateQueries({
         queryKey: ['admin', 'tournament-points']
       })
+    }
+  })
+}
+
+export function useUpdateContributionPointsSettings() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (contributionPoints: ContributionPointsAdminSettings) => {
+      const response = await fetch('/api/admin/configuracion', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contributionPoints })
+      })
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}))
+        throw new Error(
+          typeof err.error === 'string' ? err.error : 'Error al guardar'
+        )
+      }
+      return response.json() as Promise<AdminConfiguracionData>
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'configuracion'] })
+      queryClient.invalidateQueries({ queryKey: ['me', 'contribution-points'] })
     }
   })
 }
