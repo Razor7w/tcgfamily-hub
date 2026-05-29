@@ -11,6 +11,7 @@ import { resolveTournamentContributionOrigin } from '@/lib/contribution-points/t
 import { canEditParticipantDeck } from '@/lib/can-edit-participant-deck'
 import {
   buildPlayedPopIdSet,
+  officialUserPlayedClosedTournament,
   participantPlayedTournament
 } from '@/lib/tournament-participant-played'
 import type { TournamentStandingLean } from '@/lib/weekly-event-public'
@@ -108,15 +109,18 @@ export async function PUT(
       tournamentStandings?: TournamentStandingLean[]
       roundSnapshots?: RoundSnapshotLean[]
     }
-    const playedPopIds = buildPlayedPopIdSet({
-      tournamentStandings: leanDoc.tournamentStandings,
-      roundSnapshots: leanDoc.roundSnapshots
-    })
-    const myPlayedTournament = participantPlayedTournament(
-      part,
-      playedPopIds,
-      tournamentOrigin
-    )
+    const userPopId =
+      typeof (session.user as { popid?: string }).popid === 'string'
+        ? (session.user as { popid: string }).popid
+        : ''
+    const myPlayedTournament =
+      eventState === 'close' && tournamentOrigin === 'official'
+        ? officialUserPlayedClosedTournament(part, userPopId, leanDoc)
+        : participantPlayedTournament(
+            part,
+            buildPlayedPopIdSet(leanDoc),
+            tournamentOrigin
+          )
     if (
       !canEditParticipantDeck({
         myRegistration: part.displayName,

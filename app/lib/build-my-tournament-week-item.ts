@@ -11,6 +11,7 @@ import {
 import type { WeeklyEventState } from '@/models/WeeklyEvent'
 import {
   buildPlayedPopIdSet,
+  officialUserPlayedClosedTournament,
   participantPlayedTournament,
   type LeanParticipantForPlayedCheck
 } from '@/lib/tournament-participant-played'
@@ -110,19 +111,25 @@ export function buildMyTournamentWeekItemFromLean(
   }
 
   if (stateRaw === 'close') {
-    const playedPopIds = buildPlayedPopIdSet({
-      tournamentStandings: doc.tournamentStandings,
-      roundSnapshots: doc.roundSnapshots
-    })
-    if (
-      !participantPlayedTournament(
-        mine as LeanParticipantForPlayedCheck,
-        playedPopIds,
-        tournamentOrigin
-      )
-    ) {
-      return null
-    }
+    const played =
+      tournamentOrigin === 'custom'
+        ? participantPlayedTournament(
+            mine as LeanParticipantForPlayedCheck,
+            buildPlayedPopIdSet({
+              tournamentStandings: doc.tournamentStandings,
+              roundSnapshots: doc.roundSnapshots
+            }),
+            'custom'
+          )
+        : officialUserPlayedClosedTournament(
+            mine as LeanParticipantForPlayedCheck,
+            userPopId,
+            {
+              tournamentStandings: doc.tournamentStandings,
+              roundSnapshots: doc.roundSnapshots
+            }
+          )
+    if (!played) return null
   }
 
   const state: WeeklyEventState =

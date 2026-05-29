@@ -87,3 +87,20 @@ export function participantPlayedTournament(
 
   return false
 }
+
+/** Torneo oficial cerrado: el POP del usuario (perfil o ficha) debe estar en quienes jugaron. */
+export function officialUserPlayedClosedTournament(
+  mine: LeanParticipantForPlayedCheck,
+  userPopId: string,
+  doc: LeanEventForPlayedPopIds
+): boolean {
+  const playedPopIds = buildPlayedPopIdSet(doc)
+  if (playedPopIds.size > 0) {
+    const sessionPop = popidForStorage(userPopId)
+    const partPop = popidForStorage(typeof mine.popId === 'string' ? mine.popId : '')
+    if (sessionPop && playedPopIds.has(sessionPop)) return true
+    if (partPop && playedPopIds.has(partPop)) return true
+    return false
+  }
+  return participantPlayedTournament(mine, playedPopIds, 'official')
+}
