@@ -21,6 +21,7 @@ import { canEditParticipantDeck } from '@/lib/can-edit-participant-deck'
 import { serializeTournamentDecklistRef } from '@/lib/weekly-event-view-as'
 import {
   buildPlayedPopIdSet,
+  officialUserPlayedClosedTournament,
   participantPlayedTournament
 } from '@/lib/tournament-participant-played'
 import type { RoundSnapshotLean } from '@/lib/match-rounds-with-snapshots'
@@ -133,7 +134,12 @@ function toPublicEvent(
     roundSnapshots: doc.roundSnapshots
   })
   const myPlayedTournament = mine
-    ? participantPlayedTournament(mine, playedPopIds, tournamentOrigin)
+    ? eventState === 'close' && tournamentOrigin === 'official'
+      ? officialUserPlayedClosedTournament(mine, currentUserPopId ?? '', {
+          tournamentStandings: doc.tournamentStandings,
+          roundSnapshots: doc.roundSnapshots
+        })
+      : participantPlayedTournament(mine, playedPopIds, tournamentOrigin)
     : false
   const canEditMyDeck = canEditParticipantDeck({
     myRegistration,

@@ -36,6 +36,7 @@ import {
 } from '@/lib/weekly-event-view-as'
 import {
   buildPlayedPopIdSet,
+  officialUserPlayedClosedTournament,
   participantPlayedTournament
 } from '@/lib/tournament-participant-played'
 
@@ -284,7 +285,12 @@ export async function GET(
       roundSnapshots: doc.roundSnapshots
     })
     const myPlayedTournament = viewAs
-      ? participantPlayedTournament(viewAs, playedPopIds, tournamentOrigin)
+      ? tournamentClosed && tournamentOrigin === 'official'
+        ? officialUserPlayedClosedTournament(viewAs, userPopId, {
+            tournamentStandings: doc.tournamentStandings,
+            roundSnapshots: doc.roundSnapshots
+          })
+        : participantPlayedTournament(viewAs, playedPopIds, tournamentOrigin)
       : false
 
     let myTournamentPlacement = standingsPublic?.myTournamentPlacement ?? null
