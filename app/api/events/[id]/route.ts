@@ -34,6 +34,10 @@ import {
   resolveViewAsParticipant,
   serializeTournamentDecklistRef
 } from '@/lib/weekly-event-view-as'
+import {
+  buildPlayedPopIdSet,
+  participantPlayedTournament
+} from '@/lib/tournament-participant-played'
 
 type LeanEvent = {
   _id: unknown
@@ -275,6 +279,14 @@ export async function GET(
         )
       : null
 
+    const playedPopIds = buildPlayedPopIdSet({
+      tournamentStandings: doc.tournamentStandings,
+      roundSnapshots: doc.roundSnapshots
+    })
+    const myPlayedTournament = viewAs
+      ? participantPlayedTournament(viewAs, playedPopIds, tournamentOrigin)
+      : false
+
     let myTournamentPlacement = standingsPublic?.myTournamentPlacement ?? null
     if (
       !myTournamentPlacement &&
@@ -317,6 +329,7 @@ export async function GET(
       canPreRegister:
         tournamentOrigin !== 'custom' && canPreRegisterNow(eventState),
       myRegistration,
+      myPlayedTournament,
       myAttendanceConfirmed,
       myTable,
       myOpponentName,
@@ -337,13 +350,18 @@ export async function GET(
           myRegistration,
           kind: doc.kind,
           game: doc.game,
-          state: eventState
+          state: eventState,
+          myPlayedTournament
         }),
       canReportDeck:
         !adminReadOnlyView &&
-        Boolean(myRegistration) &&
-        doc.kind === 'tournament' &&
-        doc.game === 'pokemon',
+        canEditParticipantDeck({
+          myRegistration,
+          kind: doc.kind,
+          game: doc.game,
+          state: eventState,
+          myPlayedTournament
+        }),
       myMatchRounds,
       canDeleteCustomTournament,
       adminReadOnlyView,

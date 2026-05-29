@@ -107,8 +107,20 @@ export default function TorneoSemanaDetallePage() {
               ) : null}
 
               {ev.myRegistration &&
+              ev.state === 'close' &&
+              !ev.myPlayedTournament &&
+              ev.tournamentOrigin !== 'custom' ? (
+                <Alert severity="info">
+                  Estás preinscrito, pero tu POP ID no figura entre los
+                  jugadores que participaron en este torneo. No hay bitácora de
+                  rondas que reportar.
+                </Alert>
+              ) : null}
+
+              {ev.myRegistration &&
               ev.kind === 'tournament' &&
-              ev.game === 'pokemon' ? (
+              ev.game === 'pokemon' &&
+              (ev.state !== 'close' || ev.myPlayedTournament) ? (
                 <>
                   {ev.tournamentOrigin === 'custom' ? (
                     <CustomTournamentManualPlacementSection

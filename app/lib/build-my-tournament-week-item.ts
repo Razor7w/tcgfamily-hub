@@ -9,6 +9,12 @@ import {
   parseParticipantMatchRoundsFromLean
 } from '@/lib/participant-match-round'
 import type { WeeklyEventState } from '@/models/WeeklyEvent'
+import {
+  buildPlayedPopIdSet,
+  participantPlayedTournament,
+  type LeanParticipantForPlayedCheck
+} from '@/lib/tournament-participant-played'
+import type { RoundSnapshotLean } from '@/lib/match-rounds-with-snapshots'
 
 type LeanParticipant = {
   displayName: string
@@ -62,6 +68,7 @@ type LeanWeeklyForItem = {
   state?: string
   tournamentOrigin?: string
   tournamentStandings?: TournamentStandingLean[]
+  roundSnapshots?: RoundSnapshotLean[]
   participants?: LeanParticipant[]
 }
 
@@ -78,6 +85,11 @@ export function buildMyTournamentWeekItemFromLean(
   const participants = (doc.participants ?? []) as LeanParticipant[]
   const mine = participants.find(p => p.userId && String(p.userId) === userId)
   if (!mine) return null
+
+  const stateRaw: WeeklyEventState =
+    doc.state === 'schedule' || doc.state === 'running' || doc.state === 'close'
+      ? doc.state
+      : 'schedule'
 
   const tournamentOrigin: 'official' | 'custom' =
     doc.tournamentOrigin === 'custom' ? 'custom' : 'official'
@@ -97,10 +109,22 @@ export function buildMyTournamentWeekItemFromLean(
     myMatchRecord = matchRecordFromRounds(rounds)
   }
 
-  const stateRaw: WeeklyEventState =
-    doc.state === 'schedule' || doc.state === 'running' || doc.state === 'close'
-      ? doc.state
-      : 'schedule'
+  if (stateRaw === 'close') {
+    const playedPopIds = buildPlayedPopIdSet({
+      tournamentStandings: doc.tournamentStandings,
+      roundSnapshots: doc.roundSnapshots
+    })
+    if (
+      !participantPlayedTournament(
+        mine as LeanParticipantForPlayedCheck,
+        playedPopIds,
+        tournamentOrigin
+      )
+    ) {
+      return null
+    }
+  }
+
   const state: WeeklyEventState =
     tournamentOrigin === 'custom' ? 'close' : stateRaw
 

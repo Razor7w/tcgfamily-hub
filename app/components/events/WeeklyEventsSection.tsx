@@ -618,7 +618,9 @@ export default function WeeklyEventsSection({
                             <>
                               <Divider sx={{ mt: 2.5 }} />
                               <Stack spacing={2} sx={{ pt: 2.5 }}>
-                                {selectedEvent.myRegistration ? (
+                                {selectedEvent.myRegistration &&
+                                (selectedEvent.state !== 'close' ||
+                                  selectedEvent.myPlayedTournament) ? (
                                   <TournamentReportRoundsCta
                                     eventId={selectedEvent._id}
                                   />
@@ -651,19 +653,22 @@ export default function WeeklyEventsSection({
                           {selectedEvent.kind === 'tournament' &&
                           selectedEvent.state === 'close' ? (
                             <Stack spacing={2.5}>
-                              <Box>
-                                <Typography
-                                  variant="overline"
-                                  color="primary"
-                                  sx={{
-                                    fontWeight: 800,
-                                    letterSpacing: '0.08em'
-                                  }}
-                                >
-                                  Clasificación final
-                                </Typography>
-                              </Box>
-                              {selectedEvent.myRegistration ? (
+                              {selectedEvent.myPlayedTournament ? (
+                                <Box>
+                                  <Typography
+                                    variant="overline"
+                                    color="primary"
+                                    sx={{
+                                      fontWeight: 800,
+                                      letterSpacing: '0.08em'
+                                    }}
+                                  >
+                                    Clasificación final
+                                  </Typography>
+                                </Box>
+                              ) : null}
+                              {selectedEvent.myRegistration &&
+                              selectedEvent.myPlayedTournament ? (
                                 <Stack spacing={1.5}>
                                   <Typography variant="body2">
                                     Lista como{' '}
@@ -717,7 +722,7 @@ export default function WeeklyEventsSection({
                                     />
                                   ) : null}
                                 </Stack>
-                              ) : (
+                              ) : !selectedEvent.myRegistration ? (
                                 <Typography
                                   variant="body2"
                                   color="text.secondary"
@@ -725,8 +730,9 @@ export default function WeeklyEventsSection({
                                   No estás inscrito en este torneo con tu
                                   cuenta.
                                 </Typography>
-                              )}
-                              {selectedEvent.myRegistration ? (
+                              ) : null}
+                              {selectedEvent.myRegistration &&
+                              selectedEvent.myPlayedTournament ? (
                                 <Stack
                                   spacing={1.25}
                                   sx={{
@@ -832,6 +838,10 @@ export default function WeeklyEventsSection({
                                 eventId={selectedEvent._id}
                                 categories={
                                   selectedEvent.standingsTopByCategory
+                                }
+                                showLeadingDivider={
+                                  selectedEvent.myPlayedTournament ||
+                                  !selectedEvent.myRegistration
                                 }
                                 onOpenFullStandings={() =>
                                   setFullStandingsOpenForEventId(
