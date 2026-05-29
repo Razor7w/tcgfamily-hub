@@ -70,6 +70,7 @@ import {
   useSaveMyMatchRounds,
   type MyTournamentDecklistRefDTO
 } from '@/hooks/useWeeklyEvents'
+import { useContributionAwardSnackbar } from '@/hooks/useContributionAwardSnackbar'
 import type { WeeklyEventState } from '@/models/WeeklyEvent'
 
 /** Verde para victorias en mesa (legible sobre fondo). */
@@ -715,6 +716,23 @@ export default function TournamentMatchRoundsCard({
   const { data: allOptions = [], isPending: optionsLoading } =
     usePokemonSpeciesOptions()
   const saveRounds = useSaveMyMatchRounds(eventId)
+  const { notifyAwarded, snackbar: contributionSnackbar } =
+    useContributionAwardSnackbar()
+
+  const persistRounds = useCallback(
+    (
+      next: ParticipantMatchRoundDTO[],
+      options?: { onSuccess?: () => void }
+    ) => {
+      saveRounds.mutate(next, {
+        onSuccess: data => {
+          notifyAwarded(data.contributionPointsAwarded)
+          options?.onSuccess?.()
+        }
+      })
+    },
+    [saveRounds, notifyAwarded]
+  )
 
   const [formOpen, setFormOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
@@ -972,7 +990,7 @@ export default function TournamentMatchRoundsCard({
         turnOrders: previous.turnOrders,
         specialOutcome: previous.specialOutcome ?? null
       }
-      saveRounds.mutate(
+      persistRounds(
         rounds.map(x => (x.roundNum === editingRoundNum ? r : x)),
         {
           onSuccess: () => {
@@ -997,7 +1015,7 @@ export default function TournamentMatchRoundsCard({
       const nextList = isEditing
         ? rounds.map(x => (x.roundNum === editingRoundNum ? r : x))
         : [...rounds, r]
-      saveRounds.mutate(nextList, {
+      persistRounds(nextList, {
         onSuccess: () => {
           resetForm()
           setFormOpen(false)
@@ -1036,7 +1054,7 @@ export default function TournamentMatchRoundsCard({
     const nextList = isEditing
       ? rounds.map(x => (x.roundNum === editingRoundNum ? r : x))
       : [...rounds, r]
-    saveRounds.mutate(nextList, {
+    persistRounds(nextList, {
       onSuccess: () => {
         resetForm()
         setFormOpen(false)
@@ -1050,7 +1068,7 @@ export default function TournamentMatchRoundsCard({
       setFormOpen(false)
     }
     const next = rounds.filter(x => x.roundNum !== roundNum)
-    saveRounds.mutate(next)
+    persistRounds(next)
   }
 
   const dateStr = useMemo(
@@ -2573,6 +2591,7 @@ export default function TournamentMatchRoundsCard({
           </Box>
         </Drawer>
       ) : null}
+      {contributionSnackbar}
     </>
   )
 }

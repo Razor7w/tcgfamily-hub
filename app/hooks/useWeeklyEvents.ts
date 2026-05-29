@@ -9,6 +9,7 @@ import type {
   MyHomeTournamentItem,
   MyTournamentWeekItem
 } from '@/lib/my-tournament-week-types'
+import type { ContributionPointsAwardedItem } from '@/lib/contribution-points-public'
 import type { ParticipantMatchRoundDTO } from '@/lib/participant-match-round'
 import type { FullTournamentUploadPayload } from '@/lib/tournament-tdf-payload'
 import type { TournamentOrigin, WeeklyEventState } from '@/models/WeeklyEvent'
@@ -264,6 +265,7 @@ export type TournamentMetaParticipant = {
   matchRecord: { wins: number; losses: number; ties: number } | null
   standingPlace: number | null
   standingIsDnf: boolean
+  contributionBadge?: { tierIndex: number; label: string } | null
 }
 
 export type TournamentMetagameVariantRow = {
@@ -432,7 +434,11 @@ export function useSaveMyDeck(eventId: string) {
           typeof data.error === 'string' ? data.error : 'Error al guardar'
         )
       }
-      return data as { ok: boolean; deckPokemonSlugs: string[] }
+      return data as {
+        ok: boolean
+        deckPokemonSlugs: string[]
+        contributionPointsAwarded?: ContributionPointsAwardedItem[]
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -443,6 +449,7 @@ export function useSaveMyDeck(eventId: string) {
       queryClient.invalidateQueries({ queryKey: ['my-tournaments-all'] })
       queryClient.invalidateQueries({ queryKey: ['my-recent-tournaments'] })
       queryClient.invalidateQueries({ queryKey: ['my-home-tournaments'] })
+      queryClient.invalidateQueries({ queryKey: ['me', 'contribution-points'] })
     }
   })
 }
@@ -571,7 +578,10 @@ export function useSaveMyMatchRounds(eventId: string) {
             : 'Error al guardar rondas'
         )
       }
-      return data as { ok: boolean }
+      return data as {
+        ok: boolean
+        contributionPointsAwarded?: ContributionPointsAwardedItem[]
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -581,6 +591,7 @@ export function useSaveMyMatchRounds(eventId: string) {
       queryClient.invalidateQueries({ queryKey: ['my-tournaments-all'] })
       queryClient.invalidateQueries({ queryKey: ['my-recent-tournaments'] })
       queryClient.invalidateQueries({ queryKey: ['my-home-tournaments'] })
+      queryClient.invalidateQueries({ queryKey: ['me', 'contribution-points'] })
     }
   })
 }
@@ -654,15 +665,17 @@ export function useRegisterWeeklyEvent() {
         ok: boolean
         participantNames: string[]
         participantCount: number
+        contributionPointsAwarded?: ContributionPointsAwardedItem[]
       }
     },
-    onSuccess: () => {
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
       queryClient.invalidateQueries({ queryKey: ['my-tournaments-week'] })
       queryClient.invalidateQueries({ queryKey: ['my-tournaments-all'] })
       queryClient.invalidateQueries({ queryKey: ['my-home-tournaments'] })
       queryClient.invalidateQueries({ queryKey: ['my-recent-tournaments'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-event-detail'] })
+      queryClient.invalidateQueries({ queryKey: ['me', 'contribution-points'] })
     }
   })
 }

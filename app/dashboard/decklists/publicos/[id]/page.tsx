@@ -6,6 +6,7 @@ import { ownerPublicDisplay } from '@/lib/public-decklist-owner'
 import SavedDecklist from '@/models/SavedDecklist'
 import User from '@/models/User'
 import { formatClDateTimeMedium } from '@/lib/format-cl-date'
+import { buildTopStoreContributionBadgesForUsers } from '@/lib/contribution-points/build-top-store-contribution-badges'
 import PublicDecklistDetailClient from '../PublicDecklistDetailClient'
 
 export default async function PublicDecklistDetailPage({
@@ -63,6 +64,12 @@ export default async function PublicDecklistDetailPage({
     } | null
   )
 
+  const ownerId = String(doc.userId)
+  const contributionBadges = await buildTopStoreContributionBadgesForUsers({
+    userIds: [ownerId]
+  })
+  const topContribution = contributionBadges.get(ownerId)
+
   return (
     <PublicDecklistDetailClient
       name={doc.name}
@@ -70,6 +77,18 @@ export default async function PublicDecklistDetailPage({
       updatedAtLabel={formatClDateTimeMedium(doc.updatedAt)}
       ownerName={ownerName}
       ownerImage={ownerImage}
+      ownerTopContribution={
+        topContribution
+          ? {
+              label: topContribution.label,
+              storeName: topContribution.storeName,
+              storeSlug: topContribution.storeSlug,
+              totalPoints: topContribution.totalPoints,
+              monthPoints: topContribution.monthPoints,
+              monthLabel: topContribution.monthLabel
+            }
+          : null
+      }
       baseDeckText={doc.deckText}
       principalVariantId={principalVariantId}
       variants={variants}

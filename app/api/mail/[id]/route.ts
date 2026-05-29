@@ -10,6 +10,7 @@ import Mails from '@/models/Mails'
 import User from '@/models/User'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
+import { applyMailStatusContributionAwards } from '@/lib/contribution-points/mail-contribution-awards'
 import mongoose from 'mongoose'
 
 function parseMailId(id: string) {
@@ -168,6 +169,7 @@ export async function PUT(
     }
 
     const wasReceivedInStore = existing.isRecivedInStore
+    const wasWithdrawn = existing.isRecived
 
     if (typeof isRecived === 'boolean') existing.isRecived = isRecived
     if (typeof isRecivedInStore === 'boolean') {
@@ -183,8 +185,23 @@ export async function PUT(
       typeof isRecivedInStore === 'boolean' &&
       isRecivedInStore === true &&
       !wasReceivedInStore
+    const becameWithdrawn =
+      typeof isRecived === 'boolean' && isRecived === true && !wasWithdrawn
 
     await existing.save()
+
+    const storeIdForPoints = existing.storeId ?? gate.activeStoreOid
+
+    if (becameReadyInStore || becameWithdrawn) {
+      await applyMailStatusContributionAwards({
+        storeId: storeIdForPoints,
+        mailId: existing._id,
+        fromUserId: existing.fromUserId,
+        toUserId: existing.toUserId,
+        receivedInStore: becameReadyInStore,
+        withdrawn: becameWithdrawn
+      })
+    }
 
     if (becameReadyInStore && existing.toUserId) {
       const recipientDoc = await User.findById(existing.toUserId)

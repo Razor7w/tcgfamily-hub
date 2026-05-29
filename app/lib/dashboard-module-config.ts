@@ -1,4 +1,8 @@
 import {
+  DEFAULT_CONTRIBUTION_POINTS_ADMIN,
+  type ContributionPointsAdminSettings
+} from '@/lib/contribution-points-admin-settings'
+import {
   DEFAULT_STORE_CREDIT_ADMIN,
   type StoreCreditAdminSettings
 } from '@/lib/store-credit-admin-settings'
@@ -186,12 +190,14 @@ export const DEFAULT_DASHBOARD_SHORTCUTS: DashboardShortcutsVisibility = {
 }
 
 export type { StoreCreditAdminSettings } from '@/lib/store-credit-admin-settings'
+export type { ContributionPointsAdminSettings } from '@/lib/contribution-points-admin-settings'
 
 export type DashboardModuleSettingsDTO = {
   visibility: DashboardModuleVisibility
   order: DashboardModuleId[]
   shortcuts: DashboardShortcutsVisibility
   storeCredit: StoreCreditAdminSettings
+  contributionPoints: ContributionPointsAdminSettings
 }
 
 export function isDashboardModuleId(s: string): s is DashboardModuleId {
@@ -324,6 +330,10 @@ export function mergeDashboardSettings(
     ...DEFAULT_STORE_CREDIT_ADMIN,
     ...partial?.storeCredit
   }
+  const contributionPoints: ContributionPointsAdminSettings = {
+    ...DEFAULT_CONTRIBUTION_POINTS_ADMIN,
+    ...partial?.contributionPoints
+  }
 
   return {
     visibility: {
@@ -332,6 +342,7 @@ export function mergeDashboardSettings(
     },
     order: canonicalizeDashboardOrder(order),
     shortcuts,
-    storeCredit
+    storeCredit,
+    contributionPoints
   }
 }

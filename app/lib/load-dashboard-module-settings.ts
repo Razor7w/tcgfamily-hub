@@ -6,6 +6,7 @@ import {
   mergeDashboardSettings,
   type DashboardModuleSettingsDTO
 } from '@/lib/dashboard-module-config'
+import { mergeContributionPointsAdmin } from '@/lib/contribution-points-admin-settings'
 import { mergeStoreCreditAdmin } from '@/lib/store-credit-admin-settings'
 import DashboardModuleSettings from '@/models/DashboardModuleSettings'
 import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
@@ -61,6 +62,10 @@ export async function loadDashboardModuleSettings(
     storeCreditCsvEnabled?: boolean
     storeCreditTournamentPointsEnabled?: boolean
     tournamentPointsEnabled?: boolean
+    contributionPointsEnabled?: boolean
+    contributionTierThresholds?: number[]
+    contributionTierLabels?: string[]
+    contributionPointRules?: Record<string, number>
   }
   const base = mergeDashboardSettings(
     d
@@ -73,6 +78,7 @@ export async function loadDashboardModuleSettings(
   )
   return {
     ...base,
-    storeCredit: mergeStoreCreditAdmin(d ?? null)
+    storeCredit: mergeStoreCreditAdmin(d ?? null),
+    contributionPoints: mergeContributionPointsAdmin(d ?? null)
   }
 }

@@ -21,6 +21,13 @@ import {
   validateStoreCreditAdmin,
   type StoreCreditAdminSettings
 } from '@/lib/store-credit-admin-settings'
+import {
+  applyContributionPointsAdminToDoc,
+  mergeContributionPointsAdmin,
+  normalizeContributionPointsAdminBody,
+  validateContributionPointsAdmin,
+  type ContributionPointsAdminSettings
+} from '@/lib/contribution-points-admin-settings'
 
 function readPickupNotifyEnabled(
   doc: {
@@ -71,12 +78,17 @@ export async function GET() {
       storeCreditCsvEnabled?: boolean
       storeCreditTournamentPointsEnabled?: boolean
       tournamentPointsDisplayName?: string
+      contributionPointsEnabled?: boolean
+      contributionTierThresholds?: number[]
+      contributionTierLabels?: string[]
+      contributionPointRules?: Record<string, number>
     }
     const raw: Partial<DashboardModuleSettingsDTO> | null = {
       visibility: plain.visibility,
       order: plain.order,
       shortcuts: plain.shortcuts,
-      storeCredit: mergeStoreCreditAdmin(plain)
+      storeCredit: mergeStoreCreditAdmin(plain),
+      contributionPoints: mergeContributionPointsAdmin(plain)
     }
 
     const settings = mergeDashboardSettings(raw)
@@ -87,7 +99,8 @@ export async function GET() {
         mailRegisterDailyLimit: normalizeMailRegisterDailyLimit(
           plain.mailRegisterDailyLimit
         ),
-        storeCredit: settings.storeCredit
+        storeCredit: settings.storeCredit,
+        contributionPoints: settings.contributionPoints
       },
       { status: 200 }
     )
@@ -115,6 +128,7 @@ export async function PUT(request: NextRequest) {
       | Partial<StoreCreditAdminSettings>
       | undefined
     const tournamentPointsFlag = body?.tournamentPointsEnabled
+    const contributionPointsBody = body?.contributionPoints
 
     const updatingDashboard =
       vis &&
@@ -137,6 +151,9 @@ export async function PUT(request: NextRequest) {
       typeof storeCreditBody === 'object' &&
       typeof storeCreditBody.csvEnabled === 'boolean' &&
       typeof storeCreditBody.tournamentPointsEnabled === 'boolean'
+    const updatingContributionPoints =
+      contributionPointsBody != null &&
+      normalizeContributionPointsAdminBody(contributionPointsBody) != null
 
     if (
       !updatingDashboard &&
@@ -144,12 +161,13 @@ export async function PUT(request: NextRequest) {
       !updatingShortcuts &&
       !updatingMailRegisterLimit &&
       !updatingTournamentPoints &&
-      !updatingStoreCredit
+      !updatingStoreCredit &&
+      !updatingContributionPoints
     ) {
       return NextResponse.json(
         {
           error:
-            'Envía visibility+order, storeCredit (csvEnabled, tournamentPointsEnabled), shortcuts, resendNotifyPickupInStoreEnabled y/o mailRegisterDailyLimit'
+            'Envía visibility+order, storeCredit, contributionPoints, shortcuts, resendNotifyPickupInStoreEnabled y/o mailRegisterDailyLimit'
         },
         { status: 400 }
       )
@@ -248,6 +266,17 @@ export async function PUT(request: NextRequest) {
       applyStoreCreditAdminToDoc(doc, next)
     }
 
+    if (updatingContributionPoints) {
+      const next = normalizeContributionPointsAdminBody(
+        contributionPointsBody
+      ) as ContributionPointsAdminSettings
+      const validationError = validateContributionPointsAdmin(next)
+      if (validationError) {
+        return NextResponse.json({ error: validationError }, { status: 400 })
+      }
+      applyContributionPointsAdminToDoc(doc, next)
+    }
+
     await doc.save()
 
     if (updatingMailRegisterLimit) {
@@ -261,11 +290,14 @@ export async function PUT(request: NextRequest) {
       visibility: doc.visibility,
       order: doc.order as DashboardModuleSettingsDTO['order'],
       shortcuts: dShortcuts,
-      storeCredit: mergeStoreCreditAdmin(doc)
+      storeCredit: mergeStoreCreditAdmin(doc),
+      contributionPoints: mergeContributionPointsAdmin(doc)
     })
 
     revalidatePath('/', 'layout')
     revalidatePath('/admin/puntos')
+    revalidatePath('/admin/contribucion')
+    revalidatePath('/admin/configuracion')
     revalidatePath('/dashboard', 'layout')
     revalidatePath('/dashboard/mi-cuenta')
     revalidatePath('/dashboard/eventos')
@@ -282,7 +314,8 @@ export async function PUT(request: NextRequest) {
         mailRegisterDailyLimit: normalizeMailRegisterDailyLimit(
           doc.mailRegisterDailyLimit
         ),
-        storeCredit: settings.storeCredit
+        storeCredit: settings.storeCredit,
+        contributionPoints: settings.contributionPoints
       },
       { status: 200 }
     )

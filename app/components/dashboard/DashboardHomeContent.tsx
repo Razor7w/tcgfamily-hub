@@ -31,6 +31,7 @@ import MailFlowExplainer from '@/components/mails/MailFlowExplainer'
 import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
 import DashboardStatisticsCard from '@/components/dashboard/DashboardStatisticsCard'
 import StoreHubTournamentPointsCard from '@/components/dashboard/StoreHubTournamentPointsCard'
+import StoreHubContributionPointsCard from '@/components/dashboard/StoreHubContributionPointsCard'
 import { useStoreCredit } from '@/hooks/useStoreCredit'
 import { useStoreHubHref } from '@/hooks/useStoreHubHref'
 import { useMeStores } from '@/hooks/useMeStores'
@@ -66,7 +67,8 @@ export default function DashboardHomeContent({
   variant = 'tiendas',
   hubReady = true
 }: DashboardHomeContentProps) {
-  const { visibility, order, storeCredit } = useDashboardModulesFromLayout()
+  const { visibility, order, storeCredit, contributionPoints } =
+    useDashboardModulesFromLayout()
   const { data: session } = useSession()
   const { data: meStoresData } = useMeStores()
   const storeHubHref = useStoreHubHref()
@@ -406,6 +408,9 @@ export default function DashboardHomeContent({
           ))}
           {visibility.storePoints && storeCredit.tournamentPointsEnabled ? (
             <StoreHubTournamentPointsCard enabled={hubReady} />
+          ) : null}
+          {contributionPoints.enabled ? (
+            <StoreHubContributionPointsCard enabled={hubReady} />
           ) : null}
         </Stack>
 

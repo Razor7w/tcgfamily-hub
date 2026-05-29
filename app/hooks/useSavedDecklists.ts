@@ -11,6 +11,15 @@ export type SavedDecklistSummary = {
   createdAt: string
 }
 
+export type PublicDecklistOwnerTopContribution = {
+  label: string
+  storeName: string
+  storeSlug: string
+  totalPoints: number
+  monthPoints: number
+  monthLabel: string
+}
+
 export type PublicDecklistSummary = {
   id: string
   name: string
@@ -19,6 +28,7 @@ export type PublicDecklistSummary = {
   ownerName: string
   ownerImage: string | null
   updatedAt: string
+  ownerTopContribution: PublicDecklistOwnerTopContribution | null
 }
 
 export function useSavedDecklistsList() {

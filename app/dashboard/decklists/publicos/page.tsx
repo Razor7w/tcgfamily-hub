@@ -24,6 +24,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Alert from '@mui/material/Alert'
 import { alpha, useTheme } from '@mui/material/styles'
 import { DecklistSpritePair } from '@/components/decklist/DecklistPokemonSlotPickers'
+import OwnerTopContributionBadge from '@/components/contribution/OwnerTopContributionBadge'
 import { usePublicDecklistsList } from '@/hooks/useSavedDecklists'
 import {
   matchesDecklistDateFilter,
@@ -276,14 +277,40 @@ export default function PublicDecklistsPage() {
                               </ListItemIcon>
                               <ListItemText
                                 primary={row.name}
-                                secondary={`${row.ownerName} · ${sub}`}
+                                secondary={
+                                  <Stack
+                                    component="span"
+                                    spacing={0.35}
+                                    sx={{ minWidth: 0 }}
+                                  >
+                                    <Typography
+                                      component="span"
+                                      variant="caption"
+                                      noWrap
+                                      display="block"
+                                    >
+                                      {row.ownerName} · {sub}
+                                    </Typography>
+                                    {row.ownerTopContribution ? (
+                                      <Box
+                                        component="span"
+                                        sx={{ display: 'block', mt: 0.25 }}
+                                      >
+                                        <OwnerTopContributionBadge
+                                          badge={row.ownerTopContribution}
+                                          stopParentNavigation
+                                        />
+                                      </Box>
+                                    ) : null}
+                                  </Stack>
+                                }
                                 primaryTypographyProps={{
                                   fontWeight: 700,
                                   noWrap: true
                                 }}
                                 secondaryTypographyProps={{
-                                  variant: 'caption',
-                                  noWrap: true
+                                  component: 'div',
+                                  variant: 'caption'
                                 }}
                               />
                               <PublicIcon

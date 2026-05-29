@@ -4,6 +4,7 @@ import { requireStoreStaffSession } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import Mails from '@/models/Mails'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
+import { applyMailWithdrawnInStoreContributionAward } from '@/lib/contribution-points/mail-contribution-awards'
 
 const MAX_BULK_WITHDRAW = 100
 
@@ -51,15 +52,38 @@ export async function POST(request: NextRequest) {
       gate.primaryStoreOid ?? null
     ) as Record<string, unknown>
 
-    const result = await Mails.updateMany(
-      {
-        _id: { $in: mailIds },
-        ...scoped,
-        isRecived: false,
-        isRecivedInStore: true
-      },
-      { $set: { isRecived: true } }
-    )
+    const withdrawFilter = {
+      _id: { $in: mailIds },
+      ...scoped,
+      isRecived: false,
+      isRecivedInStore: true
+    }
+
+    const pending = await Mails.find(withdrawFilter)
+      .select('_id fromUserId toUserId storeId')
+      .lean<
+        Array<{
+          _id: mongoose.Types.ObjectId
+          fromUserId?: mongoose.Types.ObjectId
+          toUserId?: mongoose.Types.ObjectId
+          storeId?: mongoose.Types.ObjectId
+        }>
+      >()
+
+    const result = await Mails.updateMany(withdrawFilter, {
+      $set: { isRecived: true }
+    })
+
+    for (const mail of pending) {
+      const withdrawUserId = mail.toUserId ?? mail.fromUserId
+      if (!withdrawUserId) continue
+      const storeIdForPoints = mail.storeId ?? gate.activeStoreOid
+      await applyMailWithdrawnInStoreContributionAward({
+        storeId: storeIdForPoints,
+        userId: withdrawUserId,
+        mailId: mail._id
+      })
+    }
 
     return NextResponse.json({
       updatedCount: result.modifiedCount,

@@ -15,6 +15,7 @@ import WeeklyEvent, {
 } from '@/models/WeeklyEvent'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { weeklyOfficialByIdForStaffGate } from '@/lib/multitenancy/staff-queries'
+import { applyTournamentParticipationAwardsOnEventClose } from '@/lib/contribution-points/tournament-contribution-awards'
 
 const PRICE_MAX = 99_999_999
 const PARTICIPANTS_MAX = 2048
@@ -78,6 +79,8 @@ export async function PATCH(
     }
     const forbidden = adminWeeklyEventForbiddenResponse(doc)
     if (forbidden) return forbidden
+
+    const previousState = doc.state
 
     if (typeof body.startsAt === 'string') {
       const d = new Date(body.startsAt)
@@ -302,6 +305,14 @@ export async function PATCH(
     }
 
     await doc.save()
+
+    if (previousState !== 'close' && doc.state === 'close') {
+      await applyTournamentParticipationAwardsOnEventClose(
+        doc,
+        gate.activeStoreOid
+      )
+    }
+
     return NextResponse.json({ event: doc.toObject() }, { status: 200 })
   } catch (error) {
     console.error('PATCH /api/admin/events/[id]:', error)

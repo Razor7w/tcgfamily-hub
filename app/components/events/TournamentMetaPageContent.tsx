@@ -26,6 +26,7 @@ import Tabs from '@mui/material/Tabs'
 import Typography from '@mui/material/Typography'
 import { alpha, useTheme, type Theme } from '@mui/material/styles'
 import DashboardModuleRouteGate from '@/components/dashboard/DashboardModuleRouteGate'
+import ContributionTierBadge from '@/components/contribution/ContributionTierBadge'
 import DecklistImagePreviewButton from '@/components/decklist/DecklistImagePreviewButton'
 import MatchRoundOpponentCell from '@/components/events/MatchRoundOpponentCell'
 import {
@@ -60,6 +61,24 @@ import { formatPersonDisplayName } from '@/lib/weekly-events'
 const OPP_SPRITE = limitlessSpriteDimensions(20)
 const META_SPRITE = limitlessSpriteDimensions(28)
 const DECK_SPRITE = limitlessSpriteDimensions(40)
+
+type ContributionBadgeLookup = Map<string, { tierIndex: number; label: string }>
+
+function ParticipantContributionBadge({
+  userId,
+  badgeByUserId,
+  inlineBadge
+}: {
+  userId?: string | null
+  badgeByUserId?: ContributionBadgeLookup
+  inlineBadge?: { tierIndex: number; label: string } | null
+}) {
+  const badge =
+    inlineBadge ??
+    (userId && badgeByUserId ? badgeByUserId.get(userId) : undefined)
+  if (!badge) return null
+  return <ContributionTierBadge label={badge.label} />
+}
 
 /** Misma superficie que las cards de la pestaña Jugadores. */
 function metaTabSurfaceCardSx(t: Theme) {
@@ -394,10 +413,12 @@ function StandingsRowDeckSprites({ slugs }: { slugs: string[] }) {
 
 function StandingsMobileCard({
   eventId,
-  row
+  row,
+  badgeByUserId
 }: {
   eventId: string
   row: TournamentStandingsRow
+  badgeByUserId: ContributionBadgeLookup
 }) {
   const reportedDeckOnPlatform =
     row.deckPokemonSlugs.length > 0 || row.hasDecklist
@@ -435,6 +456,10 @@ function StandingsMobileCard({
             >
               {formatPersonDisplayName(row.displayName)}
             </Typography>
+            <ParticipantContributionBadge
+              userId={row.userId}
+              badgeByUserId={badgeByUserId}
+            />
             {row.isDnf ? (
               <Chip
                 label="drop"
@@ -733,10 +758,12 @@ function MetagameVariantTableRow({
 
 function TournamentStandingsTable({
   eventId,
-  rows
+  rows,
+  badgeByUserId
 }: {
   eventId: string
   rows: TournamentStandingsRow[]
+  badgeByUserId: ContributionBadgeLookup
 }) {
   if (rows.length === 0) return null
 
@@ -752,7 +779,12 @@ function TournamentStandingsTable({
         {rows.map(row => {
           const rowKey = `${row.popId ?? row.displayName}-${row.place ?? 'x'}-${row.reportOnly ? 'r' : 's'}`
           return (
-            <StandingsMobileCard key={rowKey} eventId={eventId} row={row} />
+            <StandingsMobileCard
+              key={rowKey}
+              eventId={eventId}
+              row={row}
+              badgeByUserId={badgeByUserId}
+            />
           )
         })}
       </Stack>
@@ -829,6 +861,10 @@ function TournamentStandingsTable({
                       >
                         {formatPersonDisplayName(row.displayName)}
                       </Typography>
+                      <ParticipantContributionBadge
+                        userId={row.userId}
+                        badgeByUserId={badgeByUserId}
+                      />
                       {reportedDeckOnPlatform ? (
                         <Chip
                           label="reportó"
@@ -888,10 +924,12 @@ function TournamentStandingsTable({
 
 function TournamentStandingsPanel({
   eventId,
-  standings
+  standings,
+  badgeByUserId
 }: {
   eventId: string
   standings: TournamentStandingsMeta
+  badgeByUserId: ContributionBadgeLookup
 }) {
   const orderedCategories = useMemo(
     () =>
@@ -945,6 +983,7 @@ function TournamentStandingsPanel({
             <TournamentStandingsTable
               eventId={eventId}
               rows={activeCategory?.rows ?? []}
+              badgeByUserId={badgeByUserId}
             />
           </Card>
         </>
@@ -961,6 +1000,7 @@ function TournamentStandingsPanel({
             <TournamentStandingsTable
               eventId={eventId}
               rows={standings.reportedWithoutPlacement}
+              badgeByUserId={badgeByUserId}
             />
           </Card>
         </Stack>
@@ -1138,6 +1178,7 @@ function ParticipantMetaCard({
           >
             {formatPersonDisplayName(p.displayName)}
           </Typography>
+          <ParticipantContributionBadge inlineBadge={p.contributionBadge} />
         </Stack>
         <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
           <RecordMetric
@@ -1271,9 +1312,21 @@ export default function TournamentMetaPageContent() {
   const { data, isPending, isError, error } = useTournamentMeta(eventId || null)
   const [tab, setTab] = useState<MetaTab>('standings')
 
-  const participants = data?.participants ?? []
+  const participants = useMemo(
+    () => data?.participants ?? [],
+    [data?.participants]
+  )
   const metagame = data?.metagame ?? []
   const standingsMeta = data?.standings
+  const badgeByUserId = useMemo(() => {
+    const map: ContributionBadgeLookup = new Map()
+    for (const p of participants) {
+      if (p.userId && p.contributionBadge) {
+        map.set(p.userId, p.contributionBadge)
+      }
+    }
+    return map
+  }, [participants])
   const hasStandingsContent =
     (standingsMeta?.categories.length ?? 0) > 0 ||
     (standingsMeta?.reportedWithoutPlacement.length ?? 0) > 0
@@ -1412,6 +1465,7 @@ export default function TournamentMetaPageContent() {
                         <TournamentStandingsPanel
                           eventId={data.event._id}
                           standings={standingsMeta}
+                          badgeByUserId={badgeByUserId}
                         />
                       </Stack>
                     ) : null}

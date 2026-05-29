@@ -33,6 +33,12 @@ export interface IDashboardModuleSettings extends Document {
   storeCreditTournamentPointsEnabled: boolean
   /** Nombre visible de los puntos por torneo (vacío = «Puntos por torneo») */
   tournamentPointsDisplayName?: string
+  /** Gamificación de contribución (reputación; no canjeable). */
+  contributionPointsEnabled: boolean
+  contributionTierThresholds?: number[]
+  contributionTierLabels?: string[]
+  /** Overrides parciales de puntos por acción. */
+  contributionPointRules?: Record<string, number>
 }
 
 const DashboardModuleSettingsSchema = new Schema<IDashboardModuleSettings>(
@@ -71,6 +77,22 @@ const DashboardModuleSettingsSchema = new Schema<IDashboardModuleSettings>(
       required: false,
       trim: true,
       maxlength: 60,
+      default: undefined
+    },
+    contributionPointsEnabled: { type: Boolean, default: false },
+    contributionTierThresholds: {
+      type: [Number],
+      required: false,
+      default: undefined
+    },
+    contributionTierLabels: {
+      type: [String],
+      required: false,
+      default: undefined
+    },
+    contributionPointRules: {
+      type: Schema.Types.Mixed,
+      required: false,
       default: undefined
     }
   },

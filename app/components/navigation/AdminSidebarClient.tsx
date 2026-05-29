@@ -12,7 +12,8 @@ import {
   People,
   Settings,
   Storefront,
-  SportsEsports
+  SportsEsports,
+  WorkspacePremium
 } from '@mui/icons-material'
 import {
   Collapse,
@@ -130,6 +131,16 @@ export default function AdminSidebarClient({ isOwner }: { isOwner: boolean }) {
                 <CloudUpload />
               </ListItemIcon>
               <ListItemText primary="Puntos de tienda" />
+            </ListItemButton>
+          </List>
+        ) : null}
+        {isOwner ? (
+          <List component="div" disablePadding>
+            <ListItemButton sx={{ pl: 4 }} href="/admin/contribucion">
+              <ListItemIcon>
+                <WorkspacePremium />
+              </ListItemIcon>
+              <ListItemText primary="Contribución" />
             </ListItemButton>
           </List>
         ) : null}
