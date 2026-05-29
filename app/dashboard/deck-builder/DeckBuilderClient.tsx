@@ -361,6 +361,7 @@ export default function DeckBuilderClient() {
             </Box>
 
             <TextField
+              id="deck-builder-card-search"
               fullWidth
               size="small"
               placeholder="Nombre de carta (ej. wooper)"
