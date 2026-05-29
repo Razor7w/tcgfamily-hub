@@ -10,6 +10,44 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [1.4.0] - 2026-05-28
+
+**Puntos de contribución** por tienda: reputación por participar (torneos oficiales, mazo, bitácora y correo), niveles, ranking mensual e histórico, insignias públicas y admin configurable. Distinto de crédito de tienda y de puntos por torneo.
+
+### Añadido
+
+- **Ledger** `ContributionPointEntry`: puntos append-only por tienda con dedupe `{ storeId, dedupeKey }` y categorías torneo / mazo / bitácora / correo.
+- **Activación por tienda** en Admin → Configuración (`ContributionPointsEnableCard`); **reglas y niveles** en `/admin/contribucion` (umbrales, etiquetas y puntos por acción editables).
+- **Otorgamiento automático** al preinscribirse (+1), cerrar torneo oficial (+10), reportar mazo (+20), vincular decklist (+5), sprites de rival (+6), ronda completa (+4) y correo recibido/retirado en tienda (+3; valores por defecto).
+- **Tarjeta en hub** (`StoreHubContributionPointsCard`): puntos del mes (calendario Chile), total acumulado, barra de nivel, desglose por categoría, ranking **Mes | Histórico** y modal ℹ️ con **preguntas frecuentes**.
+- **APIs** `GET /api/me/contribution-points`, `GET /api/stores/[slug]/contribution-leaderboard?period=month|all`, `GET/PATCH /api/me/contribution-preferences` (ocultar insignia).
+- **Insignias** en meta de torneo, decklists públicas y modal de reputación (`OwnerTopContributionBadge`, `ContributionTierBadge`); tienda top histórica por usuario.
+- **Feedback** al usuario: toast al preinscribirse, snackbar en acciones con `contributionPointsAwarded`.
+- **Correo admin**: recepción y retiro masivo en tienda (`bulk-receive-in-store`, `bulk-withdraw`) con puntos de contribución al emisor/receptor.
+- **`docs/TERMINOS-DE-USO.md`**: borrador de términos de uso del hub.
+
+### Cambiado
+
+- Puntos por torneo y auditoría admin filtrados por **tienda activa** del admin (coherente con multitenancy).
+- Reporte manual de torneos: edición de mazo por participante, enlace cuenta por POP (`link-by-pop`) y refactor del flujo admin.
+- Meta de torneo enriquecida con badges de contribución por participante.
+
+### Corregido
+
+- Eventos legacy **sin `storeId`**: resolución de tienda al preinscribirse, reportar mazo y guardar bitácora (`resolveWeeklyEventStoreIdForContribution` + backfill en el evento).
+- React 19 / ESLint: dependencia estable de `participants` en `TournamentMetaPageContent`; toggle de activación sin `setState` en efecto (`ContributionPointsEnableCard`).
+
+### Operaciones (Atlas)
+
+Crear índices en `contributionpointentries` antes o al desplegar (ver `app/models/ContributionPointEntry.ts`):
+
+```javascript
+db.contributionpointentries.createIndex({ storeId: 1, dedupeKey: 1 }, { unique: true })
+db.contributionpointentries.createIndex({ storeId: 1, userId: 1, createdAt: -1 })
+db.contributionpointentries.createIndex({ storeId: 1, userId: 1, category: 1 })
+db.contributionpointentries.createIndex({ storeId: 1, createdAt: -1 })
+```
+
 ## [1.3.0] - 2026-05-23
 
 **Puntos por torneo** en admin y hub de tienda: reparto tras torneos cerrados, gestión unificada por jugador, importación histórica CSV y nombre personalizable de los puntos.
@@ -475,7 +513,9 @@ Primera versión estable **TCG Nexo** con soporte multitienda.
 
 Línea base anterior en `package.json` antes de este changelog; el detalle de cambios queda en el historial de git.
 
-[Unreleased]: https://github.com/Razor7w/tcgfamily-hub/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/Razor7w/tcgfamily-hub/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/Razor7w/tcgfamily-hub/compare/v1.3.0...v1.4.0
+[1.3.0]: https://github.com/Razor7w/tcgfamily-hub/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Razor7w/tcgfamily-hub/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Razor7w/tcgfamily-hub/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Razor7w/tcgfamily-hub/compare/v0.9.4...v1.0.0
