@@ -8,6 +8,9 @@ import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import CardHeader from '@mui/material/CardHeader'
 import CircularProgress from '@mui/material/CircularProgress'
+import Accordion from '@mui/material/Accordion'
+import AccordionDetails from '@mui/material/AccordionDetails'
+import AccordionSummary from '@mui/material/AccordionSummary'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
@@ -21,8 +24,8 @@ import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
-import { alpha } from '@mui/material/styles'
-import { InfoOutlined, WorkspacePremium } from '@mui/icons-material'
+import { alpha, type SxProps, type Theme } from '@mui/material/styles'
+import { ExpandMore, InfoOutlined, WorkspacePremium } from '@mui/icons-material'
 import ContributionTierBadge from '@/components/contribution/ContributionTierBadge'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
 import {
@@ -32,8 +35,11 @@ import {
 import { useMeStores } from '@/hooks/useMeStores'
 import { useMyContributionPoints } from '@/hooks/useMyContributionPoints'
 import { useStoreContributionLeaderboard } from '@/hooks/useStoreContributionLeaderboard'
+import type { ContributionPointsAdminSettings } from '@/lib/dashboard-module-config'
 import {
+  CONTRIBUTION_ACTION_LABELS,
   CONTRIBUTION_CATEGORY_LABELS,
+  CONTRIBUTION_POINT_ACTIONS,
   CONTRIBUTION_POINT_CATEGORIES
 } from '@/lib/contribution-points/types'
 import type {
@@ -227,6 +233,134 @@ function ContributionLeaderboardPanel({
 }
 
 type LeaderboardTab = 'month' | 'all'
+
+const faqAccordionSx: SxProps<Theme> = {
+  '&:before': { display: 'none' },
+  boxShadow: 'none',
+  border: '1px solid',
+  borderColor: theme => alpha(theme.palette.text.primary, 0.12),
+  '&:not(:last-of-type)': { borderBottom: 0 },
+  '&.Mui-expanded': { margin: 0 }
+}
+
+function ContributionPointsInfoFaq({
+  pointRules,
+  tierLabels,
+  tierThresholds
+}: Pick<
+  ContributionPointsAdminSettings,
+  'pointRules' | 'tierLabels' | 'tierThresholds'
+>) {
+  const tierSummary = tierLabels
+    .map(
+      (label, index) =>
+        `${label} (${tierThresholds[index].toLocaleString('es-CL')} pts)`
+    )
+    .join(' · ')
+
+  return (
+    <Box sx={{ mt: 2 }}>
+      <Typography variant="subtitle2" gutterBottom>
+        Preguntas frecuentes
+      </Typography>
+      <Stack spacing={0}>
+        <Accordion disableGutters sx={faqAccordionSx}>
+          <AccordionSummary expandIcon={<ExpandMore />}>
+            <Typography variant="body2" fontWeight={600}>
+              ¿Se canjean por crédito o productos?
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ pt: 0 }}>
+            <Typography variant="body2" color="text.secondary">
+              No. Son reputación en la comunidad de la tienda. No reemplazan el
+              crédito de tienda ni los puntos por torneo que reparte el admin.
+            </Typography>
+          </AccordionDetails>
+        </Accordion>
+
+        <Accordion disableGutters sx={faqAccordionSx}>
+          <AccordionSummary expandIcon={<ExpandMore />}>
+            <Typography variant="body2" fontWeight={600}>
+              ¿Cuántos puntos da cada acción?
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ pt: 0 }}>
+            <Stack spacing={0.75}>
+              {CONTRIBUTION_POINT_ACTIONS.map(action => (
+                <Stack
+                  key={action}
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="baseline"
+                  gap={1}
+                >
+                  <Typography variant="body2" color="text.secondary">
+                    {CONTRIBUTION_ACTION_LABELS[action]}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 700,
+                      fontVariantNumeric: 'tabular-nums',
+                      flexShrink: 0
+                    }}
+                  >
+                    +{pointRules[action].toLocaleString('es-CL')} pts
+                  </Typography>
+                </Stack>
+              ))}
+            </Stack>
+          </AccordionDetails>
+        </Accordion>
+
+        <Accordion disableGutters sx={faqAccordionSx}>
+          <AccordionSummary expandIcon={<ExpandMore />}>
+            <Typography variant="body2" fontWeight={600}>
+              ¿Qué torneos cuentan?
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ pt: 0 }}>
+            <Typography variant="body2" color="text.secondary">
+              Solo torneos <strong>oficiales</strong> de esta tienda en el hub.
+              Los torneos custom que crees tú no suman contribución.
+            </Typography>
+          </AccordionDetails>
+        </Accordion>
+
+        <Accordion disableGutters sx={faqAccordionSx}>
+          <AccordionSummary expandIcon={<ExpandMore />}>
+            <Typography variant="body2" fontWeight={600}>
+              ¿Sumo puntos por acciones pasadas?
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ pt: 0 }}>
+            <Typography variant="body2" color="text.secondary">
+              No de forma retroactiva. Cuenta lo que hagas a partir de que la
+              tienda tenga activos los puntos de contribución y mientras el
+              módulo siga habilitado.
+            </Typography>
+          </AccordionDetails>
+        </Accordion>
+
+        <Accordion disableGutters sx={faqAccordionSx}>
+          <AccordionSummary expandIcon={<ExpandMore />}>
+            <Typography variant="body2" fontWeight={600}>
+              ¿Cómo funcionan el mes, el total y los niveles?
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ pt: 0 }}>
+            <Typography variant="body2" color="text.secondary">
+              El número grande es tu mes en curso (calendario Chile). El total
+              acumulado y tu nivel no se reinician. El ranking del mes se
+              renueva cada mes; el tab Histórico ordena por puntos de siempre.
+              Niveles en esta tienda: {tierSummary}.
+            </Typography>
+          </AccordionDetails>
+        </Accordion>
+      </Stack>
+    </Box>
+  )
+}
 
 export default function StoreHubContributionPointsCard({
   enabled: fetchEnabled = true
@@ -548,6 +682,12 @@ export default function StoreHubContributionPointsCard({
               .join(' / ')}{' '}
             pts).
           </Typography>
+          <ContributionPointsInfoFaq
+            pointRules={contributionSettings.pointRules}
+            tierLabels={contributionSettings.tierLabels}
+            tierThresholds={contributionSettings.tierThresholds}
+          />
+          <Divider sx={{ my: 2 }} />
           <FormControlLabel
             control={
               <Switch
