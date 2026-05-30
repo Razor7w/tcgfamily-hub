@@ -967,6 +967,8 @@ export function useAdminUploadStandingsPod() {
       categoryIndex: 0 | 1 | 2
       podType: 'finished' | 'dnf'
       rows: { popId: string; place?: number }[]
+      /** Tras guardar Sénior unificado, vacía finished y DNF en Júnior (0) y Máster (2). */
+      clearOtherAgeCategories?: boolean
     }) => {
       const res = await fetch(
         `/api/admin/events/${input.eventId}/standings-pod`,
@@ -976,7 +978,8 @@ export function useAdminUploadStandingsPod() {
           body: JSON.stringify({
             categoryIndex: input.categoryIndex,
             podType: input.podType,
-            rows: input.rows
+            rows: input.rows,
+            clearOtherAgeCategories: input.clearOtherAgeCategories === true
           })
         }
       )

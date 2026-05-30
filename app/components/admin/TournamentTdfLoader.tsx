@@ -23,10 +23,19 @@ import {
   DeleteOutline,
   EventSeat,
   FolderOpen,
-  GroupAdd
+  GroupAdd,
+  MergeType
 } from '@mui/icons-material'
 import InferredTdfStandingsEditor from '@/components/admin/InferredTdfStandingsEditor'
-import { buildInferredStandingsByCategory } from '@/lib/inferred-tdf-standings'
+import {
+  buildInferredStandingsByCategory,
+  buildUnifiedInferredStandings
+} from '@/lib/inferred-tdf-standings'
+import {
+  buildPlayerTiebreakersFromMatches,
+  formatTiebreakerPercent,
+  OPPONENT_WIN_PCT_FLOOR
+} from '@/lib/tournament-tiebreakers'
 import { buildFullTournamentUploadPayload } from '@/lib/tournament-tdf-payload'
 import {
   buildMatchRecordsFromMatches,
@@ -282,8 +291,12 @@ export default function TournamentTdfLoader({
 
   const inferredStandingsSeed = useMemo(() => {
     if (tdfHasStandingsData || parsed.players.length === 0) return null
-    return buildInferredStandingsByCategory(parsed.players, matchRecords)
-  }, [tdfHasStandingsData, parsed.players, matchRecords])
+    return buildInferredStandingsByCategory(
+      parsed.players,
+      matchRecords,
+      activeMatches
+    )
+  }, [tdfHasStandingsData, parsed.players, matchRecords, activeMatches])
 
   /** Overrides manuales; `null` = usar {@link inferredStandingsSeed} del TDF parseado. */
   const [editedInferredStandings, setEditedInferredStandings] = useState<
@@ -292,6 +305,46 @@ export default function TournamentTdfLoader({
 
   const effectiveInferredStandings =
     editedInferredStandings ?? inferredStandingsSeed
+
+  const showAdjustedStandingsEditor = Boolean(
+    effectiveInferredStandings &&
+      (!tdfHasStandingsData || editedInferredStandings != null)
+  )
+
+  const droppedPopIds = useMemo(() => {
+    const s = new Set<string>()
+    for (const pod of parsed.standings) {
+      if (pod.type.toLowerCase() !== 'dnf') continue
+      for (const p of pod.players) {
+        const id = p.popId.trim()
+        if (id) s.add(id)
+      }
+    }
+    for (const cat of effectiveInferredStandings ?? []) {
+      for (const d of cat.dnf ?? []) {
+        const id = d.popId.trim()
+        if (id) s.add(id)
+      }
+    }
+    return s
+  }, [parsed.standings, effectiveInferredStandings])
+
+  const tiebreakers = useMemo(
+    () =>
+      buildPlayerTiebreakersFromMatches(
+        activeMatches,
+        matchRecords,
+        droppedPopIds.size > 0 ? droppedPopIds : undefined,
+        parsed.players.length,
+        parsed.players,
+        { sameCategoryOnly: false }
+      ),
+    [activeMatches, matchRecords, droppedPopIds, parsed.players.length]
+  )
+
+  const standingsOverrideForUpload =
+    editedInferredStandings ??
+    (!tdfHasStandingsData ? effectiveInferredStandings ?? undefined : undefined)
 
   const preinscribeBatch = useAdminPreinscribeBatch()
   const syncRound = useAdminSyncEventRound()
@@ -597,6 +650,7 @@ export default function TournamentTdfLoader({
       )}
 
       {!tdfHasStandingsData &&
+      showAdjustedStandingsEditor &&
       raw.trim() &&
       !parsed.error &&
       parsed.players.length > 0 &&
@@ -611,6 +665,11 @@ export default function TournamentTdfLoader({
             onStandingsChange={setEditedInferredStandings}
             names={names}
             matchRecords={matchRecords}
+            matches={activeMatches}
+            droppedPopIds={droppedPopIds}
+            fieldSize={parsed.players.length}
+            players={parsed.players}
+            sameCategoryTiebreakers={false}
           />
         </>
       ) : null}
@@ -636,9 +695,7 @@ export default function TournamentTdfLoader({
               try {
                 const payload = buildFullTournamentUploadPayload(
                   parsed,
-                  !tdfHasStandingsData
-                    ? (effectiveInferredStandings ?? undefined)
-                    : undefined,
+                  standingsOverrideForUpload,
                   excludedTdfRoundNums
                 )
                 await uploadFullTournament.mutateAsync({ eventId, payload })
@@ -661,8 +718,9 @@ export default function TournamentTdfLoader({
             historial, clasificación por categoría (Júnior / Sénior / Máster),
             deja el evento en estado <strong>cerrado</strong> y aplica el
             emparejamiento de la última ronda al listado. Si no hay standings en
-            el archivo, puedes revisar y guardar la clasificación propuesta
-            antes de subir.
+            el archivo, revisa la clasificación propuesta (con OWP/OOWP) antes
+            de subir. Si el TDF ya trae standings, usa «Recalcular» o «Unificar»
+            bajo esa sección para generar la clasificación ajustada.
           </Typography>
           {uploadFullTournament.isError ? (
             <Alert severity="error">
@@ -951,8 +1009,59 @@ export default function TournamentTdfLoader({
           >
             Categorías en el TDF: <strong>0</strong> = Júnior,{' '}
             <strong>1</strong> = Sénior, <strong>2</strong> = Máster.{' '}
-            <strong>DNF</strong> (did not finish) = no terminó el torneo.
+            <strong>DNF</strong> (did not finish) = no terminó el torneo. Los
+            porcentajes <strong>OWP</strong> / <strong>OOWP</strong> siguen TOM
+            (victorias del récord con bye ÷ rondas suizo; suelo 33 %).
           </Typography>
+          {parsed.players.length > 0 && activeMatches.length > 0 ? (
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              flexWrap="wrap"
+              useFlexGap
+            >
+              <Button
+                type="button"
+                variant="outlined"
+                size="small"
+                onClick={() =>
+                  setEditedInferredStandings(
+                    buildInferredStandingsByCategory(
+                      parsed.players,
+                      matchRecords,
+                      activeMatches
+                    )
+                  )
+                }
+              >
+                Recalcular puestos con desempates
+              </Button>
+              <Button
+                type="button"
+                variant="outlined"
+                size="small"
+                startIcon={<MergeType />}
+                onClick={() =>
+                  setEditedInferredStandings(
+                    buildUnifiedInferredStandings(
+                      parsed.players,
+                      matchRecords,
+                      activeMatches
+                    )
+                  )
+                }
+              >
+                Unificar categorías
+              </Button>
+            </Stack>
+          ) : null}
+          {editedInferredStandings != null ? (
+            <Typography variant="caption" color="primary" fontWeight={600}>
+              Hay una clasificación ajustada abajo; «Subir torneo completo» la
+              usará en lugar de los puestos del XML. «Guardar Sénior» vacía
+              Júnior y Máster en el evento si la tabla está unificada.
+            </Typography>
+          ) : null}
           <Stack spacing={2}>
             {parsed.standings.map((pod, podIdx) => (
               <Paper
@@ -1042,6 +1151,12 @@ export default function TournamentTdfLoader({
                           <TableCell width={120}>POP ID</TableCell>
                           <TableCell>Nombre</TableCell>
                           <TableCell align="center">W / L / T</TableCell>
+                          <TableCell align="right" width={88}>
+                            OWP
+                          </TableCell>
+                          <TableCell align="right" width={88}>
+                            OOWP
+                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -1057,6 +1172,18 @@ export default function TournamentTdfLoader({
                             <TableCell align="center" sx={{ fontWeight: 600 }}>
                               {formatMatchRecordWlt(
                                 matchRecords.get(row.popId)
+                              )}
+                            </TableCell>
+                            <TableCell align="right" sx={{ fontSize: 13 }}>
+                              {formatTiebreakerPercent(
+                                tiebreakers.get(row.popId)?.owp ??
+                                  OPPONENT_WIN_PCT_FLOOR
+                              )}
+                            </TableCell>
+                            <TableCell align="right" sx={{ fontSize: 13 }}>
+                              {formatTiebreakerPercent(
+                                tiebreakers.get(row.popId)?.oowp ??
+                                  OPPONENT_WIN_PCT_FLOOR
                               )}
                             </TableCell>
                           </TableRow>
@@ -1085,6 +1212,28 @@ export default function TournamentTdfLoader({
           ) : null}
         </>
       )}
+
+      {tdfHasStandingsData &&
+      editedInferredStandings != null &&
+      effectiveInferredStandings ? (
+        <>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            Clasificación ajustada (desempates)
+          </Typography>
+          <InferredTdfStandingsEditor
+            eventId={eventId}
+            standings={effectiveInferredStandings}
+            onStandingsChange={setEditedInferredStandings}
+            names={names}
+            matchRecords={matchRecords}
+            matches={activeMatches}
+            droppedPopIds={droppedPopIds}
+            fieldSize={parsed.players.length}
+            players={parsed.players}
+            sameCategoryTiebreakers={false}
+          />
+        </>
+      ) : null}
 
       {raw.trim() &&
         !parsed.error &&
