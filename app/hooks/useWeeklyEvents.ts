@@ -60,7 +60,12 @@ export interface PublicWeeklyEvent {
   /** Solo si el torneo está cerrado y hay datos importados (todos los puestos publicados, hasta 512/categoría). */
   standingsTopByCategory?: {
     categoryIndex: number
-    rows: { place: number; displayName: string }[]
+    rows: {
+      place: number
+      displayName: string
+      owp?: number | null
+      oowp?: number | null
+    }[]
   }[]
   /** Posición del usuario (POP) en su categoría; null si no figura. */
   myTournamentPlacement?: {

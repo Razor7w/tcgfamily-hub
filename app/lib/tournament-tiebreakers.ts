@@ -1,5 +1,5 @@
-import type { MatchRecord, ParsedMatch } from '@/lib/tournament-xml'
-import type { ParsedPlayer } from '@/lib/tournament-xml'
+import type { MatchRecord, ParsedMatch, ParsedPlayer } from '@/lib/tournament-xml'
+export { buildMatchRecordsFromMatches } from '@/lib/tournament-xml'
 import { inferPlayCategoryIndexForPlayer } from '@/lib/inferred-tdf-standings'
 
 function matchPointsFromRecord(r: MatchRecord): number {

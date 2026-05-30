@@ -5,6 +5,7 @@ import {
   type ParticipantMatchRoundDTO
 } from '@/lib/participant-match-round'
 import { popidForStorage } from '@/lib/rut-chile'
+import type { ParsedMatch } from '@/lib/tournament-xml'
 import { formatPersonDisplayName } from '@/lib/weekly-events'
 
 export type WltRecord = {
@@ -14,6 +15,7 @@ export type WltRecord = {
 }
 
 export type RoundSnapshotPairingLean = {
+  tableNumber?: string
   player1PopId?: string
   player2PopId?: string
   player1Name?: string
@@ -369,6 +371,118 @@ export function stripManualOpponentDecksWhenPlatformReported(
     }
     return { ...r, opponentDeckFromPlatform: false }
   })
+}
+
+function recordAfterRoundFromSnapshots(
+  pop: string,
+  roundNum: number,
+  snapshots: RoundSnapshotLean[],
+  maxRound: number,
+  finalRecordsByPop: Map<string, WltRecord>
+): WltRecord | null {
+  if (!pop) return null
+  if (roundNum < maxRound) {
+    return recordBeforeRoundFromSnapshots(pop, roundNum + 1, snapshots)
+  }
+  return finalRecordsByPop.get(pop) ?? null
+}
+
+/**
+ * Reconstruye partidas suizo (outcomes 1/2/3 y bye) desde snapshots publicados en el evento.
+ * Sirve para OWP/OOWP públicos cuando no hay TDF en el cliente.
+ */
+export function buildParsedMatchesFromRoundSnapshots(
+  snapshots: RoundSnapshotLean[],
+  finalRecordsByPop: Map<string, WltRecord>
+): ParsedMatch[] {
+  const sorted = [...snapshots].sort(
+    (a, b) => Math.round(Number(a.roundNum)) - Math.round(Number(b.roundNum))
+  )
+  const roundNums = sorted
+    .map(s => Math.round(Number(s.roundNum)))
+    .filter(n => Number.isFinite(n) && n >= 1)
+  const maxRound = roundNums.length > 0 ? Math.max(...roundNums) : 0
+  const out: ParsedMatch[] = []
+
+  for (const snap of sorted) {
+    const roundNum = Math.round(Number(snap.roundNum))
+    if (!Number.isFinite(roundNum) || roundNum < 1) continue
+
+    for (const pairing of snap.pairings ?? []) {
+      const p1 = popidForStorage(
+        typeof pairing.player1PopId === 'string' ? pairing.player1PopId : ''
+      )
+      const p2 = popidForStorage(
+        typeof pairing.player2PopId === 'string' ? pairing.player2PopId : ''
+      )
+      const isBye = Boolean(pairing.isBye) || Boolean(p1 && !p2)
+
+      if (isBye) {
+        if (p1) {
+          out.push({
+            roundNumber: roundNum,
+            roundType: '',
+            roundStage: '',
+            outcome: '5',
+            player1UserId: p1,
+            player2UserId: '',
+            timestamp: '',
+            tableNumber:
+              typeof pairing.tableNumber === 'string' ? pairing.tableNumber : '0'
+          })
+        }
+        continue
+      }
+
+      if (!p1 || !p2) continue
+
+      const before1 = normalizeWlt(pairing.player1Record)
+      const before2 = normalizeWlt(pairing.player2Record)
+      if (!before1 || !before2) continue
+
+      const after1 = recordAfterRoundFromSnapshots(
+        p1,
+        roundNum,
+        sorted,
+        maxRound,
+        finalRecordsByPop
+      )
+      const after2 = recordAfterRoundFromSnapshots(
+        p2,
+        roundNum,
+        sorted,
+        maxRound,
+        finalRecordsByPop
+      )
+      if (!after1 || !after2) continue
+
+      const r1 = inferRoundOutcomeFromRecordDelta(before1, after1)
+      const r2 = inferRoundOutcomeFromRecordDelta(before2, after2)
+      if (!r1?.gameResults[0] || !r2?.gameResults[0]) continue
+
+      let outcome = ''
+      if (r1.gameResults[0] === 'W' && r2.gameResults[0] === 'L') outcome = '1'
+      else if (r1.gameResults[0] === 'L' && r2.gameResults[0] === 'W')
+        outcome = '2'
+      else if (r1.gameResults[0] === 'T' && r2.gameResults[0] === 'T')
+        outcome = '3'
+      else continue
+
+      out.push({
+        roundNumber: roundNum,
+        roundType: '',
+        roundStage: '',
+        outcome,
+        player1UserId: p1,
+        player2UserId: p2,
+        timestamp: '',
+        tableNumber:
+          typeof pairing.tableNumber === 'string' ? pairing.tableNumber : ''
+      })
+    }
+  }
+
+  return out
 }
 
 /** Récord W/L/T publicado en el emparejamiento **antes** de jugar esa ronda. */

@@ -12,6 +12,7 @@ import {
   pairingExtrasForUser
 } from '@/lib/weekly-events'
 import {
+  attachTiebreakersToFullPublicStandings,
   buildTournamentStandingsPublic,
   categoryLabelEs,
   PUBLIC_STANDINGS_FULL_MAX
@@ -375,8 +376,16 @@ export async function GET(
       ...(tournamentClosed
         ? wantFullStandings
           ? {
-              standingsFullByCategory:
-                standingsPublic?.standingsTopByCategory ?? []
+              standingsFullByCategory: attachTiebreakersToFullPublicStandings(
+                standingsPublic?.standingsTopByCategory ?? [],
+                doc.roundSnapshots,
+                parts as {
+                  popId?: string
+                  wins?: unknown
+                  losses?: unknown
+                  ties?: unknown
+                }[]
+              )
             }
           : {
               standingsTopByCategory:

@@ -1,4 +1,11 @@
 import { popidForStorage } from '@/lib/rut-chile'
+import {
+  buildParsedMatchesFromRoundSnapshots,
+  type RoundSnapshotLean,
+  type WltRecord
+} from '@/lib/match-rounds-with-snapshots'
+import { buildMatchRecordsFromMatches } from '@/lib/tournament-xml'
+import { buildPlayerTiebreakersFromMatches } from '@/lib/tournament-tiebreakers'
 
 /** Filas por categoría en listados compactos (tarjeta «Eventos de la semana»). */
 export const PUBLIC_STANDINGS_TOP_N = 4
@@ -8,6 +15,15 @@ export const PUBLIC_STANDINGS_FULL_MAX = 512
 
 export type BuildTournamentStandingsOptions = {
   maxRowsPerCategory?: number
+}
+
+export type PublicStandingsRow = {
+  place: number
+  displayName: string
+  popId?: string
+  /** 0–1; solo clasificación completa con snapshots. */
+  owp?: number | null
+  oowp?: number | null
 }
 
 export type TournamentStandingLean = {
@@ -36,7 +52,7 @@ export function buildTournamentStandingsPublic(
 ): {
   standingsTopByCategory: {
     categoryIndex: number
-    rows: { place: number; displayName: string }[]
+    rows: PublicStandingsRow[]
   }[]
   myTournamentPlacement: {
     categoryIndex: number
@@ -70,7 +86,7 @@ export function buildTournamentStandingsPublic(
 
   const standingsTopByCategory: {
     categoryIndex: number
-    rows: { place: number; displayName: string }[]
+    rows: PublicStandingsRow[]
   }[] = []
   let myTournamentPlacement: {
     categoryIndex: number
@@ -85,10 +101,16 @@ export function buildTournamentStandingsPublic(
     if (ci !== 0 && ci !== 1 && ci !== 2) continue
 
     const sorted = [...(cat.finished ?? [])].sort((a, b) => a.place - b.place)
-    const rowsPublic = sorted.slice(0, maxRows).map(row => ({
-      place: Math.max(0, Math.round(Number(row.place) || 0)),
-      displayName: popToName.get(popidForStorage(row.popId))?.trim() || '—'
-    }))
+    const rowsPublic: PublicStandingsRow[] = sorted
+      .slice(0, maxRows)
+      .map(row => {
+        const pop = popidForStorage(row.popId)
+        return {
+          place: Math.max(0, Math.round(Number(row.place) || 0)),
+          displayName: popToName.get(pop)?.trim() || '—',
+          popId: pop || undefined
+        }
+      })
     if (rowsPublic.length > 0) {
       standingsTopByCategory.push({ categoryIndex: ci, rows: rowsPublic })
     }
@@ -116,4 +138,75 @@ export function buildTournamentStandingsPublic(
   }
 
   return { standingsTopByCategory, myTournamentPlacement }
+}
+
+function clampWltPublic(n: unknown): number {
+  return Math.max(0, Math.min(999, Math.round(Number(n) || 0)))
+}
+
+/**
+ * Añade OWP/OOWP a la clasificación completa usando rondas publicadas (TOM).
+ */
+export function attachTiebreakersToFullPublicStandings(
+  categories: {
+    categoryIndex: number
+    rows: PublicStandingsRow[]
+  }[],
+  snapshots: RoundSnapshotLean[] | undefined,
+  participants: {
+    popId?: string
+    wins?: unknown
+    losses?: unknown
+    ties?: unknown
+  }[]
+): typeof categories {
+  if (!snapshots?.length || categories.length === 0) return categories
+
+  const finalRecordsByPop = new Map<string, WltRecord>()
+  for (const p of participants) {
+    const pop = popidForStorage(typeof p.popId === 'string' ? p.popId : '')
+    if (!pop) continue
+    finalRecordsByPop.set(pop, {
+      wins: clampWltPublic(p.wins),
+      losses: clampWltPublic(p.losses),
+      ties: clampWltPublic(p.ties)
+    })
+  }
+
+  const matches = buildParsedMatchesFromRoundSnapshots(
+    snapshots,
+    finalRecordsByPop
+  )
+  if (matches.length === 0) return categories
+
+  const fullRecords = buildMatchRecordsFromMatches(matches)
+  const fieldSize = Math.max(
+    participants.length,
+    finalRecordsByPop.size,
+    fullRecords.size,
+    2
+  )
+  const tiebreakers = buildPlayerTiebreakersFromMatches(
+    matches,
+    fullRecords,
+    undefined,
+    fieldSize,
+    undefined,
+    { sameCategoryOnly: false }
+  )
+
+  return categories.map(cat => ({
+    ...cat,
+    rows: cat.rows.map(row => {
+      const pop = row.popId ? popidForStorage(row.popId) : ''
+      if (!pop) return row
+      const tb = tiebreakers.get(pop)
+      if (!tb) return row
+      return {
+        ...row,
+        owp: tb.owp,
+        oowp: tb.oowp
+      }
+    })
+  }))
 }

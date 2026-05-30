@@ -1,20 +1,21 @@
 'use client'
 
 import Alert from '@mui/material/Alert'
-import Button from '@mui/material/Button'
+import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
+import Drawer from '@mui/material/Drawer'
+import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
+import { useTheme } from '@mui/material/styles'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import Close from '@mui/icons-material/Close'
 import TournamentFinishedStandingsTabs from '@/components/events/TournamentFinishedStandingsTabs'
 import { useWeeklyEventFullStandings } from '@/hooks/useWeeklyEvents'
 
 type FullStandingsQuery = ReturnType<typeof useWeeklyEventFullStandings>
 
-function WeeklyFullStandingsDialogContent({
+function WeeklyFullStandingsContent({
   query,
   eventId
 }: {
@@ -23,7 +24,7 @@ function WeeklyFullStandingsDialogContent({
 }) {
   if (query.isPending) {
     return (
-      <Stack alignItems="center" justifyContent="center" sx={{ py: 5 }}>
+      <Stack alignItems="center" justifyContent="center" sx={{ flex: 1, py: 6 }}>
         <CircularProgress size={36} aria-label="Cargando clasificación" />
       </Stack>
     )
@@ -44,7 +45,7 @@ function WeeklyFullStandingsDialogContent({
     return (
       <TournamentFinishedStandingsTabs
         key={`${eventId}-full`}
-        variant="dialog"
+        variant="fullscreen"
         categories={cats}
       />
     )
@@ -70,53 +71,96 @@ export default function WeeklyFullStandingsDialog({
   eventId: string
   fullStandingsQuery: FullStandingsQuery
 }) {
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+
   return (
-    <Dialog
+    <Drawer
+      anchor="bottom"
       open={open}
       onClose={onClose}
-      fullWidth
-      maxWidth="md"
-      aria-labelledby="full-standings-dialog-title"
+      aria-labelledby="full-standings-drawer-title"
       PaperProps={{
         sx: {
-          maxHeight: 'min(92vh, 880px)',
+          width: '100%',
+          maxWidth: '100%',
+          height: '100dvh',
+          maxHeight: '100dvh',
+          borderRadius: 0,
           display: 'flex',
           flexDirection: 'column',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          pt: 'env(safe-area-inset-top)',
+          pb: 'env(safe-area-inset-bottom)'
         }
       }}
     >
-      <DialogTitle id="full-standings-dialog-title" sx={{ flexShrink: 0 }}>
-        Clasificación completa
-      </DialogTitle>
-      <Typography
-        variant="body2"
-        color="text.secondary"
-        sx={{ px: 3, pb: 0, mt: -1, flexShrink: 0 }}
-      >
-        {eventTitle}
-      </Typography>
-      <DialogContent
-        dividers
+      <Box
+        component="header"
         sx={{
-          pt: 2,
+          flexShrink: 0,
+          px: { xs: 1.5, sm: 2 },
+          pt: { xs: 1, sm: 1.5 },
+          pb: { xs: 0.75, sm: 1 },
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 0.5,
+          borderBottom: 1,
+          borderColor: 'divider'
+        }}
+      >
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Typography
+            id="full-standings-drawer-title"
+            variant={isMobile ? 'subtitle1' : 'h6'}
+            component="h2"
+            fontWeight={800}
+            noWrap
+            sx={{ letterSpacing: '-0.02em', lineHeight: 1.2 }}
+          >
+            Clasificación completa
+          </Typography>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            component="p"
+            noWrap
+            title={eventTitle}
+            sx={{ mt: 0.25, lineHeight: 1.3 }}
+          >
+            {eventTitle}
+          </Typography>
+        </Box>
+        <IconButton
+          onClick={onClose}
+          aria-label="Cerrar clasificación"
+          edge="end"
+          size={isMobile ? 'medium' : 'large'}
+          sx={{ flexShrink: 0, ml: 0.5 }}
+        >
+          <Close />
+        </IconButton>
+      </Box>
+
+      <Box
+        component="main"
+        sx={{
+          flex: 1,
+          minHeight: 0,
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          flex: '1 1 auto',
-          minHeight: 0
+          px: { xs: 1.5, sm: 2 },
+          pt: { xs: 1, sm: 2 },
+          pb: { xs: 1.5, sm: 1 }
         }}
       >
-        <WeeklyFullStandingsDialogContent
+        <WeeklyFullStandingsContent
           query={fullStandingsQuery}
           eventId={eventId}
         />
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2, pt: 1, flexShrink: 0 }}>
-        <Button variant="contained" onClick={onClose}>
-          Cerrar
-        </Button>
-      </DialogActions>
-    </Dialog>
+      </Box>
+    </Drawer>
   )
 }
