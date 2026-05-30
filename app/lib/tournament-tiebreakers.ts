@@ -1,4 +1,8 @@
-import type { MatchRecord, ParsedMatch, ParsedPlayer } from '@/lib/tournament-xml'
+import type {
+  MatchRecord,
+  ParsedMatch,
+  ParsedPlayer
+} from '@/lib/tournament-xml'
 export { buildMatchRecordsFromMatches } from '@/lib/tournament-xml'
 import { inferPlayCategoryIndexForPlayer } from '@/lib/inferred-tdf-standings'
 
@@ -59,10 +63,7 @@ function matchCountByRound(matches: ParsedMatch[]): Map<number, number> {
   const countByRound = new Map<number, number>()
   for (const m of matches) {
     if (!isScoredMatch(m)) continue
-    countByRound.set(
-      m.roundNumber,
-      (countByRound.get(m.roundNumber) ?? 0) + 1
-    )
+    countByRound.set(m.roundNumber, (countByRound.get(m.roundNumber) ?? 0) + 1)
   }
   return countByRound
 }
@@ -190,10 +191,7 @@ export function playerWinPercentForTiebreaker(
 
 export function buildOpponentSetsFromMatches(
   matches: ParsedMatch[],
-  ctx?: Pick<
-    TiebreakerMatchContext,
-    'playersByPopId' | 'options'
-  >
+  ctx?: Pick<TiebreakerMatchContext, 'playersByPopId' | 'options'>
 ): Map<string, Set<string>> {
   const opponents = new Map<string, Set<string>>()
   const sameCatOnly = ctx?.options?.sameCategoryOnly ?? false

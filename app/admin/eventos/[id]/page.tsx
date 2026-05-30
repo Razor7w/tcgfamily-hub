@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import Box from '@mui/material/Box'
@@ -26,7 +26,6 @@ import {
   ArrowBack,
   CheckCircle,
   Groups,
-  InfoOutlined,
   Settings,
   UploadFile
 } from '@mui/icons-material'
@@ -61,6 +60,13 @@ function eventStateLabel(s: WeeklyEventState) {
   if (s === 'running') return 'En curso'
   if (s === 'close') return 'Cerrado'
   return 'Programado'
+}
+
+function defaultTabForEvent(ev: AdminWeeklyEvent | null): number {
+  if (!ev || ev.kind !== 'tournament') return 0
+  const rounds = ev.roundSnapshots?.length ?? 0
+  const preferTdf = rounds > 0 || ev.state === 'close' || ev.state === 'running'
+  return preferTdf ? 1 : 0
 }
 
 function eventNextStepHint(ev: AdminWeeklyEvent): string {
@@ -114,6 +120,7 @@ export default function AdminEventoDetailPage() {
   const savedRounds = ev?.roundSnapshots?.length ?? 0
 
   const [tab, setTab] = useState(0)
+  const [tabEventId, setTabEventId] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [leagueIdInput, setLeagueIdInput] = useState('')
   const [settingsSyncKey, setSettingsSyncKey] = useState<string | null>(null)
@@ -129,18 +136,13 @@ export default function AdminEventoDetailPage() {
     }
   }
 
-  useEffect(() => {
-    if (!ev) return
-    const rounds = ev.roundSnapshots?.length ?? 0
-    const preferTdf =
-      ev.kind === 'tournament' &&
-      (rounds > 0 || ev.state === 'close' || ev.state === 'running')
-    setTab(preferTdf ? 1 : 0)
-  }, [ev?._id])
-
-  useEffect(() => {
-    if (!showTdfTab && tab !== 0) setTab(0)
-  }, [showTdfTab, tab])
+  const evTabKey = ev?._id ?? `none:${id}`
+  if (evTabKey !== tabEventId) {
+    setTabEventId(evTabKey)
+    setTab(defaultTabForEvent(ev))
+  } else if (!showTdfTab && tab !== 0) {
+    setTab(0)
+  }
 
   const saveLeagueAssignment = async () => {
     if (!ev || ev.kind !== 'tournament') return
@@ -378,11 +380,14 @@ export default function AdminEventoDetailPage() {
                       value={String(savedRounds)}
                     />
                   ) : (
-                    <StatTile label="Estado" value={eventStateLabel(
-                      ev.state === 'running' || ev.state === 'close'
-                        ? ev.state
-                        : 'schedule'
-                    )} />
+                    <StatTile
+                      label="Estado"
+                      value={eventStateLabel(
+                        ev.state === 'running' || ev.state === 'close'
+                          ? ev.state
+                          : 'schedule'
+                      )}
+                    />
                   )}
                   <StatTile
                     label="Ronda activa"
@@ -598,7 +603,9 @@ export default function AdminEventoDetailPage() {
                                 </Box>
                                 <Button
                                   size="small"
-                                  variant={p.confirmed ? 'contained' : 'outlined'}
+                                  variant={
+                                    p.confirmed ? 'contained' : 'outlined'
+                                  }
                                   color={p.confirmed ? 'success' : 'inherit'}
                                   disabled={
                                     !canConfirm ||

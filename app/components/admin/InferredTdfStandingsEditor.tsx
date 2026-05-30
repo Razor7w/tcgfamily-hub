@@ -190,10 +190,10 @@ export default function InferredTdfStandingsEditor({
     <Stack spacing={2}>
       <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 720 }}>
         El archivo no incluye <code>&lt;standings&gt;</code>. Orden sugerido por
-        puntos de partida, récord W/L/T,         <strong>OWP</strong> y <strong>OOWP</strong> (TOM; suelo 25 %). Por
-        defecto se
-        separa por categoría según fecha de nacimiento (2025–26). Usa las flechas
-        para corregir el puesto antes de guardar o subir.
+        puntos de partida, récord W/L/T, <strong>OWP</strong> y{' '}
+        <strong>OOWP</strong> (TOM; suelo 25 %). Por defecto se separa por
+        categoría según fecha de nacimiento (2025–26). Usa las flechas para
+        corregir el puesto antes de guardar o subir.
       </Typography>
 
       {totalFinished > 0 ? (
@@ -205,16 +205,14 @@ export default function InferredTdfStandingsEditor({
           onClick={handleUnifyCategories}
           sx={{ alignSelf: { xs: 'stretch', sm: 'flex-start' } }}
         >
-          {isUnifiedView
-            ? 'Recalcular orden unificado'
-            : 'Unificar categorías'}
+          {isUnifiedView ? 'Recalcular orden unificado' : 'Unificar categorías'}
         </Button>
       ) : null}
       {isUnifiedView ? (
         <Typography variant="caption" color="text.secondary">
-          Clasificación unificada en Sénior (todas las edades en una sola tabla).
-          Al guardar Sénior se vacían Júnior y Máster en el evento para no dejar
-          puestos antiguos del TDF.
+          Clasificación unificada en Sénior (todas las edades en una sola
+          tabla). Al guardar Sénior se vacían Júnior y Máster en el evento para
+          no dejar puestos antiguos del TDF.
         </Typography>
       ) : null}
 
@@ -325,7 +323,8 @@ export default function InferredTdfStandingsEditor({
                       </TableCell>
                       <TableCell align="right" sx={{ fontSize: 13 }}>
                         {formatTiebreakerPercent(
-                          tiebreakers.get(row.popId)?.owp ?? OPPONENT_WIN_PCT_FLOOR
+                          tiebreakers.get(row.popId)?.owp ??
+                            OPPONENT_WIN_PCT_FLOOR
                         )}
                       </TableCell>
                       <TableCell align="right" sx={{ fontSize: 13 }}>

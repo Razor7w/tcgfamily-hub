@@ -12,7 +12,6 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Tabs from '@mui/material/Tabs'
-import Typography from '@mui/material/Typography'
 import { alpha, useTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import type { PublicWeeklyEvent } from '@/hooks/useWeeklyEvents'
@@ -253,8 +252,7 @@ export default function TournamentFinishedStandingsTabs({
                         color: 'text.secondary'
                       }}
                     >
-                      {typeof row.oowp === 'number' &&
-                      Number.isFinite(row.oowp)
+                      {typeof row.oowp === 'number' && Number.isFinite(row.oowp)
                         ? formatTiebreakerPercent(row.oowp)
                         : '—'}
                     </TableCell>

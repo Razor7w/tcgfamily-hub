@@ -428,7 +428,9 @@ export function buildParsedMatchesFromRoundSnapshots(
             player2UserId: '',
             timestamp: '',
             tableNumber:
-              typeof pairing.tableNumber === 'string' ? pairing.tableNumber : '0'
+              typeof pairing.tableNumber === 'string'
+                ? pairing.tableNumber
+                : '0'
           })
         }
         continue

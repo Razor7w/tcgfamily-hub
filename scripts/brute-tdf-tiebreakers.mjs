@@ -6,9 +6,8 @@ const dom = new JSDOM(xml, { contentType: 'text/xml' })
 globalThis.window = dom.window
 globalThis.DOMParser = dom.window.DOMParser
 
-const { parseTournamentXml, buildMatchRecordsFromMatches } = await import(
-  '../app/lib/tournament-xml.ts'
-)
+const { parseTournamentXml, buildMatchRecordsFromMatches } =
+  await import('../app/lib/tournament-xml.ts')
 const {
   filterMatchesForTiebreakers,
   buildMatchRecordsExcludingByes,
@@ -77,11 +76,14 @@ function playerPct(pop, cfg) {
   const scored = r.wins + r.losses + r.ties
   let raw = 0
   if (cfg.metric === 'wins_r') raw = r.wins / cfg.divisor
-  else if (cfg.metric === 'mp_r') raw = (r.wins * 3 + r.ties) / (3 * cfg.divisor)
+  else if (cfg.metric === 'mp_r')
+    raw = (r.wins * 3 + r.ties) / (3 * cfg.divisor)
   else if (cfg.metric === 'wlt_r') raw = (r.wins + 0.5 * r.ties) / cfg.divisor
   else if (cfg.metric === 'wins_rp') raw = r.wins / (scored || cfg.divisor)
-  else if (cfg.metric === 'mp_rp') raw = (r.wins * 3 + r.ties) / (3 * (scored || cfg.divisor))
-  else if (cfg.metric === 'wlt_rp') raw = (r.wins + 0.5 * r.ties) / (scored || cfg.divisor)
+  else if (cfg.metric === 'mp_rp')
+    raw = (r.wins * 3 + r.ties) / (3 * (scored || cfg.divisor))
+  else if (cfg.metric === 'wlt_rp')
+    raw = (r.wins + 0.5 * r.ties) / (scored || cfg.divisor)
   return clamp(raw, cfg.floor)
 }
 
@@ -226,8 +228,7 @@ for (const [recName, recMap] of recs) {
       Math.round(
         (os.reduce((s, o) => {
           const os2 = [...cfg.opps.get(o)]
-          const ox =
-            os2.reduce((a, y) => a + wp.get(y), 0) / (os2.length || 1)
+          const ox = os2.reduce((a, y) => a + wp.get(y), 0) / (os2.length || 1)
           return s + ox
         }, 0) /
           (os.length || 1)) *
@@ -275,8 +276,7 @@ if (best.cfg) {
       Math.round(
         (os.reduce((s, o) => {
           const os2 = [...cfg.opps.get(o)]
-          const ox =
-            os2.reduce((a, y) => a + wp.get(y), 0) / (os2.length || 1)
+          const ox = os2.reduce((a, y) => a + wp.get(y), 0) / (os2.length || 1)
           return s + Math.round(ox * 100) / 100
         }, 0) /
           (os.length || 1)) *

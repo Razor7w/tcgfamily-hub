@@ -12,9 +12,8 @@ const dom = new JSDOM(xml, { contentType: 'text/xml' })
 globalThis.window = dom.window
 globalThis.DOMParser = dom.window.DOMParser
 
-const { parseTournamentXml, buildMatchRecordsFromMatches } = await import(
-  '../app/lib/tournament-xml.ts'
-)
+const { parseTournamentXml, buildMatchRecordsFromMatches } =
+  await import('../app/lib/tournament-xml.ts')
 const {
   buildPlayerTiebreakersFromMatches,
   formatTiebreakerPercent,
@@ -42,7 +41,12 @@ const tb = buildPlayerTiebreakersFromMatches(
 )
 
 console.log('players', parsed.players.length)
-console.log('matches total', parsed.matches.length, 'swiss scored', swiss.length)
+console.log(
+  'matches total',
+  parsed.matches.length,
+  'swiss scored',
+  swiss.length
+)
 console.log('swiss rounds', rounds)
 console.log('---')
 
@@ -70,7 +74,7 @@ for (const p of parsed.players) {
     Math.abs(owpPct - exp.owp) < 0.02 &&
     Math.abs(oowpPct - exp.oowp) < 0.02
   console.log(
-    (ok ? 'OK' : 'MISS'),
+    ok ? 'OK' : 'MISS',
     pop,
     p.firstName,
     r ? `${r.wins}-${r.losses}-${r.ties}` : '?',
@@ -83,9 +87,8 @@ for (const p of parsed.players) {
   )
 }
 
-const { inferPlayCategoryIndexForPlayer } = await import(
-  '../app/lib/inferred-tdf-standings.ts'
-)
+const { inferPlayCategoryIndexForPlayer } =
+  await import('../app/lib/inferred-tdf-standings.ts')
 
 function catOf(pop) {
   const p = parsed.players.find(x => x.popId === pop)
@@ -109,7 +112,10 @@ function owpSameCat(pop, recMap, rnds) {
   const c = catOf(pop)
   const same = [...opps].filter(o => catOf(o) === c)
   if (same.length === 0) return 1 / 3
-  return same.map(o => mpPct(o, recMap, rnds)).reduce((a, b) => a + b, 0) / same.length
+  return (
+    same.map(o => mpPct(o, recMap, rnds)).reduce((a, b) => a + b, 0) /
+    same.length
+  )
 }
 
 function owpAllMp(pop, recMap, rnds) {

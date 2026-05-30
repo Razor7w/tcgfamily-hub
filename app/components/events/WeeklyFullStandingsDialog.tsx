@@ -24,7 +24,11 @@ function WeeklyFullStandingsContent({
 }) {
   if (query.isPending) {
     return (
-      <Stack alignItems="center" justifyContent="center" sx={{ flex: 1, py: 6 }}>
+      <Stack
+        alignItems="center"
+        justifyContent="center"
+        sx={{ flex: 1, py: 6 }}
+      >
         <CircularProgress size={36} aria-label="Cargando clasificación" />
       </Stack>
     )

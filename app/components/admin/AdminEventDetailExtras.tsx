@@ -51,7 +51,11 @@ export default function AdminEventDetailExtras({
             <BoxBlock title="Ubicación" body={ev.location!.trim()} />
           ) : null}
           {hasFormat ? (
-            <BoxBlock title="Formato / rondas" body={ev.formatNotes!.trim()} pre />
+            <BoxBlock
+              title="Formato / rondas"
+              body={ev.formatNotes!.trim()}
+              pre
+            />
           ) : null}
           {hasPrizes ? (
             <BoxBlock title="Premios" body={ev.prizesNotes!.trim()} pre />

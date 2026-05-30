@@ -124,7 +124,7 @@ export async function POST(
     }
 
     const clearOtherAgeCategories = rec.clearOtherAgeCategories === true
-    let clearedCategoryIndices: number[] = []
+    const clearedCategoryIndices: number[] = []
     if (
       clearOtherAgeCategories &&
       categoryIndex === 1 &&

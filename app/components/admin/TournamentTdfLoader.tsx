@@ -315,7 +315,7 @@ export default function TournamentTdfLoader({
 
   const showAdjustedStandingsEditor = Boolean(
     effectiveInferredStandings &&
-      (!tdfHasStandingsData || editedInferredStandings != null)
+    (!tdfHasStandingsData || editedInferredStandings != null)
   )
 
   const droppedPopIds = useMemo(() => {
@@ -346,12 +346,14 @@ export default function TournamentTdfLoader({
         parsed.players,
         { sameCategoryOnly: false }
       ),
-    [activeMatches, matchRecords, droppedPopIds, parsed.players.length]
+    [activeMatches, matchRecords, droppedPopIds, parsed.players]
   )
 
   const standingsOverrideForUpload =
     editedInferredStandings ??
-    (!tdfHasStandingsData ? effectiveInferredStandings ?? undefined : undefined)
+    (!tdfHasStandingsData
+      ? (effectiveInferredStandings ?? undefined)
+      : undefined)
 
   const preinscribeBatch = useAdminPreinscribeBatch()
   const syncRound = useAdminSyncEventRound()
@@ -648,8 +650,9 @@ export default function TournamentTdfLoader({
                           {p.popId}
                         </TableCell>
                         <TableCell>
-                          {[p.firstName, p.lastName].filter(Boolean).join(' ') ||
-                            '—'}
+                          {[p.firstName, p.lastName]
+                            .filter(Boolean)
+                            .join(' ') || '—'}
                         </TableCell>
                         <TableCell
                           align="center"
@@ -739,7 +742,10 @@ export default function TournamentTdfLoader({
                   /* error en estado */
                 }
               }}
-              sx={{ alignSelf: { xs: 'stretch', sm: 'flex-start' }, fontWeight: 700 }}
+              sx={{
+                alignSelf: { xs: 'stretch', sm: 'flex-start' },
+                fontWeight: 700
+              }}
             >
               Subir torneo completo
             </Button>
@@ -761,7 +767,8 @@ export default function TournamentTdfLoader({
                 <strong>
                   {uploadFullTournament.data?.roundSnapshotsCount}
                 </strong>{' '}
-                ronda(s), estado <strong>{uploadFullTournament.data?.state}</strong>.
+                ronda(s), estado{' '}
+                <strong>{uploadFullTournament.data?.state}</strong>.
               </Alert>
             ) : null}
           </Stack>

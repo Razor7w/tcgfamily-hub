@@ -14,14 +14,12 @@ const TIPS = {
   owp: {
     title: 'OWP',
     subtitle: '¿Qué tan fuertes eran tus rivales?',
-    body:
-      'A veces dos jugadores terminan con las mismas victorias. Para decidir quién va más arriba, se mira cómo le fue en el torneo a la gente que tú enfrentaste: si tus rivales ganaron mucho, tu número sube; si casi todos perdían, baja. Es el promedio de eso. Nunca cuenta menos del 25 %.'
+    body: 'A veces dos jugadores terminan con las mismas victorias. Para decidir quién va más arriba, se mira cómo le fue en el torneo a la gente que tú enfrentaste: si tus rivales ganaron mucho, tu número sube; si casi todos perdían, baja. Es el promedio de eso. Nunca cuenta menos del 25 %.'
   },
   oowp: {
     title: 'OOWP',
     subtitle: 'Si el OWP no alcanza, se mira un paso más',
-    body:
-      'Cuando el OWP deja a dos personas igualadas, entra este segundo número. Pregunta lo mismo, pero sobre los rivales de tus rivales: qué tan bien les fue a quienes jugaron contra la gente que a ti te tocó. También es un promedio; más alto significa que tus mesas eran más difíciles en general.'
+    body: 'Cuando el OWP deja a dos personas igualadas, entra este segundo número. Pregunta lo mismo, pero sobre los rivales de tus rivales: qué tan bien les fue a quienes jugaron contra la gente que a ti te tocó. También es un promedio; más alto significa que tus mesas eran más difíciles en general.'
   }
 } as const
 
