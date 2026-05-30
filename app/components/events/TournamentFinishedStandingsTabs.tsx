@@ -126,7 +126,10 @@ export default function TournamentFinishedStandingsTabs({
             ? {
                 flex: 1,
                 minHeight: 0,
-                overflow: 'auto'
+                overflow: 'auto',
+                ...(!compactTable && {
+                  maxHeight: 'min(58vh, 520px)'
+                })
               }
             : {
                 maxHeight: { xs: 'min(70vh, 520px)', sm: 520 }
