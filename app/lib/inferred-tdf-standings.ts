@@ -1,4 +1,8 @@
-import type { MatchRecord } from '@/lib/tournament-xml'
+import {
+  buildPlayerTiebreakersFromMatches,
+  comparePopIdsForStandings
+} from '@/lib/tournament-tiebreakers'
+import type { MatchRecord, ParsedMatch } from '@/lib/tournament-xml'
 import type { ParsedPlayer } from '@/lib/tournament-xml'
 import type { TournamentStandingsCategoryPayload } from '@/lib/tournament-xml'
 
@@ -77,12 +81,35 @@ function assignPlaces(popIds: string[]): InferredStandingRow[] {
   return popIds.map((popId, i) => ({ popId, place: i + 1 }))
 }
 
+function sortPopIdsForStandings(
+  popIds: string[],
+  players: ParsedPlayer[],
+  matchRecords: Map<string, MatchRecord>,
+  matches: ParsedMatch[],
+  droppedPopIds?: ReadonlySet<string>,
+  sameCategoryOnly = true
+): string[] {
+  const tiebreakers = buildPlayerTiebreakersFromMatches(
+    matches,
+    matchRecords,
+    droppedPopIds,
+    players.length,
+    players,
+    { sameCategoryOnly }
+  )
+  return [...popIds].sort((a, b) =>
+    comparePopIdsForStandings(a, b, matchRecords, tiebreakers)
+  )
+}
+
 /**
- * Clasificación propuesta por categoría a partir de récords W/L/T del TDF.
+ * Clasificación propuesta por categoría a partir de récords y partidas del TDF
+ * (puntos → W/L/T → OWP → OOWP).
  */
 export function buildInferredStandingsByCategory(
   players: ParsedPlayer[],
-  matchRecords: Map<string, MatchRecord>
+  matchRecords: Map<string, MatchRecord>,
+  matches: ParsedMatch[] = []
 ): TournamentStandingsCategoryPayload[] {
   const buckets: ParsedPlayer[][] = [[], [], []]
   for (const p of players) {
@@ -94,21 +121,101 @@ export function buildInferredStandingsByCategory(
 
   const out: TournamentStandingsCategoryPayload[] = []
   for (let ci = 0; ci < 3; ci++) {
-    const list = [...buckets[ci]]
-    list.sort((a, b) => {
-      const ra = matchRecords.get(a.popId) ?? { wins: 0, losses: 0, ties: 0 }
-      const rb = matchRecords.get(b.popId) ?? { wins: 0, losses: 0, ties: 0 }
-      const cmp = compareMatchRecordsForStandings(ra, rb)
-      if (cmp !== 0) return cmp
-      return a.popId.localeCompare(b.popId)
-    })
+    const pops = buckets[ci].map(p => p.popId.trim()).filter(Boolean)
+    const sorted = sortPopIdsForStandings(
+      pops,
+      buckets[ci],
+      matchRecords,
+      matches,
+      undefined,
+      true
+    )
     out.push({
       categoryIndex: ci,
-      finished: assignPlaces(list.map(p => p.popId.trim())),
+      finished: assignPlaces(sorted),
       dnf: []
     })
   }
   return out
+}
+
+/** Índices Júnior y Máster (vacíos cuando la clasificación está unificada en Sénior). */
+export const NON_SENIOR_STANDING_CATEGORY_INDICES = [0, 2] as const
+
+/**
+ * Clasificación unificada: todos los puestos en Sénior (1), sin finished en 0 ni 2.
+ */
+export function isUnifiedStandingsPayload(
+  standings: TournamentStandingsCategoryPayload[]
+): boolean {
+  const senior = standings.find(c => c.categoryIndex === 1)
+  const otherFinished = standings
+    .filter(c => c.categoryIndex !== 1)
+    .reduce((n, c) => n + c.finished.length, 0)
+  return Boolean(senior && senior.finished.length > 0 && otherFinished === 0)
+}
+
+/**
+ * Una sola tabla de clasificación (categoría Sénior / índice 1) con todos los jugadores.
+ */
+export function buildUnifiedInferredStandings(
+  players: ParsedPlayer[],
+  matchRecords: Map<string, MatchRecord>,
+  matches: ParsedMatch[]
+): TournamentStandingsCategoryPayload[] {
+  const pops = players.map(p => p.popId.trim()).filter(Boolean)
+  const sorted = sortPopIdsForStandings(
+    pops,
+    players,
+    matchRecords,
+    matches,
+    undefined,
+    false
+  )
+  return [
+    { categoryIndex: 0, finished: [], dnf: [] },
+    { categoryIndex: 1, finished: assignPlaces(sorted), dnf: [] },
+    { categoryIndex: 2, finished: [], dnf: [] }
+  ]
+}
+
+/**
+ * Reordena y fusiona las categorías actuales en una sola (índice 1), conservando DNF.
+ */
+export function unifyStandingsCategories(
+  standings: TournamentStandingsCategoryPayload[],
+  matchRecords: Map<string, MatchRecord>,
+  matches: ParsedMatch[]
+): TournamentStandingsCategoryPayload[] {
+  const finishedPops: string[] = []
+  const dnfPops = new Set<string>()
+  for (const cat of standings) {
+    for (const row of cat.finished) {
+      const pop = row.popId.trim()
+      if (pop) finishedPops.push(pop)
+    }
+    for (const row of cat.dnf ?? []) {
+      const pop = row.popId.trim()
+      if (pop) dnfPops.add(pop)
+    }
+  }
+  const sorted = sortPopIdsForStandings(
+    finishedPops,
+    [],
+    matchRecords,
+    matches,
+    undefined,
+    false
+  )
+  return [
+    { categoryIndex: 0, finished: [], dnf: [] },
+    {
+      categoryIndex: 1,
+      finished: assignPlaces(sorted),
+      dnf: [...dnfPops].map(popId => ({ popId }))
+    },
+    { categoryIndex: 2, finished: [], dnf: [] }
+  ]
 }
 
 export function reorderStandingRows(

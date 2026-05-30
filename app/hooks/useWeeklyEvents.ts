@@ -60,7 +60,12 @@ export interface PublicWeeklyEvent {
   /** Solo si el torneo está cerrado y hay datos importados (todos los puestos publicados, hasta 512/categoría). */
   standingsTopByCategory?: {
     categoryIndex: number
-    rows: { place: number; displayName: string }[]
+    rows: {
+      place: number
+      displayName: string
+      owp?: number | null
+      oowp?: number | null
+    }[]
   }[]
   /** Posición del usuario (POP) en su categoría; null si no figura. */
   myTournamentPlacement?: {
@@ -967,6 +972,8 @@ export function useAdminUploadStandingsPod() {
       categoryIndex: 0 | 1 | 2
       podType: 'finished' | 'dnf'
       rows: { popId: string; place?: number }[]
+      /** Tras guardar Sénior unificado, vacía finished y DNF en Júnior (0) y Máster (2). */
+      clearOtherAgeCategories?: boolean
     }) => {
       const res = await fetch(
         `/api/admin/events/${input.eventId}/standings-pod`,
@@ -976,7 +983,8 @@ export function useAdminUploadStandingsPod() {
           body: JSON.stringify({
             categoryIndex: input.categoryIndex,
             podType: input.podType,
-            rows: input.rows
+            rows: input.rows,
+            clearOtherAgeCategories: input.clearOtherAgeCategories === true
           })
         }
       )

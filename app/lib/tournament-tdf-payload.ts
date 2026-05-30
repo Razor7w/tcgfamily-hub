@@ -115,7 +115,11 @@ export function buildFullTournamentUploadPayload(
     standingsOverride ??
     (tdfStandingsHasPlayers(parsed.standings)
       ? foldStandingsByCategory(parsed.standings)
-      : buildInferredStandingsByCategory(parsed.players, matchRecords))
+      : buildInferredStandingsByCategory(
+          parsed.players,
+          matchRecords,
+          activeMatches
+        ))
 
   return {
     roundNum,

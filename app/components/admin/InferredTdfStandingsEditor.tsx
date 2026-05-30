@@ -21,11 +21,24 @@ import {
 } from '@mui/material'
 import {
   categoryLabelFromIndex,
+  isUnifiedStandingsPayload,
   reorderStandingRows,
+  unifyStandingsCategories,
   type InferredStandingRow
 } from '@/lib/inferred-tdf-standings'
-import { formatMatchRecordWlt, type MatchRecord } from '@/lib/tournament-xml'
+import {
+  buildPlayerTiebreakersFromMatches,
+  formatTiebreakerPercent,
+  OPPONENT_WIN_PCT_FLOOR
+} from '@/lib/tournament-tiebreakers'
+import {
+  formatMatchRecordWlt,
+  type MatchRecord,
+  type ParsedMatch,
+  type ParsedPlayer
+} from '@/lib/tournament-xml'
 import type { TournamentStandingsCategoryPayload } from '@/lib/tournament-xml'
+import MergeType from '@mui/icons-material/MergeType'
 import { useAdminUploadStandingsPod } from '@/hooks/useWeeklyEvents'
 
 type InferredTdfStandingsEditorProps = {
@@ -34,6 +47,12 @@ type InferredTdfStandingsEditorProps = {
   onStandingsChange: (next: TournamentStandingsCategoryPayload[]) => void
   names: Map<string, string>
   matchRecords: Map<string, MatchRecord>
+  matches: ParsedMatch[]
+  droppedPopIds?: ReadonlySet<string>
+  fieldSize?: number
+  players?: ParsedPlayer[]
+  /** Rivales solo de la misma categoría Play! (por categoría); false = pod unificado. */
+  sameCategoryTiebreakers?: boolean
 }
 
 function updateCategoryFinished(
@@ -51,10 +70,46 @@ export default function InferredTdfStandingsEditor({
   standings,
   onStandingsChange,
   names,
-  matchRecords
+  matchRecords,
+  matches,
+  droppedPopIds,
+  fieldSize,
+  players,
+  sameCategoryTiebreakers
 }: InferredTdfStandingsEditorProps) {
   const uploadStandingsPod = useAdminUploadStandingsPod()
   const showEventActions = Boolean(eventId)
+
+  const isUnifiedView = useMemo(
+    () => isUnifiedStandingsPayload(standings),
+    [standings]
+  )
+
+  const tiebreakers = useMemo(
+    () =>
+      buildPlayerTiebreakersFromMatches(
+        matches,
+        matchRecords,
+        droppedPopIds,
+        fieldSize,
+        players,
+        { sameCategoryOnly: sameCategoryTiebreakers ?? !isUnifiedView }
+      ),
+    [
+      matches,
+      matchRecords,
+      droppedPopIds,
+      fieldSize,
+      players,
+      sameCategoryTiebreakers,
+      isUnifiedView
+    ]
+  )
+
+  const totalFinished = useMemo(
+    () => standings.reduce((n, cat) => n + cat.finished.length, 0),
+    [standings]
+  )
 
   const categoriesWithPlayers = useMemo(
     () =>
@@ -85,12 +140,25 @@ export default function InferredTdfStandingsEditor({
       eventId,
       categoryIndex,
       podType: 'finished',
-      rows: cat.finished.map(r => ({ popId: r.popId, place: r.place }))
+      rows: cat.finished.map(r => ({ popId: r.popId, place: r.place })),
+      clearOtherAgeCategories: isUnifiedView && categoryIndex === 1
     })
   }
 
   const handleSaveAll = async () => {
     if (!eventId) return
+    if (isUnifiedView) {
+      const senior = standings.find(c => c.categoryIndex === 1)
+      if (!senior || senior.finished.length === 0) return
+      await uploadStandingsPod.mutateAsync({
+        eventId,
+        categoryIndex: 1,
+        podType: 'finished',
+        rows: senior.finished.map(r => ({ popId: r.popId, place: r.place })),
+        clearOtherAgeCategories: true
+      })
+      return
+    }
     for (const cat of standings) {
       if (cat.finished.length === 0) continue
       const ci = cat.categoryIndex
@@ -112,14 +180,41 @@ export default function InferredTdfStandingsEditor({
     )
   }
 
+  const handleUnifyCategories = () => {
+    onStandingsChange(
+      unifyStandingsCategories(standings, matchRecords, matches)
+    )
+  }
+
   return (
     <Stack spacing={2}>
       <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 720 }}>
         El archivo no incluye <code>&lt;standings&gt;</code>. Orden sugerido por
-        puntos de partida (3 por victoria, 1 por empate) y categoría según fecha
-        de nacimiento (reglas Play! 2025–26). Usa las flechas para corregir el
-        puesto antes de guardar.
+        puntos de partida, récord W/L/T, <strong>OWP</strong> y{' '}
+        <strong>OOWP</strong> (TOM; suelo 25 %). Por defecto se separa por
+        categoría según fecha de nacimiento (2025–26). Usa las flechas para
+        corregir el puesto antes de guardar o subir.
       </Typography>
+
+      {totalFinished > 0 ? (
+        <Button
+          type="button"
+          variant="outlined"
+          size="small"
+          startIcon={<MergeType />}
+          onClick={handleUnifyCategories}
+          sx={{ alignSelf: { xs: 'stretch', sm: 'flex-start' } }}
+        >
+          {isUnifiedView ? 'Recalcular orden unificado' : 'Unificar categorías'}
+        </Button>
+      ) : null}
+      {isUnifiedView ? (
+        <Typography variant="caption" color="text.secondary">
+          Clasificación unificada en Sénior (todas las edades en una sola
+          tabla). Al guardar Sénior se vacían Júnior y Máster en el evento para
+          no dejar puestos antiguos del TDF.
+        </Typography>
+      ) : null}
 
       {standings.map(cat => {
         if (cat.finished.length === 0) return null
@@ -135,7 +230,9 @@ export default function InferredTdfStandingsEditor({
               sx={{
                 px: 2,
                 py: 1,
-                bgcolor: 'action.hover',
+                bgcolor: 'background.paper',
+                borderBottom: '1px solid',
+                borderColor: 'divider',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -169,8 +266,14 @@ export default function InferredTdfStandingsEditor({
                     <TableCell width={120}>POP ID</TableCell>
                     <TableCell>Nombre</TableCell>
                     <TableCell align="center">W / L / T</TableCell>
-                    <TableCell align="center" width={88}>
+                    <TableCell align="center" width={72}>
                       Pts
+                    </TableCell>
+                    <TableCell align="right" width={88}>
+                      OWP
+                    </TableCell>
+                    <TableCell align="right" width={88}>
+                      OOWP
                     </TableCell>
                   </TableRow>
                 </TableHead>
@@ -216,11 +319,19 @@ export default function InferredTdfStandingsEditor({
                         {formatMatchRecordWlt(matchRecords.get(row.popId))}
                       </TableCell>
                       <TableCell align="center" sx={{ fontWeight: 600 }}>
-                        {(() => {
-                          const r = matchRecords.get(row.popId)
-                          if (!r) return 0
-                          return r.wins * 3 + r.ties
-                        })()}
+                        {tiebreakers.get(row.popId)?.matchPoints ?? 0}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontSize: 13 }}>
+                        {formatTiebreakerPercent(
+                          tiebreakers.get(row.popId)?.owp ??
+                            OPPONENT_WIN_PCT_FLOOR
+                        )}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontSize: 13 }}>
+                        {formatTiebreakerPercent(
+                          tiebreakers.get(row.popId)?.oowp ??
+                            OPPONENT_WIN_PCT_FLOOR
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -255,6 +366,9 @@ export default function InferredTdfStandingsEditor({
               onClose={() => uploadStandingsPod.reset()}
             >
               Clasificación guardada en el evento.
+              {isUnifiedView
+                ? ' Júnior y Máster quedaron sin puestos (tabla unificada).'
+                : ''}
             </Alert>
           ) : null}
         </Stack>
