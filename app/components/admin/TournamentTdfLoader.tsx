@@ -2,6 +2,9 @@
 
 import { useMemo, useRef, useState, type ReactNode } from 'react'
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -18,6 +21,8 @@ import {
   Tooltip,
   Typography
 } from '@mui/material'
+import { alpha } from '@mui/material/styles'
+import ExpandMore from '@mui/icons-material/ExpandMore'
 import {
   CloudUpload,
   DeleteOutline,
@@ -130,7 +135,9 @@ function RoundPairingsPanel({
         sx={{
           px: 2,
           py: 1,
-          bgcolor: 'action.hover',
+          bgcolor: 'background.paper',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -434,9 +441,9 @@ export default function TournamentTdfLoader({
     <Stack spacing={2}>
       {showIntro ? (
         <Typography variant="body2" color="text.secondary">
-          Las <strong>rondas guardadas</strong> del evento se muestran abajo sin
-          cargar archivo. Sube un <strong>.tdf</strong> para preinscribir,
-          setear rondas nuevas o importar el torneo completo.
+          Las rondas ya guardadas en el evento aparecen abajo. Sube un{' '}
+          <strong>.tdf</strong> para añadir jugadores, publicar rondas o cerrar
+          con clasificación.
         </Typography>
       ) : null}
 
@@ -448,29 +455,47 @@ export default function TournamentTdfLoader({
         onChange={handleFileChange}
       />
 
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={1}
-        alignItems={{ xs: 'stretch', sm: 'center' }}
+      <Paper
+        variant="outlined"
+        sx={{
+          p: { xs: 1.5, sm: 2 },
+          borderRadius: 2.5,
+          borderStyle: loadedFileName ? 'solid' : 'dashed'
+        }}
       >
-        <Button
-          variant="contained"
-          startIcon={<FolderOpen />}
-          onClick={handlePickFile}
-          sx={{ alignSelf: { sm: 'flex-start' } }}
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.25}
+          alignItems={{ xs: 'stretch', sm: 'center' }}
+          justifyContent="space-between"
         >
-          Cargar archivo .tdf
-        </Button>
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>
+              Archivo del torneo
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Exportación .tdf desde TOM
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<FolderOpen />}
+            onClick={handlePickFile}
+            sx={{ alignSelf: { sm: 'flex-start' }, fontWeight: 700 }}
+          >
+            Elegir .tdf
+          </Button>
+        </Stack>
         {loadedFileName ? (
           <Typography
             variant="body2"
             color="text.secondary"
-            sx={{ alignSelf: 'center' }}
+            sx={{ mt: 1.25, fontVariantNumeric: 'tabular-nums' }}
           >
-            Archivo: <strong>{loadedFileName}</strong>
+            Cargado: <strong>{loadedFileName}</strong>
           </Typography>
         ) : null}
-      </Stack>
+      </Paper>
 
       {fileReadError ? <Alert severity="error">{fileReadError}</Alert> : null}
 
@@ -478,64 +503,46 @@ export default function TournamentTdfLoader({
         <Alert severity="error">{parsed.error}</Alert>
       )}
 
-      {parsed.meta && (parsed.meta.name || parsed.meta.startDate) && (
-        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-            Datos del torneo
-          </Typography>
-          <Stack spacing={0.5}>
-            {parsed.meta.name ? (
-              <Typography variant="body2">
-                <strong>Nombre:</strong> {parsed.meta.name}
-              </Typography>
-            ) : null}
-            {parsed.meta.startDate ? (
-              <Typography variant="body2">
-                <strong>Fecha inicio:</strong> {parsed.meta.startDate}
-              </Typography>
-            ) : null}
-            {parsed.meta.city || parsed.meta.country ? (
-              <Typography variant="body2">
-                <strong>Lugar:</strong>{' '}
-                {[parsed.meta.city, parsed.meta.state, parsed.meta.country]
-                  .filter(Boolean)
-                  .join(', ')}
-              </Typography>
-            ) : null}
-            {parsed.meta.organizerName || parsed.meta.organizerPopId ? (
-              <Typography variant="body2">
-                <strong>Organizador:</strong> {parsed.meta.organizerName || '—'}{' '}
-                {parsed.meta.organizerPopId
-                  ? `(POP ${parsed.meta.organizerPopId})`
-                  : ''}
-              </Typography>
-            ) : null}
-            <Stack direction="row" flexWrap="wrap" gap={0.5} sx={{ pt: 0.5 }}>
-              {parsed.meta.gameType ? (
-                <Chip
-                  size="small"
-                  label={parsed.meta.gameType}
-                  variant="outlined"
-                />
+      {parsed.meta && (parsed.meta.name || parsed.meta.startDate) ? (
+        <Accordion
+          disableGutters
+          elevation={0}
+          sx={{
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: '12px !important',
+            '&:before': { display: 'none' }
+          }}
+        >
+          <AccordionSummary expandIcon={<ExpandMore />}>
+            <Typography variant="body2" fontWeight={700}>
+              Datos del archivo (opcional)
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ pt: 0 }}>
+            <Stack spacing={0.5}>
+              {parsed.meta.name ? (
+                <Typography variant="body2">
+                  <strong>Nombre:</strong> {parsed.meta.name}
+                </Typography>
               ) : null}
-              {parsed.meta.mode ? (
-                <Chip
-                  size="small"
-                  label={parsed.meta.mode}
-                  variant="outlined"
-                />
+              {parsed.meta.startDate ? (
+                <Typography variant="body2">
+                  <strong>Fecha inicio:</strong> {parsed.meta.startDate}
+                </Typography>
               ) : null}
-              {parsed.meta.version ? (
-                <Chip
-                  size="small"
-                  label={`v${parsed.meta.version}`}
-                  variant="outlined"
-                />
+              {parsed.meta.city || parsed.meta.country ? (
+                <Typography variant="body2">
+                  <strong>Lugar:</strong>{' '}
+                  {[parsed.meta.city, parsed.meta.state, parsed.meta.country]
+                    .filter(Boolean)
+                    .join(', ')}
+                </Typography>
               ) : null}
             </Stack>
-          </Stack>
-        </Paper>
-      )}
+          </AccordionDetails>
+        </Accordion>
+      ) : null}
 
       {parsed.players.length > 0 && (
         <>
@@ -545,12 +552,12 @@ export default function TournamentTdfLoader({
             alignItems={{ xs: 'stretch', sm: 'center' }}
             justifyContent="space-between"
           >
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              Jugadores ({parsed.players.length})
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+              Jugadores en el archivo ({parsed.players.length})
             </Typography>
             {showEventActions ? (
               <Button
-                variant="contained"
+                variant="outlined"
                 size="medium"
                 startIcon={<GroupAdd />}
                 disabled={
@@ -574,7 +581,7 @@ export default function TournamentTdfLoader({
                   alignSelf: { xs: 'stretch', sm: 'flex-start' }
                 }}
               >
-                Preinscribir todos
+                Añadir al evento
                 {batchPlayers.length > 0 ? ` (${batchPlayers.length})` : ''}
               </Button>
             ) : null}
@@ -606,46 +613,57 @@ export default function TournamentTdfLoader({
                 : ''}
             </Alert>
           ) : null}
-          <TableContainer
-            component={Paper}
-            variant="outlined"
-            sx={{ borderRadius: 2 }}
+          <Accordion
+            defaultExpanded={parsed.players.length <= 6}
+            disableGutters
+            elevation={0}
+            sx={{
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: '12px !important',
+              '&:before': { display: 'none' }
+            }}
           >
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>POP ID</TableCell>
-                  <TableCell>Nombre</TableCell>
-                  <TableCell align="center">W / L / T</TableCell>
-                  <TableCell>Nacimiento</TableCell>
-                  <TableCell align="center">Starter</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {parsed.players.map(p => (
-                  <TableRow key={p.popId}>
-                    <TableCell sx={{ fontFamily: 'monospace', fontSize: 13 }}>
-                      {p.popId}
-                    </TableCell>
-                    <TableCell>
-                      {[p.firstName, p.lastName].filter(Boolean).join(' ') ||
-                        '—'}
-                    </TableCell>
-                    <TableCell
-                      align="center"
-                      sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}
-                    >
-                      {formatMatchRecordWlt(matchRecords.get(p.popId))}
-                    </TableCell>
-                    <TableCell>{p.birthdate || '—'}</TableCell>
-                    <TableCell align="center">
-                      {p.starter ? 'Sí' : 'No'}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+            <AccordionSummary expandIcon={<ExpandMore />}>
+              <Typography variant="body2" fontWeight={700}>
+                Ver lista completa de jugadores
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ pt: 0, px: 0 }}>
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>POP ID</TableCell>
+                      <TableCell>Nombre</TableCell>
+                      <TableCell align="center">W / L / T</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {parsed.players.map(p => (
+                      <TableRow key={p.popId}>
+                        <TableCell
+                          sx={{ fontFamily: 'monospace', fontSize: 13 }}
+                        >
+                          {p.popId}
+                        </TableCell>
+                        <TableCell>
+                          {[p.firstName, p.lastName].filter(Boolean).join(' ') ||
+                            '—'}
+                        </TableCell>
+                        <TableCell
+                          align="center"
+                          sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}
+                        >
+                          {formatMatchRecordWlt(matchRecords.get(p.popId))}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </AccordionDetails>
+          </Accordion>
         </>
       )}
 
@@ -678,71 +696,76 @@ export default function TournamentTdfLoader({
       raw.trim() &&
       !parsed.error &&
       parsed.players.length > 0 ? (
-        <Stack spacing={1}>
-          <Button
-            type="button"
-            variant="contained"
-            color="success"
-            startIcon={<CloudUpload />}
-            disabled={
-              !eventId ||
-              uploadFullTournament.isPending ||
-              syncRound.isPending ||
-              preinscribeBatch.isPending
-            }
-            onClick={async () => {
-              if (!eventId) return
-              try {
-                const payload = buildFullTournamentUploadPayload(
-                  parsed,
-                  standingsOverrideForUpload,
-                  excludedTdfRoundNums
-                )
-                await uploadFullTournament.mutateAsync({ eventId, payload })
-                setLastRoundSync(null)
-                syncRound.reset()
-              } catch {
-                /* error en estado */
+        <Paper
+          variant="outlined"
+          sx={{
+            p: 2,
+            borderRadius: 2.5,
+            bgcolor: theme => alpha(theme.palette.success.main, 0.06),
+            borderColor: 'success.main'
+          }}
+        >
+          <Stack spacing={1.25}>
+            <Typography variant="subtitle2" fontWeight={700}>
+              Cerrar torneo de una vez
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Importa jugadores, rondas y clasificación (la tabla ajustada si
+              unificaste categorías). Deja el evento <strong>cerrado</strong>.
+            </Typography>
+            <Button
+              type="button"
+              variant="contained"
+              color="success"
+              startIcon={<CloudUpload />}
+              disabled={
+                !eventId ||
+                uploadFullTournament.isPending ||
+                syncRound.isPending ||
+                preinscribeBatch.isPending
               }
-            }}
-            sx={{ alignSelf: { xs: 'stretch', sm: 'flex-start' } }}
-          >
-            Subir torneo completo
-          </Button>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ maxWidth: 560, display: 'block' }}
-          >
-            Importa jugadores (actualiza récords), todas las rondas en el
-            historial, clasificación por categoría (Júnior / Sénior / Máster),
-            deja el evento en estado <strong>cerrado</strong> y aplica el
-            emparejamiento de la última ronda al listado. Si no hay standings en
-            el archivo, revisa la clasificación propuesta (con OWP/OOWP) antes
-            de subir. Si el TDF ya trae standings, usa «Recalcular» o «Unificar»
-            bajo esa sección para generar la clasificación ajustada.
-          </Typography>
-          {uploadFullTournament.isError ? (
-            <Alert severity="error">
-              {uploadFullTournament.error instanceof Error
-                ? uploadFullTournament.error.message
-                : 'Error al subir el torneo'}
-            </Alert>
-          ) : null}
-          {uploadFullTournament.isSuccess ? (
-            <Alert
-              severity="success"
-              onClose={() => uploadFullTournament.reset()}
+              onClick={async () => {
+                if (!eventId) return
+                try {
+                  const payload = buildFullTournamentUploadPayload(
+                    parsed,
+                    standingsOverrideForUpload,
+                    excludedTdfRoundNums
+                  )
+                  await uploadFullTournament.mutateAsync({ eventId, payload })
+                  setLastRoundSync(null)
+                  syncRound.reset()
+                } catch {
+                  /* error en estado */
+                }
+              }}
+              sx={{ alignSelf: { xs: 'stretch', sm: 'flex-start' }, fontWeight: 700 }}
             >
-              Torneo importado: estado{' '}
-              <strong>{uploadFullTournament.data?.state}</strong>,{' '}
-              <strong>{uploadFullTournament.data?.participantCount}</strong>{' '}
-              participantes,{' '}
-              <strong>{uploadFullTournament.data?.roundSnapshotsCount}</strong>{' '}
-              ronda(s) guardada(s).
-            </Alert>
-          ) : null}
-        </Stack>
+              Subir torneo completo
+            </Button>
+            {uploadFullTournament.isError ? (
+              <Alert severity="error">
+                {uploadFullTournament.error instanceof Error
+                  ? uploadFullTournament.error.message
+                  : 'Error al subir el torneo'}
+              </Alert>
+            ) : null}
+            {uploadFullTournament.isSuccess ? (
+              <Alert
+                severity="success"
+                onClose={() => uploadFullTournament.reset()}
+              >
+                Torneo importado:{' '}
+                <strong>{uploadFullTournament.data?.participantCount}</strong>{' '}
+                participantes,{' '}
+                <strong>
+                  {uploadFullTournament.data?.roundSnapshotsCount}
+                </strong>{' '}
+                ronda(s), estado <strong>{uploadFullTournament.data?.state}</strong>.
+              </Alert>
+            ) : null}
+          </Stack>
+        </Paper>
       ) : null}
 
       {showEventActions && savedRoundsSorted.length > 0 ? (
@@ -1011,7 +1034,7 @@ export default function TournamentTdfLoader({
             <strong>1</strong> = Sénior, <strong>2</strong> = Máster.{' '}
             <strong>DNF</strong> (did not finish) = no terminó el torneo. Los
             porcentajes <strong>OWP</strong> / <strong>OOWP</strong> siguen TOM
-            (victorias del récord con bye ÷ rondas suizo; suelo 33 %).
+            (partidas con rival; suelo 25 %).
           </Typography>
           {parsed.players.length > 0 && activeMatches.length > 0 ? (
             <Stack
@@ -1073,7 +1096,9 @@ export default function TournamentTdfLoader({
                   sx={{
                     px: 2,
                     py: 1,
-                    bgcolor: 'action.hover',
+                    bgcolor: 'background.paper',
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',

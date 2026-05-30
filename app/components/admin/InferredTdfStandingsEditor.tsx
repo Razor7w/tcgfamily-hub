@@ -190,9 +190,8 @@ export default function InferredTdfStandingsEditor({
     <Stack spacing={2}>
       <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 720 }}>
         El archivo no incluye <code>&lt;standings&gt;</code>. Orden sugerido por
-        puntos de partida, récord W/L/T, <strong>OWP</strong> y{' '}
-        <strong>OOWP</strong> (TOM: victorias del récord con bye ÷ rondas suizo;
-        suelo 33 %). Por defecto se
+        puntos de partida, récord W/L/T,         <strong>OWP</strong> y <strong>OOWP</strong> (TOM; suelo 25 %). Por
+        defecto se
         separa por categoría según fecha de nacimiento (2025–26). Usa las flechas
         para corregir el puesto antes de guardar o subir.
       </Typography>
@@ -233,7 +232,9 @@ export default function InferredTdfStandingsEditor({
               sx={{
                 px: 2,
                 py: 1,
-                bgcolor: 'action.hover',
+                bgcolor: 'background.paper',
+                borderBottom: '1px solid',
+                borderColor: 'divider',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
