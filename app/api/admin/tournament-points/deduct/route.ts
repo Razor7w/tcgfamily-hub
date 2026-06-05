@@ -3,6 +3,7 @@ import mongoose from 'mongoose'
 import { requireStoreStaffSession } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import { isTournamentPointsEnabledForStore } from '@/lib/tournament-points-settings'
+import { normalizeStorePointsAmount } from '@/lib/store-points-amount'
 import {
   deductTournamentPointsForPlayer,
   staffDisplayName
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
         ? (body as Record<string, unknown>)
         : {}
 
-    const subtract = Math.round(Number(rec.subtract) || 0)
+    const subtract = normalizeStorePointsAmount(rec.subtract)
     const reason = typeof rec.reason === 'string' ? rec.reason : ''
     const userId =
       typeof rec.userId === 'string' && rec.userId.trim()

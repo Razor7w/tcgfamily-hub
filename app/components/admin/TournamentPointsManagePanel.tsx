@@ -27,6 +27,7 @@ import {
   History,
   RemoveCircleOutline
 } from '@mui/icons-material'
+import { normalizeStorePointsAmount } from '@/lib/store-points-amount'
 import { formatStorePointsClpEquivalent } from '@/lib/store-points-clp'
 import { useMeStores } from '@/hooks/useMeStores'
 import TournamentPointsCsvImport from '@/components/admin/TournamentPointsCsvImport'
@@ -222,7 +223,7 @@ export default function TournamentPointsManagePanel() {
   }
 
   const handleApplyDeduct = async (row: TournamentPointsAggregatedPlayer) => {
-    const subtract = Math.round(Number(subtractAmount) || 0)
+    const subtract = normalizeStorePointsAmount(subtractAmount)
     const trimmedReason = reason.trim()
     if (subtract <= 0) return
     if (subtract > row.pointsTotal) return
@@ -240,7 +241,7 @@ export default function TournamentPointsManagePanel() {
   const deductRow = deductKey
     ? (filteredPlayers.find(p => playerRowKey(p) === deductKey) ?? null)
     : null
-  const subtractNum = Math.round(Number(subtractAmount) || 0)
+  const subtractNum = normalizeStorePointsAmount(subtractAmount)
   const reasonOk = reason.trim().length >= 3
   const canApply =
     deductRow != null &&
@@ -408,8 +409,9 @@ export default function TournamentPointsManagePanel() {
                                           setSubtractAmount(e.target.value)
                                         }
                                         inputProps={{
-                                          min: 1,
-                                          max: row.pointsTotal
+                                          min: 0.1,
+                                          max: row.pointsTotal,
+                                          step: 0.1
                                         }}
                                         helperText={`Máximo ${row.pointsTotal} pts`}
                                         sx={{ width: { xs: '100%', sm: 160 } }}

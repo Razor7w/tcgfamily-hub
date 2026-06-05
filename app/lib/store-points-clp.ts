@@ -1,4 +1,5 @@
 import { DEFAULT_PRIMARY_STORE_SLUG } from '@/lib/multitenancy/constants'
+import { normalizeStorePointsAmount } from '@/lib/store-points-amount'
 
 /** Valor de canje en CLP por punto en TCG Family. */
 export const CLP_PER_TCGFAMILY_STORE_POINT = 1
@@ -37,7 +38,7 @@ export function formatStorePointsClpEquivalent(
   points: number,
   storeSlug?: string | null
 ): string {
-  const pts = Math.max(0, Math.round(Number(points) || 0))
+  const pts = Math.max(0, normalizeStorePointsAmount(points))
   const rate = clpPerStorePoint(storeSlug)
   return new Intl.NumberFormat('es-CL', {
     style: 'currency',

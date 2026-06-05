@@ -1,5 +1,6 @@
 import type { Types } from 'mongoose'
 import User from '@/models/User'
+import { normalizeStorePointsAmount } from '@/lib/store-points-amount'
 import { resolveStoreWalletForUser } from '@/lib/store-credit-resolve'
 
 export type SliceRow = {
@@ -60,7 +61,7 @@ export async function incrementStoreCreditPoints(
   primaryStoreOid: Types.ObjectId | null,
   delta: number
 ): Promise<void> {
-  const add = Math.round(Number(delta) || 0)
+  const add = normalizeStorePointsAmount(delta)
   if (add === 0) return
 
   const user = await User.findById(userOid)
@@ -77,7 +78,7 @@ export async function incrementStoreCreditPoints(
   )
 
   await applyStoreCreditSlice(userOid, storeOid, {
-    saldo: Math.max(0, wallet.storePoints + add),
+    saldo: Math.max(0, normalizeStorePointsAmount(wallet.storePoints + add)),
     proximosVencer: wallet.storePointsExpiringNext,
     expiry: wallet.storePointsExpiryDate
   })
