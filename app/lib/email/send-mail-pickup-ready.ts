@@ -41,13 +41,13 @@ function escapeHtml(s: string): string {
 }
 
 /** Remitente por defecto para avisos de retiro (dominio verificado en Resend). */
-const DEFAULT_PICKUP_FROM = 'TCG Family <notificaciones@hub.tcgfamily.cl>'
+const DEFAULT_PICKUP_FROM = 'TCG Nexo <notificaciones@tcgnexo.cl>'
 
 function formatResendFromHeader(raw: string): string {
   const t = raw.trim()
   if (!t) return DEFAULT_PICKUP_FROM
   if (t.includes('<') && t.includes('>')) return t
-  return `TCG Family <${t}>`
+  return `TCG Nexo <${t}>`
 }
 
 /**
@@ -105,7 +105,7 @@ La tienda recepcionó tu envío. Ya puedes pasar a retirarlo con el código: ${c
 Más detalle en tu panel:
 ${dashboardMailUrl}
 
-— TCG Family`
+— TCG Nexo`
 
   const safeGreeting = escapeHtml(
     input.recipientName?.trim()
