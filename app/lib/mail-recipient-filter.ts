@@ -162,7 +162,7 @@ export function mailMatchesToRecipientFilter(
   return Boolean(key && key === sel.rutKey)
 }
 
-function filterFromUserFromRef(ref: unknown): FilterFromUser | null {
+export function filterFromUserFromRef(ref: unknown): FilterFromUser | null {
   if (ref == null || typeof ref !== 'object') return null
   const id = mailParticipantId(ref)
   if (!id) return null
@@ -177,7 +177,9 @@ function filterFromUserFromRef(ref: unknown): FilterFromUser | null {
   }
 }
 
-function filterToRecipientFromMail(m: MailParticipants): FilterToRecipient | null {
+export function filterToRecipientFromMail(
+  m: MailParticipants
+): FilterToRecipient | null {
   const to = m.toUserId
   if (to != null) {
     const user = filterFromUserFromRef(to)
