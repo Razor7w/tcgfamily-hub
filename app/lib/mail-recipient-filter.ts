@@ -170,9 +170,7 @@ export function filterFromUserFromRef(ref: unknown): FilterFromUser | null {
   return {
     id,
     name:
-      typeof obj.name === 'string' && obj.name.trim()
-        ? obj.name
-        : 'Sin nombre',
+      typeof obj.name === 'string' && obj.name.trim() ? obj.name : 'Sin nombre',
     rut: typeof obj.rut === 'string' ? obj.rut : ''
   }
 }
@@ -228,7 +226,7 @@ export function participantSearchMatches(
     const qKey = rutCompareKey(query.trim())
     return Boolean(
       (qKey && (rutKey === qKey || rutKey.includes(qKey))) ||
-        (qDigits && rutKey.replace(/\D/g, '').includes(qDigits))
+      (qDigits && rutKey.replace(/\D/g, '').includes(qDigits))
     )
   } catch {
     return rutLower.includes(v)
