@@ -6,6 +6,7 @@ import TournamentPointsAuditLog, {
 } from '@/models/TournamentPointsAuditLog'
 import type { ITournamentPointsAwardRow } from '@/models/TournamentPointsAward'
 import TournamentPointsAward from '@/models/TournamentPointsAward'
+import { normalizeStorePointsAmount } from '@/lib/store-points-amount'
 import { incrementStoreCreditPoints } from '@/lib/store-credit-slice-write'
 import { popidForStorage } from '@/lib/rut-chile'
 
@@ -155,7 +156,7 @@ export function parseDeductionsInput(raw: unknown[]): PointDeduction[] {
     seen.add(popId)
     const subtract = Math.max(
       0,
-      Math.min(POINTS_MAX, Math.round(Number(r.subtract) || 0))
+      Math.min(POINTS_MAX, normalizeStorePointsAmount(r.subtract))
     )
     if (subtract <= 0) continue
     const reason =
@@ -204,7 +205,7 @@ export function applyDeductionsToRows(
         error: `No puedes descontar más de ${row.points} pts a ${row.displayName}`
       }
     }
-    const nextPoints = row.points - d.subtract
+    const nextPoints = normalizeStorePointsAmount(row.points - d.subtract)
     const updated = afterMap.get(d.popId)!
     updated.points = nextPoints
     changes.push({
@@ -502,7 +503,7 @@ export async function deductTournamentPointsForPlayer(input: {
   }
   const subtract = Math.max(
     0,
-    Math.min(POINTS_MAX, Math.round(Number(input.subtract) || 0))
+    Math.min(POINTS_MAX, normalizeStorePointsAmount(input.subtract))
   )
   if (subtract <= 0) {
     return {
