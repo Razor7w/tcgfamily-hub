@@ -48,7 +48,13 @@ export async function GET(request: Request) {
     })
       .sort({ startsAt: -1 })
       .limit(MAX_EVENTS)
-      .select({ startsAt: 1, tournamentOrigin: 1, participants: 1 })
+      .select({
+        startsAt: 1,
+        tournamentOrigin: 1,
+        state: 1,
+        roundSnapshots: 1,
+        participants: 1
+      })
       .lean()
 
     if (myDeckKeyFilter != null) {

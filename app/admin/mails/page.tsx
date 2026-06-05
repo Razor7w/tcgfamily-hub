@@ -48,7 +48,10 @@ import {
 import { useCreateUser, type CreateUserData } from '@/hooks/useUsers'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
 import { formatMailLogDateTime, getMailStatusChip } from '@/lib/mail-status'
-import { normalizeMailCodeForSearch } from '@/lib/mail-code-search'
+import {
+  filterMailsByCodeSearch,
+  resolveMailCodeSearchExpansion
+} from '@/lib/mail-code-search'
 import {
   type ElapsedBucketFilter,
   getMailStoreWaitDays,
@@ -62,7 +65,9 @@ import {
   buildToRecipientOptions,
   filterFromUserLabel,
   filterToRecipientLabel,
+  mailMatchesFromUserQuery,
   mailMatchesToRecipientFilter,
+  mailMatchesToRecipientQuery,
   participantSearchMatches,
   toRecipientSearchMatches,
   type FilterFromUser,
@@ -113,8 +118,10 @@ export default function MailsPage() {
   const [filterFromUser, setFilterFromUser] = useState<FilterFromUser | null>(
     null
   )
+  const [filterFromInput, setFilterFromInput] = useState('')
   const [filterToRecipient, setFilterToRecipient] =
     useState<FilterToRecipient | null>(null)
+  const [filterToInput, setFilterToInput] = useState('')
   const [page, setPage] = useState(1)
   const [mailToDelete, setMailToDelete] = useState<Mail | null>(null)
   const [bulkWithdrawOpen, setBulkWithdrawOpen] = useState(false)
@@ -140,17 +147,13 @@ export default function MailsPage() {
     [allMails]
   )
 
+  const codeSearchExpansion = useMemo(
+    () => resolveMailCodeSearchExpansion(allMails, searchId),
+    [allMails, searchId]
+  )
+
   const mails = useMemo(() => {
-    let list = allMails
-    const qCode = normalizeMailCodeForSearch(searchId)
-    const qId = searchId.trim().toLowerCase()
-    if (qCode) {
-      list = list.filter(
-        m =>
-          normalizeMailCodeForSearch(m.code ?? '').includes(qCode) ||
-          m._id.toLowerCase().includes(qId)
-      )
-    }
+    let list = filterMailsByCodeSearch(allMails, searchId)
     if (filterStage === 'retired') {
       list = list.filter(m => m.isRecived)
     } else if (filterStage === 'inStore') {
@@ -167,11 +170,15 @@ export default function MailsPage() {
     }
     if (filterFromUser) {
       list = list.filter(m => mailUserId(m.fromUserId) === filterFromUser.id)
+    } else if (filterFromInput.trim()) {
+      list = list.filter(m => mailMatchesFromUserQuery(m, filterFromInput))
     }
     if (filterToRecipient) {
       list = list.filter(m =>
         mailMatchesToRecipientFilter(m, filterToRecipient)
       )
+    } else if (filterToInput.trim()) {
+      list = list.filter(m => mailMatchesToRecipientQuery(m, filterToInput))
     }
     return list
   }, [
@@ -180,12 +187,22 @@ export default function MailsPage() {
     filterStage,
     filterElapsed,
     filterFromUser,
-    filterToRecipient
+    filterFromInput,
+    filterToRecipient,
+    filterToInput
   ])
 
   useEffect(() => {
     setPage(1)
-  }, [searchId, filterStage, filterElapsed, filterFromUser, filterToRecipient])
+  }, [
+    searchId,
+    filterStage,
+    filterElapsed,
+    filterFromUser,
+    filterFromInput,
+    filterToRecipient,
+    filterToInput
+  ])
 
   const pageCount = Math.max(1, Math.ceil(mails.length / PAGE_SIZE))
 
@@ -200,15 +217,43 @@ export default function MailsPage() {
 
   /** En tienda y pendientes de retiro (excluye «No recibido en tienda»). */
   const bulkWithdrawTargets = useMemo(() => {
-    if (!filterToRecipient) return []
+    const enabled =
+      Boolean(filterToRecipient) ||
+      codeSearchExpansion?.kind === 'recipientInStore'
+    if (!enabled) return []
     return mails.filter(m => !m.isRecived && Boolean(m.isRecivedInStore))
-  }, [mails, filterToRecipient])
+  }, [mails, filterToRecipient, codeSearchExpansion])
 
-  /** Sin ingresar en tienda, filtrados por remitente. */
+  /** Sin ingresar en tienda, filtrados por remitente o búsqueda por código expandida. */
   const bulkReceiveInStoreTargets = useMemo(() => {
-    if (!filterFromUser) return []
+    const enabled =
+      Boolean(filterFromUser) ||
+      codeSearchExpansion?.kind === 'senderNotInStore'
+    if (!enabled) return []
     return mails.filter(m => !m.isRecived && !m.isRecivedInStore)
-  }, [mails, filterFromUser])
+  }, [mails, filterFromUser, codeSearchExpansion])
+
+  const bulkReceiveContextLabel = useMemo(() => {
+    if (filterFromUser) return filterFromUserLabel(filterFromUser)
+    if (codeSearchExpansion?.kind === 'senderNotInStore') {
+      return filterFromUserLabel(codeSearchExpansion.sender)
+    }
+    return null
+  }, [filterFromUser, codeSearchExpansion])
+
+  const bulkWithdrawContextLabel = useMemo(() => {
+    if (filterToRecipient) return filterToRecipientLabel(filterToRecipient)
+    if (codeSearchExpansion?.kind === 'recipientInStore') {
+      return filterToRecipientLabel(codeSearchExpansion.recipient)
+    }
+    return null
+  }, [filterToRecipient, codeSearchExpansion])
+
+  const showBulkReceiveInStore =
+    bulkReceiveContextLabel != null && bulkReceiveInStoreTargets.length > 1
+
+  const showBulkWithdraw =
+    bulkWithdrawContextLabel != null && bulkWithdrawTargets.length > 1
 
   const mailActionsDisabled =
     updateMail.isPending ||
@@ -581,7 +626,28 @@ export default function MailsPage() {
                 size="small"
                 options={usersFromMails}
                 value={filterFromUser}
+                inputValue={filterFromInput}
                 onChange={(_, v) => setFilterFromUser(v)}
+                onInputChange={(_, value, reason) => {
+                  if (reason === 'input') {
+                    setFilterFromInput(value)
+                    if (
+                      filterFromUser &&
+                      value !== filterFromUserLabel(filterFromUser)
+                    ) {
+                      setFilterFromUser(null)
+                    }
+                    return
+                  }
+                  if (reason === 'clear') {
+                    setFilterFromInput('')
+                    setFilterFromUser(null)
+                    return
+                  }
+                  if (reason === 'reset') {
+                    setFilterFromInput(value)
+                  }
+                }}
                 getOptionLabel={filterFromUserLabel}
                 isOptionEqualToValue={(a, b) => a.id === b.id}
                 sx={{
@@ -603,7 +669,28 @@ export default function MailsPage() {
                 size="small"
                 options={toRecipientOptions}
                 value={filterToRecipient}
+                inputValue={filterToInput}
                 onChange={(_, v) => setFilterToRecipient(v)}
+                onInputChange={(_, value, reason) => {
+                  if (reason === 'input') {
+                    setFilterToInput(value)
+                    if (
+                      filterToRecipient &&
+                      value !== filterToRecipientLabel(filterToRecipient)
+                    ) {
+                      setFilterToRecipient(null)
+                    }
+                    return
+                  }
+                  if (reason === 'clear') {
+                    setFilterToInput('')
+                    setFilterToRecipient(null)
+                    return
+                  }
+                  if (reason === 'reset') {
+                    setFilterToInput(value)
+                  }
+                }}
                 getOptionLabel={filterToRecipientLabel}
                 isOptionEqualToValue={(a, b) => a.id === b.id}
                 sx={{
@@ -742,7 +829,7 @@ export default function MailsPage() {
           </Stack>
         </Paper>
 
-        {filterFromUser && bulkReceiveInStoreTargets.length > 1 ? (
+        {showBulkReceiveInStore ? (
           <Alert
             severity="info"
             sx={{ mb: 2, borderRadius: 2, alignItems: 'center' }}
@@ -761,11 +848,11 @@ export default function MailsPage() {
             }
           >
             Hay {bulkReceiveInStoreTargets.length} correos sin ingresar en
-            tienda de <strong>{filterFromUserLabel(filterFromUser)}</strong>.
+            tienda de <strong>{bulkReceiveContextLabel}</strong>.
           </Alert>
         ) : null}
 
-        {filterToRecipient && bulkWithdrawTargets.length > 1 ? (
+        {showBulkWithdraw ? (
           <Alert
             severity="info"
             sx={{ mb: 2, borderRadius: 2, alignItems: 'center' }}
@@ -784,8 +871,7 @@ export default function MailsPage() {
             }
           >
             Hay {bulkWithdrawTargets.length} correos en tienda pendientes de
-            retiro para{' '}
-            <strong>{filterToRecipientLabel(filterToRecipient)}</strong>.
+            retiro para <strong>{bulkWithdrawContextLabel}</strong>.
           </Alert>
         ) : null}
 
@@ -807,7 +893,9 @@ export default function MailsPage() {
                 setFilterStage('all')
                 setFilterElapsed('all')
                 setFilterFromUser(null)
+                setFilterFromInput('')
                 setFilterToRecipient(null)
+                setFilterToInput('')
               }}
             >
               Restablecer filtros
@@ -1099,11 +1187,8 @@ export default function MailsPage() {
               Se marcarán{' '}
               <strong>{bulkReceiveInStoreTargets.length} correos</strong> como
               recibidos en tienda de{' '}
-              <strong>
-                {filterFromUser ? filterFromUserLabel(filterFromUser) : ''}
-              </strong>
-              . Solo se incluyen correos en estado{' '}
-              <strong>No recibido en tienda</strong>.
+              <strong>{bulkReceiveContextLabel ?? ''}</strong>. Solo se incluyen
+              correos en estado <strong>No recibido en tienda</strong>.
             </Typography>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -1138,13 +1223,8 @@ export default function MailsPage() {
             <Typography variant="body2" color="text.secondary">
               Se marcarán <strong>{bulkWithdrawTargets.length} correos</strong>{' '}
               como retirados para{' '}
-              <strong>
-                {filterToRecipient
-                  ? filterToRecipientLabel(filterToRecipient)
-                  : ''}
-              </strong>
-              . Solo se incluyen correos marcados como{' '}
-              <strong>En tienda</strong>.
+              <strong>{bulkWithdrawContextLabel ?? ''}</strong>. Solo se
+              incluyen correos marcados como <strong>En tienda</strong>.
             </Typography>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>

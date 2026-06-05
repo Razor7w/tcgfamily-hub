@@ -1,5 +1,14 @@
 import { clean } from 'rut.js'
 
+/** Texto de búsqueda: minúsculas sin tildes. */
+export function normalizeMailFilterSearchText(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
 /** Clave estable para comparar variantes del mismo RUT (incluye DV K). */
 export function rutCompareKey(raw: string | undefined | null): string {
   const t = String(raw ?? '').trim()
@@ -153,34 +162,106 @@ export function mailMatchesToRecipientFilter(
   return Boolean(key && key === sel.rutKey)
 }
 
+export function filterFromUserFromRef(ref: unknown): FilterFromUser | null {
+  if (ref == null || typeof ref !== 'object') return null
+  const id = mailParticipantId(ref)
+  if (!id) return null
+  const obj = ref as { name?: unknown; rut?: unknown }
+  return {
+    id,
+    name:
+      typeof obj.name === 'string' && obj.name.trim() ? obj.name : 'Sin nombre',
+    rut: typeof obj.rut === 'string' ? obj.rut : ''
+  }
+}
+
+export function filterToRecipientFromMail(
+  m: MailParticipants
+): FilterToRecipient | null {
+  const to = m.toUserId
+  if (to != null) {
+    const user = filterFromUserFromRef(to)
+    if (!user) return null
+    return {
+      kind: 'user',
+      id: user.id,
+      name: user.name,
+      rut: user.rut
+    }
+  }
+  const raw = typeof m.toRut === 'string' ? m.toRut.trim() : ''
+  if (!raw) return null
+  const rutKey = rutCompareKey(raw)
+  if (!rutKey) return null
+  return {
+    kind: 'toRut',
+    id: `toRut:${rutKey}`,
+    rutDisplay: raw,
+    rutKey
+  }
+}
+
 /** Búsqueda en el texto del autocomplete (nombre o variantes RUT). */
 export function participantSearchMatches(
   query: string,
   u: FilterFromUser
 ): boolean {
-  const v = query.trim().toLowerCase()
+  const v = normalizeMailFilterSearchText(query)
   if (!v) return true
-  if (u.name?.toLowerCase().includes(v)) return true
+  const name = normalizeMailFilterSearchText(u.name ?? '')
+  if (name && name.includes(v)) return true
+  if (name) {
+    const tokens = name.split(/\s+/).filter(Boolean)
+    if (tokens.some(token => token.includes(v) || v.includes(token))) {
+      return true
+    }
+  }
   if (!u.rut) return false
+  const rutLower = u.rut.toLowerCase()
+  if (rutLower.includes(v)) return true
+  const qDigits = v.replace(/\D/g, '')
+  if (qDigits && rutLower.replace(/\D/g, '').includes(qDigits)) return true
   try {
-    return (
-      u.rut.toLowerCase().includes(v) ||
-      rutCompareKey(u.rut).includes(rutCompareKey(query)) ||
-      rutCompareKey(u.rut).includes(v.replace(/\D/g, ''))
+    const rutKey = rutCompareKey(u.rut)
+    const qKey = rutCompareKey(query.trim())
+    return Boolean(
+      (qKey && (rutKey === qKey || rutKey.includes(qKey))) ||
+      (qDigits && rutKey.replace(/\D/g, '').includes(qDigits))
     )
   } catch {
-    return u.rut.toLowerCase().includes(v)
+    return rutLower.includes(v)
   }
+}
+
+/** Filtra correos por texto libre en remitente (nombre o RUT). */
+export function mailMatchesFromUserQuery(
+  m: MailParticipants,
+  query: string
+): boolean {
+  const participant = filterFromUserFromRef(m.fromUserId)
+  if (!participant) return false
+  return participantSearchMatches(query, participant)
+}
+
+/** Filtra correos por texto libre en destinatario (nombre, RUT o solo toRut). */
+export function mailMatchesToRecipientQuery(
+  m: MailParticipants,
+  query: string
+): boolean {
+  const recipient = filterToRecipientFromMail(m)
+  if (!recipient) return false
+  return toRecipientSearchMatches(query, recipient)
 }
 
 export function toRecipientSearchMatches(
   query: string,
   o: FilterToRecipient
 ): boolean {
-  const v = query.trim().toLowerCase()
+  const v = normalizeMailFilterSearchText(query)
   if (!v) return true
   if (o.kind === 'user') return participantSearchMatches(query, o)
-  if (o.rutDisplay.toLowerCase().includes(v)) return true
+  const display = normalizeMailFilterSearchText(o.rutDisplay)
+  if (display.includes(v)) return true
   const qDigits = v.replace(/\D/g, '')
   if (qDigits && o.rutKey.replace(/\D/g, '').includes(qDigits)) return true
   try {

@@ -1,7 +1,18 @@
 import {
+  buildBitacoraInferredDeckLookup,
+  buildParticipantDeckLookup,
+  buildPopToDisplayNameMap,
+  enrichMatchRoundsWithOpponentDecks,
+  emptyParticipantDeckLookup,
+  mergeLeanMatchRoundsWithSnapshots,
+  type RoundSnapshotLean
+} from '@/lib/match-rounds-with-snapshots'
+import {
   parseParticipantMatchRoundsFromLean,
-  roundTableOutcome
+  roundTableOutcome,
+  type ParticipantMatchRoundDTO
 } from '@/lib/participant-match-round'
+import { canExposeParticipantDecksToOthers } from '@/lib/weekly-events'
 
 export type TournamentOriginFilter = 'all' | 'official' | 'custom'
 
@@ -51,15 +62,90 @@ export function slugsDisplayOrderForDeckKey(
 
 type LeanParticipant = {
   userId?: unknown
+  popId?: string
+  displayName?: string
   matchRounds?: unknown
   deckPokemonSlugs?: unknown
+  wins?: unknown
+  losses?: unknown
+  ties?: unknown
 }
 
 type LeanEventForMatchups = {
   _id?: unknown
   startsAt: Date | string
   tournamentOrigin?: string
+  state?: string
+  roundSnapshots?: RoundSnapshotLean[]
   participants?: LeanParticipant[]
+}
+
+function clampWlt(n: unknown): number {
+  return Math.max(0, Math.min(999, Math.round(Number(n) || 0)))
+}
+
+/**
+ * Mismas rondas enriquecidas que la bitácora del torneo (TDF + mazo rival reportado
+ * + sprites inferidos), para que estadísticas y UI agrupen el mismo deck rival.
+ */
+function enrichedMatchRoundsForParticipant(
+  ev: LeanEventForMatchups,
+  mine: LeanParticipant
+): ParticipantMatchRoundDTO[] {
+  const parts = ev.participants ?? []
+  const tournamentOrigin =
+    ev.tournamentOrigin === 'custom' ? 'custom' : 'official'
+  const exposeOpponentDecksToOthers = canExposeParticipantDecksToOthers({
+    state: ev.state,
+    tournamentOrigin
+  })
+  const popToDisplayName = buildPopToDisplayNameMap(
+    parts as { displayName?: string; popId?: string }[]
+  )
+  const participantShape = parts as {
+    displayName?: string
+    popId?: string
+    deckPokemonSlugs?: unknown
+    matchRounds?: unknown
+  }[]
+  const selfReportedLookup = exposeOpponentDecksToOthers
+    ? buildParticipantDeckLookup(participantShape)
+    : emptyParticipantDeckLookup()
+  const bitacoraLookup = exposeOpponentDecksToOthers
+    ? buildBitacoraInferredDeckLookup(participantShape)
+    : emptyParticipantDeckLookup()
+
+  const myPopId = typeof mine.popId === 'string' ? mine.popId : null
+  const finalRecord =
+    tournamentOrigin !== 'custom'
+      ? {
+          wins: clampWlt(mine.wins),
+          losses: clampWlt(mine.losses),
+          ties: clampWlt(mine.ties)
+        }
+      : null
+
+  const merged = mergeLeanMatchRoundsWithSnapshots(
+    myPopId,
+    mine.matchRounds,
+    ev.roundSnapshots ?? [],
+    popToDisplayName,
+    finalRecord
+  )
+  const enriched = enrichMatchRoundsWithOpponentDecks(
+    myPopId,
+    merged,
+    ev.roundSnapshots ?? [],
+    selfReportedLookup,
+    bitacoraLookup,
+    exposeOpponentDecksToOthers
+  )
+
+  const reportedRoundNums = new Set(
+    parseParticipantMatchRoundsFromLean(mine.matchRounds).map(r => r.roundNum)
+  )
+  if (reportedRoundNums.size === 0) return []
+  return enriched.filter(r => reportedRoundNums.has(r.roundNum))
 }
 
 function myDeckSlugsFromParticipant(p: LeanParticipant): string[] {
@@ -264,7 +350,7 @@ export function aggregateOpponentMatchupsForMyDeck(
     const myKey = opponentDeckKey(myDeckSlugsFromParticipant(mine))
     if (myKey !== myDeckKeyFilter) continue
 
-    const rounds = parseParticipantMatchRoundsFromLean(mine.matchRounds)
+    const rounds = enrichedMatchRoundsForParticipant(ev, mine)
     if (rounds.length === 0) continue
 
     const startsAtRaw = ev.startsAt
@@ -349,10 +435,10 @@ export function aggregateOpponentMatchups(
     const parts = ev.participants ?? []
     const mine = parts.find(
       p => p?.userId != null && String(p.userId) === userIdStr
-    )
+    ) as LeanParticipant | undefined
     if (!mine) continue
 
-    const rounds = parseParticipantMatchRoundsFromLean(mine.matchRounds)
+    const rounds = enrichedMatchRoundsForParticipant(ev, mine)
     if (rounds.length === 0) continue
 
     const startsAtRaw = ev.startsAt
