@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import AddIcon from '@mui/icons-material/Add'
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows'
+import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import StarRoundedIcon from '@mui/icons-material/StarRounded'
@@ -72,6 +73,7 @@ export default function DecklistVariantsPanel({
   const [pendingOpenTabId, setPendingOpenTabId] = useState<string | null>(null)
   const [compareOpen, setCompareOpen] = useState(false)
   const [compareSession, setCompareSession] = useState(0)
+  const [listCopied, setListCopied] = useState(false)
   const [principalToastOpen, setPrincipalToastOpen] = useState(false)
 
   const resolvedTab = useMemo(() => {
@@ -366,6 +368,31 @@ export default function DecklistVariantsPanel({
               spacing={1}
               alignItems={{ xs: 'stretch', sm: 'center' }}
             >
+              <Button
+                size="small"
+                variant="outlined"
+                color="primary"
+                startIcon={<ContentCopyIcon />}
+                disabled={!activeDeckText.trim() || pending}
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(activeDeckText)
+                    setListCopied(true)
+                    window.setTimeout(() => setListCopied(false), 2000)
+                  } catch {
+                    setListCopied(false)
+                  }
+                }}
+                aria-live="polite"
+                sx={{
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  transition: 'transform 0.15s ease, box-shadow 0.2s ease',
+                  '&:active': { transform: 'translateY(1px) scale(0.99)' }
+                }}
+              >
+                {listCopied ? 'Copiado' : 'Copiar lista'}
+              </Button>
               <Button
                 size="small"
                 variant="outlined"
