@@ -218,7 +218,8 @@ export async function PUT(
               listKind: part.tournamentDecklistRef.listKind,
               variantId: part.tournamentDecklistRef.variantId
             }
-          : null
+          : null,
+        userInitiatedSave: true
       })
     }
 

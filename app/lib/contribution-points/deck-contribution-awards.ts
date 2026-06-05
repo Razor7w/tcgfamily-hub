@@ -27,6 +27,7 @@ export async function applyDeckContributionAwards(input: {
     listKind?: unknown
     variantId?: unknown
   } | null
+  userInitiatedSave?: boolean
 }): Promise<ContributionPointsAwardedItem[]> {
   const storeIdStr = String(input.storeId)
   const userIdStr = String(input.userId)
@@ -37,7 +38,8 @@ export async function applyDeckContributionAwards(input: {
     previousSlugs: input.previousSlugs,
     nextSlugs: input.nextSlugs,
     previousDecklistRef: input.previousDecklistRef,
-    nextDecklistRef: input.nextDecklistRef
+    nextDecklistRef: input.nextDecklistRef,
+    userInitiatedSave: input.userInitiatedSave
   })
 
   const feedback: ContributionPointsAwardedItem[] = []

@@ -34,6 +34,11 @@ export function planDeckContributionAwards(input: {
     listKind?: unknown
     variantId?: unknown
   } | null
+  /**
+   * Guardado iniciado por el jugador (p. ej. PUT /my-deck). Si el owner precargó
+   * sprites en reporte manual, el jugador igual puede ganar el bono una vez.
+   */
+  userInitiatedSave?: boolean
 }): DeckContributionAwardPlan[] {
   if (!isOfficialTournamentForContribution(input.tournamentOrigin)) {
     return []
@@ -42,8 +47,9 @@ export function planDeckContributionAwards(input: {
   const plans: DeckContributionAwardPlan[] = []
   const hadSlugs = input.previousSlugs.some(s => s.trim())
   const hasSlugs = input.nextSlugs.some(s => s.trim())
+  const userSave = input.userInitiatedSave === true
 
-  if (!hadSlugs && hasSlugs) {
+  if (hasSlugs && (!hadSlugs || userSave)) {
     plans.push({ action: 'own_deck_reported' })
   }
 
@@ -54,7 +60,7 @@ export function planDeckContributionAwards(input: {
     ? decklistRefKey(input.nextDecklistRef)
     : null
 
-  if (nextRefKey && nextRefKey !== prevRefKey) {
+  if (nextRefKey && (nextRefKey !== prevRefKey || userSave)) {
     plans.push({ action: 'decklist_ref' })
   }
 
