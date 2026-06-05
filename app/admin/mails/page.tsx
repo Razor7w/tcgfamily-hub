@@ -62,7 +62,9 @@ import {
   buildToRecipientOptions,
   filterFromUserLabel,
   filterToRecipientLabel,
+  mailMatchesFromUserQuery,
   mailMatchesToRecipientFilter,
+  mailMatchesToRecipientQuery,
   participantSearchMatches,
   toRecipientSearchMatches,
   type FilterFromUser,
@@ -113,8 +115,10 @@ export default function MailsPage() {
   const [filterFromUser, setFilterFromUser] = useState<FilterFromUser | null>(
     null
   )
+  const [filterFromInput, setFilterFromInput] = useState('')
   const [filterToRecipient, setFilterToRecipient] =
     useState<FilterToRecipient | null>(null)
+  const [filterToInput, setFilterToInput] = useState('')
   const [page, setPage] = useState(1)
   const [mailToDelete, setMailToDelete] = useState<Mail | null>(null)
   const [bulkWithdrawOpen, setBulkWithdrawOpen] = useState(false)
@@ -167,11 +171,15 @@ export default function MailsPage() {
     }
     if (filterFromUser) {
       list = list.filter(m => mailUserId(m.fromUserId) === filterFromUser.id)
+    } else if (filterFromInput.trim()) {
+      list = list.filter(m => mailMatchesFromUserQuery(m, filterFromInput))
     }
     if (filterToRecipient) {
       list = list.filter(m =>
         mailMatchesToRecipientFilter(m, filterToRecipient)
       )
+    } else if (filterToInput.trim()) {
+      list = list.filter(m => mailMatchesToRecipientQuery(m, filterToInput))
     }
     return list
   }, [
@@ -180,12 +188,22 @@ export default function MailsPage() {
     filterStage,
     filterElapsed,
     filterFromUser,
-    filterToRecipient
+    filterFromInput,
+    filterToRecipient,
+    filterToInput
   ])
 
   useEffect(() => {
     setPage(1)
-  }, [searchId, filterStage, filterElapsed, filterFromUser, filterToRecipient])
+  }, [
+    searchId,
+    filterStage,
+    filterElapsed,
+    filterFromUser,
+    filterFromInput,
+    filterToRecipient,
+    filterToInput
+  ])
 
   const pageCount = Math.max(1, Math.ceil(mails.length / PAGE_SIZE))
 
@@ -581,7 +599,28 @@ export default function MailsPage() {
                 size="small"
                 options={usersFromMails}
                 value={filterFromUser}
+                inputValue={filterFromInput}
                 onChange={(_, v) => setFilterFromUser(v)}
+                onInputChange={(_, value, reason) => {
+                  if (reason === 'input') {
+                    setFilterFromInput(value)
+                    if (
+                      filterFromUser &&
+                      value !== filterFromUserLabel(filterFromUser)
+                    ) {
+                      setFilterFromUser(null)
+                    }
+                    return
+                  }
+                  if (reason === 'clear') {
+                    setFilterFromInput('')
+                    setFilterFromUser(null)
+                    return
+                  }
+                  if (reason === 'reset') {
+                    setFilterFromInput(value)
+                  }
+                }}
                 getOptionLabel={filterFromUserLabel}
                 isOptionEqualToValue={(a, b) => a.id === b.id}
                 sx={{
@@ -603,7 +642,28 @@ export default function MailsPage() {
                 size="small"
                 options={toRecipientOptions}
                 value={filterToRecipient}
+                inputValue={filterToInput}
                 onChange={(_, v) => setFilterToRecipient(v)}
+                onInputChange={(_, value, reason) => {
+                  if (reason === 'input') {
+                    setFilterToInput(value)
+                    if (
+                      filterToRecipient &&
+                      value !== filterToRecipientLabel(filterToRecipient)
+                    ) {
+                      setFilterToRecipient(null)
+                    }
+                    return
+                  }
+                  if (reason === 'clear') {
+                    setFilterToInput('')
+                    setFilterToRecipient(null)
+                    return
+                  }
+                  if (reason === 'reset') {
+                    setFilterToInput(value)
+                  }
+                }}
                 getOptionLabel={filterToRecipientLabel}
                 isOptionEqualToValue={(a, b) => a.id === b.id}
                 sx={{
@@ -807,7 +867,9 @@ export default function MailsPage() {
                 setFilterStage('all')
                 setFilterElapsed('all')
                 setFilterFromUser(null)
+                setFilterFromInput('')
                 setFilterToRecipient(null)
+                setFilterToInput('')
               }}
             >
               Restablecer filtros
