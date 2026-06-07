@@ -11,9 +11,10 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import { alpha, useTheme } from '@mui/material/styles'
-import DecklistModule from '@/components/decklist/DecklistModule'
+import DecklistImageGrid from '@/components/decklist/DecklistImageGrid'
 import DecklistViewActions from '@/components/decklist/DecklistViewActions'
 import type { DecklistVariantDTO } from '@/components/decklist/DecklistVariantsPanel'
+import { flatCardsFromDecklistText } from '@/lib/decklist'
 
 type Props = {
   baseDeckText: string
@@ -73,6 +74,11 @@ export default function PublicDecklistVariantsPanel({
 
   const editing = variants.find(v => v.id === resolvedTab) ?? null
 
+  const flatCards = useMemo(
+    () => flatCardsFromDecklistText(activeDeckText),
+    [activeDeckText]
+  )
+
   return (
     <Paper
       elevation={0}
@@ -121,10 +127,11 @@ export default function PublicDecklistVariantsPanel({
             >
               Listas del mazo
             </Typography>
-            <Box sx={{ display: { xs: 'block', sm: 'none' }, flexShrink: 0 }}>
+            <Box sx={{ flexShrink: 0 }}>
               <DecklistViewActions
                 key={deckModuleKey}
                 value={activeDeckText}
+                showImageButton={false}
                 showCopyListButton
                 compact
               />
@@ -269,12 +276,7 @@ export default function PublicDecklistVariantsPanel({
       </Box>
 
       <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
-        <DecklistModule
-          key={deckModuleKey}
-          value={activeDeckText}
-          showCopyListButton
-          mobileActionsInHeader
-        />
+        <DecklistImageGrid key={deckModuleKey} cards={flatCards} />
       </Box>
     </Paper>
   )
