@@ -3,8 +3,7 @@ import {
   requireSessionUserWithActiveStore,
   requireStoreStaffSession
 } from '@/lib/api-auth'
-import { sendMailPickupReadyEmail } from '@/lib/email/send-mail-pickup-ready'
-import { getResendNotifyPickupInStoreEnabledForStore } from '@/lib/get-resend-notify-pickup-enabled'
+import { queueMailPickupReadyEmails } from '@/lib/email/queue-mail-pickup-ready-emails'
 import connectDB from '@/lib/mongodb'
 import Mails from '@/models/Mails'
 import User from '@/models/User'
@@ -203,6 +202,12 @@ export async function PUT(
       })
     }
 
+    const pickupEmailJobs: {
+      toEmail: string
+      recipientName?: string
+      mailCode: string
+    }[] = []
+
     if (becameReadyInStore && existing.toUserId) {
       const recipientDoc = await User.findById(existing.toUserId)
         .select('email name')
@@ -215,36 +220,29 @@ export async function PUT(
         recipient && typeof recipient.email === 'string'
           ? recipient.email.trim()
           : ''
-      if (toEmail) {
-        try {
-          const notifyEnabled =
-            await getResendNotifyPickupInStoreEnabledForStore(
-              gate.activeStoreOid.toString()
-            )
-          if (notifyEnabled) {
-            await sendMailPickupReadyEmail({
-              to: toEmail,
-              recipientName:
-                recipient && typeof recipient.name === 'string'
-                  ? recipient.name
-                  : undefined,
-              mailCode: existing.code
-            })
-          } else {
-            console.info(
-              '[api/mail] Aviso Resend desactivado en configuración (recepción en tienda).'
-            )
-          }
-        } catch (emailErr) {
-          console.error(
-            '[api/mail] Aviso por email de retiro en tienda no enviado:',
-            emailErr
-          )
-        }
+      const mailCode =
+        typeof existing.code === 'string' ? existing.code.trim() : ''
+      if (toEmail && mailCode) {
+        pickupEmailJobs.push({
+          toEmail,
+          recipientName:
+            recipient && typeof recipient.name === 'string'
+              ? recipient.name
+              : undefined,
+          mailCode
+        })
       }
     }
 
     const mail = await getMailOr404(mailId)
+
+    if (pickupEmailJobs.length > 0) {
+      queueMailPickupReadyEmails(
+        gate.activeStoreOid.toString(),
+        pickupEmailJobs
+      )
+    }
+
     return NextResponse.json({ mail }, { status: 200 })
   } catch (error) {
     console.error('Error al actualizar mail:', error)

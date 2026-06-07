@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import mongoose from 'mongoose'
 import { requireStoreStaffSession } from '@/lib/api-auth'
-import { sendMailPickupReadyEmail } from '@/lib/email/send-mail-pickup-ready'
-import { getResendNotifyPickupInStoreEnabledForStore } from '@/lib/get-resend-notify-pickup-enabled'
+import { queueMailPickupReadyEmails } from '@/lib/email/queue-mail-pickup-ready-emails'
 import connectDB from '@/lib/mongodb'
 import Mails from '@/models/Mails'
 import User from '@/models/User'
@@ -89,52 +88,70 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    const pickupEmailJobs: {
+      toEmail: string
+      recipientName?: string
+      mailCode: string
+    }[] = []
+
     if (pending.length > 0) {
-      try {
-        const notifyEnabled = await getResendNotifyPickupInStoreEnabledForStore(
-          gate.activeStoreOid.toString()
+      const toUserIds = [
+        ...new Set(
+          pending
+            .map(m => m.toUserId)
+            .filter((id): id is mongoose.Types.ObjectId => id != null)
+            .map(id => id.toString())
         )
-        if (notifyEnabled) {
-          for (const mail of pending) {
-            if (!mail.toUserId) continue
-            const recipientDoc = await User.findById(mail.toUserId)
-              .select('email name')
-              .lean()
-            const recipient = recipientDoc as {
+      ]
+
+      const recipientsById = new Map<
+        string,
+        { email?: string; name?: string }
+      >()
+      if (toUserIds.length > 0) {
+        const users = await User.find({
+          _id: {
+            $in: toUserIds.map(id => new mongoose.Types.ObjectId(id))
+          }
+        })
+          .select('email name')
+          .lean()
+        for (const u of users) {
+          recipientsById.set(
+            String((u as { _id: unknown })._id),
+            u as {
               email?: string
               name?: string
-            } | null
-            const toEmail =
-              recipient && typeof recipient.email === 'string'
-                ? recipient.email.trim()
-                : ''
-            if (!toEmail) continue
-            const mailCode =
-              typeof mail.code === 'string' ? mail.code.trim() : ''
-            if (!mailCode) continue
-            try {
-              await sendMailPickupReadyEmail({
-                to: toEmail,
-                recipientName:
-                  recipient && typeof recipient.name === 'string'
-                    ? recipient.name
-                    : undefined,
-                mailCode
-              })
-            } catch (emailErr) {
-              console.error(
-                '[api/mail/bulk-receive-in-store] Aviso por email no enviado:',
-                emailErr
-              )
             }
-          }
+          )
         }
-      } catch (notifyErr) {
-        console.error(
-          '[api/mail/bulk-receive-in-store] Error al enviar avisos:',
-          notifyErr
-        )
       }
+
+      for (const mail of pending) {
+        if (!mail.toUserId) continue
+        const recipient = recipientsById.get(String(mail.toUserId))
+        const toEmail =
+          recipient && typeof recipient.email === 'string'
+            ? recipient.email.trim()
+            : ''
+        const mailCode = typeof mail.code === 'string' ? mail.code.trim() : ''
+        if (!toEmail || !mailCode) continue
+        pickupEmailJobs.push({
+          toEmail,
+          recipientName:
+            recipient && typeof recipient.name === 'string'
+              ? recipient.name
+              : undefined,
+          mailCode
+        })
+      }
+    }
+
+    if (pickupEmailJobs.length > 0) {
+      queueMailPickupReadyEmails(
+        gate.activeStoreOid.toString(),
+        pickupEmailJobs
+      )
     }
 
     return NextResponse.json({
