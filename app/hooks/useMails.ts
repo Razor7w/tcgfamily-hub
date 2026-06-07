@@ -254,6 +254,45 @@ export function useUpdateMail() {
       const res = await response.json()
       return res.mail as Mail
     },
+    onMutate: async ({ mailId, data }) => {
+      await queryClient.cancelQueries({ queryKey: ['mails', storeKey] })
+      const previous = queryClient.getQueryData<{ mails: Mail[] }>([
+        'mails',
+        storeKey
+      ])
+
+      const patchMail = (mail: Mail): Mail => {
+        const next: Mail = { ...mail }
+        if (data.isRecived !== undefined) next.isRecived = data.isRecived
+        if (data.isRecivedInStore !== undefined) {
+          next.isRecivedInStore = data.isRecivedInStore
+          if (data.isRecivedInStore && mail.isRecivedInStore !== true) {
+            next.receivedInStoreAt = new Date().toISOString()
+          } else if (!data.isRecivedInStore) {
+            next.receivedInStoreAt = null
+          }
+        }
+        if (data.observations !== undefined) {
+          next.observations = data.observations ?? ''
+        }
+        if (data.toRut !== undefined) next.toRut = data.toRut
+        return next
+      }
+
+      queryClient.setQueryData<{ mails: Mail[] }>(['mails', storeKey], old => {
+        if (!old?.mails) return old
+        return {
+          mails: old.mails.map(m => (m._id === mailId ? patchMail(m) : m))
+        }
+      })
+
+      return { previous }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['mails', storeKey], context.previous)
+      }
+    },
     onSuccess: (updatedMail, variables) => {
       queryClient.setQueryData<{ mails: Mail[] }>(['mails', storeKey], old => {
         if (!old?.mails) return old
@@ -282,6 +321,10 @@ export function useUpdateMail() {
           return { mails: next }
         }
       )
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['mails', storeKey] })
+      queryClient.invalidateQueries({ queryKey: ['mails', 'me'] })
     }
   })
 }
@@ -315,6 +358,28 @@ export function useBulkWithdrawMails() {
 
       return response.json() as Promise<BulkWithdrawMailsResult>
     },
+    onMutate: async mailIds => {
+      const idSet = new Set(mailIds)
+      await queryClient.cancelQueries({ queryKey: ['mails', storeKey] })
+      const previous = queryClient.getQueryData<{ mails: Mail[] }>([
+        'mails',
+        storeKey
+      ])
+      queryClient.setQueryData<{ mails: Mail[] }>(['mails', storeKey], old => {
+        if (!old?.mails) return old
+        return {
+          mails: old.mails.map(m =>
+            idSet.has(m._id) ? { ...m, isRecived: true } : m
+          )
+        }
+      })
+      return { previous }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['mails', storeKey], context.previous)
+      }
+    },
     onSuccess: (_, mailIds) => {
       const idSet = new Set(mailIds)
       queryClient.setQueryData<{ mails: Mail[] }>(['mails', storeKey], old => {
@@ -326,6 +391,9 @@ export function useBulkWithdrawMails() {
         }
       })
       queryClient.invalidateQueries({ queryKey: ['mails', 'me'] })
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['mails', storeKey] })
     }
   })
 }
@@ -352,6 +420,35 @@ export function useBulkReceiveInStoreMails() {
 
       return response.json() as Promise<BulkReceiveInStoreMailsResult>
     },
+    onMutate: async mailIds => {
+      const idSet = new Set(mailIds)
+      const receivedInStoreAt = new Date().toISOString()
+      await queryClient.cancelQueries({ queryKey: ['mails', storeKey] })
+      const previous = queryClient.getQueryData<{ mails: Mail[] }>([
+        'mails',
+        storeKey
+      ])
+      queryClient.setQueryData<{ mails: Mail[] }>(['mails', storeKey], old => {
+        if (!old?.mails) return old
+        return {
+          mails: old.mails.map(m =>
+            idSet.has(m._id)
+              ? {
+                  ...m,
+                  isRecivedInStore: true,
+                  receivedInStoreAt
+                }
+              : m
+          )
+        }
+      })
+      return { previous, receivedInStoreAt }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['mails', storeKey], context.previous)
+      }
+    },
     onSuccess: (result, mailIds) => {
       const idSet = new Set(mailIds)
       queryClient.setQueryData<{ mails: Mail[] }>(['mails', storeKey], old => {
@@ -369,6 +466,9 @@ export function useBulkReceiveInStoreMails() {
         }
       })
       queryClient.invalidateQueries({ queryKey: ['mails', 'me'] })
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['mails', storeKey] })
     }
   })
 }
