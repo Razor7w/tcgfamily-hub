@@ -422,7 +422,6 @@ export async function aggregateTournamentPointsByPlayer(
   >()
 
   for (const row of rows) {
-    if (row.points <= 0) continue
     const resolvedUserId =
       row.userId ?? popToUser.get(row.popId)?.toString() ?? null
     const identityKey = resolvedUserId
@@ -465,6 +464,109 @@ export async function aggregateTournamentPointsByPlayer(
     .sort((a, b) =>
       a.displayName.localeCompare(b.displayName, 'es', { sensitivity: 'base' })
     )
+}
+
+/** Incluye jugadores que ya no tienen saldo pero aparecen en auditoría. */
+export async function appendPlayersFromAuditHistory(
+  players: AggregatedTournamentPointsPlayer[],
+  storeOid: mongoose.Types.ObjectId
+): Promise<AggregatedTournamentPointsPlayer[]> {
+  const byKey = new Map(players.map(p => [p.identityKey, p]))
+  const knownPops = new Set<string>()
+  for (const p of players) {
+    if (p.primaryPopId) knownPops.add(p.primaryPopId)
+    for (const s of p.sources) knownPops.add(s.popId)
+  }
+
+  const logs = (await TournamentPointsAuditLog.find({ storeId: storeOid })
+    .select('changes')
+    .sort({ createdAt: -1 })
+    .limit(500)
+    .lean()) as { changes?: ITournamentPointsAuditChange[] }[]
+
+  const missingPops = new Map<string, string>()
+  for (const log of logs) {
+    for (const c of log.changes ?? []) {
+      if (!c.popId || knownPops.has(c.popId)) continue
+      const hadPoints =
+        (c.pointsBefore ?? 0) > 0 ||
+        (c.pointsAfter ?? 0) > 0 ||
+        c.kind === 'added' ||
+        c.kind === 'removed'
+      if (!hadPoints) continue
+      if (!missingPops.has(c.popId)) {
+        missingPops.set(c.popId, c.displayName)
+      }
+    }
+  }
+
+  if (missingPops.size === 0) {
+    return players
+  }
+
+  const popToUser = await resolveUserIdsForAwardRows(
+    [...missingPops.entries()].map(([popId, displayName]) => ({
+      place: 1,
+      displayName,
+      popId,
+      points: 0
+    }))
+  )
+
+  const userIds = [...new Set([...popToUser.values()].map(id => id.toString()))]
+  const userNames = new Map<string, string>()
+  if (userIds.length > 0) {
+    const users = await User.find({
+      _id: {
+        $in: userIds.map(id => new mongoose.Types.ObjectId(id))
+      }
+    })
+      .select('name email popid')
+      .lean()
+    for (const u of users) {
+      const id = String((u as { _id: unknown })._id)
+      const name =
+        String((u as { name?: string }).name ?? '').trim() ||
+        String((u as { email?: string }).email ?? '').trim()
+      if (name) userNames.set(id, name.slice(0, 200))
+    }
+  }
+
+  for (const [popId, displayName] of missingPops) {
+    const uid = popToUser.get(popId)?.toString() ?? null
+    const identityKey = uid ? `u:${uid}` : `p:${popId}`
+    if (byKey.has(identityKey)) {
+      knownPops.add(popId)
+      continue
+    }
+    byKey.set(identityKey, {
+      identityKey,
+      userId: uid,
+      primaryPopId: popId,
+      displayName:
+        uid && userNames.has(uid) ? userNames.get(uid)! : displayName,
+      pointsTotal: 0,
+      sources: []
+    })
+    knownPops.add(popId)
+  }
+
+  return [...byKey.values()].sort((a, b) =>
+    a.displayName.localeCompare(b.displayName, 'es', { sensitivity: 'base' })
+  )
+}
+
+export function collectPopIdsForPlayer(input: {
+  primaryPopId: string
+  sources: PlayerPointsSource[]
+}): string[] {
+  return [
+    ...new Set(
+      [input.primaryPopId, ...input.sources.map(s => s.popId)]
+        .map(p => popidForStorage(p))
+        .filter(Boolean)
+    )
+  ]
 }
 
 function rowBelongsToIdentity(

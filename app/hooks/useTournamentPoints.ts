@@ -257,21 +257,42 @@ export function useTournamentPointsAwards(enabled: boolean) {
 
 export function useTournamentPointsAuditLog(
   enabled: boolean,
-  awardId?: string | null
+  options?: {
+    awardId?: string | null
+    popIds?: string[]
+    userId?: string | null
+    playerOnly?: boolean
+    limit?: number
+  }
 ) {
   const storeKey = useDashboardStoreQueryKey()
+  const awardId = options?.awardId ?? null
+  const popIds = options?.popIds ?? []
+  const userId = options?.userId ?? null
+  const playerOnly = options?.playerOnly === true
+  const limit = options?.limit
+  const popIdsKey = popIds.length > 0 ? popIds.join(',') : 'none'
+
   return useQuery({
     queryKey: [
       'admin',
       'tournament-points',
       'audit',
       storeKey,
-      awardId ?? 'all'
+      awardId ?? 'all',
+      popIdsKey,
+      userId ?? 'none',
+      playerOnly ? 'player' : 'full',
+      limit ?? 'default'
     ],
     enabled: enabled && storeKey !== 'none',
     queryFn: async () => {
       const q = new URLSearchParams()
       if (awardId) q.set('awardId', awardId)
+      if (popIds.length > 0) q.set('popIds', popIds.join(','))
+      if (userId) q.set('userId', userId)
+      if (playerOnly) q.set('playerOnly', '1')
+      if (limit != null) q.set('limit', String(limit))
       const res = await fetch(
         `/api/admin/tournament-points/audit-log?${q.toString()}`
       )

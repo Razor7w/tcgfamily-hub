@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server'
 import { requireStoreStaffSession } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import { isTournamentPointsEnabledForStore } from '@/lib/tournament-points-settings'
-import { aggregateTournamentPointsByPlayer } from '@/lib/tournament-points-admin'
+import {
+  aggregateTournamentPointsByPlayer,
+  appendPlayersFromAuditHistory
+} from '@/lib/tournament-points-admin'
 import TournamentPointsAward, {
   type ITournamentPointsAward
 } from '@/models/TournamentPointsAward'
@@ -93,20 +96,21 @@ export async function GET() {
     })
 
     const flatRows = list.flatMap(award =>
-      award.rows
-        .filter(row => (row.points ?? 0) > 0)
-        .map(row => ({
-          awardId: award.id,
-          eventTitle: award.eventTitle,
-          awardedAt: award.awardedAt,
-          popId: row.popId,
-          userId: row.userId,
-          displayName: row.displayName,
-          points: row.points
-        }))
+      award.rows.map(row => ({
+        awardId: award.id,
+        eventTitle: award.eventTitle,
+        awardedAt: award.awardedAt,
+        popId: row.popId,
+        userId: row.userId,
+        displayName: row.displayName,
+        points: row.points
+      }))
     )
 
-    const players = await aggregateTournamentPointsByPlayer(flatRows)
+    const players = await appendPlayersFromAuditHistory(
+      await aggregateTournamentPointsByPlayer(flatRows),
+      gate.activeStoreOid
+    )
 
     return NextResponse.json({ awards: list, players }, { status: 200 })
   } catch (error) {

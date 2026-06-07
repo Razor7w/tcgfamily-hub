@@ -1,12 +1,11 @@
 'use client'
 
-import { startTransition, useCallback, useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined'
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
@@ -29,9 +28,7 @@ import PlayPokemonDecklistPdfDialog from '@/components/decklist/PlayPokemonDeckl
 import DecklistVariantsPanel from '@/components/decklist/DecklistVariantsPanel'
 import type { DecklistVariantDTO } from '@/components/decklist/DecklistVariantsPanel'
 import DecklistDeckMetaDialogs from '@/components/decklist/DecklistDeckMetaDialogs'
-import DecklistImageDialog from '@/components/decklist/DecklistImageDialog'
 import { DecklistSpritePair } from '@/components/decklist/DecklistPokemonSlotPickers'
-import { flatCardsFromDecklistText } from '@/lib/decklist'
 import {
   useDeleteSavedDecklist,
   usePatchDecklistPublic
@@ -52,12 +49,6 @@ export type DecklistDetailInitial = {
   isPublic: boolean
 }
 
-function initialPrincipalDeckText(i: DecklistDetailInitial): string {
-  if (!i.principalVariantId) return i.deckText
-  const v = i.variants.find(x => x.id === i.principalVariantId)
-  return v?.deckText ?? i.deckText
-}
-
 export default function DecklistDetailClient({
   initial
 }: {
@@ -69,34 +60,12 @@ export default function DecklistDetailClient({
   const patchPublic = usePatchDecklistPublic()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [pdfOpen, setPdfOpen] = useState(false)
-  const [imageOpen, setImageOpen] = useState(false)
   const [editFullOpen, setEditFullOpen] = useState(false)
   const [editSpritesOpen, setEditSpritesOpen] = useState(false)
-  const [liveDeck, setLiveDeck] = useState({
-    text: initialPrincipalDeckText(initial),
-    summary: 'Principal' as string
-  })
-
-  const handleActiveDeckChange = useCallback(
-    (payload: { text: string; summary: string }) => {
-      setLiveDeck(payload)
-    },
-    []
-  )
 
   const handleDeckMetaApplied = useCallback(() => {
     router.refresh()
   }, [router])
-
-  const imageCards = useMemo(
-    () => flatCardsFromDecklistText(liveDeck.text),
-    [liveDeck.text]
-  )
-
-  const imageDialogTitle = useMemo(
-    () => `${initial.name} · ${liveDeck.summary}`,
-    [initial.name, liveDeck.summary]
-  )
 
   const handleDelete = () => {
     deleteDeck.mutate(initial.id, {
@@ -302,111 +271,79 @@ export default function DecklistDetailClient({
                 }}
               />
 
-              <Stack spacing={1.5}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(3, minmax(0, 1fr))'
+                  },
+                  gap: 1.5,
+                  width: '100%'
+                }}
+              >
                 <Button
-                  variant="contained"
+                  variant="outlined"
                   color="primary"
                   size="medium"
                   fullWidth
-                  startIcon={<ImageOutlinedIcon />}
-                  onClick={() => startTransition(() => setImageOpen(true))}
-                  disabled={imageCards.length === 0}
+                  startIcon={<EditOutlinedIcon />}
+                  onClick={() => {
+                    setEditSpritesOpen(false)
+                    setEditFullOpen(true)
+                  }}
                   sx={{
-                    py: 1.25,
-                    fontWeight: 700,
+                    py: 1.15,
+                    fontWeight: 600,
                     textTransform: 'none',
                     borderRadius: 2,
-                    transition: 'transform 0.18s ease, box-shadow 0.2s ease',
-                    '&:active': { transform: 'translateY(1px) scale(0.995)' },
-                    boxShadow:
-                      theme.palette.mode === 'dark'
-                        ? `0 10px 28px ${alpha(theme.palette.primary.main, 0.26)}`
-                        : `0 10px 26px ${alpha(theme.palette.primary.dark, 0.18)}`,
-                    '&:hover': {
-                      boxShadow:
-                        theme.palette.mode === 'dark'
-                          ? `0 14px 32px ${alpha(theme.palette.primary.main, 0.32)}`
-                          : `0 14px 30px ${alpha(theme.palette.primary.dark, 0.22)}`
-                    }
+                    transition:
+                      'transform 0.18s ease, border-color 0.2s ease, background-color 0.2s ease',
+                    '&:active': { transform: 'translateY(1px) scale(0.995)' }
                   }}
                 >
-                  Ver como imagen
+                  Editar mazo
                 </Button>
-
-                <Box
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  size="medium"
+                  fullWidth
+                  startIcon={<PictureAsPdfIcon />}
+                  onClick={() => setPdfOpen(true)}
                   sx={{
-                    display: 'grid',
-                    gridTemplateColumns: {
-                      xs: '1fr',
-                      sm: 'repeat(3, minmax(0, 1fr))'
-                    },
-                    gap: 1.5,
-                    width: '100%'
+                    py: 1.15,
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    borderRadius: 2,
+                    transition:
+                      'transform 0.18s ease, background-color 0.2s ease',
+                    '&:active': { transform: 'translateY(1px) scale(0.995)' }
                   }}
                 >
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    size="medium"
-                    fullWidth
-                    startIcon={<EditOutlinedIcon />}
-                    onClick={() => {
-                      setEditSpritesOpen(false)
-                      setEditFullOpen(true)
-                    }}
-                    sx={{
-                      py: 1.15,
-                      fontWeight: 600,
-                      textTransform: 'none',
-                      borderRadius: 2,
-                      transition:
-                        'transform 0.18s ease, border-color 0.2s ease, background-color 0.2s ease',
-                      '&:active': { transform: 'translateY(1px) scale(0.995)' }
-                    }}
-                  >
-                    Editar mazo
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    size="medium"
-                    fullWidth
-                    startIcon={<PictureAsPdfIcon />}
-                    onClick={() => setPdfOpen(true)}
-                    sx={{
-                      py: 1.15,
-                      fontWeight: 600,
-                      textTransform: 'none',
-                      borderRadius: 2,
-                      transition:
-                        'transform 0.18s ease, background-color 0.2s ease',
-                      '&:active': { transform: 'translateY(1px) scale(0.995)' }
-                    }}
-                  >
-                    Generar PDF
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    size="medium"
-                    fullWidth
-                    startIcon={<DeleteOutlineIcon />}
-                    onClick={() => setDeleteOpen(true)}
-                    disabled={deleteDeck.isPending}
-                    sx={{
-                      py: 1.15,
-                      fontWeight: 600,
-                      textTransform: 'none',
-                      borderRadius: 2,
-                      transition:
-                        'transform 0.18s ease, background-color 0.2s ease',
-                      '&:active': { transform: 'translateY(1px) scale(0.995)' }
-                    }}
-                  >
-                    Eliminar mazo
-                  </Button>
-                </Box>
-              </Stack>
+                  Generar PDF
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  size="medium"
+                  fullWidth
+                  startIcon={<DeleteOutlineIcon />}
+                  onClick={() => setDeleteOpen(true)}
+                  disabled={deleteDeck.isPending}
+                  sx={{
+                    py: 1.15,
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    borderRadius: 2,
+                    transition:
+                      'transform 0.18s ease, background-color 0.2s ease',
+                    '&:active': { transform: 'translateY(1px) scale(0.995)' }
+                  }}
+                >
+                  Eliminar mazo
+                </Button>
+              </Box>
             </Stack>
           </Paper>
 
@@ -415,8 +352,6 @@ export default function DecklistDetailClient({
             baseDeckText={initial.deckText}
             principalVariantId={initial.principalVariantId}
             variants={initial.variants}
-            onActiveDeckChange={handleActiveDeckChange}
-            hideDecklistImageButton
           />
         </Stack>
       </Container>
@@ -440,15 +375,6 @@ export default function DecklistDetailClient({
         onCloseSprites={() => setEditSpritesOpen(false)}
         onApplied={handleDeckMetaApplied}
       />
-
-      {imageOpen ? (
-        <DecklistImageDialog
-          open={imageOpen}
-          onClose={() => setImageOpen(false)}
-          cards={imageCards}
-          title={imageDialogTitle}
-        />
-      ) : null}
 
       <Dialog
         open={deleteOpen}

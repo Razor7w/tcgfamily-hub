@@ -236,6 +236,9 @@ const LIMITLESS_GALLERY_SUBSET_TPCI: Readonly<
   Record<string, { base: string; suffix: string }>
 > = {
   'CRZ-GG': { base: 'CRZ', suffix: 'GG' },
+  'BRS-TG': { base: 'BRS', suffix: 'TG' },
+  'ASR-TG': { base: 'ASR', suffix: 'TG' },
+  'LOR-TG': { base: 'LOR', suffix: 'TG' },
   'SIT-TG': { base: 'SIT', suffix: 'TG' }
 }
 

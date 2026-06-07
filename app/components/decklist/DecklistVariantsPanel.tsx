@@ -26,12 +26,13 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { alpha, useTheme } from '@mui/material/styles'
 import DecklistCompareDialog from '@/components/decklist/DecklistCompareDialog'
-import DecklistModule from '@/components/decklist/DecklistModule'
+import DecklistImageGrid from '@/components/decklist/DecklistImageGrid'
 import {
   DECKLIST_VARIANT_LABEL_MAX,
   DECKLIST_VARIANTS_MAX,
   SAVED_DECKLIST_TEXT_MAX
 } from '@/lib/decklist-constants'
+import { flatCardsFromDecklistText } from '@/lib/decklist'
 
 export type DecklistVariantDTO = {
   id: string
@@ -46,10 +47,8 @@ type Props = {
   /** Si no es null, la pestaña Principal muestra el texto de esa variante. */
   principalVariantId: string | null
   variants: DecklistVariantDTO[]
-  /** Sincroniza el listado visible (pestaña / vista principal) con la cabecera (vista en imágenes). */
+  /** Sincroniza el listado visible (pestaña / vista principal) con la cabecera. */
   onActiveDeckChange?: (payload: { text: string; summary: string }) => void
-  /** Oculta el botón duplicado «Ver como imagen» dentro del módulo de cartas. */
-  hideDecklistImageButton?: boolean
 }
 
 export default function DecklistVariantsPanel({
@@ -57,8 +56,7 @@ export default function DecklistVariantsPanel({
   baseDeckText,
   principalVariantId,
   variants,
-  onActiveDeckChange,
-  hideDecklistImageButton = false
+  onActiveDeckChange
 }: Props) {
   const theme = useTheme()
   const router = useRouter()
@@ -288,6 +286,11 @@ export default function DecklistVariantsPanel({
     resolvedTab === 'principal'
       ? `principal-${principalVariantId ?? 'root'}-${principalView}`
       : resolvedTab
+
+  const flatCards = useMemo(
+    () => flatCardsFromDecklistText(activeDeckText),
+    [activeDeckText]
+  )
 
   const atVariantLimit = variants.length >= DECKLIST_VARIANTS_MAX
 
@@ -626,11 +629,7 @@ export default function DecklistVariantsPanel({
       </Box>
 
       <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
-        <DecklistModule
-          key={deckModuleKey}
-          value={activeDeckText}
-          hideImageButton={hideDecklistImageButton}
-        />
+        <DecklistImageGrid key={deckModuleKey} cards={flatCards} />
       </Box>
 
       <DecklistCompareDialog
