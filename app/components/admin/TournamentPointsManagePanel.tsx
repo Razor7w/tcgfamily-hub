@@ -28,6 +28,7 @@ import {
   RemoveCircleOutline
 } from '@mui/icons-material'
 import { normalizeStorePointsAmount } from '@/lib/store-points-amount'
+import { popidForStorage } from '@/lib/rut-chile'
 import { formatStorePointsClpEquivalent } from '@/lib/store-points-clp'
 import { useMeStores } from '@/hooks/useMeStores'
 import TournamentPointsCsvImport from '@/components/admin/TournamentPointsCsvImport'
@@ -61,15 +62,29 @@ function playerRowKey(row: TournamentPointsAggregatedPlayer): string {
   return row.identityKey
 }
 
+function collectPopIdsForPlayer(
+  row: TournamentPointsAggregatedPlayer
+): string[] {
+  return [
+    ...new Set(
+      [row.primaryPopId, ...row.sources.map(s => s.popId)]
+        .map(p => popidForStorage(p))
+        .filter(Boolean)
+    )
+  ]
+}
+
 function formatSourcesSubtitle(
   sources: TournamentPointsAggregatedPlayer['sources']
 ): string {
-  if (sources.length === 0) return ''
-  if (sources.length === 1) {
-    const s = sources[0]
+  if (sources.length === 0) return 'Sin saldo actual'
+  const positive = sources.filter(s => s.points > 0)
+  const visible = positive.length > 0 ? positive : sources
+  if (visible.length === 1) {
+    const s = visible[0]
     return `${s.eventTitle}${s.awardedAt ? ` · ${formatEventDate(s.awardedAt)}` : ''} · ${s.points} pts`
   }
-  return sources.map(s => `${s.eventTitle} (${s.points} pts)`).join(' · ')
+  return visible.map(s => `${s.eventTitle} (${s.points} pts)`).join(' · ')
 }
 
 function auditActionLabel(
@@ -180,6 +195,7 @@ export default function TournamentPointsManagePanel() {
   const [tab, setTab] = useState(0)
   const [search, setSearch] = useState('')
   const [deductKey, setDeductKey] = useState<string | null>(null)
+  const [auditKey, setAuditKey] = useState<string | null>(null)
   const [subtractAmount, setSubtractAmount] = useState('')
   const [reason, setReason] = useState('')
 
@@ -214,12 +230,36 @@ export default function TournamentPointsManagePanel() {
     )
   }, [players, search])
 
+  const auditRow = useMemo(
+    () =>
+      auditKey
+        ? (filteredPlayers.find(p => playerRowKey(p) === auditKey) ?? null)
+        : null,
+    [auditKey, filteredPlayers]
+  )
+
+  const auditPopIds = useMemo(
+    () => (auditRow ? collectPopIdsForPlayer(auditRow) : []),
+    [auditRow]
+  )
+
+  const playerAuditQuery = useTournamentPointsAuditLog(auditKey != null, {
+    popIds: auditPopIds,
+    userId: auditRow?.userId ?? null,
+    playerOnly: true,
+    limit: 50
+  })
+
   const pointsSum = filteredPlayers.reduce((s, r) => s + r.pointsTotal, 0)
 
   const closeDeductForm = () => {
     setDeductKey(null)
     setSubtractAmount('')
     setReason('')
+  }
+
+  const closeAuditPanel = () => {
+    setAuditKey(null)
   }
 
   const handleApplyDeduct = async (row: TournamentPointsAggregatedPlayer) => {
@@ -253,10 +293,10 @@ export default function TournamentPointsManagePanel() {
   return (
     <Stack spacing={2}>
       <Typography variant="body2" color="text.secondary">
-        Lista de jugadores con puntos de torneo asignados (unificados por cuenta
-        o POP). Solo puedes <strong>descontar</strong>; indica el motivo (queda
-        en auditoría). Si tiene puntos de varios torneos o importaciones, se
-        muestran en una sola fila con el total.
+        Historial de jugadores que recibieron puntos de torneo (unificados por
+        cuenta o POP), incluidos los que ya no tienen saldo. Puedes{' '}
+        <strong>descontar</strong> si aún tienen puntos, o ver la{' '}
+        <strong>auditoría</strong> de cada uno.
       </Typography>
 
       <TournamentPointsCsvImport />
@@ -293,7 +333,7 @@ export default function TournamentPointsManagePanel() {
 
           {!awardsQuery.isLoading && players.length === 0 ? (
             <Alert severity="info">
-              Aún no hay jugadores con puntos asignados en esta tienda.
+              Aún no hay jugadores con historial de puntos en esta tienda.
             </Alert>
           ) : null}
 
@@ -327,18 +367,26 @@ export default function TournamentPointsManagePanel() {
                         <TableCell align="right" width={100}>
                           Puntos
                         </TableCell>
-                        <TableCell align="right" width={120}>
-                          Acción
+                        <TableCell align="right" width={220}>
+                          Acciones
                         </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {filteredPlayers.map(row => {
                         const key = playerRowKey(row)
-                        const isOpen = deductKey === key
+                        const isDeductOpen = deductKey === key
+                        const isAuditOpen = auditKey === key
+                        const hasBalance = row.pointsTotal > 0
                         return (
                           <Fragment key={key}>
-                            <TableRow>
+                            <TableRow
+                              sx={
+                                !hasBalance
+                                  ? { bgcolor: 'action.hover', opacity: 0.92 }
+                                  : undefined
+                              }
+                            >
                               <TableCell>
                                 <Typography
                                   variant="body2"
@@ -366,26 +414,122 @@ export default function TournamentPointsManagePanel() {
                                 {row.pointsTotal}
                               </TableCell>
                               <TableCell align="right">
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  color="warning"
-                                  startIcon={<RemoveCircleOutline />}
-                                  disabled={
-                                    deduct.isPending ||
-                                    (deductKey != null && deductKey !== key)
-                                  }
-                                  onClick={() => {
-                                    setDeductKey(key)
-                                    setSubtractAmount('1')
-                                    setReason('')
-                                  }}
+                                <Stack
+                                  direction="row"
+                                  spacing={0.75}
+                                  justifyContent="flex-end"
+                                  flexWrap="wrap"
+                                  useFlexGap
                                 >
-                                  Descontar
-                                </Button>
+                                  <Button
+                                    size="small"
+                                    variant={
+                                      isAuditOpen ? 'contained' : 'outlined'
+                                    }
+                                    color="inherit"
+                                    startIcon={<History fontSize="small" />}
+                                    disabled={
+                                      deduct.isPending ||
+                                      (deductKey != null &&
+                                        deductKey !== key &&
+                                        !isAuditOpen)
+                                    }
+                                    onClick={() => {
+                                      closeDeductForm()
+                                      setAuditKey(isAuditOpen ? null : key)
+                                    }}
+                                  >
+                                    Auditoría
+                                  </Button>
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    color="warning"
+                                    startIcon={<RemoveCircleOutline />}
+                                    disabled={
+                                      !hasBalance ||
+                                      deduct.isPending ||
+                                      (deductKey != null &&
+                                        deductKey !== key) ||
+                                      (auditKey != null && auditKey !== key)
+                                    }
+                                    onClick={() => {
+                                      closeAuditPanel()
+                                      setDeductKey(key)
+                                      setSubtractAmount('1')
+                                      setReason('')
+                                    }}
+                                  >
+                                    Descontar
+                                  </Button>
+                                </Stack>
                               </TableCell>
                             </TableRow>
-                            {isOpen ? (
+                            {isAuditOpen ? (
+                              <TableRow>
+                                <TableCell
+                                  colSpan={3}
+                                  sx={{ bgcolor: 'action.selected' }}
+                                >
+                                  <Stack spacing={1.5} sx={{ py: 0.5 }}>
+                                    <Stack
+                                      direction="row"
+                                      alignItems="center"
+                                      justifyContent="space-between"
+                                      spacing={1}
+                                    >
+                                      <Typography
+                                        variant="subtitle2"
+                                        sx={{ fontWeight: 700 }}
+                                      >
+                                        Auditoría de {row.displayName}
+                                      </Typography>
+                                      <Button
+                                        size="small"
+                                        onClick={closeAuditPanel}
+                                      >
+                                        Cerrar
+                                      </Button>
+                                    </Stack>
+                                    {playerAuditQuery.isLoading ? (
+                                      <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                      >
+                                        Cargando historial…
+                                      </Typography>
+                                    ) : null}
+                                    {playerAuditQuery.isError ? (
+                                      <Alert severity="error">
+                                        {playerAuditQuery.error instanceof Error
+                                          ? playerAuditQuery.error.message
+                                          : 'Error al cargar auditoría'}
+                                      </Alert>
+                                    ) : null}
+                                    {!playerAuditQuery.isLoading &&
+                                    !playerAuditQuery.isError &&
+                                    (playerAuditQuery.data?.length ?? 0) ===
+                                      0 ? (
+                                      <Alert severity="info">
+                                        Sin registros de auditoría para este
+                                        jugador.
+                                      </Alert>
+                                    ) : null}
+                                    <Stack spacing={1}>
+                                      {(playerAuditQuery.data ?? []).map(
+                                        entry => (
+                                          <AuditEntryRow
+                                            key={entry.id}
+                                            entry={entry}
+                                          />
+                                        )
+                                      )}
+                                    </Stack>
+                                  </Stack>
+                                </TableCell>
+                              </TableRow>
+                            ) : null}
+                            {isDeductOpen ? (
                               <TableRow>
                                 <TableCell
                                   colSpan={3}
