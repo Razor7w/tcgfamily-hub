@@ -49,6 +49,11 @@ import { useCreateUser, type CreateUserData } from '@/hooks/useUsers'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
 import { formatMailLogDateTime, getMailStatusChip } from '@/lib/mail-status'
 import {
+  canMarkMailWithdrawn,
+  MAIL_WITHDRAW_REQUIRES_IN_STORE,
+  validateMailStatusTransition
+} from '@/lib/mail-status-transitions'
+import {
   filterMailsByCodeSearch,
   resolveMailCodeSearchExpansion
 } from '@/lib/mail-code-search'
@@ -396,6 +401,15 @@ export default function MailsPage() {
       return
     }
 
+    const statusError = validateMailStatusTransition({
+      nextIsRecived: formData.isRecived ?? false,
+      nextIsRecivedInStore: formData.isRecivedInStore ?? false
+    })
+    if (statusError) {
+      setSnackbar({ open: true, message: statusError, severity: 'error' })
+      return
+    }
+
     try {
       if (editingMail) {
         const payload: UpdateMailData = {
@@ -456,6 +470,14 @@ export default function MailsPage() {
   }
 
   const handleToggleRecived = async (mail: Mail) => {
+    if (!mail.isRecived && !canMarkMailWithdrawn(mail)) {
+      setSnackbar({
+        open: true,
+        message: MAIL_WITHDRAW_REQUIRES_IN_STORE,
+        severity: 'error'
+      })
+      return
+    }
     try {
       await updateMail.mutateAsync({
         mailId: mail._id,
@@ -1075,8 +1097,10 @@ export default function MailsPage() {
                           <Tooltip
                             title={
                               mail.isRecived
-                                ? 'Marcar como no recibido'
-                                : 'Marcar como recibido'
+                                ? 'Marcar como no retirado'
+                                : !canMarkMailWithdrawn(mail)
+                                  ? MAIL_WITHDRAW_REQUIRES_IN_STORE
+                                  : 'Marcar como retirado'
                             }
                           >
                             <span>
@@ -1084,7 +1108,11 @@ export default function MailsPage() {
                                 size="small"
                                 color={mail.isRecived ? 'default' : 'primary'}
                                 onClick={() => handleToggleRecived(mail)}
-                                disabled={mailActionsDisabled}
+                                disabled={
+                                  mailActionsDisabled ||
+                                  (!mail.isRecived &&
+                                    !canMarkMailWithdrawn(mail))
+                                }
                               >
                                 {mail.isRecived ? (
                                   <MarkEmailUnreadIcon fontSize="small" />
@@ -1609,6 +1637,7 @@ export default function MailsPage() {
                 control={
                   <Checkbox
                     checked={formData.isRecived}
+                    disabled={!formData.isRecivedInStore}
                     onChange={e =>
                       setFormData(prev => ({
                         ...prev,
@@ -1626,7 +1655,8 @@ export default function MailsPage() {
                     onChange={e =>
                       setFormData(prev => ({
                         ...prev,
-                        isRecivedInStore: e.target.checked
+                        isRecivedInStore: e.target.checked,
+                        isRecived: e.target.checked ? prev.isRecived : false
                       }))
                     }
                   />

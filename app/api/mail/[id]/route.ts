@@ -10,6 +10,10 @@ import User from '@/models/User'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
 import { applyMailStatusContributionAwards } from '@/lib/contribution-points/mail-contribution-awards'
+import {
+  resolveMailStatusAfterUpdate,
+  validateMailStatusTransition
+} from '@/lib/mail-status-transitions'
 import mongoose from 'mongoose'
 
 function parseMailId(id: string) {
@@ -170,22 +174,34 @@ export async function PUT(
     const wasReceivedInStore = existing.isRecivedInStore
     const wasWithdrawn = existing.isRecived
 
-    if (typeof isRecived === 'boolean') existing.isRecived = isRecived
-    if (typeof isRecivedInStore === 'boolean') {
-      existing.isRecivedInStore = isRecivedInStore
-      if (isRecivedInStore === true && !wasReceivedInStore)
-        existing.receivedInStoreAt = new Date()
-      else if (isRecivedInStore === false && wasReceivedInStore)
-        existing.receivedInStoreAt = null
+    const nextStatus = resolveMailStatusAfterUpdate({
+      isRecived: typeof isRecived === 'boolean' ? isRecived : undefined,
+      isRecivedInStore:
+        typeof isRecivedInStore === 'boolean' ? isRecivedInStore : undefined,
+      currentIsRecived: existing.isRecived,
+      currentIsRecivedInStore: existing.isRecivedInStore
+    })
+
+    const validationError = validateMailStatusTransition({
+      nextIsRecived: nextStatus.isRecived,
+      nextIsRecivedInStore: nextStatus.isRecivedInStore
+    })
+    if (validationError) {
+      return NextResponse.json({ error: validationError }, { status: 400 })
+    }
+
+    existing.isRecived = nextStatus.isRecived
+    existing.isRecivedInStore = nextStatus.isRecivedInStore
+    if (nextStatus.isRecivedInStore && !wasReceivedInStore) {
+      existing.receivedInStoreAt = new Date()
+    } else if (!nextStatus.isRecivedInStore && wasReceivedInStore) {
+      existing.receivedInStoreAt = null
     }
     if (observations !== undefined) existing.observations = observations ?? ''
 
     const becameReadyInStore =
-      typeof isRecivedInStore === 'boolean' &&
-      isRecivedInStore === true &&
-      !wasReceivedInStore
-    const becameWithdrawn =
-      typeof isRecived === 'boolean' && isRecived === true && !wasWithdrawn
+      nextStatus.isRecivedInStore && !wasReceivedInStore
+    const becameWithdrawn = nextStatus.isRecived && !wasWithdrawn
 
     await existing.save()
 
