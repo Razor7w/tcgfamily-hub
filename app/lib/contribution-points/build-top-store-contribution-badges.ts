@@ -3,7 +3,10 @@ import 'server-only'
 import mongoose from 'mongoose'
 import connectDB from '@/lib/mongodb'
 import { getChileCalendarMonthRangeUtc } from '@/lib/contribution-points/chile-month-range'
-import { buildContributionTierProgress } from '@/lib/contribution-points/tiers'
+import {
+  buildContributionTierProgress,
+  resolveContributionCurrentTierLabel
+} from '@/lib/contribution-points/tiers'
 import { getContributionPointsSettingsForStoreOid } from '@/lib/contribution-points/settings'
 import ContributionPointEntry from '@/models/ContributionPointEntry'
 import DashboardModuleSettings from '@/models/DashboardModuleSettings'
@@ -24,13 +27,6 @@ export type TopStoreContributionBadgeDTO = {
 type StoreTotalsRow = {
   storeId: mongoose.Types.ObjectId
   totalPoints: number
-}
-
-function tierLabelForProgress(
-  tier: ReturnType<typeof buildContributionTierProgress>
-): string {
-  if (tier.currentTierIndex < 0) return tier.labels[0]
-  return tier.labels[tier.currentTierIndex] ?? tier.labels[0]
 }
 
 async function loadContributionEnabledStoreIds(
@@ -173,14 +169,15 @@ export async function buildTopStoreContributionBadgesForUsers(input: {
     const tier = buildContributionTierProgress(
       best.totalPoints,
       settings.tierThresholds,
-      settings.tierLabels
+      settings.tierLabels,
+      settings.baseTierLabel
     )
 
     const monthPoints = monthByUserStore.get(`${userId}:${storeIdStr}`) ?? 0
 
     result.set(userId, {
-      tierIndex: Math.max(tier.currentTierIndex, 0),
-      label: tierLabelForProgress(tier),
+      tierIndex: tier.currentTierIndex,
+      label: resolveContributionCurrentTierLabel(tier),
       storeId: storeIdStr,
       storeName: name,
       storeSlug: slug,

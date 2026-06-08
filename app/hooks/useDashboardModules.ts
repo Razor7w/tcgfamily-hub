@@ -55,6 +55,7 @@ export function useAdminConfiguracion() {
         contributionPoints: data.contributionPoints ??
           data.settings.contributionPoints ?? {
             enabled: false,
+            baseTierLabel: 'Colaborador nuevo',
             tierThresholds: [700, 1500, 5000],
             tierLabels: [
               'Colaborador emergente',

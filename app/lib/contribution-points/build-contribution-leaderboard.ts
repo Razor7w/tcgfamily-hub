@@ -3,7 +3,10 @@ import 'server-only'
 import mongoose from 'mongoose'
 import connectDB from '@/lib/mongodb'
 import { getChileCalendarMonthRangeUtc } from '@/lib/contribution-points/chile-month-range'
-import { buildContributionTierProgress } from '@/lib/contribution-points/tiers'
+import {
+  buildContributionTierProgress,
+  resolveContributionCurrentTierLabel
+} from '@/lib/contribution-points/tiers'
 import {
   getContributionPointsSettingsForStoreOid,
   isContributionPointsEnabledForStore
@@ -57,11 +60,10 @@ function tierLabelForPoints(
   const tier = buildContributionTierProgress(
     totalPoints,
     settings.tierThresholds,
-    settings.tierLabels
+    settings.tierLabels,
+    settings.baseTierLabel
   )
-  return tier.currentTierIndex >= 0
-    ? (tier.labels[tier.currentTierIndex] ?? tier.labels[0])
-    : tier.labels[0]
+  return resolveContributionCurrentTierLabel(tier)
 }
 
 export async function buildContributionLeaderboard(input: {

@@ -55,7 +55,8 @@ export async function buildMyContributionPointsSummary(input: {
   const settings = await getContributionPointsSettingsForStoreOid(input.storeId)
   const tierBase = {
     thresholds: settings.tierThresholds,
-    labels: settings.tierLabels
+    labels: settings.tierLabels,
+    baseTierLabel: settings.baseTierLabel
   }
 
   const monthRange = getChileCalendarMonthRangeUtc()
@@ -70,7 +71,8 @@ export async function buildMyContributionPointsSummary(input: {
       tier: buildContributionTierProgress(
         0,
         tierBase.thresholds,
-        tierBase.labels
+        tierBase.labels,
+        tierBase.baseTierLabel
       ),
       recentEntries: []
     }
@@ -146,7 +148,8 @@ export async function buildMyContributionPointsSummary(input: {
     tier: buildContributionTierProgress(
       totalPoints,
       tierBase.thresholds,
-      tierBase.labels
+      tierBase.labels,
+      tierBase.baseTierLabel
     ),
     recentEntries
   }

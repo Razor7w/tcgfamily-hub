@@ -1,7 +1,9 @@
 import type { IDashboardModuleSettings } from '@/models/DashboardModuleSettings'
 import {
+  DEFAULT_CONTRIBUTION_BASE_TIER_LABEL,
   DEFAULT_CONTRIBUTION_TIER_LABELS,
   DEFAULT_CONTRIBUTION_TIER_THRESHOLDS,
+  normalizeContributionBaseTierLabel,
   normalizeContributionTierLabels,
   normalizeContributionTierThresholds
 } from '@/lib/contribution-points/tiers'
@@ -13,6 +15,8 @@ import {
 
 export type ContributionPointsAdminSettings = {
   enabled: boolean
+  /** Nivel desde 0 pts hasta el primer umbral. */
+  baseTierLabel: string
   tierThresholds: [number, number, number]
   tierLabels: [string, string, string]
   pointRules: ContributionPointRules
@@ -21,6 +25,7 @@ export type ContributionPointsAdminSettings = {
 export const DEFAULT_CONTRIBUTION_POINTS_ADMIN: ContributionPointsAdminSettings =
   {
     enabled: false,
+    baseTierLabel: DEFAULT_CONTRIBUTION_BASE_TIER_LABEL,
     tierThresholds: [...DEFAULT_CONTRIBUTION_TIER_THRESHOLDS],
     tierLabels: [...DEFAULT_CONTRIBUTION_TIER_LABELS],
     pointRules: { ...DEFAULT_CONTRIBUTION_POINT_RULES }
@@ -50,6 +55,7 @@ export function mergeContributionPointsAdmin(
     Pick<
       IDashboardModuleSettings,
       | 'contributionPointsEnabled'
+      | 'contributionBaseTierLabel'
       | 'contributionTierThresholds'
       | 'contributionTierLabels'
       | 'contributionPointRules'
@@ -59,6 +65,9 @@ export function mergeContributionPointsAdmin(
   if (!doc) return { ...DEFAULT_CONTRIBUTION_POINTS_ADMIN }
   return {
     enabled: doc.contributionPointsEnabled === true,
+    baseTierLabel: normalizeContributionBaseTierLabel(
+      doc.contributionBaseTierLabel
+    ),
     tierThresholds: normalizeContributionTierThresholds(
       doc.contributionTierThresholds
     ),
@@ -88,6 +97,12 @@ export function applyContributionPointsAdminToDoc(
   settings: ContributionPointsAdminSettings
 ): void {
   doc.contributionPointsEnabled = settings.enabled
+  doc.set(
+    'contributionBaseTierLabel',
+    settings.baseTierLabel.trim() === DEFAULT_CONTRIBUTION_BASE_TIER_LABEL
+      ? undefined
+      : settings.baseTierLabel.trim()
+  )
   doc.contributionTierThresholds = [...settings.tierThresholds]
   doc.contributionTierLabels = [...settings.tierLabels]
   const overrides: Record<string, number> = {}
@@ -115,6 +130,7 @@ export function normalizeContributionPointsAdminBody(
   if (typeof b.enabled !== 'boolean') return null
   return {
     enabled: b.enabled,
+    baseTierLabel: normalizeContributionBaseTierLabel(b.baseTierLabel),
     tierThresholds: normalizeContributionTierThresholds(b.tierThresholds),
     tierLabels: normalizeContributionTierLabels(b.tierLabels),
     pointRules: mergeContributionPointRules(

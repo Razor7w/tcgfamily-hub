@@ -127,6 +127,17 @@ export default function ContributionPointsRulesEditor({
           Niveles (umbrales y nombres)
         </Typography>
         <Stack spacing={1.5} sx={{ mb: 3 }}>
+          <TextField
+            label="Nivel inicial (0 pts)"
+            size="small"
+            fullWidth
+            value={settings.baseTierLabel}
+            onChange={e =>
+              setSettings(s => ({ ...s, baseTierLabel: e.target.value }))
+            }
+            helperText="Desde 0 hasta el umbral del tier 1 (ej. 0–699 pts si el tier 1 es 700)."
+            inputProps={{ maxLength: 60 }}
+          />
           {([0, 1, 2] as const).map(i => (
             <Stack
               key={i}

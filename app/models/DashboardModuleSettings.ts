@@ -35,6 +35,8 @@ export interface IDashboardModuleSettings extends Document {
   tournamentPointsDisplayName?: string
   /** Gamificación de contribución (reputación; no canjeable). */
   contributionPointsEnabled: boolean
+  /** Nivel desde 0 pts hasta el primer umbral de contribución. */
+  contributionBaseTierLabel?: string
   contributionTierThresholds?: number[]
   contributionTierLabels?: string[]
   /** Overrides parciales de puntos por acción. */
@@ -80,6 +82,13 @@ const DashboardModuleSettingsSchema = new Schema<IDashboardModuleSettings>(
       default: undefined
     },
     contributionPointsEnabled: { type: Boolean, default: false },
+    contributionBaseTierLabel: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: 60,
+      default: undefined
+    },
     contributionTierThresholds: {
       type: [Number],
       required: false,
