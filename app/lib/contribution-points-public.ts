@@ -14,6 +14,7 @@ export type ContributionTierProgressPublic = {
   totalPoints: number
   thresholds: [number, number, number]
   labels: [string, string, string]
+  baseTierLabel: string
   currentTierIndex: number
   nextThreshold: number | null
   progressPercent: number

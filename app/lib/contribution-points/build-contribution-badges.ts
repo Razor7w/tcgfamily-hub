@@ -2,7 +2,10 @@ import 'server-only'
 
 import mongoose from 'mongoose'
 import connectDB from '@/lib/mongodb'
-import { buildContributionTierProgress } from '@/lib/contribution-points/tiers'
+import {
+  buildContributionTierProgress,
+  resolveContributionCurrentTierLabel
+} from '@/lib/contribution-points/tiers'
 import { isContributionPointsEnabledForStore } from '@/lib/contribution-points/settings'
 import { getContributionPointsSettingsForStoreOid } from '@/lib/contribution-points/settings'
 import ContributionPointEntry from '@/models/ContributionPointEntry'
@@ -60,12 +63,12 @@ export async function buildContributionBadgesForUsers(input: {
     const tier = buildContributionTierProgress(
       total,
       settings.tierThresholds,
-      settings.tierLabels
+      settings.tierLabels,
+      settings.baseTierLabel
     )
-    if (tier.currentTierIndex < 0) continue
     result.set(String(row._id), {
       tierIndex: tier.currentTierIndex,
-      label: tier.labels[tier.currentTierIndex] ?? tier.labels[0]
+      label: resolveContributionCurrentTierLabel(tier)
     })
   }
 

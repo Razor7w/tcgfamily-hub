@@ -52,7 +52,7 @@ type StoreHubContributionPointsCardProps = {
 }
 
 function currentTierLabel(tier: ContributionTierProgressPublic): string {
-  if (tier.currentTierIndex < 0) return tier.labels[0]
+  if (tier.currentTierIndex < 0) return tier.baseTierLabel
   return tier.labels[tier.currentTierIndex] ?? tier.labels[0]
 }
 
@@ -60,10 +60,12 @@ function nextTierHint(tier: ContributionTierProgressPublic): string | null {
   if (tier.nextThreshold == null) {
     return 'Nivel máximo alcanzado en esta tienda.'
   }
-  const nextIndex = Math.min(tier.currentTierIndex + 1, tier.labels.length - 1)
+  const nextIndex = tier.currentTierIndex + 1
+  const nextLabel = tier.labels[nextIndex]
+  if (!nextLabel) return null
   const remaining = tier.nextThreshold - tier.totalPoints
   if (remaining <= 0) return null
-  return `${remaining.toLocaleString('es-CL')} pts para ${tier.labels[nextIndex]}`
+  return `${remaining.toLocaleString('es-CL')} pts para ${nextLabel}`
 }
 
 function ContributionTierProgressBar({
@@ -245,18 +247,20 @@ const faqAccordionSx: SxProps<Theme> = {
 
 function ContributionPointsInfoFaq({
   pointRules,
+  baseTierLabel,
   tierLabels,
   tierThresholds
 }: Pick<
   ContributionPointsAdminSettings,
-  'pointRules' | 'tierLabels' | 'tierThresholds'
+  'pointRules' | 'baseTierLabel' | 'tierLabels' | 'tierThresholds'
 >) {
-  const tierSummary = tierLabels
-    .map(
+  const tierSummary = [
+    `${baseTierLabel} (0 pts)`,
+    ...tierLabels.map(
       (label, index) =>
         `${label} (${tierThresholds[index].toLocaleString('es-CL')} pts)`
     )
-    .join(' · ')
+  ].join(' · ')
 
   return (
     <Box sx={{ mt: 2 }}>
@@ -678,7 +682,8 @@ export default function StoreHubContributionPointsCard({
             custom personales.
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Niveles: {contributionSettings.tierLabels.join(' → ')} (
+            Niveles: {contributionSettings.baseTierLabel} (0 pts) →{' '}
+            {contributionSettings.tierLabels.join(' → ')} (
             {contributionSettings.tierThresholds
               .map(n => n.toLocaleString('es-CL'))
               .join(' / ')}{' '}
@@ -686,6 +691,7 @@ export default function StoreHubContributionPointsCard({
           </Typography>
           <ContributionPointsInfoFaq
             pointRules={contributionSettings.pointRules}
+            baseTierLabel={contributionSettings.baseTierLabel}
             tierLabels={contributionSettings.tierLabels}
             tierThresholds={contributionSettings.tierThresholds}
           />

@@ -6,18 +6,51 @@ export const DEFAULT_CONTRIBUTION_TIER_LABELS = [
   'Colaborador estrella'
 ] as const
 
+/** Nivel antes del primer umbral (0 hasta tier 1 − 1). */
+export const DEFAULT_CONTRIBUTION_BASE_TIER_LABEL = 'Colaborador nuevo'
+
 export type ContributionTierIndex = 0 | 1 | 2
 
 export type ContributionTierProgress = {
   totalPoints: number
   thresholds: [number, number, number]
   labels: [string, string, string]
+  /** Nombre del nivel inicial (0 pts hasta el primer umbral). */
+  baseTierLabel: string
   /** Índice del tier alcanzado (0–2), -1 si aún no llega al primero. */
   currentTierIndex: number
   /** Próximo umbral; null si ya está en el tier máximo. */
   nextThreshold: number | null
   /** 0–100 hacia el siguiente tier (100 si tier máximo). */
   progressPercent: number
+}
+
+export function normalizeContributionBaseTierLabel(raw: unknown): string {
+  if (typeof raw !== 'string') return DEFAULT_CONTRIBUTION_BASE_TIER_LABEL
+  const trimmed = raw.trim().slice(0, 60)
+  return trimmed || DEFAULT_CONTRIBUTION_BASE_TIER_LABEL
+}
+
+export function resolveContributionCurrentTierLabel(
+  tier: Pick<
+    ContributionTierProgress,
+    'currentTierIndex' | 'labels' | 'baseTierLabel'
+  >
+): string {
+  if (tier.currentTierIndex < 0) return tier.baseTierLabel
+  return tier.labels[tier.currentTierIndex] ?? tier.labels[0]
+}
+
+export function resolveContributionNextTierLabel(
+  tier: Pick<
+    ContributionTierProgress,
+    'currentTierIndex' | 'labels' | 'nextThreshold'
+  >
+): string | null {
+  if (tier.nextThreshold == null) return null
+  const nextIndex = tier.currentTierIndex + 1
+  if (nextIndex < 0 || nextIndex >= tier.labels.length) return null
+  return tier.labels[nextIndex] ?? null
 }
 
 export function normalizeContributionTierThresholds(
@@ -60,9 +93,11 @@ export function normalizeContributionTierLabels(
 export function buildContributionTierProgress(
   totalPoints: number,
   thresholds: [number, number, number],
-  labels: [string, string, string]
+  labels: [string, string, string],
+  baseTierLabel?: string
 ): ContributionTierProgress {
   const total = Math.max(0, Math.round(Number(totalPoints) || 0))
+  const baseLabel = normalizeContributionBaseTierLabel(baseTierLabel)
   let currentTierIndex = -1
   for (let i = 0; i < thresholds.length; i++) {
     if (total >= thresholds[i]) currentTierIndex = i
@@ -73,6 +108,7 @@ export function buildContributionTierProgress(
       totalPoints: total,
       thresholds,
       labels,
+      baseTierLabel: baseLabel,
       currentTierIndex: thresholds.length - 1,
       nextThreshold: null,
       progressPercent: 100
@@ -89,6 +125,7 @@ export function buildContributionTierProgress(
     totalPoints: total,
     thresholds,
     labels,
+    baseTierLabel: baseLabel,
     currentTierIndex,
     nextThreshold,
     progressPercent: Math.min(100, Math.max(0, Math.round(progress)))
