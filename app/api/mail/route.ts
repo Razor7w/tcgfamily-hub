@@ -19,6 +19,7 @@ import {
 } from '@/lib/mail-register-daily'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
+import { validateMailStatusTransition } from '@/lib/mail-status-transitions'
 
 function pad3(n: number) {
   return String(n).padStart(3, '0')
@@ -302,23 +303,34 @@ export async function POST(request: NextRequest) {
     }
 
     // Crear el mail (con ID público correlativo por día)
+    const adminCreateIsRecived = adminFullCreate
+      ? Boolean(isRecived ?? false)
+      : false
+    const adminCreateInStore = adminFullCreate
+      ? Boolean(isRecivedInStore ?? false)
+      : false
+    const createStatusError = validateMailStatusTransition({
+      nextIsRecived: adminCreateIsRecived,
+      nextIsRecivedInStore: adminCreateInStore
+    })
+    if (createStatusError) {
+      return NextResponse.json({ error: createStatusError }, { status: 400 })
+    }
+
     let savedMail: { _id: unknown } | null = null
     let lastError: unknown = null
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
         const code = await generateNextMailCode(activeStoreOid, primaryStoreOid)
-        const adminInStore =
-          Boolean(adminFullCreate) && Boolean(isRecivedInStore ?? false)
+        const adminInStore = adminCreateInStore
         const newMail = new Mail({
           storeId: activeStoreOid,
           code,
           fromUserId: resolvedFromUserId,
           ...(resolvedToUserId ? { toUserId: resolvedToUserId } : {}),
           toRut: resolvedToRut,
-          isRecived: adminFullCreate ? (isRecived ?? false) : false,
-          isRecivedInStore: adminFullCreate
-            ? (isRecivedInStore ?? false)
-            : false,
+          isRecived: adminCreateIsRecived,
+          isRecivedInStore: adminCreateInStore,
           ...(adminInStore ? { receivedInStoreAt: new Date() } : {}),
           observations: adminFullCreate
             ? normalizeObs(observations ?? '')

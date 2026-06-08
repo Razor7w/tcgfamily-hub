@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useDashboardStoreQueryKey } from '@/hooks/use-dashboard-store-key'
+import { resolveMailStatusAfterUpdate } from '@/lib/mail-status-transitions'
 
 /**
  * Hooks para la API de mails (TanStack Query).
@@ -263,12 +264,21 @@ export function useUpdateMail() {
 
       const patchMail = (mail: Mail): Mail => {
         const next: Mail = { ...mail }
-        if (data.isRecived !== undefined) next.isRecived = data.isRecived
-        if (data.isRecivedInStore !== undefined) {
-          next.isRecivedInStore = data.isRecivedInStore
-          if (data.isRecivedInStore && mail.isRecivedInStore !== true) {
+        if (
+          data.isRecived !== undefined ||
+          data.isRecivedInStore !== undefined
+        ) {
+          const resolved = resolveMailStatusAfterUpdate({
+            isRecived: data.isRecived,
+            isRecivedInStore: data.isRecivedInStore,
+            currentIsRecived: mail.isRecived,
+            currentIsRecivedInStore: mail.isRecivedInStore ?? false
+          })
+          next.isRecived = resolved.isRecived
+          next.isRecivedInStore = resolved.isRecivedInStore
+          if (resolved.isRecivedInStore && mail.isRecivedInStore !== true) {
             next.receivedInStoreAt = new Date().toISOString()
-          } else if (!data.isRecivedInStore) {
+          } else if (!resolved.isRecivedInStore) {
             next.receivedInStoreAt = null
           }
         }
