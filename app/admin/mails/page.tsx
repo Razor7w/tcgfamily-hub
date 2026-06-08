@@ -11,7 +11,6 @@ import CardContent from '@mui/material/CardContent'
 import CardActions from '@mui/material/CardActions'
 import Divider from '@mui/material/Divider'
 import Pagination from '@mui/material/Pagination'
-import IconButton from '@mui/material/IconButton'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -47,7 +46,7 @@ import {
 } from '@/hooks/useMails'
 import { useCreateUser, type CreateUserData } from '@/hooks/useUsers'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
-import { formatMailLogDateTime, getMailStatusChip } from '@/lib/mail-status'
+import { getMailStatusChip } from '@/lib/mail-status'
 import {
   canMarkMailWithdrawn,
   MAIL_WITHDRAW_REQUIRES_IN_STORE,
@@ -63,7 +62,7 @@ import {
   matchesStoreWaitBucket,
   storeWaitChipProps
 } from '@/lib/mail-store-days'
-import { alpha } from '@mui/material/styles'
+import { alpha, useTheme, type Theme } from '@mui/material/styles'
 import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
 import {
   buildDistinctMailUsersForFilters,
@@ -91,7 +90,17 @@ function mailUserId(ref: { _id: string } | string | null | undefined): string {
 
 const PAGE_SIZE = 10
 
+function mailStatusAccentColor(
+  mail: Pick<Mail, 'isRecived' | 'isRecivedInStore'>,
+  theme: Theme
+): string {
+  if (mail.isRecived) return theme.palette.success.main
+  if (mail.isRecivedInStore) return theme.palette.warning.main
+  return theme.palette.text.disabled
+}
+
 export default function MailsPage() {
+  const theme = useTheme()
   const [openDialog, setOpenDialog] = useState(false)
   const [editingMail, setEditingMail] = useState<Mail | null>(null)
   const [formData, setFormData] = useState<CreateMailData>({
@@ -941,6 +950,8 @@ export default function MailsPage() {
                 const waitChip =
                   waitDays !== null ? storeWaitChipProps(waitDays) : null
                 const status = getMailStatusChip(mail)
+                const statusAccent = mailStatusAccentColor(mail, theme)
+                const canWithdraw = canMarkMailWithdrawn(mail)
                 return (
                   <Card
                     key={mail._id}
@@ -948,39 +959,76 @@ export default function MailsPage() {
                     sx={{
                       display: 'flex',
                       flexDirection: 'column',
-                      borderRadius: 2
+                      borderRadius: 3,
+                      overflow: 'hidden',
+                      borderColor: alpha(statusAccent, 0.28),
+                      boxShadow: theme =>
+                        `0 16px 40px -28px ${alpha(theme.palette.primary.dark, theme.palette.mode === 'dark' ? 0.55 : 0.14)}`,
+                      transition:
+                        'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
+                      '&:hover': {
+                        borderColor: alpha(statusAccent, 0.45),
+                        boxShadow: theme =>
+                          `0 20px 48px -24px ${alpha(theme.palette.primary.dark, theme.palette.mode === 'dark' ? 0.62 : 0.18)}`
+                      }
                     }}
                   >
-                    <CardContent sx={{ flex: 1, pb: 1 }}>
+                    <Box
+                      sx={{
+                        height: 4,
+                        bgcolor: statusAccent,
+                        opacity: 0.92
+                      }}
+                    />
+                    <CardContent
+                      sx={{ flex: 1, px: { xs: 2, sm: 2.5 }, pt: 2, pb: 1.5 }}
+                    >
                       <Box
                         sx={{
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'flex-start',
-                          gap: 1,
-                          mb: 1.5
+                          gap: 1.5,
+                          mb: 2
                         }}
                       >
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{ wordBreak: 'break-all' }}
-                        >
-                          Código
-                          {mail.code ? ` · ${mail.code}` : ''}
-                        </Typography>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography
+                            variant="overline"
+                            color="text.secondary"
+                            sx={{
+                              display: 'block',
+                              letterSpacing: '0.08em',
+                              fontWeight: 700,
+                              lineHeight: 1.3
+                            }}
+                          >
+                            Código
+                          </Typography>
+                          <Typography
+                            variant="subtitle1"
+                            sx={{
+                              fontWeight: 800,
+                              letterSpacing: '-0.02em',
+                              fontVariantNumeric: 'tabular-nums',
+                              wordBreak: 'break-all'
+                            }}
+                          >
+                            {mail.code ?? '—'}
+                          </Typography>
+                        </Box>
                         <Stack
                           direction="row"
                           spacing={0.75}
                           flexWrap="wrap"
                           justifyContent="flex-end"
-                          sx={{ maxWidth: '65%' }}
+                          sx={{ maxWidth: '58%' }}
                         >
                           <Chip
                             label={status.label}
                             color={status.color}
                             size="small"
-                            sx={{ fontWeight: 700 }}
+                            sx={{ fontWeight: 700, height: 28 }}
                           />
                           {waitChip ? (
                             <Tooltip title="Esperando retiro: días desde el ingreso confirmado en tienda">
@@ -994,177 +1042,223 @@ export default function MailsPage() {
                                   waitChip.sx != null &&
                                   typeof waitChip.sx === 'object' &&
                                   !Array.isArray(waitChip.sx)
-                                    ? { fontWeight: 600, ...waitChip.sx }
-                                    : { fontWeight: 600 }
+                                    ? {
+                                        fontWeight: 600,
+                                        height: 28,
+                                        ...waitChip.sx
+                                      }
+                                    : { fontWeight: 600, height: 28 }
                                 }
                               />
                             </Tooltip>
                           ) : null}
                         </Stack>
                       </Box>
-                      <Stack spacing={0.25} sx={{ mb: 1 }}>
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          component="p"
-                          sx={{ m: 0 }}
-                        >
-                          <strong>Creado:</strong>{' '}
-                          {formatMailLogDateTime(mail.createdAt)}
+                      <Stack spacing={1} sx={{ mb: 2 }}>
+                        <Typography variant="body2">
+                          <Box
+                            component="span"
+                            sx={{
+                              fontWeight: 700,
+                              color: 'text.secondary',
+                              mr: 0.5
+                            }}
+                          >
+                            De:
+                          </Box>
+                          {from
+                            ? `${from.name ?? '-'} (${from.rut ?? '-'})`
+                            : '-'}
                         </Typography>
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          component="p"
-                          sx={{ m: 0 }}
-                        >
-                          <strong>Actualizado:</strong>{' '}
-                          {formatMailLogDateTime(mail.updatedAt)}
+                        <Typography variant="body2">
+                          <Box
+                            component="span"
+                            sx={{
+                              fontWeight: 700,
+                              color: 'text.secondary',
+                              mr: 0.5
+                            }}
+                          >
+                            Para:
+                          </Box>
+                          {to
+                            ? `${to.name ?? '-'} (${to.rut ?? '-'})`
+                            : `${mail.toRut} (No registrado en sistema)`}
                         </Typography>
                       </Stack>
-                      <Typography variant="body2" sx={{ mb: 0.5 }}>
-                        <strong>De:</strong>{' '}
-                        {from
-                          ? `${from.name ?? '-'} (${from.rut ?? '-'})`
-                          : '-'}
-                      </Typography>
-                      <Typography variant="body2" sx={{ mb: 1.5 }}>
-                        <strong>Para:</strong>{' '}
-                        {to
-                          ? `${to.name ?? '-'} (${to.rut ?? '-'})`
-                          : `${mail.toRut} (No registrado en sistema)`}
-                      </Typography>
-                      <Divider sx={{ my: 1 }} />
-                      <Box
+                      <Typography
+                        variant="overline"
+                        color="text.secondary"
                         sx={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          gap: 2,
-                          alignItems: 'center'
+                          display: 'block',
+                          mb: 1,
+                          letterSpacing: '0.06em',
+                          fontWeight: 700
                         }}
                       >
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 0.5
-                          }}
+                        Cambiar estado
+                      </Typography>
+                      <Box
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                          gap: 1.25
+                        }}
+                      >
+                        <Tooltip
+                          title={
+                            mail.isRecivedInStore
+                              ? 'Marcar como no recibido en tienda'
+                              : 'Marcar como recibido en tienda'
+                          }
                         >
-                          <Typography variant="caption" color="text.secondary">
-                            En tienda
-                          </Typography>
-                          <Typography component="span" variant="body2">
-                            {mail.isRecivedInStore ? 'Sí' : 'No'}
-                          </Typography>
-                          <Tooltip
-                            title={
-                              mail.isRecivedInStore
-                                ? 'Marcar como no recibido en tienda'
-                                : 'Marcar como recibido en tienda'
-                            }
-                          >
-                            <span>
-                              <IconButton
-                                size="small"
-                                color={
-                                  mail.isRecivedInStore ? 'default' : 'primary'
-                                }
-                                onClick={() => handleToggleRecivedInStore(mail)}
-                                disabled={mailActionsDisabled}
-                              >
-                                {mail.isRecivedInStore ? (
-                                  <StorefrontOutlinedIcon fontSize="small" />
+                          <span style={{ display: 'block' }}>
+                            <Button
+                              fullWidth
+                              variant={
+                                mail.isRecivedInStore ? 'contained' : 'outlined'
+                              }
+                              color={
+                                mail.isRecivedInStore ? 'success' : 'primary'
+                              }
+                              size="medium"
+                              startIcon={
+                                mail.isRecivedInStore ? (
+                                  <StorefrontIcon />
                                 ) : (
-                                  <StorefrontIcon fontSize="small" />
-                                )}
-                              </IconButton>
-                            </span>
-                          </Tooltip>
-                        </Box>
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 0.5
-                          }}
+                                  <StorefrontOutlinedIcon />
+                                )
+                              }
+                              onClick={() => handleToggleRecivedInStore(mail)}
+                              disabled={mailActionsDisabled}
+                              sx={{
+                                minHeight: 48,
+                                py: 1.1,
+                                fontWeight: 700,
+                                textTransform: 'none',
+                                borderRadius: 2,
+                                justifyContent: 'flex-start',
+                                px: 1.75
+                              }}
+                            >
+                              {mail.isRecivedInStore
+                                ? 'En tienda · Sí'
+                                : 'Recibir en tienda'}
+                            </Button>
+                          </span>
+                        </Tooltip>
+                        <Tooltip
+                          title={
+                            mail.isRecived
+                              ? 'Marcar como no retirado'
+                              : !canWithdraw
+                                ? MAIL_WITHDRAW_REQUIRES_IN_STORE
+                                : 'Marcar como retirado'
+                          }
                         >
-                          <Typography variant="caption" color="text.secondary">
-                            Retirado
-                          </Typography>
-                          <Typography component="span" variant="body2">
-                            {mail.isRecived ? 'Sí' : 'No'}
-                          </Typography>
-                          <Tooltip
-                            title={
-                              mail.isRecived
-                                ? 'Marcar como no retirado'
-                                : !canMarkMailWithdrawn(mail)
-                                  ? MAIL_WITHDRAW_REQUIRES_IN_STORE
-                                  : 'Marcar como retirado'
-                            }
-                          >
-                            <span>
-                              <IconButton
-                                size="small"
-                                color={mail.isRecived ? 'default' : 'primary'}
-                                onClick={() => handleToggleRecived(mail)}
-                                disabled={
-                                  mailActionsDisabled ||
-                                  (!mail.isRecived &&
-                                    !canMarkMailWithdrawn(mail))
-                                }
-                              >
-                                {mail.isRecived ? (
-                                  <MarkEmailUnreadIcon fontSize="small" />
+                          <span style={{ display: 'block' }}>
+                            <Button
+                              fullWidth
+                              variant={
+                                mail.isRecived ? 'contained' : 'outlined'
+                              }
+                              color={mail.isRecived ? 'success' : 'primary'}
+                              size="medium"
+                              startIcon={
+                                mail.isRecived ? (
+                                  <MarkEmailUnreadIcon />
                                 ) : (
-                                  <MarkEmailReadIcon fontSize="small" />
-                                )}
-                              </IconButton>
-                            </span>
-                          </Tooltip>
-                        </Box>
+                                  <MarkEmailReadIcon />
+                                )
+                              }
+                              onClick={() => handleToggleRecived(mail)}
+                              disabled={
+                                mailActionsDisabled ||
+                                (!mail.isRecived && !canWithdraw)
+                              }
+                              sx={{
+                                minHeight: 48,
+                                py: 1.1,
+                                fontWeight: 700,
+                                textTransform: 'none',
+                                borderRadius: 2,
+                                justifyContent: 'flex-start',
+                                px: 1.75
+                              }}
+                            >
+                              {mail.isRecived
+                                ? 'Retirado · Sí'
+                                : 'Marcar retirado'}
+                            </Button>
+                          </span>
+                        </Tooltip>
                       </Box>
                       {mail.observations ? (
                         <Typography
                           variant="body2"
                           color="text.secondary"
                           sx={{
-                            mt: 1.5,
+                            mt: 2,
+                            p: 1.25,
+                            borderRadius: 2,
+                            bgcolor: 'action.hover',
                             display: '-webkit-box',
                             WebkitLineClamp: 3,
                             WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden'
+                            overflow: 'hidden',
+                            lineHeight: 1.55
                           }}
                         >
                           {mail.observations}
                         </Typography>
                       ) : null}
                     </CardContent>
+                    <Divider />
                     <CardActions
                       sx={{
-                        justifyContent: 'flex-end',
-                        pt: 0,
-                        px: 2,
-                        pb: 2
+                        gap: 1.25,
+                        px: { xs: 2, sm: 2.5 },
+                        py: 2,
+                        flexWrap: 'wrap'
                       }}
                     >
-                      <IconButton
+                      <Button
+                        variant="outlined"
                         color="primary"
-                        size="small"
+                        size="medium"
+                        startIcon={<EditIcon />}
                         onClick={() => handleOpenDialog(mail)}
-                        aria-label="Editar"
+                        sx={{
+                          flex: { xs: '1 1 100%', sm: '1 1 auto' },
+                          minHeight: 48,
+                          py: 1.15,
+                          px: 2.5,
+                          fontWeight: 700,
+                          textTransform: 'none',
+                          borderRadius: 2
+                        }}
                       >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
+                        Editar
+                      </Button>
+                      <Button
+                        variant="outlined"
                         color="error"
-                        size="small"
+                        size="medium"
+                        startIcon={<DeleteIcon />}
                         onClick={() => setMailToDelete(mail)}
                         disabled={deleteMail.isPending}
-                        aria-label="Eliminar"
+                        sx={{
+                          flex: { xs: '1 1 100%', sm: '1 1 auto' },
+                          minHeight: 48,
+                          py: 1.15,
+                          px: 2.5,
+                          fontWeight: 700,
+                          textTransform: 'none',
+                          borderRadius: 2
+                        }}
                       >
-                        <DeleteIcon />
-                      </IconButton>
+                        Eliminar
+                      </Button>
                     </CardActions>
                   </Card>
                 )
