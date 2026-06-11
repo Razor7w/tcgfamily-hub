@@ -134,6 +134,8 @@ type FormState = {
   kind: 'tournament' | 'trade_day' | 'other'
   game: 'pokemon' | 'magic' | 'other_tcg'
   pokemonSubtype: 'casual' | 'cup' | 'challenge' | ''
+  tournamentMode: 'in_person' | 'online'
+  onlineRoundTimeMinutes: string
   priceClp: string
   gratis: boolean
   maxParticipants: string
@@ -152,6 +154,8 @@ const emptyForm = (): FormState => ({
   kind: 'tournament',
   game: 'pokemon',
   pokemonSubtype: 'casual',
+  tournamentMode: 'in_person',
+  onlineRoundTimeMinutes: '50',
   priceClp: '0',
   gratis: true,
   maxParticipants: '8',
@@ -195,6 +199,12 @@ function formFromEvent(ev: AdminWeeklyEvent): FormState {
       ev.pokemonSubtype === 'challenge'
         ? ev.pokemonSubtype
         : '',
+    tournamentMode: ev.tournamentMode === 'online' ? 'online' : 'in_person',
+    onlineRoundTimeMinutes: String(
+      ev.onlineRoundTimeMinutes && ev.onlineRoundTimeMinutes > 0
+        ? ev.onlineRoundTimeMinutes
+        : 50
+    ),
     priceClp: String(ev.priceClp ?? 0),
     gratis: (ev.priceClp ?? 0) <= 0,
     maxParticipants: String(ev.maxParticipants ?? 8),
@@ -306,6 +316,26 @@ export default function AdminEventosPage() {
       location: form.location.trim(),
       priceClp,
       roundNum
+    }
+    if (form.kind === 'tournament') {
+      payload.tournamentMode = form.tournamentMode
+      if (form.tournamentMode === 'online') {
+        const minutes = Math.round(Number(form.onlineRoundTimeMinutes))
+        if (!Number.isFinite(minutes) || minutes < 0) {
+          throw new Error('Tiempo por ronda inválido')
+        }
+        if (minutes !== 0 && (minutes < 5 || minutes > 180)) {
+          throw new Error(
+            'Tiempo por ronda: entre 5 y 180 minutos (0 = sin timer)'
+          )
+        }
+        payload.onlineRoundTimeMinutes = minutes
+      } else {
+        payload.onlineRoundTimeMinutes = 0
+      }
+    } else {
+      payload.tournamentMode = 'in_person'
+      payload.onlineRoundTimeMinutes = 0
     }
     if (form.kind === 'tournament' && form.game === 'pokemon') {
       if (!form.pokemonSubtype) {
@@ -1071,6 +1101,15 @@ export default function AdminEventosPage() {
                                 variant="outlined"
                               />
                             ) : null}
+                            {ev.kind === 'tournament' &&
+                            ev.tournamentMode === 'online' ? (
+                              <Chip
+                                size="small"
+                                label="Online"
+                                color="info"
+                                variant="outlined"
+                              />
+                            ) : null}
                             {ev.kind === 'tournament' && ev.league ? (
                               <Chip
                                 size="small"
@@ -1407,6 +1446,53 @@ export default function AdminEventosPage() {
                       <MenuItem value="casual">Casual</MenuItem>
                       <MenuItem value="cup">Cup</MenuItem>
                       <MenuItem value="challenge">Challenge</MenuItem>
+                    </Select>
+                  </FormControl>
+                ) : null}
+                {form.kind === 'tournament' ? (
+                  <FormControl fullWidth>
+                    <InputLabel id="tournament-mode-label">
+                      Modalidad
+                    </InputLabel>
+                    <Select
+                      labelId="tournament-mode-label"
+                      label="Modalidad"
+                      value={form.tournamentMode}
+                      onChange={e =>
+                        setForm(f => ({
+                          ...f,
+                          tournamentMode: e.target
+                            .value as FormState['tournamentMode']
+                        }))
+                      }
+                    >
+                      <MenuItem value="in_person">Presencial</MenuItem>
+                      <MenuItem value="online">Online</MenuItem>
+                    </Select>
+                  </FormControl>
+                ) : null}
+                {form.kind === 'tournament' &&
+                form.tournamentMode === 'online' ? (
+                  <FormControl fullWidth>
+                    <InputLabel id="online-round-time-label">
+                      Tiempo por ronda (min)
+                    </InputLabel>
+                    <Select
+                      labelId="online-round-time-label"
+                      label="Tiempo por ronda (min)"
+                      value={form.onlineRoundTimeMinutes}
+                      onChange={e =>
+                        setForm(f => ({
+                          ...f,
+                          onlineRoundTimeMinutes: e.target.value
+                        }))
+                      }
+                    >
+                      <MenuItem value="35">35 minutos</MenuItem>
+                      <MenuItem value="50">50 minutos</MenuItem>
+                      <MenuItem value="60">60 minutos</MenuItem>
+                      <MenuItem value="75">75 minutos</MenuItem>
+                      <MenuItem value="0">Sin temporizador</MenuItem>
                     </Select>
                   </FormControl>
                 ) : null}

@@ -25,10 +25,13 @@ import { alpha } from '@mui/material/styles'
 import {
   ArrowBack,
   CheckCircle,
+  Gavel,
   Groups,
   Settings,
   UploadFile
 } from '@mui/icons-material'
+import AdminEventSavedStandings from '@/components/admin/AdminEventSavedStandings'
+import AdminOnlineConflictsPanel from '@/components/admin/AdminOnlineConflictsPanel'
 import TournamentTdfLoader from '@/components/admin/TournamentTdfLoader'
 import AdminEventDetailExtras from '@/components/admin/AdminEventDetailExtras'
 import AdminEventTdfWorkflowGuide from '@/components/admin/AdminEventTdfWorkflowGuide'
@@ -43,6 +46,7 @@ import {
   useLinkParticipantByPop,
   useUpdateAdminEvent
 } from '@/hooks/useWeeklyEvents'
+import { useAdminOnlineTableReports } from '@/hooks/useAdminOnlineTableReports'
 
 function kindLabelAdmin(k: AdminWeeklyEvent['kind']) {
   if (k === 'tournament') return 'Torneo'
@@ -83,6 +87,9 @@ function eventNextStepHint(ev: AdminWeeklyEvent): string {
   if ((ev.participants?.length ?? 0) === 0) {
     return 'Primero revisa preinscritos o carga el TDF para añadir jugadores.'
   }
+  if (ev.tournamentMode === 'online' && rounds === 0) {
+    return 'Confirmá asistencia en Asistencia; luego en Mesas online usá «Lanzar ronda 1» (solo confirmados).'
+  }
   return 'Confirma asistencia en tienda, luego usa TDF para publicar rondas y cerrar.'
 }
 
@@ -116,8 +123,15 @@ export default function AdminEventoDetailPage() {
   )
 
   const showTdfTab = ev?.kind === 'tournament'
+  const showOnlineTab = ev?.tournamentMode === 'online'
   const participantCount = ev?.participants?.length ?? 0
   const savedRounds = ev?.roundSnapshots?.length ?? 0
+
+  const onlineReportsQuery = useAdminOnlineTableReports({
+    eventId: showOnlineTab && ev ? ev._id : null,
+    enabled: Boolean(showOnlineTab && ev)
+  })
+  const onlineConflictCount = onlineReportsQuery.data?.conflictCount ?? 0
 
   const [tab, setTab] = useState(0)
   const [tabEventId, setTabEventId] = useState<string | null>(null)
@@ -339,6 +353,21 @@ export default function AdminEventoDetailPage() {
                             variant="outlined"
                           />
                         ) : null}
+                        {ev.tournamentMode === 'online' ? (
+                          <Chip
+                            size="small"
+                            label="Online"
+                            color="info"
+                            variant="outlined"
+                          />
+                        ) : null}
+                        {onlineConflictCount > 0 ? (
+                          <Chip
+                            size="small"
+                            label={`${onlineConflictCount} conflicto${onlineConflictCount === 1 ? '' : 's'}`}
+                            color="error"
+                          />
+                        ) : null}
                       </Stack>
                     </Box>
                   </AdminStorePageHeading>
@@ -457,6 +486,19 @@ export default function AdminEventoDetailPage() {
                       label="Resultados TDF"
                       id="event-tab-tdf"
                       aria-controls="event-tabpanel-tdf"
+                    />
+                  ) : null}
+                  {showOnlineTab ? (
+                    <Tab
+                      icon={<Gavel sx={{ fontSize: 20 }} />}
+                      iconPosition="start"
+                      label={
+                        onlineConflictCount > 0
+                          ? `Mesas online (${onlineConflictCount})`
+                          : 'Mesas online'
+                      }
+                      id="event-tab-online"
+                      aria-controls="event-tabpanel-online"
                     />
                   ) : null}
                 </Tabs>
@@ -663,7 +705,39 @@ export default function AdminEventoDetailPage() {
                           savedRoundSnapshots={ev.roundSnapshots ?? []}
                           eventRoundNum={ev.roundNum ?? 0}
                         />
+                        <AdminEventSavedStandings
+                          standings={ev.tournamentStandings}
+                          participants={ev.participants}
+                          roundSnapshots={ev.roundSnapshots}
+                          eventState={
+                            ev.state === 'running' || ev.state === 'close'
+                              ? ev.state
+                              : 'schedule'
+                          }
+                        />
                       </Stack>
+                    ) : null}
+                  </Box>
+                ) : null}
+
+                {showOnlineTab ? (
+                  <Box
+                    role="tabpanel"
+                    hidden={tab !== (showTdfTab ? 2 : 1)}
+                    id="event-tabpanel-online"
+                    aria-labelledby="event-tab-online"
+                    sx={{ p: { xs: 2, sm: 2.5 } }}
+                  >
+                    {tab === (showTdfTab ? 2 : 1) ? (
+                      <AdminOnlineConflictsPanel
+                        eventId={ev._id}
+                        activeRoundNum={ev.roundNum ?? 0}
+                        eventState={
+                          ev.state === 'running' || ev.state === 'close'
+                            ? ev.state
+                            : 'schedule'
+                        }
+                      />
                     ) : null}
                   </Box>
                 ) : null}

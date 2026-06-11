@@ -25,6 +25,8 @@ import {
   participantPlayedTournament
 } from '@/lib/tournament-participant-played'
 import type { RoundSnapshotLean } from '@/lib/match-rounds-with-snapshots'
+import { buildCurrentOnlineRoundTimer } from '@/lib/online-round-timer'
+import { normalizeTournamentMode } from '@/lib/tournament-mode'
 
 function publicLeagueFromLeanDoc(d: Record<string, unknown>): {
   name: string
@@ -48,6 +50,8 @@ function toPublicEvent(
     kind: string
     game: string
     pokemonSubtype?: string
+    tournamentMode?: string
+    onlineRoundTimeMinutes?: number
     state?: WeeklyEventState
     priceClp: number
     maxParticipants: number
@@ -168,6 +172,18 @@ function toPublicEvent(
     kind: doc.kind,
     game: doc.game,
     pokemonSubtype: doc.pokemonSubtype ?? null,
+    tournamentMode: normalizeTournamentMode(doc.tournamentMode),
+    onlineRoundTimeMinutes: Math.max(
+      0,
+      Math.round(Number(doc.onlineRoundTimeMinutes) || 0)
+    ),
+    currentRoundTimer: buildCurrentOnlineRoundTimer({
+      tournamentMode: doc.tournamentMode,
+      state: eventState,
+      onlineRoundTimeMinutes: doc.onlineRoundTimeMinutes,
+      roundSnapshots: doc.roundSnapshots,
+      roundNum
+    }),
     priceClp: doc.priceClp,
     maxParticipants: doc.maxParticipants,
     formatNotes: doc.formatNotes,
@@ -303,6 +319,9 @@ export async function GET(request: NextRequest) {
           ).tournamentStandings,
           roundSnapshots: (d as { roundSnapshots?: RoundSnapshotLean[] })
             .roundSnapshots,
+          tournamentMode: (d as { tournamentMode?: string }).tournamentMode,
+          onlineRoundTimeMinutes: (d as { onlineRoundTimeMinutes?: number })
+            .onlineRoundTimeMinutes,
           tournamentOrigin: (d as { tournamentOrigin?: string })
             .tournamentOrigin,
           participants: (d.participants ?? []) as unknown as {

@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "seed:online-chat": "npx tsx --env-file=.env.local app/scripts/seed-online-tournament-chat.ts",
+    "seed:online-8p": "npx tsx --env-file=.env.local app/scripts/seed-online-tournament-8p.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1043.0",

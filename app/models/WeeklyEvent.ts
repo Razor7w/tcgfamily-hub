@@ -6,6 +6,9 @@ export type WeeklyEventGame = 'pokemon' | 'magic' | 'other_tcg'
 
 export type PokemonTournamentSubtype = 'casual' | 'cup' | 'challenge'
 
+/** Presencial en tienda vs torneo jugado en simulador (habilita chat de mesa). */
+export type TournamentMode = 'in_person' | 'online'
+
 /** Ciclo operativo del evento en tienda. */
 export type WeeklyEventState = 'schedule' | 'running' | 'close'
 
@@ -109,6 +112,10 @@ export interface IWeeklyEvent extends Document {
   leagueId?: Types.ObjectId | null
   /** Solo aplica a torneos Pokémon. */
   pokemonSubtype?: PokemonTournamentSubtype
+  /** Presencial u online; el chat de mesa solo aplica si es `online`. */
+  tournamentMode?: TournamentMode
+  /** Minutos por ronda en torneos online (5–180); `0` = sin temporizador. */
+  onlineRoundTimeMinutes?: number
   /** Precio en CLP; 0 = gratuito. Solo relevante para torneos en UI. */
   priceClp: number
   maxParticipants: number
@@ -310,6 +317,17 @@ const WeeklyEventSchema = new Schema<IWeeklyEvent>(
       type: String,
       enum: ['casual', 'cup', 'challenge'],
       required: false
+    },
+    tournamentMode: {
+      type: String,
+      enum: ['in_person', 'online'],
+      default: 'in_person'
+    },
+    onlineRoundTimeMinutes: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 180
     },
     priceClp: { type: Number, default: 0, min: 0 },
     maxParticipants: { type: Number, required: true, min: 1 },
