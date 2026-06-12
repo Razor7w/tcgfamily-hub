@@ -11,6 +11,7 @@ import Store from '@/models/Store'
 import { publicStoreSlugFromHeaders } from '@/lib/multitenancy/ingress-headers'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { DEFAULT_PRIMARY_STORE_SLUG } from '@/lib/multitenancy/constants'
+import { weeklyEventLeagueAggregateProjection } from '@/lib/weekly-event-query-projections'
 
 /**
  * Clasificación pública de una liga (torneos cerrados; puntos por récord W/L/T del participante).
@@ -144,9 +145,7 @@ export async function GET(
       state: 'close',
       ...evScope
     })
-      .select(
-        'title startsAt dashboardRoundCap roundSnapshots participants.displayName participants.popId participants.wins participants.losses participants.ties participants.matchRounds'
-      )
+      .select(weeklyEventLeagueAggregateProjection)
       .sort({ startsAt: 1 })
       .lean()
 

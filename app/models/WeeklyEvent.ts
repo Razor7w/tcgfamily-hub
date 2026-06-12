@@ -348,6 +348,15 @@ WeeklyEventSchema.index({
   'participants.userId': 1,
   startsAt: -1
 })
+/** Torneos cerrados por liga (`GET /api/leagues/[slug]`). */
+WeeklyEventSchema.index({
+  leagueId: 1,
+  storeId: 1,
+  kind: 1,
+  tournamentOrigin: 1,
+  state: 1,
+  startsAt: 1
+})
 
 if (mongoose.models.WeeklyEvent) {
   delete mongoose.models.WeeklyEvent

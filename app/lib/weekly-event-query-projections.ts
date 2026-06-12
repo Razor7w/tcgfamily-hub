@@ -1,10 +1,10 @@
 /**
  * Proyecciones `.select()` para WeeklyEvent: menos bytes desde Mongo y menos CPU
- * serializando roundSnapshots cuando no hacen falta en listados.
+ * serializando roundSnapshots / matchRounds cuando no hacen falta.
  */
 
-/** Participante mínimo para listados públicos y reportes de torneo. */
-export const weeklyEventParticipantListProjection = {
+/** Listado semanal: datos de inscripción y récord TDF; sin bitácora ajena. */
+export const weeklyEventParticipantWeekListProjection = {
   'participants.displayName': 1,
   'participants.userId': 1,
   'participants.confirmed': 1,
@@ -15,16 +15,17 @@ export const weeklyEventParticipantListProjection = {
   'participants.losses': 1,
   'participants.ties': 1,
   'participants.deckPokemonSlugs': 1,
-  'participants.matchRounds': 1,
   'participants.manualPlacement': 1,
   'participants.tournamentDecklistRef': 1
 } as const
 
-/**
- * Listados semanales / home / reportes: standings TDF bastan para clasificación;
- * roundSnapshots solo en detalle o estadísticas con emparejamientos enriquecidos.
- */
-export const weeklyEventListProjection = {
+/** Reportes «mis torneos» / custom: incluye rondas reportadas por el usuario. */
+export const weeklyEventParticipantReportProjection = {
+  ...weeklyEventParticipantWeekListProjection,
+  'participants.matchRounds': 1
+} as const
+
+const weeklyEventCoreFields = {
   startsAt: 1,
   title: 1,
   kind: 1,
@@ -41,8 +42,48 @@ export const weeklyEventListProjection = {
   tournamentStandings: 1,
   tournamentOrigin: 1,
   storeId: 1,
-  leagueId: 1,
-  ...weeklyEventParticipantListProjection
+  leagueId: 1
+} as const
+
+/** GET /api/events (vista semanal): sin snapshots ni matchRounds ajenos. */
+export const weeklyEventWeekListProjection = {
+  ...weeklyEventCoreFields,
+  ...weeklyEventParticipantWeekListProjection
+} as const
+
+/** my-tournaments-* / my-home-tournaments: incluye matchRounds del participante. */
+export const weeklyEventTournamentReportProjection = {
+  ...weeklyEventCoreFields,
+  ...weeklyEventParticipantReportProjection
+} as const
+
+/** Alias histórico del reporte. */
+export const weeklyEventListProjection = weeklyEventTournamentReportProjection
+
+/** GET /api/events/[id] sin snapshots (segunda query si hace falta). */
+export const weeklyEventDetailBaseProjection = {
+  ...weeklyEventCoreFields,
+  createdByUserId: 1,
+  ...weeklyEventParticipantReportProjection
+} as const
+
+/** Panel admin: snapshots + standings; sin matchRounds de participantes. */
+export const weeklyEventAdminListProjection = {
+  ...weeklyEventCoreFields,
+  roundSnapshots: 1,
+  tournamentStandings: 1,
+  createdAt: 1,
+  updatedAt: 1,
+  'participants.displayName': 1,
+  'participants.userId': 1,
+  'participants.createdAt': 1,
+  'participants.confirmed': 1,
+  'participants.popId': 1,
+  'participants.table': 1,
+  'participants.opponentId': 1,
+  'participants.wins': 1,
+  'participants.losses': 1,
+  'participants.ties': 1
 } as const
 
 /** Resumen de mazos (`aggregateMyDeckStats`): sin snapshots TDF. */
@@ -61,4 +102,18 @@ export const weeklyEventMatchupDetailProjection = {
   roundSnapshots: 1,
   'participants.popId': 1,
   'participants.displayName': 1
+} as const
+
+/** Clasificación pública de liga (snapshots + récord; matchRounds bajo tope). */
+export const weeklyEventLeagueAggregateProjection = {
+  title: 1,
+  startsAt: 1,
+  dashboardRoundCap: 1,
+  roundSnapshots: 1,
+  'participants.displayName': 1,
+  'participants.popId': 1,
+  'participants.wins': 1,
+  'participants.losses': 1,
+  'participants.ties': 1,
+  'participants.matchRounds': 1
 } as const

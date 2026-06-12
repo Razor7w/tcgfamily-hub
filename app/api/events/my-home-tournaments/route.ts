@@ -4,7 +4,7 @@ import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import { buildMyTournamentWeekItemFromLean } from '@/lib/build-my-tournament-week-item'
 import type { MyHomeTournamentItem } from '@/lib/my-tournament-week-types'
-import { weeklyEventListProjection } from '@/lib/weekly-event-query-projections'
+import { weeklyEventTournamentReportProjection } from '@/lib/weekly-event-query-projections'
 import WeeklyEvent from '@/models/WeeklyEvent'
 
 const PER_STORE_LIMIT = 2
@@ -112,7 +112,7 @@ export async function GET() {
         ...participantFilter,
         state: { $in: ['schedule', 'running'] }
       })
-        .select(weeklyEventListProjection)
+        .select(weeklyEventTournamentReportProjection)
         .populate({ path: 'storeId', select: 'name slug' })
         .sort({ startsAt: 1 })
         .limit(80)
@@ -121,7 +121,7 @@ export async function GET() {
         ...participantFilter,
         state: 'close'
       })
-        .select(weeklyEventListProjection)
+        .select(weeklyEventTournamentReportProjection)
         .populate({ path: 'storeId', select: 'name slug' })
         .sort({ startsAt: -1 })
         .limit(80)

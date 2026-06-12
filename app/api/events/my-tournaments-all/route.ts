@@ -3,7 +3,7 @@ import mongoose from 'mongoose'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import { buildMyTournamentWeekItemFromLean } from '@/lib/build-my-tournament-week-item'
-import { weeklyEventListProjection } from '@/lib/weekly-event-query-projections'
+import { weeklyEventTournamentReportProjection } from '@/lib/weekly-event-query-projections'
 import WeeklyEvent from '@/models/WeeklyEvent'
 
 const MAX_RESULTS = 200
@@ -41,7 +41,7 @@ export async function GET() {
       kind: 'tournament',
       participants: { $elemMatch: { userId: uid } }
     })
-      .select(weeklyEventListProjection)
+      .select(weeklyEventTournamentReportProjection)
       .sort({ startsAt: -1 })
       .limit(MAX_RESULTS)
       .lean()

@@ -11,6 +11,7 @@ import WeeklyEvent, {
   type WeeklyEventState
 } from '@/models/WeeklyEvent'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
+import { weeklyEventAdminListProjection } from '@/lib/weekly-event-query-projections'
 
 const PRICE_MAX = 99_999_999
 const PARTICIPANTS_MAX = 2048
@@ -101,6 +102,7 @@ export async function GET() {
       ...ADMIN_WEEKLY_EVENTS_ORIGIN_FILTER,
       ...(storeScope as Record<string, unknown>)
     })
+      .select(weeklyEventAdminListProjection)
       .sort({ startsAt: 1 })
       .populate({ path: 'participants.userId', select: 'popid' })
       .populate({ path: 'leagueId', select: 'name slug' })

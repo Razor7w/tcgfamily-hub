@@ -17,7 +17,7 @@ import WeeklyEvent from '@/models/WeeklyEvent'
 /** Resumen en hub: solo rondas reportadas por el usuario (sin snapshots TDF). */
 const MAX_EVENTS_OVERVIEW = 250
 /** Detalle de rival: enriquecimiento con snapshots oficiales. */
-const MAX_EVENTS_DECK_DETAIL = 350
+const MAX_EVENTS_DECK_DETAIL = 200
 
 function parseOrigin(raw: string | null): TournamentOriginFilter {
   if (raw === 'official' || raw === 'custom') return raw

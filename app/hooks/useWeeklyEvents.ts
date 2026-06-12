@@ -635,7 +635,7 @@ export function useEventCurrentRound(eventId: string | null, enabled: boolean) {
       return data as EventCurrentRoundResponse
     },
     enabled: Boolean(eventId && enabled),
-    staleTime: 0
+    staleTime: 45_000
   })
 }
 

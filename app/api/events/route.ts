@@ -25,7 +25,7 @@ import {
   participantPlayedTournament
 } from '@/lib/tournament-participant-played'
 import type { RoundSnapshotLean } from '@/lib/match-rounds-with-snapshots'
-import { weeklyEventListProjection } from '@/lib/weekly-event-query-projections'
+import { weeklyEventWeekListProjection } from '@/lib/weekly-event-query-projections'
 
 function publicLeagueFromLeanDoc(d: Record<string, unknown>): {
   name: string
@@ -266,7 +266,7 @@ export async function GET(request: NextRequest) {
           }
 
     let docs = await WeeklyEvent.find(queryRange)
-      .select(weeklyEventListProjection)
+      .select(weeklyEventWeekListProjection)
       .populate({ path: 'leagueId', select: 'name slug isActive' })
       .sort({ startsAt: 1 })
       .lean()
