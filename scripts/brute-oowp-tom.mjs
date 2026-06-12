@@ -16,8 +16,6 @@ const {
   swissRoundCountForTiebreakers,
   buildOpponentSetsFromMatches
 } = await import('../app/lib/tournament-tiebreakers.ts')
-const { inferPlayCategoryIndexForPlayer } =
-  await import('../app/lib/inferred-tdf-standings.ts')
 
 // OOWP TOM export final (captura usuario)
 const TOM_OOWP = {
@@ -68,10 +66,6 @@ for (const m of parsed.matches) {
   if (u1 && !u2) byes.set(u1, (byes.get(u1) ?? 0) + 1)
 }
 
-function cat(pop) {
-  return inferPlayCategoryIndexForPlayer(playersByPop.get(pop))
-}
-
 function winPct(pop, mode) {
   const r = rec.get(pop) ?? { wins: 0, losses: 0, ties: 0 }
   const played = r.wins + r.losses + r.ties
@@ -79,40 +73,24 @@ function winPct(pop, mode) {
   const num = r.wins + 0.5 * r.ties
   let raw
   if (mode === 'played') raw = num / played
-  else if (mode === 'completed_r') raw = dropped.has(pop) ? num / played : num / R
+  else if (mode === 'completed_r')
+    raw = dropped.has(pop) ? num / played : num / R
   else if (mode === 'drop_cap') {
     raw = num / played
     return Math.min(0.75, Math.max(F, raw))
-  }
-  else raw = num / R
+  } else raw = num / R
   return Math.min(1, Math.max(F, raw))
-}
-
-function oppSet(sameCat, rootPop) {
-  const rootCat = rootPop != null ? cat(rootPop) : null
-  const opps = buildOpponentSetsFromMatches(swiss, {
-    playersByPopId: playersByPop,
-    options: { sameCategoryOnly: sameCat }
-  })
-  if (rootCat == null || sameCat) return opps
-  // filtrar rivales de rootPop a misma cat que root
-  const filtered = new Map()
-  for (const [pop, set] of opps) {
-    const f = new Set(
-      [...set].filter(o => !rootPop || cat(o) === rootCat || cat(pop) !== rootCat)
-    )
-    filtered.set(pop, f.size ? f : set)
-  }
-  return opps
 }
 
 function buildOwp(winMode, sameCatOwp, owpRound) {
   const owp = new Map()
   for (const pop of pops) {
-    const os = [...(buildOpponentSetsFromMatches(swiss, {
-      playersByPopId: playersByPop,
-      options: { sameCategoryOnly: sameCatOwp }
-    }).get(pop) ?? [])]
+    const os = [
+      ...(buildOpponentSetsFromMatches(swiss, {
+        playersByPopId: playersByPop,
+        options: { sameCategoryOnly: sameCatOwp }
+      }).get(pop) ?? [])
+    ]
     if (!os.length) {
       owp.set(pop, F)
       continue
@@ -213,9 +191,7 @@ console.log('\nCurrent std vs TOM:')
 for (const [pop, tom] of Object.entries(TOM_OOWP)) {
   const os = [...(opps.get(pop) ?? [])]
   const ours =
-    os.length === 0
-      ? F
-      : os.reduce((s, o) => s + owpStd.get(o), 0) / os.length
+    os.length === 0 ? F : os.reduce((s, o) => s + owpStd.get(o), 0) / os.length
   const v = Math.round(ours * 10000) / 100
   const ok = Math.abs(v - tom) < 0.02
   if (!ok)

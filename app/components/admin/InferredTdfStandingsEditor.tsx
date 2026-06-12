@@ -186,12 +186,7 @@ export default function InferredTdfStandingsEditor({
 
   const handleUnifyCategories = () => {
     onStandingsChange(
-      unifyStandingsCategories(
-        standings,
-        matchRecords,
-        matches,
-        players ?? []
-      )
+      unifyStandingsCategories(standings, matchRecords, matches, players ?? [])
     )
   }
 

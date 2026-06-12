@@ -16,9 +16,9 @@ const {
 } = await import('../app/lib/tournament-tiebreakers.ts')
 
 const parsed = parseTournamentXml(xml)
-const records = (await import('../app/lib/tournament-xml.ts')).buildMatchRecordsFromMatches(
-  parsed.matches
-)
+const records = (
+  await import('../app/lib/tournament-xml.ts')
+).buildMatchRecordsFromMatches(parsed.matches)
 const swiss = filterMatchesForTiebreakers(parsed.matches, parsed.players.length)
 const rec = buildMatchRecordsExcludingByes(swiss)
 const playersByPop = new Map(parsed.players.map(p => [p.popId.trim(), p]))
@@ -30,7 +30,9 @@ const tb = buildPlayerTiebreakersFromMatches(
   parsed.players,
   { sameCategoryOnly: false }
 )
-const opps = buildOpponentSetsFromMatches(swiss, { playersByPopId: playersByPop })
+const opps = buildOpponentSetsFromMatches(swiss, {
+  playersByPopId: playersByPop
+})
 const ctx = {
   swissMatches: swiss,
   swissRecords: rec,
@@ -48,7 +50,9 @@ const TOM = {
 
 function chain(pop) {
   const os = [...(opps.get(pop) ?? [])]
-  console.log(`\n=== ${pop} OOWP web ${(tb.get(pop).oowp * 100).toFixed(2)}% TOM ${TOM[pop]}% ===`)
+  console.log(
+    `\n=== ${pop} OOWP web ${(tb.get(pop).oowp * 100).toFixed(2)}% TOM ${TOM[pop]}% ===`
+  )
   for (const o of os) {
     const owp = (tb.get(o)?.owp ?? 0.25) * 100
     const os2 = [...(opps.get(o) ?? [])]

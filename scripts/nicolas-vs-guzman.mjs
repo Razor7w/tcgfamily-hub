@@ -14,9 +14,9 @@ const {
 } = await import('../app/lib/tournament-tiebreakers.ts')
 
 const parsed = parseTournamentXml(xml)
-const records = (await import('../app/lib/tournament-xml.ts')).buildMatchRecordsFromMatches(
-  parsed.matches
-)
+const records = (
+  await import('../app/lib/tournament-xml.ts')
+).buildMatchRecordsFromMatches(parsed.matches)
 const swiss = filterMatchesForTiebreakers(parsed.matches, parsed.players.length)
 const playersByPop = new Map(parsed.players.map(p => [p.popId.trim(), p]))
 const tb = buildPlayerTiebreakersFromMatches(
@@ -27,17 +27,24 @@ const tb = buildPlayerTiebreakersFromMatches(
   parsed.players,
   { sameCategoryOnly: false }
 )
-const opps = buildOpponentSetsFromMatches(swiss, { playersByPopId: playersByPop })
+const opps = buildOpponentSetsFromMatches(swiss, {
+  playersByPopId: playersByPop
+})
 
 function show(pop, name) {
   const os = [...(opps.get(pop) ?? [])]
   console.log(`\n${name} (${pop}) OOWP=${(tb.get(pop).oowp * 100).toFixed(2)}%`)
   const parts = os.map(o => {
     const p = playersByPop.get(o)
-    return { o, name: `${p?.firstName} ${p?.lastName}`, owp: (tb.get(o)?.owp ?? 0) * 100 }
+    return {
+      o,
+      name: `${p?.firstName} ${p?.lastName}`,
+      owp: (tb.get(o)?.owp ?? 0) * 100
+    }
   })
   parts.sort((a, b) => a.o.localeCompare(b.o))
-  for (const x of parts) console.log(`  ${x.o} ${x.name} OWP ${x.owp.toFixed(2)}%`)
+  for (const x of parts)
+    console.log(`  ${x.o} ${x.name} OWP ${x.owp.toFixed(2)}%`)
   const avg = parts.reduce((s, x) => s + x.owp, 0) / parts.length
   console.log(`  avg ${avg.toFixed(2)}%`)
 }

@@ -56,7 +56,9 @@ export async function GET(request: Request) {
 
     const docs = await WeeklyEvent.find(baseFilter)
       .sort({ startsAt: -1 })
-      .limit(myDeckKeyFilter != null ? MAX_EVENTS_DECK_DETAIL : MAX_EVENTS_OVERVIEW)
+      .limit(
+        myDeckKeyFilter != null ? MAX_EVENTS_DECK_DETAIL : MAX_EVENTS_OVERVIEW
+      )
       .select(
         myDeckKeyFilter != null
           ? weeklyEventMatchupDetailProjection

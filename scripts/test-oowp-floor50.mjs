@@ -14,9 +14,9 @@ const {
 } = await import('../app/lib/tournament-tiebreakers.ts')
 
 const parsed = parseTournamentXml(xml)
-const records = (await import('../app/lib/tournament-xml.ts')).buildMatchRecordsFromMatches(
-  parsed.matches
-)
+const records = (
+  await import('../app/lib/tournament-xml.ts')
+).buildMatchRecordsFromMatches(parsed.matches)
 const swiss = filterMatchesForTiebreakers(parsed.matches, parsed.players.length)
 const playersByPop = new Map(parsed.players.map(p => [p.popId.trim(), p]))
 const tb = buildPlayerTiebreakersFromMatches(
@@ -27,13 +27,28 @@ const tb = buildPlayerTiebreakersFromMatches(
   parsed.players,
   { sameCategoryOnly: false }
 )
-const opps = buildOpponentSetsFromMatches(swiss, { playersByPopId: playersByPop })
+const opps = buildOpponentSetsFromMatches(swiss, {
+  playersByPopId: playersByPop
+})
 
 const TOM = {
-  5572829: 54.69, 5549103: 54.69, 5040944: 58.33, 4766204: 54.69,
-  5048227: 64.58, 5404457: 57.29, 5216758: 55.21, 5147394: 54.69,
-  5249454: 55.21, 3946136: 63.02, 4969557: 60.42, 4278367: 57.29,
-  5736449: 54.17, 5949695: 52.08, 5589196: 52.08, 5670164: 45.83, 4969547: 53.13
+  5572829: 54.69,
+  5549103: 54.69,
+  5040944: 58.33,
+  4766204: 54.69,
+  5048227: 64.58,
+  5404457: 57.29,
+  5216758: 55.21,
+  5147394: 54.69,
+  5249454: 55.21,
+  3946136: 63.02,
+  4969557: 60.42,
+  4278367: 57.29,
+  5736449: 54.17,
+  5949695: 52.08,
+  5589196: 52.08,
+  5670164: 45.83,
+  4969547: 53.13
 }
 
 function oowpWithFloor(floorPct) {
@@ -41,7 +56,7 @@ function oowpWithFloor(floorPct) {
   const miss = []
   for (const [pop, tom] of Object.entries(TOM)) {
     const os = [...(opps.get(pop) ?? [])]
-    const vals = os.map(o => Math.max(floorPct, (tb.get(o)?.owp ?? 0.25)))
+    const vals = os.map(o => Math.max(floorPct, tb.get(o)?.owp ?? 0.25))
     const oo = (vals.reduce((a, b) => a + b, 0) / (vals.length || 1)) * 100
     if (Math.abs(oo - tom) < 0.02) hit.push(pop)
     else miss.push({ pop, calc: oo.toFixed(2), tom, os: os.length })

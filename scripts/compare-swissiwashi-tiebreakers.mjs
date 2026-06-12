@@ -7,7 +7,9 @@ import { JSDOM } from 'jsdom'
 
 const tdfPath = process.argv[2]
 if (!tdfPath) {
-  console.error('Usage: npx tsx scripts/compare-swissiwashi-tiebreakers.mjs <path.tdf>')
+  console.error(
+    'Usage: npx tsx scripts/compare-swissiwashi-tiebreakers.mjs <path.tdf>'
+  )
   process.exit(1)
 }
 
@@ -21,7 +23,6 @@ const { parseTournamentXml, buildMatchRecordsFromMatches } =
 const {
   buildPlayerTiebreakersFromMatches,
   filterMatchesForTiebreakers,
-  buildMatchRecordsExcludingByes,
   formatTiebreakerPercent
 } = await import('../app/lib/tournament-tiebreakers.ts')
 
@@ -38,10 +39,7 @@ function swissiwashiWinPct(player) {
   const resistanceWins = player.wins - player.byes
   const denom = resistanceWins + player.ties + player.losses
   if (denom <= 0) return 0.25
-  return Math.max(
-    0.25,
-    (resistanceWins + player.ties / 2) / denom
-  )
+  return Math.max(0.25, (resistanceWins + player.ties / 2) / denom)
 }
 
 function swissiwashiResistance(player, byPop) {
@@ -187,9 +185,7 @@ const pops = [...swissPlayers.keys()].sort((a, b) => {
 
 for (const pop of pops) {
   const rec = fullRecords.get(pop)
-  const wlt = rec
-    ? `${rec.wins}-${rec.losses}-${rec.ties}`
-    : '?'
+  const wlt = rec ? `${rec.wins}-${rec.losses}-${rec.ties}` : '?'
   const hub = ours.get(pop)
   const hubOwp = hub ? formatTiebreakerPercent(hub.owp) : '—'
   const hubOowp = hub ? formatTiebreakerPercent(hub.oowp) : '—'
@@ -201,7 +197,7 @@ for (const pop of pops) {
   const dOwp = Math.abs(hubOwpNum - (swissOwp.get(pop) ?? 0))
   const dOowp = Math.abs(hubOowpNum - (swissOowp.get(pop) ?? 0))
 
-  if (rec && (rec.wins + rec.losses + rec.ties) > 0) {
+  if (rec && rec.wins + rec.losses + rec.ties > 0) {
     compared++
     if (dOwp < 0.02) owpMatch++
     if (dOowp < 0.02) oowpMatch++
