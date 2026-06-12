@@ -15,6 +15,8 @@ export interface ILeague extends Document {
    * `null` o ausente = sumar todos los torneos cerrados de la liga con récord W/L/T.
    */
   countBestEvents: number | null
+  /** Clasificación pública precalculada (`GET /api/leagues/[slug]`). */
+  leaguePublicCache?: Record<string, unknown>
 }
 
 const LeagueSchema = new Schema<ILeague>(
@@ -49,7 +51,8 @@ const LeagueSchema = new Schema<ILeague>(
       type: Number,
       required: false,
       default: undefined
-    }
+    },
+    leaguePublicCache: { type: Schema.Types.Mixed, required: false }
   },
   { timestamps: true, strict: true }
 )

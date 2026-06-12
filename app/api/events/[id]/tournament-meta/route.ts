@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
-import { buildTournamentMetaPayload } from '@/lib/tournament-meta-build'
-import { canExposeParticipantDecksToOthers } from '@/lib/weekly-events'
+import {
+  getOrBuildTournamentMetaCache,
+  isPokemonTournamentMetaEligible
+} from '@/lib/tournament-meta-cache'
 import WeeklyEvent from '@/models/WeeklyEvent'
+
+const META_CACHE_HEADERS = {
+  'Cache-Control': 'private, max-age=600, stale-while-revalidate=1200'
+} as const
 
 export async function GET(
   _request: Request,
@@ -16,33 +22,28 @@ export async function GET(
     }
 
     const { id } = await context.params
-    if (!id?.trim()) {
+    const eventId = id?.trim()
+    if (!eventId) {
       return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
     }
 
     await connectDB()
-    const doc = await WeeklyEvent.findById(id.trim()).lean()
-    if (!doc) {
+
+    const gate = await WeeklyEvent.findById(eventId)
+      .select('kind game state tournamentOrigin')
+      .lean()
+    if (!gate) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     }
 
-    if (doc.kind !== 'tournament' || doc.game !== 'pokemon') {
+    if (gate.kind !== 'tournament' || gate.game !== 'pokemon') {
       return NextResponse.json(
         { error: 'La meta solo aplica a torneos Pokémon TCG' },
         { status: 400 }
       )
     }
 
-    const tournamentOrigin =
-      (doc as { tournamentOrigin?: string }).tournamentOrigin === 'custom'
-        ? 'custom'
-        : 'official'
-    if (
-      !canExposeParticipantDecksToOthers({
-        state: doc.state,
-        tournamentOrigin
-      })
-    ) {
+    if (!isPokemonTournamentMetaEligible(gate)) {
       return NextResponse.json(
         {
           error:
@@ -52,8 +53,15 @@ export async function GET(
       )
     }
 
-    const meta = await buildTournamentMetaPayload(doc)
-    return NextResponse.json(meta, { status: 200 })
+    const meta = await getOrBuildTournamentMetaCache(eventId)
+    if (!meta) {
+      return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+    }
+
+    return NextResponse.json(meta, {
+      status: 200,
+      headers: META_CACHE_HEADERS
+    })
   } catch (e) {
     console.error('GET /api/events/[id]/tournament-meta:', e)
     return NextResponse.json(

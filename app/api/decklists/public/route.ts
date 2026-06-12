@@ -23,6 +23,7 @@ export async function GET(request: Request) {
     await connectDB()
 
     const { searchParams } = new URL(request.url)
+    const includeBadges = searchParams.get('badges') !== '0'
     const limitRaw = searchParams.get('limit')
     let limit = PUBLIC_DECKLIST_LIMIT
     if (limitRaw !== null && limitRaw !== '') {
@@ -68,7 +69,7 @@ export async function GET(request: Request) {
     }
 
     const contributionBadges =
-      ownerIdStrs.length > 0
+      includeBadges && ownerIdStrs.length > 0
         ? await buildTopStoreContributionBadgesForUsers({
             userIds: ownerIdStrs
           })
@@ -102,7 +103,14 @@ export async function GET(request: Request) {
       }
     })
 
-    return NextResponse.json({ decklists })
+    return NextResponse.json(
+      { decklists },
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=300, stale-while-revalidate=600'
+        }
+      }
+    )
   } catch (e) {
     console.error('GET /api/decklists/public:', e)
     return NextResponse.json(

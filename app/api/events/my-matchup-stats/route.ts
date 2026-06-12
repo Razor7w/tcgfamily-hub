@@ -3,14 +3,10 @@ import mongoose from 'mongoose'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import {
-  aggregateMyDeckStats,
-  aggregateOpponentMatchupsForMyDeck,
-  myDeckSlugsDisplayOrderFromEvents,
-  type TournamentOriginFilter
-} from '@/lib/pokemon-matchup-stats'
-import WeeklyEvent from '@/models/WeeklyEvent'
-
-const MAX_EVENTS = 600
+  getOrBuildMatchupStatsDeckDetail,
+  getOrBuildMatchupStatsOverview
+} from '@/lib/matchup-stats-cache'
+import type { TournamentOriginFilter } from '@/lib/pokemon-matchup-stats'
 
 function parseOrigin(raw: string | null): TournamentOriginFilter {
   if (raw === 'official' || raw === 'custom') return raw
@@ -41,82 +37,33 @@ export async function GET(request: Request) {
 
     await connectDB()
 
-    const docs = await WeeklyEvent.find({
-      kind: 'tournament',
-      game: 'pokemon',
-      participants: { $elemMatch: { userId: uid } }
-    })
-      .sort({ startsAt: -1 })
-      .limit(MAX_EVENTS)
-      .select({
-        startsAt: 1,
-        tournamentOrigin: 1,
-        state: 1,
-        roundSnapshots: 1,
-        participants: 1
-      })
-      .lean()
-
     if (myDeckKeyFilter != null) {
-      const opponents = aggregateOpponentMatchupsForMyDeck(
-        docs as Parameters<typeof aggregateOpponentMatchupsForMyDeck>[0],
+      const payload = await getOrBuildMatchupStatsDeckDetail(
         session.user.id,
+        uid,
         origin,
         myDeckKeyFilter
       )
-      const myDeckSlugs =
-        myDeckKeyFilter === '__empty__'
-          ? []
-          : myDeckSlugsDisplayOrderFromEvents(
-              docs as Parameters<typeof aggregateMyDeckStats>[0],
-              session.user.id,
-              myDeckKeyFilter
-            )
-      return NextResponse.json(
-        {
-          origin,
-          view: 'deck-detail' as const,
-          myDeckKey: myDeckKeyFilter,
-          myDeckSlugs,
-          opponents,
-          eventsScanned: docs.length
-        },
-        { status: 200 }
-      )
+      return NextResponse.json(payload, {
+        status: 200,
+        headers: {
+          'Cache-Control': 'private, max-age=300, stale-while-revalidate=600'
+        }
+      })
     }
 
-    const myDecks = aggregateMyDeckStats(
-      docs as Parameters<typeof aggregateMyDeckStats>[0],
+    const payload = await getOrBuildMatchupStatsOverview(
       session.user.id,
+      uid,
       origin
     )
 
-    let eventsWithReportedRounds = 0
-    for (const doc of docs) {
-      const tor =
-        (doc as { tournamentOrigin?: string }).tournamentOrigin === 'custom'
-          ? 'custom'
-          : 'official'
-      if (origin === 'official' && tor !== 'official') continue
-      if (origin === 'custom' && tor !== 'custom') continue
-      const parts = doc.participants ?? []
-      const mine = parts.find(
-        (p: { userId?: unknown }) =>
-          p?.userId != null && String(p.userId) === session.user.id
-      ) as { matchRounds?: unknown[] } | undefined
-      const n = Array.isArray(mine?.matchRounds) ? mine.matchRounds.length : 0
-      if (n > 0) eventsWithReportedRounds++
-    }
-
-    return NextResponse.json(
-      {
-        origin,
-        myDecks,
-        eventsScanned: docs.length,
-        eventsWithReportedRounds
-      },
-      { status: 200 }
-    )
+    return NextResponse.json(payload, {
+      status: 200,
+      headers: {
+        'Cache-Control': 'private, max-age=300, stale-while-revalidate=600'
+      }
+    })
   } catch (error) {
     console.error('GET /api/events/my-matchup-stats:', error)
     return NextResponse.json(

@@ -27,10 +27,7 @@ const parsed = parseTournamentXml(xml)
 const pops = parsed.players.map(p => p.popId.trim())
 const dropped = new Set()
 for (const p of parsed.players) {
-  const re = new RegExp(
-    `<player userid="${p.popId}"[\\s\\S]*?</player>`,
-    'i'
-  )
+  const re = new RegExp(`<player userid="${p.popId}"[\\s\\S]*?</player>`, 'i')
   if ((xml.match(re)?.[0] ?? '').includes('<dropped>')) {
     dropped.add(p.popId.trim())
   }
@@ -153,7 +150,11 @@ for (const pop of Object.keys(TOM)) {
   )
 }
 
-console.log('\nCristobal win%:', winPctCurrent('5589196') * 100, winPctHandbook('5589196') * 100)
+console.log(
+  '\nCristobal win%:',
+  winPctCurrent('5589196') * 100,
+  winPctHandbook('5589196') * 100
+)
 
 function calcRoundOwp2() {
   const wp = new Map(pops.map(p => [p, winPctCurrent(p)]))
@@ -197,7 +198,10 @@ for (const m of parsed.matches) {
   const u2 = m.player2UserId.trim()
   if (u1 && !u2) byes.set(u1, (byes.get(u1) ?? 0) + 1)
 }
-console.log('\nOOWP with bye slot = field avg OWP', (fieldOwp * 100).toFixed(2) + '%')
+console.log(
+  '\nOOWP with bye slot = field avg OWP',
+  (fieldOwp * 100).toFixed(2) + '%'
+)
 
 // median OWP
 const owpVals = [...cur.owp.values()].sort((a, b) => a - b)
@@ -206,7 +210,10 @@ console.log('median OWP', (median * 100).toFixed(2))
 for (const pop of ['5736449']) {
   const os = [...(opps.get(pop) ?? [])]
   const sum = os.reduce((s, o) => s + cur.owp.get(o), 0) + median
-  console.log('Francisco OOWP with median bye slot', ((sum / (os.length + 1)) * 100).toFixed(2))
+  console.log(
+    'Francisco OOWP with median bye slot',
+    ((sum / (os.length + 1)) * 100).toFixed(2)
+  )
 }
 
 // TOM +12.5/n hypothesis
@@ -215,7 +222,9 @@ for (const pop of Object.keys(TOM)) {
   const os = [...(opps.get(pop) ?? [])]
   const ours = cur.oowp.get(pop) * 100
   const adj = ours + 12.5 / os.length
-  console.log(`  ${pop} ours ${ours.toFixed(2)} + ${(12.5 / os.length).toFixed(2)} = ${adj.toFixed(2)} TOM ${TOM[pop].oowp}`)
+  console.log(
+    `  ${pop} ours ${ours.toFixed(2)} + ${(12.5 / os.length).toFixed(2)} = ${adj.toFixed(2)} TOM ${TOM[pop].oowp}`
+  )
 }
 for (const pop of Object.keys(TOM)) {
   const os = [...(opps.get(pop) ?? [])]

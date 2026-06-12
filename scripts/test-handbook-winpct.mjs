@@ -11,16 +11,21 @@ const {
   filterMatchesForTiebreakers,
   buildMatchRecordsExcludingByes,
   buildOpponentSetsFromMatches,
-  swissRoundCountForTiebreakers,
-  OPPONENT_WIN_PCT_FLOOR
+  swissRoundCountForTiebreakers
 } = await import('../app/lib/tournament-tiebreakers.ts')
 
 const parsed = parseTournamentXml(xml)
 const swiss = filterMatchesForTiebreakers(parsed.matches, parsed.players.length)
 const rec = buildMatchRecordsExcludingByes(swiss)
 const playersByPop = new Map(parsed.players.map(p => [p.popId.trim(), p]))
-const opps = buildOpponentSetsFromMatches(swiss, { playersByPopId: playersByPop })
-const R = swissRoundCountForTiebreakers(parsed.matches, parsed.players.length, rec)
+const opps = buildOpponentSetsFromMatches(swiss, {
+  playersByPopId: playersByPop
+})
+const R = swissRoundCountForTiebreakers(
+  parsed.matches,
+  parsed.players.length,
+  rec
+)
 
 const dropped = new Set()
 const dom2 = new JSDOM(xml, { contentType: 'text/xml' })
@@ -103,18 +108,23 @@ function score(label, result) {
     if (owpOk) owpHit++
     if (oowpOk) oowpHit++
     if (!oowpOk || !owpOk) {
-      misses.push({ pop, owp: o.toFixed(2), oowp: oo.toFixed(2), tomOowp: t.oowp })
+      misses.push({
+        pop,
+        owp: o.toFixed(2),
+        oowp: oo.toFixed(2),
+        tomOowp: t.oowp
+      })
     }
   }
-  console.log(`\n${label}: OWP ${owpHit}/17 OOWP ${oowpHit}/17 R=${R} dropped=${[...dropped]}`)
+  console.log(
+    `\n${label}: OWP ${owpHit}/17 OOWP ${oowpHit}/17 R=${R} dropped=${[...dropped]}`
+  )
   for (const m of misses) console.log(' ', m)
 }
 
 score('played', compute(winPctPlayed))
 score('handbook', compute(winPctHandbook))
 
-// hybrid: handbook for OOWP chain only (two-pass)
-const played = compute(winPctPlayed)
 const hb = compute(winPctHandbook)
 const oowpHybrid = new Map()
 for (const [pop, os] of opps) {
@@ -130,7 +140,14 @@ console.log(`\nhybrid OWP=played OOWP=handbook-owp: ${hit}/17`)
 
 // show win% diffs for key players
 console.log('\nWin% played vs handbook (non-dropped with bye):')
-for (const pop of ['5670164', '5736449', '5949695', '5589196', '4278367', '4766204']) {
+for (const pop of [
+  '5670164',
+  '5736449',
+  '5949695',
+  '5589196',
+  '4278367',
+  '4766204'
+]) {
   console.log(
     pop,
     (winPctPlayed(pop) * 100).toFixed(2),

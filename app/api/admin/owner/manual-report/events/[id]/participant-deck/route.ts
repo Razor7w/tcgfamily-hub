@@ -7,6 +7,7 @@ import { normalizeParticipantDeckPokemonSlugs } from '@/lib/participant-deck-pok
 import { parseTournamentDecklistRefBody } from '@/lib/tournament-decklist-ref'
 import { validateTournamentDecklistRefForUser } from '@/lib/validate-tournament-decklist-ref'
 import WeeklyEvent, { type IWeeklyParticipant } from '@/models/WeeklyEvent'
+import { syncTournamentMetaCacheAfterEventMutation } from '@/lib/tournament-meta-cache'
 
 type WeeklyParticipantDoc = IWeeklyParticipant & {
   _id?: mongoose.Types.ObjectId
@@ -184,6 +185,8 @@ export async function PUT(
 
     doc.markModified('participants')
     await doc.save()
+
+    await syncTournamentMetaCacheAfterEventMutation(String(doc._id), doc)
 
     return NextResponse.json({
       ok: true,

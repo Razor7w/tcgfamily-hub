@@ -3,9 +3,9 @@ import mongoose from 'mongoose'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import { buildMyTournamentWeekItemFromLean } from '@/lib/build-my-tournament-week-item'
-import WeeklyEvent from '@/models/WeeklyEvent'
+import { aggregateWeeklyEventsForUserReport } from '@/lib/weekly-event-user-report-query'
 
-const MAX_RESULTS = 500
+const MAX_RESULTS = 200
 
 /**
  * Todos los torneos en los que el usuario participa (inscripción con userId),
@@ -36,19 +36,28 @@ export async function GET() {
 
     await connectDB()
 
-    const docs = await WeeklyEvent.find({
-      kind: 'tournament',
-      participants: { $elemMatch: { userId: uid } }
-    })
-      .sort({ startsAt: -1 })
-      .limit(MAX_RESULTS)
-      .lean()
+    const docs = await aggregateWeeklyEventsForUserReport(
+      {
+        kind: 'tournament',
+        participants: { $elemMatch: { userId: uid } }
+      },
+      uid,
+      { sort: { startsAt: -1 }, limit: MAX_RESULTS }
+    )
 
     const items = docs
       .map(d => buildMyTournamentWeekItemFromLean(d, userId, userPopId))
       .filter((x): x is NonNullable<typeof x> => x != null)
 
-    return NextResponse.json({ tournaments: items }, { status: 200 })
+    return NextResponse.json(
+      { tournaments: items },
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 'private, max-age=180, stale-while-revalidate=300'
+        }
+      }
+    )
   } catch (error) {
     console.error('GET /api/events/my-tournaments-all:', error)
     return NextResponse.json(

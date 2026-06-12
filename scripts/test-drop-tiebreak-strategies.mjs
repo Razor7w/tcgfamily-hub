@@ -10,10 +10,8 @@ globalThis.window = dom.window
 globalThis.DOMParser = dom.window.DOMParser
 
 const { parseTournamentXml } = await import('../app/lib/tournament-xml.ts')
-const {
-  filterMatchesForTiebreakers,
-  buildMatchRecordsExcludingByes
-} = await import('../app/lib/tournament-tiebreakers.ts')
+const { filterMatchesForTiebreakers, buildMatchRecordsExcludingByes } =
+  await import('../app/lib/tournament-tiebreakers.ts')
 
 const parsed = parseTournamentXml(xml)
 const swiss = filterMatchesForTiebreakers(parsed.matches, parsed.players.length)
@@ -22,13 +20,11 @@ const FLOOR = 0.25
 
 const dropped = new Map()
 for (const p of parsed.players) {
-  const re = new RegExp(
-    `<player userid="${p.popId}"[\\s\\S]*?</player>`,
-    'i'
-  )
+  const re = new RegExp(`<player userid="${p.popId}"[\\s\\S]*?</player>`, 'i')
   const block = xml.match(re)?.[0] ?? ''
   const m = block.match(/<round>(\d+)<\/round>/)
-  if (block.includes('<dropped>')) dropped.set(p.popId.trim(), Number(m?.[1] ?? 0))
+  if (block.includes('<dropped>'))
+    dropped.set(p.popId.trim(), Number(m?.[1] ?? 0))
 }
 
 const opps = new Map()
@@ -73,10 +69,7 @@ function calc(mode, skipDroppedOpps) {
       continue
     }
     owp.set(pop, os.reduce((s, o) => s + (wp.get(o) ?? FLOOR), 0) / os.length)
-    oowp.set(
-      pop,
-      os.reduce((s, o) => s + (owp.get(o) ?? FLOOR), 0) / os.length
-    )
+    oowp.set(pop, os.reduce((s, o) => s + (owp.get(o) ?? FLOOR), 0) / os.length)
   }
   return { owp, oowp }
 }

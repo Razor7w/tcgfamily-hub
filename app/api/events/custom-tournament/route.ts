@@ -7,6 +7,7 @@ import { normalizeParticipantDeckPokemonSlugs } from '@/lib/participant-deck-pok
 import { parseTournamentDecklistRefBody } from '@/lib/tournament-decklist-ref'
 import { validateTournamentDecklistRefForUser } from '@/lib/validate-tournament-decklist-ref'
 import WeeklyEvent from '@/models/WeeklyEvent'
+import { refreshTournamentDerivedCaches } from '@/lib/tournament-meta-cache'
 
 const TITLE_MAX = 200
 
@@ -188,6 +189,8 @@ export async function POST(request: NextRequest) {
         }
       ]
     })
+
+    await refreshTournamentDerivedCaches(String(doc._id))
 
     return NextResponse.json(
       { ok: true, eventId: String(doc._id) },

@@ -104,7 +104,6 @@ const libCat = buildPlayerTiebreakersFromMatches(
 )
 const all = calc(false, false)
 const allRound = calc(false, true)
-const catOnly = calc(true, false)
 
 console.log('=== Modos ===')
 for (const pop of Object.keys(TARGETS)) {
@@ -123,7 +122,9 @@ for (const pop of Object.keys(TARGETS)) {
   const e = TARGETS[pop]
   const myCat = inferPlayCategoryIndexForPlayer(playersByPop.get(pop))
   const os = [...(all.opps.get(pop) ?? [])]
-  console.log(`\n=== ${pop} ${e.name} [${catLabel(myCat)}] — ${os.length} rivales ===`)
+  console.log(
+    `\n=== ${pop} ${e.name} [${catLabel(myCat)}] — ${os.length} rivales ===`
+  )
   console.log(
     'Rival'.padEnd(10),
     'Cat',
