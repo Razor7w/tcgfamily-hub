@@ -4,6 +4,7 @@ import { adminWeeklyEventForbiddenResponse } from '@/lib/admin-weekly-event-acce
 import connectDB from '@/lib/mongodb'
 import { weeklyOfficialByIdForStaffGate } from '@/lib/multitenancy/staff-queries'
 import { popidForStorage } from '@/lib/rut-chile'
+import { syncTournamentMetaCacheAfterEventMutation } from '@/lib/tournament-meta-cache'
 
 const MAX_ROWS = 512
 const PLACE_MAX = 9999
@@ -147,6 +148,8 @@ export async function POST(
     doc.tournamentStandings = list
     doc.markModified('tournamentStandings')
     await doc.save()
+
+    await syncTournamentMetaCacheAfterEventMutation(String(doc._id), doc)
 
     return NextResponse.json(
       {

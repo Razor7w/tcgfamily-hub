@@ -18,6 +18,10 @@ import { readTournamentMode } from '@/lib/tournament-mode'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { weeklyOfficialByIdForStaffGate } from '@/lib/multitenancy/staff-queries'
 import { applyTournamentParticipationAwardsOnEventClose } from '@/lib/contribution-points/tournament-contribution-awards'
+import { serializeAdminWeeklyEventFromLean } from '@/lib/admin-weekly-event-api'
+import { invalidateLeaguePublicCacheForEvent } from '@/lib/league-public-cache'
+import { syncTournamentMetaCacheAfterEventMutation } from '@/lib/tournament-meta-cache'
+import { weeklyEventAdminDetailProjection } from '@/lib/weekly-event-query-projections'
 
 const PRICE_MAX = 99_999_999
 const PARTICIPANTS_MAX = 2048
@@ -52,6 +56,50 @@ function readState(v: unknown): WeeklyEventState | null {
   return null
 }
 
+export async function GET(
+  _request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const gate = await requireStoreStaffSession()
+    if (!gate.ok) return gate.response
+
+    const { id } = await context.params
+    if (!id?.trim()) {
+      return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
+    }
+
+    await connectDB()
+    const doc = await weeklyOfficialByIdForStaffGate(gate, id.trim())
+    if (!doc) {
+      return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+    }
+    const forbidden = adminWeeklyEventForbiddenResponse(doc)
+    if (forbidden) return forbidden
+
+    const lean = await WeeklyEvent.findById(doc._id)
+      .select(weeklyEventAdminDetailProjection)
+      .populate({ path: 'participants.userId', select: 'popid' })
+      .populate({ path: 'leagueId', select: 'name slug' })
+      .lean()
+
+    if (!lean) {
+      return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+    }
+
+    const event = serializeAdminWeeklyEventFromLean(
+      lean as Record<string, unknown>
+    )
+    return NextResponse.json({ event }, { status: 200 })
+  } catch (error) {
+    console.error('GET /api/admin/events/[id]:', error)
+    return NextResponse.json(
+      { error: 'Error al obtener evento' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -83,6 +131,7 @@ export async function PATCH(
     if (forbidden) return forbidden
 
     const previousState = doc.state
+    const previousLeagueId = doc.leagueId
 
     if (typeof body.startsAt === 'string') {
       const d = new Date(body.startsAt)
@@ -365,6 +414,19 @@ export async function PATCH(
         gate.activeStoreOid
       )
     }
+
+    if (
+      previousState === 'close' &&
+      (doc.state !== 'close' ||
+        String(previousLeagueId ?? '') !== String(doc.leagueId ?? ''))
+    ) {
+      await invalidateLeaguePublicCacheForEvent({
+        leagueId: doc.leagueId,
+        previousLeagueId
+      })
+    }
+
+    await syncTournamentMetaCacheAfterEventMutation(String(doc._id), doc)
 
     return NextResponse.json({ event: doc.toObject() }, { status: 200 })
   } catch (error) {

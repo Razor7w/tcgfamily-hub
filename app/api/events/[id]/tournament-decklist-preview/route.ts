@@ -5,6 +5,7 @@ import connectDB from '@/lib/mongodb'
 import SavedDecklist from '@/models/SavedDecklist'
 import WeeklyEvent from '@/models/WeeklyEvent'
 import { resolveViewAsParticipant } from '@/lib/weekly-event-view-as'
+import { weeklyEventDecklistPreviewProjection } from '@/lib/weekly-event-query-projections'
 
 /**
  * Texto del listado guardado asociado al torneo (vista en imágenes).
@@ -29,7 +30,9 @@ export async function GET(
     const uid = session.user.id
     const isAdmin = (session.user as { role?: string }).role === 'admin'
 
-    const doc = await WeeklyEvent.findById(id.trim()).lean()
+    const doc = await WeeklyEvent.findById(id.trim())
+      .select(weeklyEventDecklistPreviewProjection)
+      .lean()
     if (!doc) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     }

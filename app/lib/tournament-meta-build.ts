@@ -1,6 +1,6 @@
 import mongoose from 'mongoose'
 import Store from '@/models/Store'
-import { getTournamentDecklistDisplayLabels } from '@/lib/tournament-decklist-display'
+import { batchTournamentDecklistDisplayLabels } from '@/lib/tournament-decklist-display'
 import {
   matchRecordFromRounds,
   parseParticipantMatchRoundsFromLean,
@@ -167,8 +167,27 @@ export async function buildTournamentMetaPayload(
     ? buildBitacoraInferredDeckLookup(parts)
     : emptyParticipantDeckLookup()
   const roundSnapshots = doc.roundSnapshots ?? []
+  const storePromise = resolveTournamentMetaStore(doc.storeId)
 
-  const participants: TournamentMetaParticipantDTO[] = []
+  type PendingParticipant = {
+    participantKey: string
+    userId: string | null
+    popId: string | null
+    displayName: string
+    deckPokemonSlugs: string[]
+    hasDecklistRef: boolean
+    decklistCacheKey: string | null
+    matchRounds: ParticipantMatchRoundDTO[]
+    matchRecord: { wins: number; losses: number; ties: number } | null
+    standingPlace: number | null
+    standingIsDnf: boolean
+  }
+
+  const pending: PendingParticipant[] = []
+  const decklistRequests: {
+    userId: string
+    ref: NonNullable<LeanParticipant['tournamentDecklistRef']>
+  }[] = []
 
   for (const p of parts) {
     if (!participantPlayedTournament(p, playedPopIds, tournamentOrigin)) {
@@ -225,17 +244,14 @@ export async function buildTournamentMetaPayload(
       exposeDecksToOthers
     )
 
-    let decklistDisplay: { decklistName: string; listLabel: string } | null =
-      null
     const ref = p.tournamentDecklistRef
     const hasDecklistRef = Boolean(
       ref?.decklistId && userId && mongoose.Types.ObjectId.isValid(userId)
     )
-    if (hasDecklistRef && userId) {
-      decklistDisplay = await getTournamentDecklistDisplayLabels(
-        new mongoose.Types.ObjectId(userId),
-        ref
-      )
+    let decklistCacheKey: string | null = null
+    if (hasDecklistRef && userId && ref) {
+      decklistCacheKey = `${userId}|${String(ref.decklistId)}`
+      decklistRequests.push({ userId, ref })
     }
 
     let matchRecord: { wins: number; losses: number; ties: number } | null =
@@ -261,20 +277,45 @@ export async function buildTournamentMetaPayload(
       matchRecord = matchRecordFromRounds(matchRounds)
     }
 
-    participants.push({
+    pending.push({
       participantKey: participantKeyFromLean(p),
       userId,
       popId: popIdStored,
       displayName,
       deckPokemonSlugs,
-      decklistDisplay,
-      hasDecklist: hasDecklistRef && Boolean(decklistDisplay),
+      hasDecklistRef,
+      decklistCacheKey,
       matchRounds,
       matchRecord,
       standingPlace: null,
       standingIsDnf: false
     })
   }
+
+  const [store, decklistByKey] = await Promise.all([
+    storePromise,
+    batchTournamentDecklistDisplayLabels(decklistRequests)
+  ])
+
+  const participants: TournamentMetaParticipantDTO[] = pending.map(row => {
+    const decklistDisplay =
+      row.decklistCacheKey != null
+        ? (decklistByKey.get(row.decklistCacheKey) ?? null)
+        : null
+    return {
+      participantKey: row.participantKey,
+      userId: row.userId,
+      popId: row.popId,
+      displayName: row.displayName,
+      deckPokemonSlugs: row.deckPokemonSlugs,
+      decklistDisplay,
+      hasDecklist: row.hasDecklistRef && Boolean(decklistDisplay),
+      matchRounds: row.matchRounds,
+      matchRecord: row.matchRecord,
+      standingPlace: row.standingPlace,
+      standingIsDnf: row.standingIsDnf
+    }
+  })
 
   const standings = buildTournamentStandingsMeta(
     doc.tournamentStandings,
@@ -323,8 +364,6 @@ export async function buildTournamentMetaPayload(
     doc.state === 'schedule' || doc.state === 'running' || doc.state === 'close'
       ? doc.state
       : 'schedule'
-
-  const store = await resolveTournamentMetaStore(doc.storeId)
 
   return {
     event: {

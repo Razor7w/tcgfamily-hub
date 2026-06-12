@@ -5,6 +5,7 @@ import connectDB from '@/lib/mongodb'
 import SavedDecklist from '@/models/SavedDecklist'
 import WeeklyEvent from '@/models/WeeklyEvent'
 import { canExposeParticipantDecksToOthers } from '@/lib/weekly-events'
+import { weeklyEventMetaDecklistProjection } from '@/lib/weekly-event-query-projections'
 
 /**
  * Texto del listado de un participante del torneo (vista meta / imágenes).
@@ -36,7 +37,9 @@ export async function GET(
     }
 
     await connectDB()
-    const doc = await WeeklyEvent.findById(id.trim()).lean()
+    const doc = await WeeklyEvent.findById(id.trim())
+      .select(weeklyEventMetaDecklistProjection)
+      .lean()
     if (!doc) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     }
@@ -82,13 +85,9 @@ export async function GET(
       )
     }
 
-    const { buildTournamentMetaPayload, findParticipantByKey } =
-      await import('@/lib/tournament-meta-build')
-    const meta = await buildTournamentMetaPayload(doc)
-    const pMeta = findParticipantByKey(meta.participants, participantKey)
-    if (!pMeta) {
+    if (!targetParticipant) {
       return NextResponse.json(
-        { error: 'Participante no encontrado en la meta del torneo' },
+        { error: 'Participante no encontrado' },
         { status: 404 }
       )
     }

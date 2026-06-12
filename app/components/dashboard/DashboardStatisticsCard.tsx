@@ -19,6 +19,7 @@ import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
 import { alpha } from '@mui/material/styles'
+import { useLazyInView } from '@/hooks/useLazyInView'
 import { useMyMatchupStats } from '@/hooks/useWeeklyEvents'
 import {
   winRatePercent,
@@ -40,8 +41,9 @@ function deckLabel(row: MyDeckStatsRowDTO): string {
 }
 
 export default function DashboardStatisticsCard() {
+  const { ref: lazyRef, inView } = useLazyInView()
   const { data, isPending, isError, error, refetch, isFetching } =
-    useMyMatchupStats('all', null)
+    useMyMatchupStats('all', null, { enabled: inView })
 
   const previewRows = useMemo(() => {
     const list = data?.myDecks ?? []
@@ -54,6 +56,7 @@ export default function DashboardStatisticsCard() {
 
   return (
     <Card
+      ref={lazyRef}
       variant="outlined"
       sx={{
         borderRadius: 2,
@@ -105,7 +108,7 @@ export default function DashboardStatisticsCard() {
       </Box>
 
       <CardContent sx={{ pt: 2.5, pb: 2, px: 2 }}>
-        {isPending ? (
+        {!inView || isPending ? (
           <Stack alignItems="center" py={3}>
             <CircularProgress size={32} />
           </Stack>

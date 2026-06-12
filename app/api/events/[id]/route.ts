@@ -11,12 +11,17 @@ import {
   canUnregisterNow,
   pairingExtrasForUser
 } from '@/lib/weekly-events'
+import { getOrBuildTournamentStandingsFullCache } from '@/lib/tournament-standings-full-cache'
 import {
   attachTiebreakersToFullPublicStandings,
   buildTournamentStandingsPublic,
   categoryLabelEs,
   PUBLIC_STANDINGS_FULL_MAX
 } from '@/lib/weekly-event-public'
+import {
+  weeklyEventDetailBaseProjection,
+  weeklyEventRoundSnapshotsWltProjection
+} from '@/lib/weekly-event-query-projections'
 import {
   matchRecordFromRounds,
   type ParticipantMatchRoundDTO
@@ -118,7 +123,9 @@ export async function GET(
 
     await connectDB()
 
-    const doc = await WeeklyEvent.findById(id).lean<LeanEvent | null>()
+    const doc = await WeeklyEvent.findById(id)
+      .select(weeklyEventDetailBaseProjection)
+      .lean<LeanEvent | null>()
     if (!doc) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     }
@@ -141,6 +148,29 @@ export async function GET(
     const isAdmin = (session.user as { role?: string }).role === 'admin'
     const adminReadOnlyView = isAdmin && tournamentOrigin === 'custom'
     const viewAs = resolveViewAsParticipant(doc, uid, isAdmin)
+    const tournamentClosed = doc.kind === 'tournament' && doc.state === 'close'
+
+    let standingsFullFromCache: Awaited<
+      ReturnType<typeof getOrBuildTournamentStandingsFullCache>
+    > = null
+    if (
+      wantFullStandings &&
+      tournamentClosed &&
+      doc.game === 'pokemon' &&
+      doc.kind === 'tournament'
+    ) {
+      standingsFullFromCache = await getOrBuildTournamentStandingsFullCache(id)
+    }
+
+    const needsSnapshots =
+      Boolean(viewAs) ||
+      (wantFullStandings && tournamentClosed && !standingsFullFromCache)
+    if (needsSnapshots) {
+      const snapLean = await WeeklyEvent.findById(id)
+        .select(weeklyEventRoundSnapshotsWltProjection)
+        .lean<{ roundSnapshots?: RoundSnapshotLean[] } | null>()
+      doc.roundSnapshots = snapLean?.roundSnapshots ?? []
+    }
 
     const myRegistration = viewAs?.displayName ?? null
     const myAttendanceConfirmed = Boolean(viewAs?.confirmed)
@@ -153,57 +183,64 @@ export async function GET(
       (createdByStr === uid ||
         (!createdByStr && Boolean(mine?.userId && String(mine.userId) === uid)))
 
-    const popToDisplayName = buildPopToDisplayNameMap(
-      parts as { displayName: string; popId?: string }[]
-    )
-    const exposeOpponentDecksToOthers = canExposeParticipantDecksToOthers({
-      state: doc.state,
-      tournamentOrigin
-    })
-    const selfReportedDeckLookup = exposeOpponentDecksToOthers
-      ? buildParticipantDeckLookup(
-          parts as {
-            displayName?: string
-            popId?: string
-            deckPokemonSlugs?: unknown
-          }[]
-        )
-      : emptyParticipantDeckLookup()
-    const bitacoraDeckLookup = exposeOpponentDecksToOthers
-      ? buildBitacoraInferredDeckLookup(
-          parts as {
-            displayName?: string
-            popId?: string
-            deckPokemonSlugs?: unknown
-            matchRounds?: unknown
-          }[]
-        )
-      : emptyParticipantDeckLookup()
-    const myPopForRounds =
-      viewAs && typeof viewAs.popId === 'string' ? viewAs.popId : null
-    const myTdfFinalForRounds =
-      viewAs && tournamentOrigin !== 'custom'
-        ? {
-            wins: Math.max(
-              0,
-              Math.min(999, Math.round(Number(viewAs.wins) || 0))
-            ),
-            losses: Math.max(
-              0,
-              Math.min(999, Math.round(Number(viewAs.losses) || 0))
-            ),
-            ties: Math.max(
-              0,
-              Math.min(999, Math.round(Number(viewAs.ties) || 0))
-            )
-          }
-        : null
-    const myMatchRounds: ParticipantMatchRoundDTO[] =
-      enrichMatchRoundsWithOpponentDecks(
+    let myMatchRounds: ParticipantMatchRoundDTO[] = []
+    let myMatchRecord: {
+      wins: number
+      losses: number
+      ties: number
+    } | null = null
+
+    if (viewAs) {
+      const popToDisplayName = buildPopToDisplayNameMap(
+        parts as { displayName: string; popId?: string }[]
+      )
+      const exposeOpponentDecksToOthers = canExposeParticipantDecksToOthers({
+        state: doc.state,
+        tournamentOrigin
+      })
+      const selfReportedDeckLookup = exposeOpponentDecksToOthers
+        ? buildParticipantDeckLookup(
+            parts as {
+              displayName?: string
+              popId?: string
+              deckPokemonSlugs?: unknown
+            }[]
+          )
+        : emptyParticipantDeckLookup()
+      const bitacoraDeckLookup = exposeOpponentDecksToOthers
+        ? buildBitacoraInferredDeckLookup(
+            parts as {
+              displayName?: string
+              popId?: string
+              deckPokemonSlugs?: unknown
+              matchRounds?: unknown
+            }[]
+          )
+        : emptyParticipantDeckLookup()
+      const myPopForRounds =
+        typeof viewAs.popId === 'string' ? viewAs.popId : null
+      const myTdfFinalForRounds =
+        tournamentOrigin !== 'custom'
+          ? {
+              wins: Math.max(
+                0,
+                Math.min(999, Math.round(Number(viewAs.wins) || 0))
+              ),
+              losses: Math.max(
+                0,
+                Math.min(999, Math.round(Number(viewAs.losses) || 0))
+              ),
+              ties: Math.max(
+                0,
+                Math.min(999, Math.round(Number(viewAs.ties) || 0))
+              )
+            }
+          : null
+      myMatchRounds = enrichMatchRoundsWithOpponentDecks(
         myPopForRounds,
         mergeLeanMatchRoundsWithSnapshots(
           myPopForRounds,
-          viewAs?.matchRounds,
+          viewAs.matchRounds,
           doc.roundSnapshots ?? [],
           popToDisplayName,
           myTdfFinalForRounds
@@ -213,28 +250,19 @@ export async function GET(
         bitacoraDeckLookup,
         exposeOpponentDecksToOthers
       )
-
-    let myMatchRecord: {
-      wins: number
-      losses: number
-      ties: number
-    } | null = viewAs
-      ? {
-          wins: Math.max(
-            0,
-            Math.min(999, Math.round(Number(viewAs.wins) || 0))
-          ),
-          losses: Math.max(
-            0,
-            Math.min(999, Math.round(Number(viewAs.losses) || 0))
-          ),
-          ties: Math.max(0, Math.min(999, Math.round(Number(viewAs.ties) || 0)))
-        }
-      : null
-
-    if (viewAs && tournamentOrigin === 'custom') {
-      myMatchRecord = matchRecordFromRounds(myMatchRounds)
+      myMatchRecord = {
+        wins: Math.max(0, Math.min(999, Math.round(Number(viewAs.wins) || 0))),
+        losses: Math.max(
+          0,
+          Math.min(999, Math.round(Number(viewAs.losses) || 0))
+        ),
+        ties: Math.max(0, Math.min(999, Math.round(Number(viewAs.ties) || 0)))
+      }
+      if (tournamentOrigin === 'custom') {
+        myMatchRecord = matchRecordFromRounds(myMatchRounds)
+      }
     }
+
     const eventStateRaw =
       doc.state === 'schedule' ||
       doc.state === 'running' ||
@@ -243,7 +271,6 @@ export async function GET(
         : 'schedule'
     /** Torneos custom no siguen el ciclo oficial; la API los expone siempre como cerrados. */
     const eventState = tournamentOrigin === 'custom' ? 'close' : eventStateRaw
-    const tournamentClosed = doc.kind === 'tournament' && doc.state === 'close'
     const popForStandingsSession = adminReadOnlyView
       ? typeof viewAs?.popId === 'string'
         ? viewAs.popId
@@ -392,16 +419,18 @@ export async function GET(
       ...(tournamentClosed
         ? wantFullStandings
           ? {
-              standingsFullByCategory: attachTiebreakersToFullPublicStandings(
-                standingsPublic?.standingsTopByCategory ?? [],
-                doc.roundSnapshots,
-                parts as {
-                  popId?: string
-                  wins?: unknown
-                  losses?: unknown
-                  ties?: unknown
-                }[]
-              )
+              standingsFullByCategory:
+                standingsFullFromCache ??
+                attachTiebreakersToFullPublicStandings(
+                  standingsPublic?.standingsTopByCategory ?? [],
+                  doc.roundSnapshots,
+                  parts as {
+                    popId?: string
+                    wins?: unknown
+                    losses?: unknown
+                    ties?: unknown
+                  }[]
+                )
             }
           : {
               standingsTopByCategory:

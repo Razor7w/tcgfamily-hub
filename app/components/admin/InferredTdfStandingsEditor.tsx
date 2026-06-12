@@ -32,6 +32,7 @@ import {
   OPPONENT_WIN_PCT_FLOOR
 } from '@/lib/tournament-tiebreakers'
 import {
+  droppedPopIdsFromPlayers,
   formatMatchRecordWlt,
   type MatchRecord,
   type ParsedMatch,
@@ -48,7 +49,6 @@ type InferredTdfStandingsEditorProps = {
   names: Map<string, string>
   matchRecords: Map<string, MatchRecord>
   matches: ParsedMatch[]
-  droppedPopIds?: ReadonlySet<string>
   fieldSize?: number
   players?: ParsedPlayer[]
   /** Rivales solo de la misma categoría Play! (por categoría); false = pod unificado. */
@@ -72,7 +72,6 @@ export default function InferredTdfStandingsEditor({
   names,
   matchRecords,
   matches,
-  droppedPopIds,
   fieldSize,
   players,
   sameCategoryTiebreakers
@@ -83,6 +82,11 @@ export default function InferredTdfStandingsEditor({
   const isUnifiedView = useMemo(
     () => isUnifiedStandingsPayload(standings),
     [standings]
+  )
+
+  const droppedPopIds = useMemo(
+    () => (players ? droppedPopIdsFromPlayers(players) : undefined),
+    [players]
   )
 
   const tiebreakers = useMemo(
@@ -182,7 +186,7 @@ export default function InferredTdfStandingsEditor({
 
   const handleUnifyCategories = () => {
     onStandingsChange(
-      unifyStandingsCategories(standings, matchRecords, matches)
+      unifyStandingsCategories(standings, matchRecords, matches, players ?? [])
     )
   }
 
@@ -191,9 +195,10 @@ export default function InferredTdfStandingsEditor({
       <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 720 }}>
         El archivo no incluye <code>&lt;standings&gt;</code>. Orden sugerido por
         puntos de partida, récord W/L/T, <strong>OWP</strong> y{' '}
-        <strong>OOWP</strong> (TOM; suelo 25 %). Por defecto se separa por
-        categoría según fecha de nacimiento (2025–26). Usa las flechas para
-        corregir el puesto antes de guardar o subir.
+        <strong>OOWP</strong> (TOM; suelo 25 %). Los retirados (
+        <code>&lt;dropped&gt;</code> o menos rondas que el torneo) van al final.
+        Por defecto se separa por categoría según fecha de nacimiento (2025–26).
+        Usa las flechas para corregir el puesto antes de guardar o subir.
       </Typography>
 
       {totalFinished > 0 ? (

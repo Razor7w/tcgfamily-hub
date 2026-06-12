@@ -31,9 +31,12 @@ export type PublicDecklistSummary = {
   ownerTopContribution: PublicDecklistOwnerTopContribution | null
 }
 
+const SAVED_DECKLISTS_STALE_MS = 2 * 60 * 1000
+
 export function useSavedDecklistsList() {
   return useQuery({
     queryKey: ['decklists'],
+    staleTime: SAVED_DECKLISTS_STALE_MS,
     queryFn: async (): Promise<SavedDecklistSummary[]> => {
       const res = await fetch('/api/decklists')
       if (!res.ok) {
@@ -69,9 +72,12 @@ export function useDeleteSavedDecklist() {
   })
 }
 
+const PUBLIC_DECKLISTS_STALE_MS = 5 * 60 * 1000
+
 export function usePublicDecklistsList() {
   return useQuery({
     queryKey: ['public-decklists'],
+    staleTime: PUBLIC_DECKLISTS_STALE_MS,
     queryFn: async (): Promise<PublicDecklistSummary[]> => {
       const res = await fetch('/api/decklists/public')
       if (!res.ok) {
@@ -94,8 +100,9 @@ export function usePublicDecklistsList() {
 export function useRecentPublicDecklists(limit: number) {
   return useQuery({
     queryKey: ['public-decklists', 'recent', limit],
+    staleTime: PUBLIC_DECKLISTS_STALE_MS,
     queryFn: async (): Promise<PublicDecklistSummary[]> => {
-      const res = await fetch(`/api/decklists/public?limit=${limit}`)
+      const res = await fetch(`/api/decklists/public?limit=${limit}&badges=0`)
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
         throw new Error(

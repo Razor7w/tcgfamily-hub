@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import { parseManualPlacementBody } from '@/lib/manual-placement'
 import WeeklyEvent from '@/models/WeeklyEvent'
+import { syncTournamentMetaCacheAfterEventMutation } from '@/lib/tournament-meta-cache'
 
 /**
  * Actualiza o quita la posición final declarada por el jugador en un torneo custom
@@ -102,6 +103,8 @@ export async function PATCH(
 
     doc.markModified('participants')
     await doc.save()
+
+    await syncTournamentMetaCacheAfterEventMutation(String(doc._id), doc)
 
     return NextResponse.json({ ok: true }, { status: 200 })
   } catch (error) {

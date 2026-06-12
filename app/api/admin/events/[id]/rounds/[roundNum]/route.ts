@@ -4,6 +4,7 @@ import { adminWeeklyEventForbiddenResponse } from '@/lib/admin-weekly-event-acce
 import connectDB from '@/lib/mongodb'
 import { weeklyOfficialByIdForStaffGate } from '@/lib/multitenancy/staff-queries'
 import type { IRoundSnapshot } from '@/models/WeeklyEvent'
+import { syncTournamentMetaCacheAfterEventMutation } from '@/lib/tournament-meta-cache'
 
 function parseRoundNum(raw: string): number | null {
   const n = Number.parseInt(raw, 10)
@@ -73,6 +74,8 @@ export async function DELETE(
     )
     doc.markModified('roundSnapshots')
     await doc.save()
+
+    await syncTournamentMetaCacheAfterEventMutation(String(doc._id), doc)
 
     return NextResponse.json(
       {
