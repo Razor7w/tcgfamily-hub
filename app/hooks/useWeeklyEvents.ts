@@ -113,7 +113,8 @@ export function useWeekEvents(weekAnchor: Date | null) {
       }
       return res.json()
     },
-    enabled: !!weekAnchor
+    enabled: !!weekAnchor,
+    staleTime: 3 * 60_000
   })
 }
 
@@ -200,7 +201,8 @@ export function useMyHomeTournaments() {
         throw new Error('Error al cargar tus torneos')
       }
       return res.json()
-    }
+    },
+    staleTime: 3 * 60_000
   })
 }
 

@@ -172,6 +172,23 @@ export const weeklyEventDecklistPreviewProjection = {
   'participants.tournamentDecklistRef': 1
 } as const
 
+/** GET /api/admin/custom-tournaments: sin snapshots ni meta cache. */
+export const weeklyEventAdminCustomListProjection = {
+  title: 1,
+  startsAt: 1,
+  createdAt: 1,
+  updatedAt: 1,
+  createdByUserId: 1,
+  'participants.displayName': 1,
+  'participants.userId': 1,
+  'participants.deckPokemonSlugs': 1,
+  'participants.wins': 1,
+  'participants.losses': 1,
+  'participants.ties': 1,
+  'participants.manualPlacement': 1,
+  'participants.matchRounds': 1
+} as const
+
 /** Decklist de un rival en meta (sin cargar meta completa). */
 export const weeklyEventMetaDecklistProjection = {
   kind: 1,

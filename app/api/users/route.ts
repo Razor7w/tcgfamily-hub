@@ -22,50 +22,68 @@ export async function GET() {
     if (!gate.ok) return gate.response
 
     await connectDB()
-    const users = await User.find({})
-      .select('+passwordHash -accounts -sessions')
-      .sort({ createdAt: -1 })
-      .lean()
+
+    const users = await User.aggregate<{
+      _id: unknown
+      name?: string
+      email?: string
+      emailVerified?: Date
+      image?: string
+      role?: 'user' | 'admin'
+      phone?: string
+      rut?: string
+      popid?: string
+      mustChangePassword?: boolean
+      storePoints?: number
+      storePointsExpiringNext?: number
+      storePointsExpiryDate?: Date
+      storeCredits?: LeanUserWallet['storeCredits']
+      hasPassword: boolean
+    }>([
+      { $sort: { createdAt: -1 } },
+      {
+        $project: {
+          name: 1,
+          email: 1,
+          emailVerified: 1,
+          image: 1,
+          role: 1,
+          phone: 1,
+          rut: 1,
+          popid: 1,
+          mustChangePassword: 1,
+          storePoints: 1,
+          storePointsExpiringNext: 1,
+          storePointsExpiryDate: 1,
+          storeCredits: 1,
+          hasPassword: {
+            $gt: [{ $strLenCP: { $ifNull: ['$passwordHash', ''] } }, 0]
+          }
+        }
+      }
+    ])
 
     const primary = gate.primaryStoreOid
 
     const usersWithId = users.map(user => {
-      // Type assertion para el objeto lean
-      const userObj = user as unknown as {
-        _id: { toString(): string }
-        name?: string
-        email?: string
-        emailVerified?: Date
-        image?: string
-        role?: 'user' | 'admin'
-        phone?: string
-        rut?: string
-        popid?: string
-        passwordHash?: string
-        mustChangePassword?: boolean
-        storePoints?: number
-        storePointsExpiringNext?: number
-        storePointsExpiryDate?: Date
-      }
-
       const w = resolveStoreWalletForUser(
-        userObj as LeanUserWallet,
+        user as LeanUserWallet,
         gate.activeStoreOid,
         primary
       )
 
       return {
-        id: userObj._id.toString(),
-        name: userObj.name,
-        email: userObj.email,
-        emailVerified: userObj.emailVerified,
-        image: userObj.image,
-        role: userObj.role || 'user',
-        phone: userObj.phone || '',
-        rut: userObj.rut || '',
-        popid: userObj.popid || '',
-        hasPassword: Boolean(userObj.passwordHash),
-        mustChangePassword: Boolean(userObj.mustChangePassword),
+        id: String(user._id),
+        name: user.name,
+        email: user.email,
+        emailVerified: user.emailVerified,
+        image: user.image,
+        role: user.role || 'user',
+        phone: user.phone || '',
+        rut: user.rut || '',
+        popid: user.popid || '',
+        hasPassword: Boolean(user.hasPassword),
+        mustChangePassword: Boolean(user.mustChangePassword),
         storePoints: w.storePoints,
         storePointsExpiringNext: w.storePointsExpiringNext,
         storePointsExpiryDate: isoOrNull(w.storePointsExpiryDate)
