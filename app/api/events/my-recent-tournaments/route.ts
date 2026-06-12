@@ -3,6 +3,7 @@ import mongoose from 'mongoose'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import { buildMyTournamentWeekItemFromLean } from '@/lib/build-my-tournament-week-item'
+import { weeklyEventListProjection } from '@/lib/weekly-event-query-projections'
 import WeeklyEvent from '@/models/WeeklyEvent'
 
 const DEFAULT_LIMIT = 2
@@ -49,6 +50,7 @@ export async function GET(request: NextRequest) {
       kind: 'tournament',
       participants: { $elemMatch: { userId: uid } }
     })
+      .select(weeklyEventListProjection)
       .sort({ startsAt: -1 })
       .limit(limit)
       .lean()

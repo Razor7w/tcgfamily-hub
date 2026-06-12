@@ -8,9 +8,16 @@ import {
   myDeckSlugsDisplayOrderFromEvents,
   type TournamentOriginFilter
 } from '@/lib/pokemon-matchup-stats'
+import {
+  weeklyEventMatchupDetailProjection,
+  weeklyEventMatchupOverviewProjection
+} from '@/lib/weekly-event-query-projections'
 import WeeklyEvent from '@/models/WeeklyEvent'
 
-const MAX_EVENTS = 600
+/** Resumen en hub: solo rondas reportadas por el usuario (sin snapshots TDF). */
+const MAX_EVENTS_OVERVIEW = 250
+/** Detalle de rival: enriquecimiento con snapshots oficiales. */
+const MAX_EVENTS_DECK_DETAIL = 350
 
 function parseOrigin(raw: string | null): TournamentOriginFilter {
   if (raw === 'official' || raw === 'custom') return raw
@@ -41,20 +48,20 @@ export async function GET(request: Request) {
 
     await connectDB()
 
-    const docs = await WeeklyEvent.find({
-      kind: 'tournament',
-      game: 'pokemon',
+    const baseFilter = {
+      kind: 'tournament' as const,
+      game: 'pokemon' as const,
       participants: { $elemMatch: { userId: uid } }
-    })
+    }
+
+    const docs = await WeeklyEvent.find(baseFilter)
       .sort({ startsAt: -1 })
-      .limit(MAX_EVENTS)
-      .select({
-        startsAt: 1,
-        tournamentOrigin: 1,
-        state: 1,
-        roundSnapshots: 1,
-        participants: 1
-      })
+      .limit(myDeckKeyFilter != null ? MAX_EVENTS_DECK_DETAIL : MAX_EVENTS_OVERVIEW)
+      .select(
+        myDeckKeyFilter != null
+          ? weeklyEventMatchupDetailProjection
+          : weeklyEventMatchupOverviewProjection
+      )
       .lean()
 
     if (myDeckKeyFilter != null) {

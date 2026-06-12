@@ -5,6 +5,7 @@ import connectDB from '@/lib/mongodb'
 import { buildMyTournamentWeekItemFromLean } from '@/lib/build-my-tournament-week-item'
 import WeeklyEvent from '@/models/WeeklyEvent'
 import type { MyTournamentWeekItem } from '@/lib/my-tournament-week-types'
+import { weeklyEventListProjection } from '@/lib/weekly-event-query-projections'
 
 /**
  * Torneos de la semana en los que el usuario está inscrito (participante con userId).
@@ -56,6 +57,7 @@ export async function GET(request: NextRequest) {
       kind: 'tournament',
       participants: { $elemMatch: { userId: uid } }
     })
+      .select(weeklyEventListProjection)
       .sort({ startsAt: 1 })
       .lean()
 

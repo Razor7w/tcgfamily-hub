@@ -339,6 +339,15 @@ const WeeklyEventSchema = new Schema<IWeeklyEvent>(
 WeeklyEventSchema.index({ storeId: 1, kind: 1, state: 1, startsAt: -1 })
 /** Vincular participantes por POP al guardar perfil (`link-tournament-participants-by-pop`). */
 WeeklyEventSchema.index({ kind: 1, 'participants.popId': 1 })
+/** Torneos del usuario / estadísticas (`my-tournaments-*`, `my-matchup-stats`). ESR: kind → userId → sort. */
+WeeklyEventSchema.index({ kind: 1, 'participants.userId': 1, startsAt: -1 })
+/** Estadísticas Pokémon con filtro game. */
+WeeklyEventSchema.index({
+  kind: 1,
+  game: 1,
+  'participants.userId': 1,
+  startsAt: -1
+})
 
 if (mongoose.models.WeeklyEvent) {
   delete mongoose.models.WeeklyEvent

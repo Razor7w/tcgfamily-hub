@@ -1394,8 +1394,10 @@ export type MyMatchupStatsPayload = {
 
 export function useMyMatchupStats(
   origin: TournamentOriginFilter,
-  myDeckKey: string | null = null
+  myDeckKey: string | null = null,
+  options?: { enabled?: boolean }
 ) {
+  const enabled = options?.enabled !== false
   return useQuery<MyMatchupStatsPayload>({
     queryKey: ['my-matchup-stats', origin, myDeckKey ?? ''],
     queryFn: async () => {
@@ -1442,6 +1444,9 @@ export function useMyMatchupStats(
         myDeckSlugs: data.myDeckSlugs,
         view: data.view
       }
-    }
+    },
+    enabled,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000
   })
 }
