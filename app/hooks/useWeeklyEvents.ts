@@ -325,6 +325,8 @@ export type TournamentMetaResponse = {
 export function useTournamentMeta(eventId: string | null) {
   return useQuery({
     queryKey: ['tournament-meta', eventId],
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
     queryFn: async () => {
       if (!eventId?.trim()) throw new Error('ID requerido')
       const res = await fetch(

@@ -3,8 +3,12 @@ import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import { buildTournamentMetaPayload } from '@/lib/tournament-meta-build'
 import { canExposeParticipantDecksToOthers } from '@/lib/weekly-events'
-import { weeklyEventMetaProjection } from '@/lib/weekly-event-query-projections'
+import {
+  weeklyEventMetaProjection,
+  weeklyEventMetaSnapshotProjection
+} from '@/lib/weekly-event-query-projections'
 import WeeklyEvent from '@/models/WeeklyEvent'
+import type { RoundSnapshotLean } from '@/lib/match-rounds-with-snapshots'
 
 export async function GET(
   _request: Request,
@@ -17,12 +21,13 @@ export async function GET(
     }
 
     const { id } = await context.params
-    if (!id?.trim()) {
+    const eventId = id?.trim()
+    if (!eventId) {
       return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
     }
 
     await connectDB()
-    const doc = await WeeklyEvent.findById(id.trim())
+    const doc = await WeeklyEvent.findById(eventId)
       .select(weeklyEventMetaProjection)
       .lean()
     if (!doc) {
@@ -55,8 +60,24 @@ export async function GET(
       )
     }
 
+    if (tournamentOrigin === 'official') {
+      const snapLean = await WeeklyEvent.findById(eventId)
+        .select(weeklyEventMetaSnapshotProjection)
+        .lean<{ roundSnapshots?: RoundSnapshotLean[] } | null>()
+      ;(doc as { roundSnapshots?: RoundSnapshotLean[] }).roundSnapshots =
+        snapLean?.roundSnapshots ?? []
+    } else {
+      ;(doc as { roundSnapshots?: RoundSnapshotLean[] }).roundSnapshots = []
+    }
+
     const meta = await buildTournamentMetaPayload(doc)
-    return NextResponse.json(meta, { status: 200 })
+
+    return NextResponse.json(meta, {
+      status: 200,
+      headers: {
+        'Cache-Control': 'private, max-age=300, stale-while-revalidate=600'
+      }
+    })
   } catch (e) {
     console.error('GET /api/events/[id]/tournament-meta:', e)
     return NextResponse.json(

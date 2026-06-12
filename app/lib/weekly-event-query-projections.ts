@@ -109,11 +109,8 @@ export const weeklyEventMatchupDetailProjection = {
   'participants.displayName': 1
 } as const
 
-/** Clasificación pública de liga: snapshots mínimos para W/L/T (sin syncedAt/skipped/mesa). */
-export const weeklyEventLeagueAggregateProjection = {
-  title: 1,
-  startsAt: 1,
-  dashboardRoundCap: 1,
+/** Snapshots TDF mínimos: emparejamientos W/L/T (sin syncedAt, skipped, mesa). */
+export const weeklyEventRoundSnapshotsWltProjection = {
   'roundSnapshots.roundNum': 1,
   'roundSnapshots.pairings.player1PopId': 1,
   'roundSnapshots.pairings.player2PopId': 1,
@@ -121,7 +118,15 @@ export const weeklyEventLeagueAggregateProjection = {
   'roundSnapshots.pairings.player2Name': 1,
   'roundSnapshots.pairings.player1Record': 1,
   'roundSnapshots.pairings.player2Record': 1,
-  'roundSnapshots.pairings.isBye': 1,
+  'roundSnapshots.pairings.isBye': 1
+} as const
+
+/** Clasificación pública de liga: snapshots mínimos para W/L/T (sin syncedAt/skipped/mesa). */
+export const weeklyEventLeagueAggregateProjection = {
+  title: 1,
+  startsAt: 1,
+  dashboardRoundCap: 1,
+  ...weeklyEventRoundSnapshotsWltProjection,
   'participants.displayName': 1,
   'participants.popId': 1,
   'participants.wins': 1,
@@ -130,7 +135,7 @@ export const weeklyEventLeagueAggregateProjection = {
   'participants.matchRounds': 1
 } as const
 
-/** Meta del torneo (`buildTournamentMetaPayload`). */
+/** Meta del torneo: participantes + standings; snapshots en 2ª query si oficial. */
 export const weeklyEventMetaProjection = {
   storeId: 1,
   startsAt: 1,
@@ -140,7 +145,6 @@ export const weeklyEventMetaProjection = {
   state: 1,
   tournamentOrigin: 1,
   tournamentStandings: 1,
-  roundSnapshots: 1,
   'participants.displayName': 1,
   'participants.userId': 1,
   'participants.popId': 1,
@@ -152,6 +156,10 @@ export const weeklyEventMetaProjection = {
   'participants.manualPlacement': 1,
   'participants.tournamentDecklistRef': 1
 } as const
+
+/** 2ª query meta oficial: solo campos usados por merge bitácora/TDF. */
+export const weeklyEventMetaSnapshotProjection =
+  weeklyEventRoundSnapshotsWltProjection
 
 /** Preview decklist del participante (`resolveViewAsParticipant`). */
 export const weeklyEventDecklistPreviewProjection = {
