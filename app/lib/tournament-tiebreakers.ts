@@ -13,8 +13,18 @@ function matchPointsFromRecord(r: MatchRecord): number {
 /** Suelo Play! / TOM en Op Win % y Opponents' Op Win % (25 %). */
 export const OPPONENT_WIN_PCT_FLOOR = 0.25
 
+/**
+ * Ajuste OOWP TOM: al promediar OWP de rivales retirados, suma 12,5 % (½ del suelo).
+ * Solo aplica en la cadena OOWP, no en OWP.
+ */
+export const OOWP_DROPPED_OPPONENT_OWP_BOOST = 0.125
+
 export const OPPONENT_WIN_PCT_CAP_FINISHED = 1
 
+/**
+ * Techo handbook para drops (75 %). TOM en la práctica no lo aplica al export;
+ * se conserva la constante por referencia documental.
+ */
 export const OPPONENT_WIN_PCT_CAP_DROPPED = 0.75
 
 export type PlayerTiebreakers = {
@@ -43,11 +53,12 @@ export function formatTiebreakerPercent(ratio: number): string {
   return `${pct.toFixed(2)}%`
 }
 
-function clampOpponentWinPct(raw: number, dropped: boolean): number {
-  const cap = dropped
-    ? OPPONENT_WIN_PCT_CAP_DROPPED
-    : OPPONENT_WIN_PCT_CAP_FINISHED
-  return Math.min(cap, Math.max(OPPONENT_WIN_PCT_FLOOR, raw))
+/** Win % de un rival para OWP/OOWP (TOM: suelo 25 %, techo 100 %). */
+function clampOpponentWinPct(raw: number): number {
+  return Math.min(
+    OPPONENT_WIN_PCT_CAP_FINISHED,
+    Math.max(OPPONENT_WIN_PCT_FLOOR, raw)
+  )
 }
 
 function isScoredMatch(m: ParsedMatch): boolean {
@@ -59,23 +70,39 @@ function isScoredMatch(m: ParsedMatch): boolean {
   return o === '1' || o === '2' || o === '3'
 }
 
+/** Bye TOM: un solo jugador en la mesa (outcome 5 u otro). */
+function isByeMatch(m: ParsedMatch): boolean {
+  const u1 = m.player1UserId.trim()
+  const u2 = m.player2UserId.trim()
+  return Boolean(u1 && !u2)
+}
+
+/** Mesa suizo para contar rondas (incluye bye; excluye mesas vacías o sin resultado). */
+function isSwissTableSlot(m: ParsedMatch): boolean {
+  return isScoredMatch(m) || isByeMatch(m)
+}
+
 function matchCountByRound(matches: ParsedMatch[]): Map<number, number> {
   const countByRound = new Map<number, number>()
   for (const m of matches) {
-    if (!isScoredMatch(m)) continue
+    if (!isSwissTableSlot(m)) continue
     countByRound.set(m.roundNumber, (countByRound.get(m.roundNumber) ?? 0) + 1)
   }
   return countByRound
 }
 
-/** Partidas de rondas suizo (≥ ⌊N/2⌋ mesas; excluye rondas de corte con 1–2 mesas). */
+/**
+ * Partidas de rondas suizo.
+ * Umbral ≈ ⌊N/2⌋ mesas por ronda (bye cuenta como mesa); −1 tolera drops tardíos.
+ * Excluye cortes finales (1–2 mesas).
+ */
 export function filterMatchesForTiebreakers(
   matches: ParsedMatch[],
   fieldSize: number
 ): ParsedMatch[] {
   const n = Math.max(2, Math.floor(fieldSize))
   const countByRound = matchCountByRound(matches)
-  const swissTableThreshold = Math.max(2, Math.floor(n / 2))
+  const swissTableThreshold = Math.max(2, Math.floor(n / 2) - 1)
 
   return matches.filter(m => {
     if (!isScoredMatch(m)) return false
@@ -168,8 +195,9 @@ export function swissRoundCountForTiebreakers(
 }
 
 /**
- * Win % para Op Win % (TOM / export TDF «Todas»):
- * (victorias + 0,5 × empates) ÷ rondas jugadas con rival (sin bye), suelo 25 %.
+ * Win % de un jugador para desempates (TOM / swissiwashi):
+ * (W + 0,5×T) ÷ rondas con rival en suizo (sin bye), mínimo 25 %.
+ * Los drops siguen en la lista de rivales; su % cuenta con el mismo suelo.
  */
 export function playerWinPercentForTiebreaker(
   popId: string,
@@ -181,12 +209,11 @@ export function playerWinPercentForTiebreaker(
     ties: 0
   }
   const roundsPlayed = rec.wins + rec.losses + rec.ties
-  const dropped = ctx.droppedPopIds?.has(popId) ?? false
 
   if (roundsPlayed <= 0) return OPPONENT_WIN_PCT_FLOOR
 
   const raw = (rec.wins + 0.5 * rec.ties) / roundsPlayed
-  return clampOpponentWinPct(raw, dropped)
+  return clampOpponentWinPct(raw)
 }
 
 export function buildOpponentSetsFromMatches(
@@ -233,6 +260,19 @@ export function buildOpponentSetsFromMatches(
 function average(values: number[]): number {
   if (values.length === 0) return OPPONENT_WIN_PCT_FLOOR
   return values.reduce((s, v) => s + v, 0) / values.length
+}
+
+/** OWP de un rival tal como entra al promedio OOWP (TOM: +12,5 % si retiró). */
+function opponentOwpForOowp(
+  oppPop: string,
+  rawOwp: number,
+  ctx: TiebreakerMatchContext
+): number {
+  if (!ctx.droppedPopIds?.has(oppPop)) return rawOwp
+  return Math.min(
+    OPPONENT_WIN_PCT_CAP_FINISHED,
+    rawOwp + OOWP_DROPPED_OPPONENT_OWP_BOOST
+  )
 }
 
 export function buildPlayerTiebreakersFromMatches(
@@ -292,7 +332,8 @@ export function buildPlayerTiebreakersFromMatches(
     if (opps && opps.size > 0) {
       const vals: number[] = []
       for (const opp of opps) {
-        vals.push(owpByPop.get(opp) ?? OPPONENT_WIN_PCT_FLOOR)
+        const raw = owpByPop.get(opp) ?? OPPONENT_WIN_PCT_FLOOR
+        vals.push(opponentOwpForOowp(opp, raw, ctx))
       }
       oowp = average(vals)
     }
@@ -309,8 +350,13 @@ export function comparePopIdsForStandings(
   popA: string,
   popB: string,
   records: Map<string, MatchRecord>,
-  tiebreakers: Map<string, PlayerTiebreakers>
+  tiebreakers: Map<string, PlayerTiebreakers>,
+  droppedPopIds?: ReadonlySet<string>
 ): number {
+  const dropA = droppedPopIds?.has(popA) ?? false
+  const dropB = droppedPopIds?.has(popB) ?? false
+  if (dropA !== dropB) return dropA ? 1 : -1
+
   const ra = records.get(popA) ?? { wins: 0, losses: 0, ties: 0 }
   const rb = records.get(popB) ?? { wins: 0, losses: 0, ties: 0 }
   const ta = tiebreakers.get(popA)

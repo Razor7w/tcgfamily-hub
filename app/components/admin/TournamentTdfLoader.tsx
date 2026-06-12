@@ -47,6 +47,7 @@ import {
   buildParticipantRecordsForSyncRound,
   buildPlayerNameLookup,
   buildRecordsBeforeEachMatch,
+  droppedPopIdsFromPlayers,
   filterMatchesExcludingRounds,
   formatMatchRecordWlt,
   groupMatchesByRound,
@@ -318,30 +319,17 @@ export default function TournamentTdfLoader({
     (!tdfHasStandingsData || editedInferredStandings != null)
   )
 
-  const droppedPopIds = useMemo(() => {
-    const s = new Set<string>()
-    for (const pod of parsed.standings) {
-      if (pod.type.toLowerCase() !== 'dnf') continue
-      for (const p of pod.players) {
-        const id = p.popId.trim()
-        if (id) s.add(id)
-      }
-    }
-    for (const cat of effectiveInferredStandings ?? []) {
-      for (const d of cat.dnf ?? []) {
-        const id = d.popId.trim()
-        if (id) s.add(id)
-      }
-    }
-    return s
-  }, [parsed.standings, effectiveInferredStandings])
+  const droppedPopIds = useMemo(
+    () => droppedPopIdsFromPlayers(parsed.players),
+    [parsed.players]
+  )
 
   const tiebreakers = useMemo(
     () =>
       buildPlayerTiebreakersFromMatches(
         activeMatches,
         matchRecords,
-        droppedPopIds.size > 0 ? droppedPopIds : undefined,
+        droppedPopIds,
         parsed.players.length,
         parsed.players,
         { sameCategoryOnly: false }
@@ -687,7 +675,6 @@ export default function TournamentTdfLoader({
             names={names}
             matchRecords={matchRecords}
             matches={activeMatches}
-            droppedPopIds={droppedPopIds}
             fieldSize={parsed.players.length}
             players={parsed.players}
             sameCategoryTiebreakers={false}
@@ -1259,7 +1246,6 @@ export default function TournamentTdfLoader({
             names={names}
             matchRecords={matchRecords}
             matches={activeMatches}
-            droppedPopIds={droppedPopIds}
             fieldSize={parsed.players.length}
             players={parsed.players}
             sameCategoryTiebreakers={false}

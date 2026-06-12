@@ -1,10 +1,16 @@
 import {
+  buildMatchRecordsExcludingByes,
   buildPlayerTiebreakersFromMatches,
-  comparePopIdsForStandings
+  comparePopIdsForStandings,
+  filterMatchesForTiebreakers,
+  swissRoundCountForTiebreakers
 } from '@/lib/tournament-tiebreakers'
 import type { MatchRecord, ParsedMatch } from '@/lib/tournament-xml'
 import type { ParsedPlayer } from '@/lib/tournament-xml'
-import type { TournamentStandingsCategoryPayload } from '@/lib/tournament-xml'
+import {
+  droppedPopIdsFromPlayers,
+  type TournamentStandingsCategoryPayload
+} from '@/lib/tournament-xml'
 
 /** Fila editable de clasificación (finished). */
 export type InferredStandingRow = {
@@ -81,6 +87,35 @@ function assignPlaces(popIds: string[]): InferredStandingRow[] {
   return popIds.map((popId, i) => ({ popId, place: i + 1 }))
 }
 
+/**
+ * Retirados: `<dropped>` en TDF o menos rondas jugadas que el suizo del torneo.
+ */
+function droppedPopIdsForStandingsSort(
+  popIds: string[],
+  players: ParsedPlayer[],
+  matchRecords: Map<string, MatchRecord>,
+  matches: ParsedMatch[],
+  fromTdf?: ReadonlySet<string>
+): ReadonlySet<string> {
+  const out = new Set(fromTdf ?? droppedPopIdsFromPlayers(players))
+  const fieldSize = Math.max(players.length, popIds.length, 2)
+  const swiss = filterMatchesForTiebreakers(matches, fieldSize)
+  const swissRec = buildMatchRecordsExcludingByes(swiss)
+  const totalRounds = swissRoundCountForTiebreakers(
+    matches,
+    fieldSize,
+    swissRec
+  )
+  if (totalRounds <= 0) return out
+
+  for (const pop of popIds) {
+    const r = matchRecords.get(pop) ?? { wins: 0, losses: 0, ties: 0 }
+    const played = r.wins + r.losses + r.ties
+    if (played > 0 && played < totalRounds) out.add(pop)
+  }
+  return out
+}
+
 function sortPopIdsForStandings(
   popIds: string[],
   players: ParsedPlayer[],
@@ -89,16 +124,23 @@ function sortPopIdsForStandings(
   droppedPopIds?: ReadonlySet<string>,
   sameCategoryOnly = true
 ): string[] {
+  const dropped = droppedPopIdsForStandingsSort(
+    popIds,
+    players,
+    matchRecords,
+    matches,
+    droppedPopIds
+  )
   const tiebreakers = buildPlayerTiebreakersFromMatches(
     matches,
     matchRecords,
-    droppedPopIds,
+    dropped,
     players.length,
     players,
     { sameCategoryOnly }
   )
   return [...popIds].sort((a, b) =>
-    comparePopIdsForStandings(a, b, matchRecords, tiebreakers)
+    comparePopIdsForStandings(a, b, matchRecords, tiebreakers, dropped)
   )
 }
 
@@ -127,7 +169,7 @@ export function buildInferredStandingsByCategory(
       buckets[ci],
       matchRecords,
       matches,
-      undefined,
+      droppedPopIdsFromPlayers(buckets[ci]),
       true
     )
     out.push({
@@ -169,7 +211,7 @@ export function buildUnifiedInferredStandings(
     players,
     matchRecords,
     matches,
-    undefined,
+    droppedPopIdsFromPlayers(players),
     false
   )
   return [
@@ -185,7 +227,8 @@ export function buildUnifiedInferredStandings(
 export function unifyStandingsCategories(
   standings: TournamentStandingsCategoryPayload[],
   matchRecords: Map<string, MatchRecord>,
-  matches: ParsedMatch[]
+  matches: ParsedMatch[],
+  players: ParsedPlayer[] = []
 ): TournamentStandingsCategoryPayload[] {
   const finishedPops: string[] = []
   const dnfPops = new Set<string>()
@@ -201,10 +244,10 @@ export function unifyStandingsCategories(
   }
   const sorted = sortPopIdsForStandings(
     finishedPops,
-    [],
+    players,
     matchRecords,
     matches,
-    undefined,
+    droppedPopIdsFromPlayers(players),
     false
   )
   return [

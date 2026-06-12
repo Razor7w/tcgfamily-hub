@@ -28,6 +28,8 @@ export type ParsedPlayer = {
   lastName: string
   birthdate: string
   starter: boolean
+  /** Ronda en la que se retiró (`<dropped><round>`); ausente si no drop. */
+  droppedRound?: number
   creationDate: string
   lastModifiedDate: string
 }
@@ -162,12 +164,22 @@ export function parseTournamentXml(
       const el = list[i]
       const popId = el.getAttribute('userid')?.trim() ?? ''
       if (!popId) continue
+      const droppedEl = el.getElementsByTagName('dropped')[0]
+      const droppedRoundRaw = droppedEl
+        ? parseInt(childText(droppedEl, 'round'), 10)
+        : NaN
+      const droppedRound =
+        Number.isFinite(droppedRoundRaw) && droppedRoundRaw > 0
+          ? droppedRoundRaw
+          : undefined
+
       players.push({
         popId,
         firstName: childText(el, 'firstname'),
         lastName: childText(el, 'lastname'),
         birthdate: childText(el, 'birthdate'),
         starter: parseBoolean(childText(el, 'starter')),
+        droppedRound,
         creationDate: childText(el, 'creationdate'),
         lastModifiedDate: childText(el, 'lastmodifieddate')
       })
@@ -492,4 +504,18 @@ export function buildRecordsBeforeEachMatch(
   }
 
   return snapshots
+}
+
+/** POP IDs con `<dropped>` en el TDF (retirados antes de terminar el torneo). */
+export function droppedPopIdsFromPlayers(
+  players: ParsedPlayer[]
+): ReadonlySet<string> {
+  const out = new Set<string>()
+  for (const p of players) {
+    if (p.droppedRound != null && p.droppedRound > 0) {
+      const pop = p.popId.trim()
+      if (pop) out.add(pop)
+    }
+  }
+  return out
 }
