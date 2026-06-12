@@ -59,23 +59,39 @@ function isScoredMatch(m: ParsedMatch): boolean {
   return o === '1' || o === '2' || o === '3'
 }
 
+/** Bye TOM: un solo jugador en la mesa (outcome 5 u otro). */
+function isByeMatch(m: ParsedMatch): boolean {
+  const u1 = m.player1UserId.trim()
+  const u2 = m.player2UserId.trim()
+  return Boolean(u1 && !u2)
+}
+
+/** Mesa suizo para contar rondas (incluye bye; excluye mesas vacías o sin resultado). */
+function isSwissTableSlot(m: ParsedMatch): boolean {
+  return isScoredMatch(m) || isByeMatch(m)
+}
+
 function matchCountByRound(matches: ParsedMatch[]): Map<number, number> {
   const countByRound = new Map<number, number>()
   for (const m of matches) {
-    if (!isScoredMatch(m)) continue
+    if (!isSwissTableSlot(m)) continue
     countByRound.set(m.roundNumber, (countByRound.get(m.roundNumber) ?? 0) + 1)
   }
   return countByRound
 }
 
-/** Partidas de rondas suizo (≥ ⌊N/2⌋ mesas; excluye rondas de corte con 1–2 mesas). */
+/**
+ * Partidas de rondas suizo.
+ * Umbral ≈ ⌊N/2⌋ mesas por ronda (bye cuenta como mesa); −1 tolera drops tardíos.
+ * Excluye cortes finales (1–2 mesas).
+ */
 export function filterMatchesForTiebreakers(
   matches: ParsedMatch[],
   fieldSize: number
 ): ParsedMatch[] {
   const n = Math.max(2, Math.floor(fieldSize))
   const countByRound = matchCountByRound(matches)
-  const swissTableThreshold = Math.max(2, Math.floor(n / 2))
+  const swissTableThreshold = Math.max(2, Math.floor(n / 2) - 1)
 
   return matches.filter(m => {
     if (!isScoredMatch(m)) return false
