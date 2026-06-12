@@ -8,6 +8,10 @@ import {
   Button,
   Chip,
   Collapse,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Paper,
   Stack,
   Tab,
@@ -22,6 +26,8 @@ import {
   Typography
 } from '@mui/material'
 import {
+  AddCircleOutline,
+  DeleteOutline,
   ExpandLess,
   ExpandMore,
   History,
@@ -32,8 +38,11 @@ import { popidForStorage } from '@/lib/rut-chile'
 import { formatStorePointsClpEquivalent } from '@/lib/store-points-clp'
 import { useMeStores } from '@/hooks/useMeStores'
 import TournamentPointsCsvImport from '@/components/admin/TournamentPointsCsvImport'
+import TournamentPointsManualRegister from '@/components/admin/TournamentPointsManualRegister'
 import {
+  useAddTournamentPointsPlayer,
   useDeductTournamentPointsPlayer,
+  useRemoveTournamentPointsPlayerFromList,
   useTournamentPointsAuditLog,
   useTournamentPointsAwards,
   type TournamentPointsAggregatedPlayer,
@@ -195,9 +204,14 @@ export default function TournamentPointsManagePanel() {
   const [tab, setTab] = useState(0)
   const [search, setSearch] = useState('')
   const [deductKey, setDeductKey] = useState<string | null>(null)
+  const [addKey, setAddKey] = useState<string | null>(null)
   const [auditKey, setAuditKey] = useState<string | null>(null)
   const [subtractAmount, setSubtractAmount] = useState('')
+  const [addAmount, setAddAmount] = useState('')
   const [reason, setReason] = useState('')
+  const [removeTarget, setRemoveTarget] =
+    useState<TournamentPointsAggregatedPlayer | null>(null)
+  const [removeReason, setRemoveReason] = useState('')
 
   const activeStoreSlug = useMemo(() => {
     const activeStoreId = session?.user?.activeStoreId?.trim() ?? ''
@@ -213,6 +227,8 @@ export default function TournamentPointsManagePanel() {
   const awardsQuery = useTournamentPointsAwards(true)
   const auditQuery = useTournamentPointsAuditLog(tab === 1)
   const deduct = useDeductTournamentPointsPlayer()
+  const addPoints = useAddTournamentPointsPlayer()
+  const removeFromList = useRemoveTournamentPointsPlayerFromList()
 
   const players = useMemo(
     () => awardsQuery.data?.players ?? [],
@@ -258,8 +274,36 @@ export default function TournamentPointsManagePanel() {
     setReason('')
   }
 
+  const closeAddForm = () => {
+    setAddKey(null)
+    setAddAmount('')
+    setReason('')
+  }
+
   const closeAuditPanel = () => {
     setAuditKey(null)
+  }
+
+  const closeRemoveDialog = () => {
+    setRemoveTarget(null)
+    setRemoveReason('')
+  }
+
+  const handleConfirmRemove = async () => {
+    if (!removeTarget) return
+    const trimmedReason = removeReason.trim()
+    if (trimmedReason.length < 3) return
+
+    await removeFromList.mutateAsync({
+      userId: removeTarget.userId,
+      primaryPopId: removeTarget.primaryPopId,
+      displayName: removeTarget.displayName,
+      reason: trimmedReason
+    })
+    closeRemoveDialog()
+    closeDeductForm()
+    closeAddForm()
+    closeAuditPanel()
   }
 
   const handleApplyDeduct = async (row: TournamentPointsAggregatedPlayer) => {
@@ -278,6 +322,22 @@ export default function TournamentPointsManagePanel() {
     closeDeductForm()
   }
 
+  const handleApplyAdd = async (row: TournamentPointsAggregatedPlayer) => {
+    const add = normalizeStorePointsAmount(addAmount)
+    const trimmedReason = reason.trim()
+    if (add <= 0) return
+    if (trimmedReason.length < 3) return
+
+    await addPoints.mutateAsync({
+      userId: row.userId,
+      primaryPopId: row.primaryPopId,
+      displayName: row.displayName,
+      add,
+      reason: trimmedReason
+    })
+    closeAddForm()
+  }
+
   const deductRow = deductKey
     ? (filteredPlayers.find(p => playerRowKey(p) === deductKey) ?? null)
     : null
@@ -288,18 +348,41 @@ export default function TournamentPointsManagePanel() {
     subtractNum > 0 &&
     subtractNum <= deductRow.pointsTotal &&
     reasonOk &&
-    !deduct.isPending
+    !deduct.isPending &&
+    !addPoints.isPending &&
+    !removeFromList.isPending
+
+  const addRow = addKey
+    ? (filteredPlayers.find(p => playerRowKey(p) === addKey) ?? null)
+    : null
+  const addNum = normalizeStorePointsAmount(addAmount)
+  const canApplyAdd =
+    addRow != null &&
+    addNum > 0 &&
+    reasonOk &&
+    !addPoints.isPending &&
+    !deduct.isPending &&
+    !removeFromList.isPending
+
+  const removeReasonOk = removeReason.trim().length >= 3
+  const canConfirmRemove =
+    removeTarget != null && removeReasonOk && !removeFromList.isPending
+
+  const pointsMutationPending =
+    deduct.isPending || addPoints.isPending || removeFromList.isPending
 
   return (
     <Stack spacing={2}>
       <Typography variant="body2" color="text.secondary">
         Historial de jugadores que recibieron puntos de torneo (unificados por
         cuenta o POP), incluidos los que ya no tienen saldo. Puedes{' '}
-        <strong>descontar</strong> si aún tienen puntos, o ver la{' '}
-        <strong>auditoría</strong> de cada uno.
+        <strong>sumar</strong> o <strong>descontar</strong> puntos,{' '}
+        <strong>quitar de la lista</strong> o ver la <strong>auditoría</strong>{' '}
+        de cada uno.
       </Typography>
 
       <TournamentPointsCsvImport />
+      <TournamentPointsManualRegister />
 
       <Tabs
         value={tab}
@@ -367,7 +450,7 @@ export default function TournamentPointsManagePanel() {
                         <TableCell align="right" width={100}>
                           Puntos
                         </TableCell>
-                        <TableCell align="right" width={220}>
+                        <TableCell align="right" width={360}>
                           Acciones
                         </TableCell>
                       </TableRow>
@@ -376,6 +459,7 @@ export default function TournamentPointsManagePanel() {
                       {filteredPlayers.map(row => {
                         const key = playerRowKey(row)
                         const isDeductOpen = deductKey === key
+                        const isAddOpen = addKey === key
                         const isAuditOpen = auditKey === key
                         const hasBalance = row.pointsTotal > 0
                         return (
@@ -429,17 +513,49 @@ export default function TournamentPointsManagePanel() {
                                     color="inherit"
                                     startIcon={<History fontSize="small" />}
                                     disabled={
-                                      deduct.isPending ||
+                                      pointsMutationPending ||
                                       (deductKey != null &&
                                         deductKey !== key &&
+                                        !isAuditOpen) ||
+                                      (addKey != null &&
+                                        addKey !== key &&
                                         !isAuditOpen)
                                     }
                                     onClick={() => {
                                       closeDeductForm()
+                                      closeAddForm()
                                       setAuditKey(isAuditOpen ? null : key)
                                     }}
                                   >
                                     Auditoría
+                                  </Button>
+                                  <Button
+                                    size="small"
+                                    variant={
+                                      isAddOpen ? 'contained' : 'outlined'
+                                    }
+                                    color="success"
+                                    startIcon={<AddCircleOutline />}
+                                    disabled={
+                                      pointsMutationPending ||
+                                      (deductKey != null &&
+                                        deductKey !== key) ||
+                                      (addKey != null && addKey !== key) ||
+                                      (auditKey != null && auditKey !== key)
+                                    }
+                                    onClick={() => {
+                                      closeAuditPanel()
+                                      closeDeductForm()
+                                      if (isAddOpen) {
+                                        closeAddForm()
+                                      } else {
+                                        setAddKey(key)
+                                        setAddAmount('1')
+                                        setReason('')
+                                      }
+                                    }}
+                                  >
+                                    Sumar
                                   </Button>
                                   <Button
                                     size="small"
@@ -448,19 +564,44 @@ export default function TournamentPointsManagePanel() {
                                     startIcon={<RemoveCircleOutline />}
                                     disabled={
                                       !hasBalance ||
-                                      deduct.isPending ||
+                                      pointsMutationPending ||
                                       (deductKey != null &&
                                         deductKey !== key) ||
+                                      (addKey != null && addKey !== key) ||
                                       (auditKey != null && auditKey !== key)
                                     }
                                     onClick={() => {
                                       closeAuditPanel()
+                                      closeAddForm()
                                       setDeductKey(key)
                                       setSubtractAmount('1')
                                       setReason('')
                                     }}
                                   >
                                     Descontar
+                                  </Button>
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    color="error"
+                                    startIcon={<DeleteOutline />}
+                                    disabled={
+                                      pointsMutationPending ||
+                                      (deductKey != null &&
+                                        deductKey !== key) ||
+                                      (addKey != null && addKey !== key) ||
+                                      (auditKey != null && auditKey !== key) ||
+                                      removeTarget != null
+                                    }
+                                    onClick={() => {
+                                      closeDeductForm()
+                                      closeAddForm()
+                                      closeAuditPanel()
+                                      setRemoveTarget(row)
+                                      setRemoveReason('')
+                                    }}
+                                  >
+                                    Quitar
                                   </Button>
                                 </Stack>
                               </TableCell>
@@ -491,6 +632,20 @@ export default function TournamentPointsManagePanel() {
                                         Cerrar
                                       </Button>
                                     </Stack>
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                      display="block"
+                                    >
+                                      Saldo vigente:{' '}
+                                      <strong>{row.pointsTotal} pts</strong>
+                                      {row.sources.length > 0
+                                        ? ` (${row.sources.map(s => `${s.eventTitle}: ${s.points}`).join(' · ')})`
+                                        : ''}
+                                      . «Creación» = asignación inicial; si no
+                                      coincide con el saldo, busca entradas
+                                      «Descuento» más abajo.
+                                    </Typography>
                                     {playerAuditQuery.isLoading ? (
                                       <Typography
                                         variant="body2"
@@ -524,6 +679,74 @@ export default function TournamentPointsManagePanel() {
                                           />
                                         )
                                       )}
+                                    </Stack>
+                                  </Stack>
+                                </TableCell>
+                              </TableRow>
+                            ) : null}
+                            {isAddOpen ? (
+                              <TableRow>
+                                <TableCell
+                                  colSpan={3}
+                                  sx={{ bgcolor: 'action.hover' }}
+                                >
+                                  <Stack spacing={1.5} sx={{ py: 0.5 }}>
+                                    <Stack
+                                      direction={{ xs: 'column', sm: 'row' }}
+                                      spacing={1.5}
+                                      alignItems={{
+                                        xs: 'stretch',
+                                        sm: 'flex-end'
+                                      }}
+                                    >
+                                      <TextField
+                                        size="small"
+                                        label="Puntos a sumar"
+                                        type="number"
+                                        value={addAmount}
+                                        onChange={e =>
+                                          setAddAmount(e.target.value)
+                                        }
+                                        inputProps={{ min: 0.1, step: 0.1 }}
+                                        sx={{ width: { xs: '100%', sm: 160 } }}
+                                      />
+                                      <TextField
+                                        size="small"
+                                        label="Motivo del abono"
+                                        value={reason}
+                                        onChange={e =>
+                                          setReason(e.target.value)
+                                        }
+                                        placeholder="Ej. corrección de puntos, premio extra…"
+                                        fullWidth
+                                        required
+                                        error={reason.length > 0 && !reasonOk}
+                                        helperText={
+                                          reason.length > 0 && !reasonOk
+                                            ? 'Mínimo 3 caracteres'
+                                            : 'Obligatorio para auditoría'
+                                        }
+                                      />
+                                    </Stack>
+                                    <Stack direction="row" spacing={1}>
+                                      <Button
+                                        variant="contained"
+                                        color="success"
+                                        size="small"
+                                        disabled={!canApplyAdd}
+                                        onClick={() => void handleApplyAdd(row)}
+                                      >
+                                        {addPoints.isPending
+                                          ? 'Aplicando…'
+                                          : 'Confirmar abono'}
+                                      </Button>
+                                      <Button
+                                        size="small"
+                                        disabled={addPoints.isPending}
+                                        onClick={closeAddForm}
+                                      >
+                                        Cancelar
+                                      </Button>
                                     </Stack>
                                   </Stack>
                                 </TableCell>
@@ -620,6 +843,14 @@ export default function TournamentPointsManagePanel() {
                 </Alert>
               ) : null}
 
+              {addPoints.isError ? (
+                <Alert severity="error">
+                  {addPoints.error instanceof Error
+                    ? addPoints.error.message
+                    : 'Error al sumar puntos'}
+                </Alert>
+              ) : null}
+
               {deduct.isSuccess && deduct.data?.changed ? (
                 <Alert severity="success" onClose={() => deduct.reset()}>
                   Descuento aplicado en{' '}
@@ -629,6 +860,41 @@ export default function TournamentPointsManagePanel() {
                   {(deduct.data.skippedNoUser ?? 0) > 0
                     ? ` Sin usuario en la app: ${deduct.data.skippedNoUser}.`
                     : ''}
+                </Alert>
+              ) : null}
+
+              {addPoints.isSuccess && addPoints.data?.changed ? (
+                <Alert severity="success" onClose={() => addPoints.reset()}>
+                  Abono aplicado en{' '}
+                  <strong>{addPoints.data.awardsTouched ?? 0}</strong>{' '}
+                  asignación(es). Saldo ajustado en{' '}
+                  <strong>{addPoints.data.adjustments ?? 0}</strong>{' '}
+                  jugador(es).
+                  {(addPoints.data.skippedNoUser ?? 0) > 0
+                    ? ` Sin usuario en la app: ${addPoints.data.skippedNoUser}.`
+                    : ''}
+                </Alert>
+              ) : null}
+
+              {removeFromList.isError ? (
+                <Alert severity="error">
+                  {removeFromList.error instanceof Error
+                    ? removeFromList.error.message
+                    : 'Error al quitar jugador'}
+                </Alert>
+              ) : null}
+
+              {removeFromList.isSuccess && removeFromList.data?.changed ? (
+                <Alert
+                  severity="success"
+                  onClose={() => removeFromList.reset()}
+                >
+                  Jugador quitado de la lista. Filas eliminadas:{' '}
+                  <strong>{removeFromList.data.rowsRemoved ?? 0}</strong>
+                  {(removeFromList.data.pointsRemoved ?? 0) > 0
+                    ? ` · ${removeFromList.data.pointsRemoved} pts revertidos en wallet`
+                    : ''}
+                  .
                 </Alert>
               ) : null}
             </>
@@ -663,6 +929,69 @@ export default function TournamentPointsManagePanel() {
           </Stack>
         </Stack>
       )}
+
+      <Dialog
+        open={removeTarget != null}
+        onClose={() => {
+          if (!removeFromList.isPending) closeRemoveDialog()
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Quitar jugador de la lista</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ pt: 0.5 }}>
+            <Typography variant="body2">
+              Se quitará <strong>{removeTarget?.displayName}</strong> de la
+              gestión de puntos en esta tienda.
+            </Typography>
+            {removeTarget && removeTarget.pointsTotal > 0 ? (
+              <Alert severity="warning" variant="outlined">
+                Tiene <strong>{removeTarget.pointsTotal} pts</strong> vigentes.
+                Se eliminarán sus filas en los torneos/importaciones y se
+                revertirá el saldo en la app si está vinculado.
+              </Alert>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                No tiene saldo vigente; dejará de mostrarse aunque quede
+                historial en auditoría.
+              </Typography>
+            )}
+            <TextField
+              autoFocus
+              size="small"
+              label="Motivo"
+              value={removeReason}
+              onChange={e => setRemoveReason(e.target.value)}
+              placeholder="Ej. jugador duplicado, datos incorrectos…"
+              fullWidth
+              required
+              error={removeReason.length > 0 && !removeReasonOk}
+              helperText={
+                removeReason.length > 0 && !removeReasonOk
+                  ? 'Mínimo 3 caracteres'
+                  : 'Obligatorio para auditoría'
+              }
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={closeRemoveDialog}
+            disabled={removeFromList.isPending}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={!canConfirmRemove}
+            onClick={() => void handleConfirmRemove()}
+          >
+            {removeFromList.isPending ? 'Quitando…' : 'Confirmar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   )
 }

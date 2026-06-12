@@ -6,6 +6,7 @@ import TournamentPointsAuditLog, {
 } from '@/models/TournamentPointsAuditLog'
 import type { ITournamentPointsAwardRow } from '@/models/TournamentPointsAward'
 import TournamentPointsAward from '@/models/TournamentPointsAward'
+import TournamentPointsListExclusion from '@/models/TournamentPointsListExclusion'
 import { normalizeStorePointsAmount } from '@/lib/store-points-amount'
 import { incrementStoreCreditPoints } from '@/lib/store-credit-slice-write'
 import { popidForStorage } from '@/lib/rut-chile'
@@ -21,6 +22,15 @@ export type PointDeduction = {
   subtract: number
   reason: string
 }
+
+export type PointAddition = {
+  popId: string
+  add: number
+  reason: string
+}
+
+/** Torneo sintético para sumas manuales sin fila previa en otro award. */
+export const MANUAL_TOURNAMENT_POINTS_GROUP_KEY = 'manual:staff-adjustments'
 
 export type ParsedAwardRow = {
   place: number
@@ -216,6 +226,63 @@ export function applyDeductionsToRows(
       pointsBefore: row.points,
       pointsAfter: nextPoints,
       reason: d.reason,
+      kind: 'modified'
+    })
+  }
+
+  return { ok: true, after, changes }
+}
+
+export function applyAdditionsToRows(
+  before: ParsedAwardRow[],
+  additions: PointAddition[]
+):
+  | {
+      ok: true
+      after: ParsedAwardRow[]
+      changes: ITournamentPointsAuditChange[]
+    }
+  | { ok: false; error: string } {
+  if (additions.length === 0) {
+    return { ok: false, error: 'Indica al menos un abono' }
+  }
+
+  const beforeMap = new Map(before.map(r => [r.popId, r]))
+  const after = before.map(r => ({ ...r }))
+  const afterMap = new Map(after.map(r => [r.popId, r]))
+  const changes: ITournamentPointsAuditChange[] = []
+
+  for (const a of additions) {
+    if (a.reason.length < REASON_MIN) {
+      return {
+        ok: false,
+        error: `El motivo debe tener al menos ${REASON_MIN} caracteres`
+      }
+    }
+    const row = beforeMap.get(a.popId)
+    if (!row) {
+      return {
+        ok: false,
+        error: `Jugador no encontrado en este torneo (${a.popId})`
+      }
+    }
+    const nextPoints = Math.min(
+      POINTS_MAX,
+      normalizeStorePointsAmount(row.points + a.add)
+    )
+    if (nextPoints <= row.points) {
+      return { ok: false, error: 'La cantidad a sumar debe ser mayor que 0' }
+    }
+    const updated = afterMap.get(a.popId)!
+    updated.points = nextPoints
+    changes.push({
+      popId: a.popId,
+      displayName: row.displayName,
+      placeBefore: row.place,
+      placeAfter: row.place,
+      pointsBefore: row.points,
+      pointsAfter: nextPoints,
+      reason: a.reason,
       kind: 'modified'
     })
   }
@@ -556,6 +623,27 @@ export async function appendPlayersFromAuditHistory(
   )
 }
 
+export async function loadExcludedTournamentPointsIdentityKeys(
+  storeOid: mongoose.Types.ObjectId
+): Promise<Set<string>> {
+  const rows = await TournamentPointsListExclusion.find({ storeId: storeOid })
+    .select('identityKey')
+    .lean<{ identityKey?: string }[]>()
+  return new Set(
+    rows
+      .map(r => (typeof r.identityKey === 'string' ? r.identityKey.trim() : ''))
+      .filter(Boolean)
+  )
+}
+
+export function filterExcludedTournamentPointsPlayers(
+  players: AggregatedTournamentPointsPlayer[],
+  excluded: ReadonlySet<string>
+): AggregatedTournamentPointsPlayer[] {
+  if (excluded.size === 0) return players
+  return players.filter(p => !excluded.has(p.identityKey))
+}
+
 export function collectPopIdsForPlayer(input: {
   primaryPopId: string
   sources: PlayerPointsSource[]
@@ -739,5 +827,541 @@ export async function deductTournamentPointsForPlayer(input: {
     adjustments,
     skippedNoUser,
     awardsTouched
+  }
+}
+
+async function getOrCreateManualAdjustmentAward(
+  storeOid: mongoose.Types.ObjectId,
+  staffUserId?: mongoose.Types.ObjectId
+) {
+  let award = await TournamentPointsAward.findOne({
+    storeId: storeOid,
+    importGroupKey: MANUAL_TOURNAMENT_POINTS_GROUP_KEY
+  })
+  if (!award) {
+    award = await TournamentPointsAward.create({
+      storeId: storeOid,
+      importGroupKey: MANUAL_TOURNAMENT_POINTS_GROUP_KEY,
+      eventTitle: 'Ajuste manual',
+      playerCount: 0,
+      topCount: 0,
+      rows: [],
+      createdByUserId: staffUserId
+    })
+  }
+  return award
+}
+
+async function persistAwardRowsUpdate(args: {
+  award: mongoose.Document & {
+    rows: ITournamentPointsAwardRow[]
+    topCount?: number
+    playerCount?: number
+    eventTitle: string
+    eventId?: mongoose.Types.ObjectId
+    _id: mongoose.Types.ObjectId
+    markModified: (path: string) => void
+    save: () => Promise<unknown>
+  }
+  beforeRows: ParsedAwardRow[]
+  afterParsed: ParsedAwardRow[]
+  changes: ITournamentPointsAuditChange[]
+  storeOid: mongoose.Types.ObjectId
+  primaryStoreOid: mongoose.Types.ObjectId | null
+  changedByUserId?: mongoose.Types.ObjectId
+  changedByName: string
+  auditAction: TournamentPointsAuditAction
+}): Promise<{ adjustments: number; skippedNoUser: number }> {
+  const popToUser = await resolveUserIdsForAwardRows(args.afterParsed)
+  for (const row of args.afterParsed) {
+    if (!row.userId) {
+      const uid = popToUser.get(row.popId)
+      if (uid) row.userId = uid
+    }
+  }
+
+  const credit = await applyAwardRowCreditDeltas(
+    args.beforeRows,
+    args.afterParsed,
+    popToUser,
+    args.storeOid,
+    args.primaryStoreOid
+  )
+
+  args.award.rows = rowsToSnapshot(args.afterParsed)
+  args.award.topCount = args.afterParsed.filter(r => r.points > 0).length
+  args.award.playerCount = args.afterParsed.length
+  args.award.markModified('rows')
+  await args.award.save()
+
+  await writeTournamentPointsAuditLog({
+    storeId: args.storeOid,
+    awardId: args.award._id,
+    eventId: args.award.eventId,
+    eventTitle: args.award.eventTitle,
+    action: args.auditAction,
+    changedByUserId: args.changedByUserId,
+    changedByName: args.changedByName,
+    changes: args.changes
+  })
+
+  return credit
+}
+
+export async function addTournamentPointsForPlayer(input: {
+  storeOid: mongoose.Types.ObjectId
+  primaryStoreOid: mongoose.Types.ObjectId | null
+  userId: string | null
+  primaryPopId: string
+  displayName: string
+  add: number
+  reason: string
+  changedByUserId?: mongoose.Types.ObjectId
+  changedByName: string
+}): Promise<{
+  ok: true
+  changed: boolean
+  adjustments: number
+  skippedNoUser: number
+  awardsTouched: number
+}> {
+  const reason = input.reason.trim().slice(0, REASON_MAX)
+  if (reason.length < REASON_MIN) {
+    throw new Error(`El motivo debe tener al menos ${REASON_MIN} caracteres`)
+  }
+  const add = Math.max(
+    0,
+    Math.min(POINTS_MAX, normalizeStorePointsAmount(input.add))
+  )
+  if (add <= 0) {
+    return {
+      ok: true,
+      changed: false,
+      adjustments: 0,
+      skippedNoUser: 0,
+      awardsTouched: 0
+    }
+  }
+
+  const primaryPop = popidForStorage(input.primaryPopId)
+  if (!primaryPop) {
+    throw new Error('POP ID inválido')
+  }
+
+  const popsForUser = new Set<string>([primaryPop])
+  if (input.userId && mongoose.Types.ObjectId.isValid(input.userId)) {
+    const u = await User.findById(input.userId)
+      .select('popid name email')
+      .lean<{
+        popid?: string
+        name?: string
+        email?: string
+      } | null>()
+    const pop = popidForStorage(String(u?.popid ?? ''))
+    if (pop) popsForUser.add(pop)
+  }
+
+  const displayName = input.displayName.trim().slice(0, 200) || primaryPop
+
+  const awards = await TournamentPointsAward.find({
+    storeId: input.storeOid
+  }).sort({ createdAt: -1 })
+
+  let targetAward: (typeof awards)[number] | null = null
+  let targetBeforeRows: ParsedAwardRow[] = []
+  let targetPopId = primaryPop
+
+  for (const award of awards) {
+    if (
+      award.importGroupKey === MANUAL_TOURNAMENT_POINTS_GROUP_KEY &&
+      !targetAward
+    ) {
+      continue
+    }
+    const beforeRows: ParsedAwardRow[] = (award.rows ?? []).map(
+      (r: ITournamentPointsAwardRow) => ({
+        place: r.place,
+        displayName: r.displayName,
+        popId: r.popId,
+        userId: r.userId,
+        points: r.points
+      })
+    )
+    const match = beforeRows.find(row =>
+      rowBelongsToIdentity(row, input.userId, primaryPop, popsForUser)
+    )
+    if (match) {
+      targetAward = award
+      targetBeforeRows = beforeRows
+      targetPopId = match.popId
+      break
+    }
+  }
+
+  let afterParsed: ParsedAwardRow[]
+  let changes: ITournamentPointsAuditChange[]
+
+  if (targetAward) {
+    const applied = applyAdditionsToRows(targetBeforeRows, [
+      { popId: targetPopId, add, reason }
+    ])
+    if (!applied.ok) {
+      throw new Error(applied.error)
+    }
+    afterParsed = applied.after
+    changes = applied.changes
+  } else {
+    const manual = await getOrCreateManualAdjustmentAward(
+      input.storeOid,
+      input.changedByUserId
+    )
+    targetAward = manual
+    targetBeforeRows = (manual.rows ?? []).map(
+      (r: ITournamentPointsAwardRow) => ({
+        place: r.place,
+        displayName: r.displayName,
+        popId: r.popId,
+        userId: r.userId,
+        points: r.points
+      })
+    )
+    const existing = targetBeforeRows.find(row =>
+      rowBelongsToIdentity(row, input.userId, primaryPop, popsForUser)
+    )
+    if (existing) {
+      const applied = applyAdditionsToRows(targetBeforeRows, [
+        { popId: existing.popId, add, reason }
+      ])
+      if (!applied.ok) {
+        throw new Error(applied.error)
+      }
+      afterParsed = applied.after
+      changes = applied.changes
+    } else {
+      let userId: mongoose.Types.ObjectId | undefined
+      if (input.userId && mongoose.Types.ObjectId.isValid(input.userId)) {
+        userId = new mongoose.Types.ObjectId(input.userId)
+      } else {
+        const map = await resolveUserIdsForAwardRows([
+          { place: 1, displayName, popId: primaryPop, points: 0 }
+        ])
+        userId = map.get(primaryPop)
+      }
+      const newRow: ParsedAwardRow = {
+        place: Math.max(1, targetBeforeRows.length + 1),
+        displayName,
+        popId: primaryPop,
+        userId,
+        points: add
+      }
+      afterParsed = [...targetBeforeRows, newRow]
+      changes = diffAwardRows(targetBeforeRows, afterParsed).map(c => ({
+        ...c,
+        reason
+      }))
+    }
+  }
+
+  const credit = await persistAwardRowsUpdate({
+    award: targetAward,
+    beforeRows: targetBeforeRows,
+    afterParsed,
+    changes,
+    storeOid: input.storeOid,
+    primaryStoreOid: input.primaryStoreOid,
+    changedByUserId: input.changedByUserId,
+    changedByName: input.changedByName,
+    auditAction: 'updated'
+  })
+
+  return {
+    ok: true,
+    changed: true,
+    adjustments: credit.adjustments,
+    skippedNoUser: credit.skippedNoUser,
+    awardsTouched: 1
+  }
+}
+
+export async function removeTournamentPointsPlayerFromList(input: {
+  storeOid: mongoose.Types.ObjectId
+  primaryStoreOid: mongoose.Types.ObjectId | null
+  userId: string | null
+  primaryPopId: string
+  displayName: string
+  reason: string
+  changedByUserId?: mongoose.Types.ObjectId
+  changedByName: string
+}): Promise<{
+  ok: true
+  changed: boolean
+  rowsRemoved: number
+  pointsRemoved: number
+  adjustments: number
+  skippedNoUser: number
+  awardsTouched: number
+}> {
+  const reason = input.reason.trim().slice(0, REASON_MAX)
+  if (reason.length < REASON_MIN) {
+    throw new Error(`El motivo debe tener al menos ${REASON_MIN} caracteres`)
+  }
+
+  const primaryPop = popidForStorage(input.primaryPopId)
+  if (!primaryPop) {
+    throw new Error('POP ID inválido')
+  }
+
+  const popsForUser = new Set<string>([primaryPop])
+  if (input.userId && mongoose.Types.ObjectId.isValid(input.userId)) {
+    const u = await User.findById(input.userId).select('popid').lean<{
+      popid?: string
+    } | null>()
+    const pop = popidForStorage(String(u?.popid ?? ''))
+    if (pop) popsForUser.add(pop)
+  }
+
+  const identityKey = input.userId ? `u:${input.userId}` : `p:${primaryPop}`
+  const displayName = input.displayName.trim().slice(0, 200) || primaryPop
+
+  const awards = await TournamentPointsAward.find({
+    storeId: input.storeOid
+  }).sort({ createdAt: 1 })
+
+  let rowsRemoved = 0
+  let pointsRemoved = 0
+  let adjustments = 0
+  let skippedNoUser = 0
+  let awardsTouched = 0
+
+  for (const award of awards) {
+    const beforeRows: ParsedAwardRow[] = (award.rows ?? []).map(
+      (r: ITournamentPointsAwardRow) => ({
+        place: r.place,
+        displayName: r.displayName,
+        popId: r.popId,
+        userId: r.userId,
+        points: r.points
+      })
+    )
+    const afterParsed = beforeRows.filter(
+      row => !rowBelongsToIdentity(row, input.userId, primaryPop, popsForUser)
+    )
+    if (afterParsed.length === beforeRows.length) continue
+
+    rowsRemoved += beforeRows.length - afterParsed.length
+    pointsRemoved += beforeRows
+      .filter(row =>
+        rowBelongsToIdentity(row, input.userId, primaryPop, popsForUser)
+      )
+      .reduce((s, row) => s + row.points, 0)
+
+    const changes = diffAwardRows(beforeRows, afterParsed).map(c => ({
+      ...c,
+      reason
+    }))
+
+    const credit = await persistAwardRowsUpdate({
+      award,
+      beforeRows,
+      afterParsed,
+      changes,
+      storeOid: input.storeOid,
+      primaryStoreOid: input.primaryStoreOid,
+      changedByUserId: input.changedByUserId,
+      changedByName: input.changedByName,
+      auditAction: 'updated'
+    })
+    adjustments += credit.adjustments
+    skippedNoUser += credit.skippedNoUser
+    awardsTouched++
+  }
+
+  const userOid =
+    input.userId && mongoose.Types.ObjectId.isValid(input.userId)
+      ? new mongoose.Types.ObjectId(input.userId)
+      : undefined
+
+  await TournamentPointsListExclusion.findOneAndUpdate(
+    { storeId: input.storeOid, identityKey },
+    {
+      $set: {
+        identityKey,
+        userId: userOid,
+        primaryPopId: primaryPop,
+        displayName,
+        reason,
+        excludedByUserId: input.changedByUserId
+      }
+    },
+    { upsert: true }
+  )
+
+  return {
+    ok: true,
+    changed: true,
+    rowsRemoved,
+    pointsRemoved,
+    adjustments,
+    skippedNoUser,
+    awardsTouched
+  }
+}
+
+async function playerHasTournamentPointsInStore(args: {
+  storeOid: mongoose.Types.ObjectId
+  popId: string
+  userId: string | null
+}): Promise<boolean> {
+  const popsForUser = new Set<string>([args.popId])
+  if (args.userId && mongoose.Types.ObjectId.isValid(args.userId)) {
+    const u = await User.findById(args.userId).select('popid').lean<{
+      popid?: string
+    } | null>()
+    const pop = popidForStorage(String(u?.popid ?? ''))
+    if (pop) popsForUser.add(pop)
+  }
+
+  const awards = await TournamentPointsAward.find({ storeId: args.storeOid })
+  for (const award of awards) {
+    for (const row of award.rows ?? []) {
+      const parsed: ParsedAwardRow = {
+        place: row.place,
+        displayName: row.displayName,
+        popId: row.popId,
+        userId: row.userId,
+        points: row.points
+      }
+      if (rowBelongsToIdentity(parsed, args.userId, args.popId, popsForUser)) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
+/** Alta manual de jugador con POP, nombre y puntos iniciales (torneo «Ajuste manual»). */
+export async function registerTournamentPointsPlayerManually(input: {
+  storeOid: mongoose.Types.ObjectId
+  primaryStoreOid: mongoose.Types.ObjectId | null
+  popId: string
+  displayName: string
+  points: number
+  applyBalance: boolean
+  changedByUserId?: mongoose.Types.ObjectId
+  changedByName: string
+}): Promise<{
+  ok: true
+  popId: string
+  displayName: string
+  points: number
+  userLinked: boolean
+  credited: boolean
+  adjustments: number
+  skippedNoUser: number
+}> {
+  const popId = popidForStorage(input.popId)
+  if (!popId) {
+    throw new Error('POP ID inválido')
+  }
+
+  const displayName = input.displayName.trim().slice(0, 200) || popId
+  const points = Math.max(
+    0,
+    Math.min(POINTS_MAX, Math.round(Number(input.points) || 0))
+  )
+  if (points <= 0) {
+    throw new Error('Los puntos deben ser mayor que 0')
+  }
+
+  const popToUser = await resolveUserIdsForAwardRows([
+    { place: 1, displayName, popId, points: 0 }
+  ])
+  const linkedUser = popToUser.get(popId)
+  const userId = linkedUser?.toString() ?? null
+
+  if (
+    await playerHasTournamentPointsInStore({
+      storeOid: input.storeOid,
+      popId,
+      userId
+    })
+  ) {
+    throw new Error(
+      'Este jugador ya tiene puntos asignados en la tienda. Usa Sumar o edita desde la lista.'
+    )
+  }
+
+  const identityKey = userId ? `u:${userId}` : `p:${popId}`
+  await TournamentPointsListExclusion.deleteOne({
+    storeId: input.storeOid,
+    identityKey
+  })
+
+  const manual = await getOrCreateManualAdjustmentAward(
+    input.storeOid,
+    input.changedByUserId
+  )
+  const beforeRows: ParsedAwardRow[] = (manual.rows ?? []).map(
+    (r: ITournamentPointsAwardRow) => ({
+      place: r.place,
+      displayName: r.displayName,
+      popId: r.popId,
+      userId: r.userId,
+      points: r.points
+    })
+  )
+
+  const newRow: ParsedAwardRow = {
+    place: Math.max(1, beforeRows.length + 1),
+    displayName,
+    popId,
+    userId: linkedUser,
+    points
+  }
+  const afterParsed = [...beforeRows, newRow]
+  const changes = diffAwardRows(beforeRows, afterParsed).map(c => ({
+    ...c,
+    reason: 'Registro manual por staff'
+  }))
+
+  let adjustments = 0
+  let skippedNoUser = 0
+  if (input.applyBalance) {
+    const credit = await applyAwardRowCreditDeltas(
+      beforeRows,
+      afterParsed,
+      popToUser,
+      input.storeOid,
+      input.primaryStoreOid
+    )
+    adjustments = credit.adjustments
+    skippedNoUser = credit.skippedNoUser
+  }
+
+  manual.rows = rowsToSnapshot(afterParsed)
+  manual.topCount = afterParsed.filter(r => r.points > 0).length
+  manual.playerCount = afterParsed.length
+  manual.markModified('rows')
+  await manual.save()
+
+  await writeTournamentPointsAuditLog({
+    storeId: input.storeOid,
+    awardId: manual._id as mongoose.Types.ObjectId,
+    eventTitle: manual.eventTitle,
+    action: 'created',
+    changedByUserId: input.changedByUserId,
+    changedByName: input.changedByName,
+    changes
+  })
+
+  return {
+    ok: true,
+    popId,
+    displayName,
+    points,
+    userLinked: Boolean(linkedUser),
+    credited: input.applyBalance,
+    adjustments,
+    skippedNoUser
   }
 }
