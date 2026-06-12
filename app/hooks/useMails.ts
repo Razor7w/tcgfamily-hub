@@ -82,6 +82,7 @@ export function useMails() {
   const storeKey = useDashboardStoreQueryKey()
   return useQuery<{ mails: Mail[] }>({
     queryKey: ['mails', storeKey],
+    staleTime: 2 * 60 * 1000,
     queryFn: async () => {
       const response = await fetch('/api/mail?limit=2000')
       if (!response.ok) {

@@ -161,9 +161,7 @@ export async function GET(
       (wantFullStandings && tournamentClosed && !standingsFullFromCache)
     if (needsSnapshots) {
       const snapLean = await WeeklyEvent.findById(id)
-        .select(
-          viewAs ? { roundSnapshots: 1 } : weeklyEventRoundSnapshotsWltProjection
-        )
+        .select(weeklyEventRoundSnapshotsWltProjection)
         .lean<{ roundSnapshots?: RoundSnapshotLean[] } | null>()
       doc.roundSnapshots = snapLean?.roundSnapshots ?? []
     }

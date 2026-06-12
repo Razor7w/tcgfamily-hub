@@ -24,6 +24,10 @@ export type { MyDeckStatsRowDTO, OpponentMatchupRowDTO, TournamentOriginFilter }
 
 export type { FullTournamentUploadPayload }
 
+const DASHBOARD_EVENT_DETAIL_STALE_MS = 2 * 60_000
+const DASHBOARD_REPORTS_STALE_MS = 3 * 60_000
+const WEEKLY_FULL_STANDINGS_STALE_MS = 5 * 60_000
+
 export type { WeeklyEventState }
 
 export interface PublicWeeklyEvent {
@@ -123,6 +127,7 @@ export function useMyTournamentsAllReport(enabled = true) {
   const storeKey = useDashboardStoreQueryKey()
   return useQuery<{ tournaments: MyTournamentWeekItem[] }>({
     queryKey: ['my-tournaments-all', storeKey],
+    staleTime: DASHBOARD_REPORTS_STALE_MS,
     queryFn: async () => {
       const res = await fetch('/api/events/my-tournaments-all', {
         cache: 'no-store'
@@ -149,6 +154,7 @@ export function useMyTournamentsWeekReport(weekAnchor: Date | null) {
       from?.toISOString(),
       to?.toISOString()
     ],
+    staleTime: DASHBOARD_REPORTS_STALE_MS,
     queryFn: async () => {
       if (!from || !to) {
         return { tournaments: [] }
@@ -172,6 +178,7 @@ export function useMyRecentTournaments(limit = 2) {
   const storeKey = useDashboardStoreQueryKey()
   return useQuery<{ tournaments: MyTournamentWeekItem[] }>({
     queryKey: ['my-recent-tournaments', storeKey, limit],
+    staleTime: DASHBOARD_REPORTS_STALE_MS,
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: String(Math.max(1, Math.min(5, limit)))
@@ -365,6 +372,7 @@ export function useTournamentMeta(eventId: string | null) {
 export function useDashboardEventDetail(eventId: string | null) {
   return useQuery({
     queryKey: ['dashboard-event-detail', eventId],
+    staleTime: DASHBOARD_EVENT_DETAIL_STALE_MS,
     queryFn: async () => {
       if (!eventId?.trim()) throw new Error('ID requerido')
       const res = await fetch(`/api/events/${eventId}`, { cache: 'no-store' })
@@ -393,6 +401,7 @@ export function useWeeklyEventFullStandings(
 ) {
   return useQuery({
     queryKey: ['weekly-event-full-standings', eventId],
+    staleTime: WEEKLY_FULL_STANDINGS_STALE_MS,
     queryFn: async () => {
       if (!eventId?.trim()) throw new Error('ID requerido')
       const res = await fetch(

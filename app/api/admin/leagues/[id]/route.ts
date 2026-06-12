@@ -4,6 +4,7 @@ import { requireStoreStaffSession } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import WeeklyEvent from '@/models/WeeklyEvent'
 import League from '@/models/League'
+import { refreshLeaguePublicCache } from '@/lib/league-public-cache'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 
 function parseBody(body: unknown) {
@@ -151,6 +152,7 @@ export async function PATCH(
     }
 
     await doc.save()
+    await refreshLeaguePublicCache(String(doc._id))
     return NextResponse.json(
       {
         league: serializeLeague(

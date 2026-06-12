@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
-import {
-  aggregateLeagueStandings,
-  leagueEventHasContributingRecord
-} from '@/lib/league-aggregate'
 import mongoose from 'mongoose'
 import League from '@/models/League'
-import WeeklyEvent from '@/models/WeeklyEvent'
 import Store from '@/models/Store'
 import { publicStoreSlugFromHeaders } from '@/lib/multitenancy/ingress-headers'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { DEFAULT_PRIMARY_STORE_SLUG } from '@/lib/multitenancy/constants'
-import { weeklyEventLeagueAggregateProjection } from '@/lib/weekly-event-query-projections'
+import { getOrBuildLeaguePublicCache } from '@/lib/league-public-cache'
 
 /**
  * Clasificación pública de una liga (torneos cerrados; puntos por récord W/L/T del participante).
@@ -134,43 +129,13 @@ export async function GET(
         }
       : null
 
-    const evScope = mongoFilterByStore(
-      effectiveStoreOid,
-      prim?._id ?? null
-    ) as Record<string, unknown>
-    const events = await WeeklyEvent.find({
-      leagueId: leagueDoc._id,
-      tournamentOrigin: 'official',
-      kind: 'tournament',
-      state: 'close',
-      ...evScope
-    })
-      .select(weeklyEventLeagueAggregateProjection)
-      .sort({ startsAt: 1 })
-      .lean()
-
-    const standings = aggregateLeagueStandings(
-      events as Parameters<typeof aggregateLeagueStandings>[0],
+    const cached = await getOrBuildLeaguePublicCache(
+      String(leagueDoc._id),
       league.countBestEvents
     )
-
-    const tournamentSummaries = events.map(ev => ({
-      _id: String(ev._id),
-      title: ev.title,
-      startsAt:
-        ev.startsAt instanceof Date
-          ? ev.startsAt.toISOString()
-          : new Date(ev.startsAt as unknown as string).toISOString(),
-      hasRecord: leagueEventHasContributingRecord(
-        ev as Parameters<typeof leagueEventHasContributingRecord>[0]
-      )
-    }))
-
-    const chartTop = standings.slice(0, 12).map(r => ({
-      name: r.displayName,
-      points: r.totalPoints,
-      popId: r.popId
-    }))
+    const standings = cached?.standings ?? []
+    const tournamentSummaries = cached?.tournaments ?? []
+    const chartTop = cached?.chartTop ?? []
 
     return NextResponse.json(
       {

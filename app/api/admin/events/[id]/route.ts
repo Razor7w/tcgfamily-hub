@@ -17,6 +17,7 @@ import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { weeklyOfficialByIdForStaffGate } from '@/lib/multitenancy/staff-queries'
 import { applyTournamentParticipationAwardsOnEventClose } from '@/lib/contribution-points/tournament-contribution-awards'
 import { serializeAdminWeeklyEventFromLean } from '@/lib/admin-weekly-event-api'
+import { invalidateLeaguePublicCacheForEvent } from '@/lib/league-public-cache'
 import { syncTournamentMetaCacheAfterEventMutation } from '@/lib/tournament-meta-cache'
 import { weeklyEventAdminDetailProjection } from '@/lib/weekly-event-query-projections'
 
@@ -126,6 +127,7 @@ export async function PATCH(
     if (forbidden) return forbidden
 
     const previousState = doc.state
+    const previousLeagueId = doc.leagueId
 
     if (typeof body.startsAt === 'string') {
       const d = new Date(body.startsAt)
@@ -356,6 +358,17 @@ export async function PATCH(
         doc,
         gate.activeStoreOid
       )
+    }
+
+    if (
+      previousState === 'close' &&
+      (doc.state !== 'close' ||
+        String(previousLeagueId ?? '') !== String(doc.leagueId ?? ''))
+    ) {
+      await invalidateLeaguePublicCacheForEvent({
+        leagueId: doc.leagueId,
+        previousLeagueId
+      })
     }
 
     await syncTournamentMetaCacheAfterEventMutation(String(doc._id), doc)

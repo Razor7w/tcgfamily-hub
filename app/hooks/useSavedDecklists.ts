@@ -31,9 +31,12 @@ export type PublicDecklistSummary = {
   ownerTopContribution: PublicDecklistOwnerTopContribution | null
 }
 
+const SAVED_DECKLISTS_STALE_MS = 2 * 60 * 1000
+
 export function useSavedDecklistsList() {
   return useQuery({
     queryKey: ['decklists'],
+    staleTime: SAVED_DECKLISTS_STALE_MS,
     queryFn: async (): Promise<SavedDecklistSummary[]> => {
       const res = await fetch('/api/decklists')
       if (!res.ok) {

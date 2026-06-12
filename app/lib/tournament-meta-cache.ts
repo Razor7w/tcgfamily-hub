@@ -8,6 +8,7 @@ import {
   weeklyEventMetaProjection,
   weeklyEventMetaSnapshotProjection
 } from '@/lib/weekly-event-query-projections'
+import { syncLeaguePublicCacheForEvent } from '@/lib/league-public-cache'
 import { refreshTournamentStandingsFullCache } from '@/lib/tournament-standings-full-cache'
 import WeeklyEvent from '@/models/WeeklyEvent'
 
@@ -129,7 +130,7 @@ export async function getOrBuildTournamentMetaCache(
   return refreshTournamentMetaCache(id)
 }
 
-/** Tras mutar un torneo: recalcula meta si ya es público; si no, limpia cache. */
+/** Tras mutar un torneo: invalida en caliente; rebuild solo si cerrado y público. */
 export async function syncTournamentMetaCacheAfterEventMutation(
   eventId: string,
   doc: {
@@ -137,25 +138,36 @@ export async function syncTournamentMetaCacheAfterEventMutation(
     game?: string
     state?: string
     tournamentOrigin?: string
+    leagueId?: unknown
   }
 ): Promise<void> {
-  if (doc.kind !== 'tournament' || doc.game !== 'pokemon') return
-  if (isPokemonTournamentMetaEligible(doc)) {
+  const leagueSync = syncLeaguePublicCacheForEvent(doc)
+
+  if (doc.kind !== 'tournament' || doc.game !== 'pokemon') {
+    await leagueSync
+    return
+  }
+
+  if (doc.state === 'close' && isPokemonTournamentMetaEligible(doc)) {
     await Promise.all([
-      refreshTournamentMetaCache(eventId),
-      refreshTournamentStandingsFullCache(eventId)
+      refreshTournamentDerivedCaches(eventId),
+      leagueSync
     ])
   } else {
-    await invalidateTournamentMetaCache(eventId)
+    await Promise.all([invalidateTournamentMetaCache(eventId), leagueSync])
   }
 }
 
-/** Tras cerrar torneo o import TDF: meta + standings full en paralelo. */
+/** Tras cerrar torneo o import TDF: meta + standings full + liga en paralelo. */
 export async function refreshTournamentDerivedCaches(
   eventId: string
 ): Promise<void> {
+  const gate = await WeeklyEvent.findById(eventId)
+    .select('kind game state tournamentOrigin leagueId')
+    .lean()
   await Promise.all([
     refreshTournamentMetaCache(eventId),
-    refreshTournamentStandingsFullCache(eventId)
+    refreshTournamentStandingsFullCache(eventId),
+    gate ? syncLeaguePublicCacheForEvent(gate) : Promise.resolve()
   ])
 }
