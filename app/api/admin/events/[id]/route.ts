@@ -17,6 +17,7 @@ import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { weeklyOfficialByIdForStaffGate } from '@/lib/multitenancy/staff-queries'
 import { applyTournamentParticipationAwardsOnEventClose } from '@/lib/contribution-points/tournament-contribution-awards'
 import { serializeAdminWeeklyEventFromLean } from '@/lib/admin-weekly-event-api'
+import { syncTournamentMetaCacheAfterEventMutation } from '@/lib/tournament-meta-cache'
 import { weeklyEventAdminDetailProjection } from '@/lib/weekly-event-query-projections'
 
 const PRICE_MAX = 99_999_999
@@ -356,6 +357,8 @@ export async function PATCH(
         gate.activeStoreOid
       )
     }
+
+    await syncTournamentMetaCacheAfterEventMutation(String(doc._id), doc)
 
     return NextResponse.json({ event: doc.toObject() }, { status: 200 })
   } catch (error) {

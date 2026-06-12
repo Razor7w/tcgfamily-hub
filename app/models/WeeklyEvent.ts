@@ -128,6 +128,10 @@ export interface IWeeklyEvent extends Document {
   roundSnapshots?: IRoundSnapshot[]
   /** Clasificación final por categoría (finished + DNF) tras import o carga manual. */
   tournamentStandings?: ITournamentCategoryStandings[]
+  /**
+   * Meta Pokémon precalculada (`GET …/tournament-meta`); se invalida al mutar el torneo.
+   */
+  tournamentMetaCache?: Record<string, unknown>
   participants: IWeeklyParticipant[]
 }
 
@@ -328,6 +332,7 @@ const WeeklyEventSchema = new Schema<IWeeklyEvent>(
       type: [TournamentCategoryStandingsSchema],
       default: []
     },
+    tournamentMetaCache: { type: Schema.Types.Mixed, required: false },
     participants: { type: [ParticipantSchema], default: [] }
   },
   { timestamps: true, strict: true }

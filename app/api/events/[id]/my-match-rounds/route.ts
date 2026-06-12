@@ -20,6 +20,7 @@ import {
 import { popidForStorage } from '@/lib/rut-chile'
 import { applyMatchRoundContributionAwards } from '@/lib/contribution-points/match-round-contribution-awards'
 import { resolveWeeklyEventStoreIdForContribution } from '@/lib/contribution-points/resolve-event-store-id'
+import { syncTournamentMetaCacheAfterEventMutation } from '@/lib/tournament-meta-cache'
 import { resolveTournamentContributionOrigin } from '@/lib/contribution-points/tournament-origin'
 import WeeklyEvent from '@/models/WeeklyEvent'
 import type { IParticipantMatchRound } from '@/models/WeeklyEvent'
@@ -204,6 +205,8 @@ export async function PUT(
         next: roundsToPersist
       })
     }
+
+    await syncTournamentMetaCacheAfterEventMutation(String(doc._id), doc)
 
     return NextResponse.json(
       { ok: true, rounds: toSave, contributionPointsAwarded },

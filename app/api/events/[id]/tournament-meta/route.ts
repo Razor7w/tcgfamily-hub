@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
-import { buildTournamentMetaPayload } from '@/lib/tournament-meta-build'
-import { canExposeParticipantDecksToOthers } from '@/lib/weekly-events'
 import {
-  weeklyEventMetaProjection,
-  weeklyEventMetaSnapshotProjection
-} from '@/lib/weekly-event-query-projections'
+  getOrBuildTournamentMetaCache,
+  isPokemonTournamentMetaEligible
+} from '@/lib/tournament-meta-cache'
 import WeeklyEvent from '@/models/WeeklyEvent'
-import type { RoundSnapshotLean } from '@/lib/match-rounds-with-snapshots'
+
+const META_CACHE_HEADERS = {
+  'Cache-Control': 'private, max-age=600, stale-while-revalidate=1200'
+} as const
 
 export async function GET(
   _request: Request,
@@ -27,30 +28,22 @@ export async function GET(
     }
 
     await connectDB()
-    const doc = await WeeklyEvent.findById(eventId)
-      .select(weeklyEventMetaProjection)
+
+    const gate = await WeeklyEvent.findById(eventId)
+      .select('kind game state tournamentOrigin')
       .lean()
-    if (!doc) {
+    if (!gate) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     }
 
-    if (doc.kind !== 'tournament' || doc.game !== 'pokemon') {
+    if (gate.kind !== 'tournament' || gate.game !== 'pokemon') {
       return NextResponse.json(
         { error: 'La meta solo aplica a torneos Pokémon TCG' },
         { status: 400 }
       )
     }
 
-    const tournamentOrigin =
-      (doc as { tournamentOrigin?: string }).tournamentOrigin === 'custom'
-        ? 'custom'
-        : 'official'
-    if (
-      !canExposeParticipantDecksToOthers({
-        state: doc.state,
-        tournamentOrigin
-      })
-    ) {
+    if (!isPokemonTournamentMetaEligible(gate)) {
       return NextResponse.json(
         {
           error:
@@ -60,23 +53,14 @@ export async function GET(
       )
     }
 
-    if (tournamentOrigin === 'official') {
-      const snapLean = await WeeklyEvent.findById(eventId)
-        .select(weeklyEventMetaSnapshotProjection)
-        .lean<{ roundSnapshots?: RoundSnapshotLean[] } | null>()
-      ;(doc as { roundSnapshots?: RoundSnapshotLean[] }).roundSnapshots =
-        snapLean?.roundSnapshots ?? []
-    } else {
-      ;(doc as { roundSnapshots?: RoundSnapshotLean[] }).roundSnapshots = []
+    const meta = await getOrBuildTournamentMetaCache(eventId)
+    if (!meta) {
+      return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     }
-
-    const meta = await buildTournamentMetaPayload(doc)
 
     return NextResponse.json(meta, {
       status: 200,
-      headers: {
-        'Cache-Control': 'private, max-age=300, stale-while-revalidate=600'
-      }
+      headers: META_CACHE_HEADERS
     })
   } catch (e) {
     console.error('GET /api/events/[id]/tournament-meta:', e)
