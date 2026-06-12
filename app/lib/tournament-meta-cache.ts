@@ -8,6 +8,7 @@ import {
   weeklyEventMetaProjection,
   weeklyEventMetaSnapshotProjection
 } from '@/lib/weekly-event-query-projections'
+import { refreshTournamentStandingsFullCache } from '@/lib/tournament-standings-full-cache'
 import WeeklyEvent from '@/models/WeeklyEvent'
 
 export function isPokemonTournamentMetaEligible(doc: {
@@ -68,7 +69,10 @@ export async function invalidateTournamentMetaCache(
 ): Promise<void> {
   const id = eventId.trim()
   if (!id) return
-  await WeeklyEvent.updateOne({ _id: id }, { $unset: { tournamentMetaCache: 1 } })
+  await WeeklyEvent.updateOne(
+    { _id: id },
+    { $unset: { tournamentMetaCache: 1, tournamentStandingsFullCache: 1 } }
+  )
 }
 
 /** Recalcula y persiste meta (p. ej. al cerrar torneo). No hace nada si no aplica. */
@@ -137,8 +141,21 @@ export async function syncTournamentMetaCacheAfterEventMutation(
 ): Promise<void> {
   if (doc.kind !== 'tournament' || doc.game !== 'pokemon') return
   if (isPokemonTournamentMetaEligible(doc)) {
-    await refreshTournamentMetaCache(eventId)
+    await Promise.all([
+      refreshTournamentMetaCache(eventId),
+      refreshTournamentStandingsFullCache(eventId)
+    ])
   } else {
     await invalidateTournamentMetaCache(eventId)
   }
+}
+
+/** Tras cerrar torneo o import TDF: meta + standings full en paralelo. */
+export async function refreshTournamentDerivedCaches(
+  eventId: string
+): Promise<void> {
+  await Promise.all([
+    refreshTournamentMetaCache(eventId),
+    refreshTournamentStandingsFullCache(eventId)
+  ])
 }

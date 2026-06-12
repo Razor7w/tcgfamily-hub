@@ -91,24 +91,6 @@ export const weeklyEventAdminDetailProjection = {
   tournamentStandings: 1
 } as const
 
-/** Resumen de mazos (`aggregateMyDeckStats`): sin snapshots TDF. */
-export const weeklyEventMatchupOverviewProjection = {
-  startsAt: 1,
-  tournamentOrigin: 1,
-  'participants.userId': 1,
-  'participants.matchRounds': 1,
-  'participants.deckPokemonSlugs': 1
-} as const
-
-/** Detalle rival/matchup: necesita snapshots para enriquecer bitácora oficial. */
-export const weeklyEventMatchupDetailProjection = {
-  ...weeklyEventMatchupOverviewProjection,
-  state: 1,
-  roundSnapshots: 1,
-  'participants.popId': 1,
-  'participants.displayName': 1
-} as const
-
 /** Snapshots TDF mínimos: emparejamientos W/L/T (sin syncedAt, skipped, mesa). */
 export const weeklyEventRoundSnapshotsWltProjection = {
   'roundSnapshots.roundNum': 1,
@@ -119,6 +101,24 @@ export const weeklyEventRoundSnapshotsWltProjection = {
   'roundSnapshots.pairings.player1Record': 1,
   'roundSnapshots.pairings.player2Record': 1,
   'roundSnapshots.pairings.isBye': 1
+} as const
+
+/** Resumen de mazos (`aggregateMyDeckStats`): sin snapshots TDF. */
+export const weeklyEventMatchupOverviewProjection = {
+  startsAt: 1,
+  tournamentOrigin: 1,
+  'participants.userId': 1,
+  'participants.matchRounds': 1,
+  'participants.deckPokemonSlugs': 1
+} as const
+
+/** Detalle rival/matchup: snapshots W/L/T mínimos para enriquecer bitácora oficial. */
+export const weeklyEventMatchupDetailProjection = {
+  ...weeklyEventMatchupOverviewProjection,
+  state: 1,
+  ...weeklyEventRoundSnapshotsWltProjection,
+  'participants.popId': 1,
+  'participants.displayName': 1
 } as const
 
 /** Clasificación pública de liga: snapshots mínimos para W/L/T (sin syncedAt/skipped/mesa). */

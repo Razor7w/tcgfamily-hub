@@ -11,12 +11,14 @@ import {
   canUnregisterNow,
   pairingExtrasForUser
 } from '@/lib/weekly-events'
+import { getOrBuildTournamentStandingsFullCache } from '@/lib/tournament-standings-full-cache'
 import {
   attachTiebreakersToFullPublicStandings,
   buildTournamentStandingsPublic,
   categoryLabelEs,
   PUBLIC_STANDINGS_FULL_MAX
 } from '@/lib/weekly-event-public'
+import { weeklyEventRoundSnapshotsWltProjection } from '@/lib/weekly-event-query-projections'
 import {
   matchRecordFromRounds,
   type ParticipantMatchRoundDTO
@@ -142,11 +144,26 @@ export async function GET(
     const viewAs = resolveViewAsParticipant(doc, uid, isAdmin)
     const tournamentClosed = doc.kind === 'tournament' && doc.state === 'close'
 
+    let standingsFullFromCache: Awaited<
+      ReturnType<typeof getOrBuildTournamentStandingsFullCache>
+    > = null
+    if (
+      wantFullStandings &&
+      tournamentClosed &&
+      doc.game === 'pokemon' &&
+      doc.kind === 'tournament'
+    ) {
+      standingsFullFromCache = await getOrBuildTournamentStandingsFullCache(id)
+    }
+
     const needsSnapshots =
-      Boolean(viewAs) || (wantFullStandings && tournamentClosed)
+      Boolean(viewAs) ||
+      (wantFullStandings && tournamentClosed && !standingsFullFromCache)
     if (needsSnapshots) {
       const snapLean = await WeeklyEvent.findById(id)
-        .select({ roundSnapshots: 1 })
+        .select(
+          viewAs ? { roundSnapshots: 1 } : weeklyEventRoundSnapshotsWltProjection
+        )
         .lean<{ roundSnapshots?: RoundSnapshotLean[] } | null>()
       doc.roundSnapshots = snapLean?.roundSnapshots ?? []
     }
@@ -386,16 +403,18 @@ export async function GET(
       ...(tournamentClosed
         ? wantFullStandings
           ? {
-              standingsFullByCategory: attachTiebreakersToFullPublicStandings(
-                standingsPublic?.standingsTopByCategory ?? [],
-                doc.roundSnapshots,
-                parts as {
-                  popId?: string
-                  wins?: unknown
-                  losses?: unknown
-                  ties?: unknown
-                }[]
-              )
+              standingsFullByCategory:
+                standingsFullFromCache ??
+                attachTiebreakersToFullPublicStandings(
+                  standingsPublic?.standingsTopByCategory ?? [],
+                  doc.roundSnapshots,
+                  parts as {
+                    popId?: string
+                    wins?: unknown
+                    losses?: unknown
+                    ties?: unknown
+                  }[]
+                )
             }
           : {
               standingsTopByCategory:

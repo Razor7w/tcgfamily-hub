@@ -17,11 +17,23 @@ import WeeklyEvent from '@/models/WeeklyEvent'
 /** Resumen en hub: solo rondas reportadas por el usuario (sin snapshots TDF). */
 const MAX_EVENTS_OVERVIEW = 250
 /** Detalle de rival: enriquecimiento con snapshots oficiales. */
-const MAX_EVENTS_DECK_DETAIL = 200
+const MAX_EVENTS_DECK_DETAIL = 120
 
 function parseOrigin(raw: string | null): TournamentOriginFilter {
   if (raw === 'official' || raw === 'custom') return raw
   return 'all'
+}
+
+function originMongoFilter(
+  origin: TournamentOriginFilter
+): Record<string, unknown> {
+  if (origin === 'official') {
+    return { tournamentOrigin: { $ne: 'custom' } }
+  }
+  if (origin === 'custom') {
+    return { tournamentOrigin: 'custom' }
+  }
+  return {}
 }
 
 export async function GET(request: Request) {
@@ -51,6 +63,7 @@ export async function GET(request: Request) {
     const baseFilter = {
       kind: 'tournament' as const,
       game: 'pokemon' as const,
+      ...originMongoFilter(origin),
       participants: {
         $elemMatch:
           myDeckKeyFilter != null

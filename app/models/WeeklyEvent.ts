@@ -132,6 +132,8 @@ export interface IWeeklyEvent extends Document {
    * Meta Pokémon precalculada (`GET …/tournament-meta`); se invalida al mutar el torneo.
    */
   tournamentMetaCache?: Record<string, unknown>
+  /** Clasificación completa con tiebreakers (`?standings=full`); invalida con meta. */
+  tournamentStandingsFullCache?: Record<string, unknown>
   participants: IWeeklyParticipant[]
 }
 
@@ -333,6 +335,7 @@ const WeeklyEventSchema = new Schema<IWeeklyEvent>(
       default: []
     },
     tournamentMetaCache: { type: Schema.Types.Mixed, required: false },
+    tournamentStandingsFullCache: { type: Schema.Types.Mixed, required: false },
     participants: { type: [ParticipantSchema], default: [] }
   },
   { timestamps: true, strict: true }

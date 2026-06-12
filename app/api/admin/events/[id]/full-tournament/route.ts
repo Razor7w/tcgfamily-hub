@@ -13,7 +13,7 @@ import type {
 import { normalizeDisplayName } from '@/lib/weekly-events'
 import { popidForStorage, validatePopidOptional } from '@/lib/rut-chile'
 import { applyTournamentParticipationAwardsOnEventClose } from '@/lib/contribution-points/tournament-contribution-awards'
-import { refreshTournamentMetaCache } from '@/lib/tournament-meta-cache'
+import { refreshTournamentDerivedCaches } from '@/lib/tournament-meta-cache'
 
 const NAME_MAX = 200
 const MAX_PAIRINGS = 512
@@ -391,7 +391,7 @@ export async function POST(
       gate.activeStoreOid
     )
 
-    await refreshTournamentMetaCache(String(doc._id))
+    await refreshTournamentDerivedCaches(String(doc._id))
 
     return NextResponse.json(
       {
