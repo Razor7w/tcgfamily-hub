@@ -356,6 +356,14 @@ WeeklyEventSchema.index({
   'participants.userId': 1,
   startsAt: -1
 })
+/** `my-matchup-stats` con filtro official/custom (ESR: igualdad → sort). */
+WeeklyEventSchema.index({
+  kind: 1,
+  game: 1,
+  tournamentOrigin: 1,
+  'participants.userId': 1,
+  startsAt: -1
+})
 /** Torneos cerrados por liga (`GET /api/leagues/[slug]`). */
 WeeklyEventSchema.index({
   leagueId: 1,

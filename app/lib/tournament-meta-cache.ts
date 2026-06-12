@@ -8,6 +8,7 @@ import {
   weeklyEventMetaProjection,
   weeklyEventMetaSnapshotProjection
 } from '@/lib/weekly-event-query-projections'
+import { invalidateMatchupStatsCacheForEvent } from '@/lib/matchup-stats-cache'
 import { syncLeaguePublicCacheForEvent } from '@/lib/league-public-cache'
 import { refreshTournamentStandingsFullCache } from '@/lib/tournament-standings-full-cache'
 import WeeklyEvent from '@/models/WeeklyEvent'
@@ -165,6 +166,7 @@ export async function refreshTournamentDerivedCaches(
   await Promise.all([
     refreshTournamentMetaCache(eventId),
     refreshTournamentStandingsFullCache(eventId),
+    invalidateMatchupStatsCacheForEvent(eventId),
     gate ? syncLeaguePublicCacheForEvent(gate) : Promise.resolve()
   ])
 }

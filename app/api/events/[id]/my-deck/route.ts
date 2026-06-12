@@ -8,6 +8,7 @@ import { validateTournamentDecklistRefForUser } from '@/lib/validate-tournament-
 import { applyDeckContributionAwards } from '@/lib/contribution-points/deck-contribution-awards'
 import { resolveWeeklyEventStoreIdForContribution } from '@/lib/contribution-points/resolve-event-store-id'
 import { resolveTournamentContributionOrigin } from '@/lib/contribution-points/tournament-origin'
+import { invalidateMatchupStatsCacheForUser } from '@/lib/matchup-stats-cache'
 import { syncTournamentMetaCacheAfterEventMutation } from '@/lib/tournament-meta-cache'
 import { canEditParticipantDeck } from '@/lib/can-edit-participant-deck'
 import {
@@ -224,7 +225,10 @@ export async function PUT(
       })
     }
 
-    await syncTournamentMetaCacheAfterEventMutation(String(doc._id), doc)
+    await Promise.all([
+      syncTournamentMetaCacheAfterEventMutation(String(doc._id), doc),
+      invalidateMatchupStatsCacheForUser(session.user.id)
+    ])
 
     return NextResponse.json(
       { ok: true, deckPokemonSlugs: slugs, contributionPointsAwarded },

@@ -3,37 +3,14 @@ import mongoose from 'mongoose'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import {
-  aggregateMyDeckStats,
-  aggregateOpponentMatchupsForMyDeck,
-  myDeckSlugsDisplayOrderFromEvents,
-  type TournamentOriginFilter
-} from '@/lib/pokemon-matchup-stats'
-import {
-  weeklyEventMatchupDetailProjection,
-  weeklyEventMatchupOverviewProjection
-} from '@/lib/weekly-event-query-projections'
-import WeeklyEvent from '@/models/WeeklyEvent'
-
-/** Resumen en hub: solo rondas reportadas por el usuario (sin snapshots TDF). */
-const MAX_EVENTS_OVERVIEW = 250
-/** Detalle de rival: enriquecimiento con snapshots oficiales. */
-const MAX_EVENTS_DECK_DETAIL = 80
+  getOrBuildMatchupStatsDeckDetail,
+  getOrBuildMatchupStatsOverview
+} from '@/lib/matchup-stats-cache'
+import type { TournamentOriginFilter } from '@/lib/pokemon-matchup-stats'
 
 function parseOrigin(raw: string | null): TournamentOriginFilter {
   if (raw === 'official' || raw === 'custom') return raw
   return 'all'
-}
-
-function originMongoFilter(
-  origin: TournamentOriginFilter
-): Record<string, unknown> {
-  if (origin === 'official') {
-    return { tournamentOrigin: { $ne: 'custom' } }
-  }
-  if (origin === 'custom') {
-    return { tournamentOrigin: 'custom' }
-  }
-  return {}
 }
 
 export async function GET(request: Request) {
@@ -60,90 +37,33 @@ export async function GET(request: Request) {
 
     await connectDB()
 
-    const baseFilter = {
-      kind: 'tournament' as const,
-      game: 'pokemon' as const,
-      ...originMongoFilter(origin),
-      participants: {
-        $elemMatch:
-          myDeckKeyFilter != null
-            ? { userId: uid, 'matchRounds.0': { $exists: true } }
-            : { userId: uid }
-      }
-    }
-
-    const docs = await WeeklyEvent.find(baseFilter)
-      .sort({ startsAt: -1 })
-      .limit(
-        myDeckKeyFilter != null ? MAX_EVENTS_DECK_DETAIL : MAX_EVENTS_OVERVIEW
-      )
-      .select(
-        myDeckKeyFilter != null
-          ? weeklyEventMatchupDetailProjection
-          : weeklyEventMatchupOverviewProjection
-      )
-      .lean()
-
     if (myDeckKeyFilter != null) {
-      const opponents = aggregateOpponentMatchupsForMyDeck(
-        docs as Parameters<typeof aggregateOpponentMatchupsForMyDeck>[0],
+      const payload = await getOrBuildMatchupStatsDeckDetail(
         session.user.id,
+        uid,
         origin,
         myDeckKeyFilter
       )
-      const myDeckSlugs =
-        myDeckKeyFilter === '__empty__'
-          ? []
-          : myDeckSlugsDisplayOrderFromEvents(
-              docs as Parameters<typeof aggregateMyDeckStats>[0],
-              session.user.id,
-              myDeckKeyFilter
-            )
-      return NextResponse.json(
-        {
-          origin,
-          view: 'deck-detail' as const,
-          myDeckKey: myDeckKeyFilter,
-          myDeckSlugs,
-          opponents,
-          eventsScanned: docs.length
-        },
-        { status: 200 }
-      )
+      return NextResponse.json(payload, {
+        status: 200,
+        headers: {
+          'Cache-Control': 'private, max-age=300, stale-while-revalidate=600'
+        }
+      })
     }
 
-    const myDecks = aggregateMyDeckStats(
-      docs as Parameters<typeof aggregateMyDeckStats>[0],
+    const payload = await getOrBuildMatchupStatsOverview(
       session.user.id,
+      uid,
       origin
     )
 
-    let eventsWithReportedRounds = 0
-    for (const doc of docs) {
-      const tor =
-        (doc as { tournamentOrigin?: string }).tournamentOrigin === 'custom'
-          ? 'custom'
-          : 'official'
-      if (origin === 'official' && tor !== 'official') continue
-      if (origin === 'custom' && tor !== 'custom') continue
-      const parts = doc.participants ?? []
-      const mine = parts.find(
-        (p: { userId?: unknown }) =>
-          p?.userId != null && String(p.userId) === session.user.id
-      ) as { matchRounds?: unknown[] } | undefined
-      const n = Array.isArray(mine?.matchRounds) ? mine.matchRounds.length : 0
-      if (n > 0) eventsWithReportedRounds++
-    }
-
-    return NextResponse.json(
-      {
-        origin,
-        myDecks,
-        eventsScanned: docs.length,
-        eventsWithReportedRounds
-      },
-      { status: 200 }
-    )
+    return NextResponse.json(payload, {
+      status: 200,
+      headers: {
+        'Cache-Control': 'private, max-age=300, stale-while-revalidate=600'
+      }
+    })
   } catch (error) {
     console.error('GET /api/events/my-matchup-stats:', error)
     return NextResponse.json(

@@ -129,10 +129,7 @@ export async function GET(
         }
       : null
 
-    const cached = await getOrBuildLeaguePublicCache(
-      String(leagueDoc._id),
-      league.countBestEvents
-    )
+    const cached = await getOrBuildLeaguePublicCache(String(leagueDoc._id))
     const standings = cached?.standings ?? []
     const tournamentSummaries = cached?.tournaments ?? []
     const chartTop = cached?.chartTop ?? []

@@ -20,6 +20,7 @@ import {
 import { popidForStorage } from '@/lib/rut-chile'
 import { applyMatchRoundContributionAwards } from '@/lib/contribution-points/match-round-contribution-awards'
 import { resolveWeeklyEventStoreIdForContribution } from '@/lib/contribution-points/resolve-event-store-id'
+import { invalidateMatchupStatsCacheForUser } from '@/lib/matchup-stats-cache'
 import { syncTournamentMetaCacheAfterEventMutation } from '@/lib/tournament-meta-cache'
 import { resolveTournamentContributionOrigin } from '@/lib/contribution-points/tournament-origin'
 import { weeklyEventRoundSnapshotsWltProjection } from '@/lib/weekly-event-query-projections'
@@ -217,7 +218,10 @@ export async function PUT(
       })
     }
 
-    await syncTournamentMetaCacheAfterEventMutation(String(doc._id), doc)
+    await Promise.all([
+      syncTournamentMetaCacheAfterEventMutation(String(doc._id), doc),
+      invalidateMatchupStatsCacheForUser(session.user.id)
+    ])
 
     return NextResponse.json(
       { ok: true, rounds: toSave, contributionPointsAwarded },

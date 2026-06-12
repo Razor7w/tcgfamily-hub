@@ -49,7 +49,15 @@ export async function GET() {
       .map(d => buildMyTournamentWeekItemFromLean(d, userId, userPopId))
       .filter((x): x is NonNullable<typeof x> => x != null)
 
-    return NextResponse.json({ tournaments: items }, { status: 200 })
+    return NextResponse.json(
+      { tournaments: items },
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 'private, max-age=180, stale-while-revalidate=300'
+        }
+      }
+    )
   } catch (error) {
     console.error('GET /api/events/my-tournaments-all:', error)
     return NextResponse.json(
