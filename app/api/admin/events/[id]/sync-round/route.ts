@@ -9,6 +9,7 @@ import type {
   IRoundSnapshot
 } from '@/models/WeeklyEvent'
 import { popidForStorage } from '@/lib/rut-chile'
+import { syncTournamentMetaCacheAfterEventMutation } from '@/lib/tournament-meta-cache'
 
 const ROUND_NUM_MAX = 9999
 const NAME_MAX = 200
@@ -304,6 +305,8 @@ export async function POST(
     doc.markModified('participants')
     doc.markModified('roundSnapshots')
     await doc.save()
+
+    await syncTournamentMetaCacheAfterEventMutation(String(doc._id), doc)
 
     return NextResponse.json(
       {

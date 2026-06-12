@@ -94,8 +94,11 @@ async function findUserByRut(input: string) {
   return byDots ?? byNoDots ?? byCleaned
 }
 
-// GET - listar mails
-export async function GET() {
+const MAIL_LIST_DEFAULT_LIMIT = 500
+const MAIL_LIST_MAX_LIMIT = 2000
+
+// GET - listar mails (staff)
+export async function GET(request: NextRequest) {
   try {
     const gate = await requireStoreStaffSession()
     if (!gate.ok) return gate.response
@@ -106,30 +109,27 @@ export async function GET() {
       gate.primaryStoreOid ?? null
     ) as Record<string, unknown>
 
-    // Datos legacy: anclar fecha de ingreso usando updatedAt cuando falte.
-    await Mail.updateMany(
-      {
-        $and: [
-          scope,
-          {
-            isRecivedInStore: true,
-            $or: [
-              { receivedInStoreAt: { $exists: false } },
-              { receivedInStoreAt: null }
-            ]
-          }
-        ]
-      },
-      [{ $set: { receivedInStoreAt: '$updatedAt' } }]
-    ).catch(() => undefined)
+    const { searchParams } = new URL(request.url)
+    const limitRaw = searchParams.get('limit')
+    let limit = MAIL_LIST_DEFAULT_LIMIT
+    if (limitRaw !== null && limitRaw.trim() !== '') {
+      const n = Number.parseInt(limitRaw, 10)
+      if (Number.isFinite(n) && n > 0) {
+        limit = Math.min(n, MAIL_LIST_MAX_LIMIT)
+      }
+    }
 
     const mails = await Mail.find({ ...scope })
+      .select(
+        'code storeId fromUserId toUserId toRut isRecived isRecivedInStore receivedInStoreAt observations createdAt updatedAt'
+      )
       .sort({ createdAt: -1 })
+      .limit(limit)
       .populate('fromUserId', 'name rut')
       .populate('toUserId', 'name rut')
       .lean()
 
-    return NextResponse.json({ mails }, { status: 200 })
+    return NextResponse.json({ mails, limit }, { status: 200 })
   } catch (error) {
     console.error('Error al obtener productos:', error)
     return NextResponse.json(

@@ -8,6 +8,7 @@ import {
 import '@/models/User'
 import WeeklyEvent from '@/models/WeeklyEvent'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
+import { weeklyEventAdminCustomListProjection } from '@/lib/weekly-event-query-projections'
 
 const LIST_MAX = 400
 
@@ -170,6 +171,7 @@ export async function GET() {
       tournamentOrigin: 'custom',
       ...scope
     })
+      .select(weeklyEventAdminCustomListProjection)
       .sort({ startsAt: -1 })
       .limit(LIST_MAX)
       .populate({ path: 'createdByUserId', select: 'name email' })

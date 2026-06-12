@@ -28,6 +28,16 @@ export async function getTournamentDecklistDisplayLabels(
 
   if (!deck) return null
 
+  return decklistLabelsFromLean(deck, ref)
+}
+
+function decklistLabelsFromLean(
+  deck: {
+    name?: string
+    variants?: { _id: mongoose.Types.ObjectId; label: string }[]
+  },
+  ref: RefLean
+): { decklistName: string; listLabel: string } {
   const decklistName =
     typeof deck.name === 'string' && deck.name.trim()
       ? deck.name.trim()
@@ -48,4 +58,53 @@ export async function getTournamentDecklistDisplayLabels(
       : 'Variante'
 
   return { decklistName, listLabel }
+}
+
+/**
+ * Una sola consulta Mongo para etiquetas de mazos en meta de torneo (en lugar de N× findOne).
+ */
+export async function batchTournamentDecklistDisplayLabels(
+  requests: { userId: string; ref: RefLean }[]
+): Promise<Map<string, { decklistName: string; listLabel: string } | null>> {
+  const out = new Map<
+    string,
+    { decklistName: string; listLabel: string } | null
+  >()
+  const valid = requests.filter(
+    r =>
+      r.ref?.decklistId &&
+      mongoose.Types.ObjectId.isValid(r.userId) &&
+      mongoose.Types.ObjectId.isValid(String(r.ref.decklistId))
+  )
+  if (valid.length === 0) return out
+
+  const deckIds = [
+    ...new Set(
+      valid.map(r => String(r.ref.decklistId)).filter(id => id.length > 0)
+    )
+  ].map(id => new mongoose.Types.ObjectId(id))
+
+  const decks = await SavedDecklist.find({ _id: { $in: deckIds } })
+    .select('name variants userId')
+    .lean<
+      {
+        _id: mongoose.Types.ObjectId
+        userId: mongoose.Types.ObjectId
+        name?: string
+        variants?: { _id: mongoose.Types.ObjectId; label: string }[]
+      }[]
+    >()
+
+  const deckByOwnerKey = new Map<string, (typeof decks)[number]>()
+  for (const deck of decks) {
+    deckByOwnerKey.set(`${String(deck._id)}|${String(deck.userId)}`, deck)
+  }
+
+  for (const { userId, ref } of valid) {
+    const cacheKey = `${userId}|${String(ref.decklistId)}`
+    const deck = deckByOwnerKey.get(`${String(ref.decklistId)}|${userId}`)
+    out.set(cacheKey, deck ? decklistLabelsFromLean(deck, ref) : null)
+  }
+
+  return out
 }

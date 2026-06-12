@@ -3,7 +3,7 @@ import mongoose from 'mongoose'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import { buildMyTournamentWeekItemFromLean } from '@/lib/build-my-tournament-week-item'
-import WeeklyEvent from '@/models/WeeklyEvent'
+import { aggregateWeeklyEventsForUserReport } from '@/lib/weekly-event-user-report-query'
 
 const DEFAULT_LIMIT = 2
 const MAX_LIMIT = 5
@@ -45,13 +45,14 @@ export async function GET(request: NextRequest) {
 
     await connectDB()
 
-    const docs = await WeeklyEvent.find({
-      kind: 'tournament',
-      participants: { $elemMatch: { userId: uid } }
-    })
-      .sort({ startsAt: -1 })
-      .limit(limit)
-      .lean()
+    const docs = await aggregateWeeklyEventsForUserReport(
+      {
+        kind: 'tournament',
+        participants: { $elemMatch: { userId: uid } }
+      },
+      uid,
+      { sort: { startsAt: -1 }, limit }
+    )
 
     const tournaments = docs
       .map(d => buildMyTournamentWeekItemFromLean(d, userId, userPopId))

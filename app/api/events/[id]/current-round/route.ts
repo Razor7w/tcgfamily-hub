@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
-import WeeklyEvent from '@/models/WeeklyEvent'
 import type {
   IRoundPairingSnapshot,
   IRoundSnapshot
 } from '@/models/WeeklyEvent'
+import WeeklyEvent from '@/models/WeeklyEvent'
 import { effectivePublicRoundNum } from '@/lib/dashboard-round-cap'
+import { loadWeeklyEventRoundSnapshot } from '@/lib/weekly-event-current-round-query'
 
 function clampWlt(n: unknown): number {
   return Math.max(0, Math.min(999, Math.round(Number(n) || 0)))
@@ -31,15 +32,6 @@ function publicPairing(row: IRoundPairingSnapshot) {
   }
 }
 
-type LeanForRound = {
-  _id: unknown
-  kind: string
-  roundNum?: number
-  dashboardRoundCap?: number
-  participants?: { userId?: unknown }[]
-  roundSnapshots?: IRoundSnapshot[]
-}
-
 /** Emparejamientos de la ronda en curso (snapshot guardado por staff). Solo participantes con cuenta. */
 export async function GET(
   _request: Request,
@@ -52,18 +44,21 @@ export async function GET(
     }
 
     const { id } = await context.params
-    if (!id?.trim()) {
+    const eventId = id?.trim()
+    if (!eventId) {
       return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
     }
 
     await connectDB()
     const uid = session.user.id
 
-    const doc = await WeeklyEvent.findById(id)
-      .select(
-        'kind roundNum dashboardRoundCap participants.userId roundSnapshots'
-      )
-      .lean<LeanForRound | null>()
+    const doc = await WeeklyEvent.findById(eventId)
+      .select('kind roundNum participants.userId')
+      .lean<{
+        kind: string
+        roundNum?: number
+        participants?: { userId?: unknown }[]
+      } | null>()
 
     if (!doc) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
@@ -87,9 +82,10 @@ export async function GET(
     }
 
     const roundNum = effectivePublicRoundNum(doc.roundNum)
-
-    const snapshots = doc.roundSnapshots ?? []
-    const snap = snapshots.find(s => s.roundNum === roundNum)
+    const snap: IRoundSnapshot | null = await loadWeeklyEventRoundSnapshot(
+      eventId,
+      roundNum
+    )
 
     if (!snap) {
       return NextResponse.json(

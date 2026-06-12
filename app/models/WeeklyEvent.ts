@@ -128,6 +128,12 @@ export interface IWeeklyEvent extends Document {
   roundSnapshots?: IRoundSnapshot[]
   /** Clasificación final por categoría (finished + DNF) tras import o carga manual. */
   tournamentStandings?: ITournamentCategoryStandings[]
+  /**
+   * Meta Pokémon precalculada (`GET …/tournament-meta`); se invalida al mutar el torneo.
+   */
+  tournamentMetaCache?: Record<string, unknown>
+  /** Clasificación completa con tiebreakers (`?standings=full`); invalida con meta. */
+  tournamentStandingsFullCache?: Record<string, unknown>
   participants: IWeeklyParticipant[]
 }
 
@@ -328,6 +334,8 @@ const WeeklyEventSchema = new Schema<IWeeklyEvent>(
       type: [TournamentCategoryStandingsSchema],
       default: []
     },
+    tournamentMetaCache: { type: Schema.Types.Mixed, required: false },
+    tournamentStandingsFullCache: { type: Schema.Types.Mixed, required: false },
     participants: { type: [ParticipantSchema], default: [] }
   },
   { timestamps: true, strict: true }
@@ -339,6 +347,40 @@ const WeeklyEventSchema = new Schema<IWeeklyEvent>(
 WeeklyEventSchema.index({ storeId: 1, kind: 1, state: 1, startsAt: -1 })
 /** Vincular participantes por POP al guardar perfil (`link-tournament-participants-by-pop`). */
 WeeklyEventSchema.index({ kind: 1, 'participants.popId': 1 })
+/** Torneos del usuario / estadísticas (`my-tournaments-*`, `my-matchup-stats`). ESR: kind → userId → sort. */
+WeeklyEventSchema.index({ kind: 1, 'participants.userId': 1, startsAt: -1 })
+/** Estadísticas Pokémon con filtro game. */
+WeeklyEventSchema.index({
+  kind: 1,
+  game: 1,
+  'participants.userId': 1,
+  startsAt: -1
+})
+/** `my-matchup-stats` con filtro official/custom (ESR: igualdad → sort). */
+WeeklyEventSchema.index({
+  kind: 1,
+  game: 1,
+  tournamentOrigin: 1,
+  'participants.userId': 1,
+  startsAt: -1
+})
+/** Torneos cerrados por liga (`GET /api/leagues/[slug]`). */
+WeeklyEventSchema.index({
+  leagueId: 1,
+  storeId: 1,
+  kind: 1,
+  tournamentOrigin: 1,
+  state: 1,
+  startsAt: 1
+})
+/** Inicio hub (`my-home-tournaments`): kind + origin + state + participante + sort. */
+WeeklyEventSchema.index({
+  kind: 1,
+  tournamentOrigin: 1,
+  state: 1,
+  'participants.userId': 1,
+  startsAt: -1
+})
 
 if (mongoose.models.WeeklyEvent) {
   delete mongoose.models.WeeklyEvent
