@@ -66,7 +66,10 @@ function decklistLabelsFromLean(
 export async function batchTournamentDecklistDisplayLabels(
   requests: { userId: string; ref: RefLean }[]
 ): Promise<Map<string, { decklistName: string; listLabel: string } | null>> {
-  const out = new Map<string, { decklistName: string; listLabel: string } | null>()
+  const out = new Map<
+    string,
+    { decklistName: string; listLabel: string } | null
+  >()
   const valid = requests.filter(
     r =>
       r.ref?.decklistId &&
@@ -94,10 +97,7 @@ export async function batchTournamentDecklistDisplayLabels(
 
   const deckByOwnerKey = new Map<string, (typeof decks)[number]>()
   for (const deck of decks) {
-    deckByOwnerKey.set(
-      `${String(deck._id)}|${String(deck.userId)}`,
-      deck
-    )
+    deckByOwnerKey.set(`${String(deck._id)}|${String(deck.userId)}`, deck)
   }
 
   for (const { userId, ref } of valid) {

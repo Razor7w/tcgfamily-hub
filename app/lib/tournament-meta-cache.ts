@@ -149,10 +149,7 @@ export async function syncTournamentMetaCacheAfterEventMutation(
   }
 
   if (doc.state === 'close' && isPokemonTournamentMetaEligible(doc)) {
-    await Promise.all([
-      refreshTournamentDerivedCaches(eventId),
-      leagueSync
-    ])
+    await Promise.all([refreshTournamentDerivedCaches(eventId), leagueSync])
   } else {
     await Promise.all([invalidateTournamentMetaCache(eventId), leagueSync])
   }

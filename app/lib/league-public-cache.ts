@@ -58,10 +58,10 @@ async function loadClosedLeagueEvents(
   effectiveStoreOid: mongoose.Types.ObjectId,
   primStoreOid: mongoose.Types.ObjectId | null
 ) {
-  const evScope = mongoFilterByStore(
-    effectiveStoreOid,
-    primStoreOid
-  ) as Record<string, unknown>
+  const evScope = mongoFilterByStore(effectiveStoreOid, primStoreOid) as Record<
+    string,
+    unknown
+  >
   return WeeklyEvent.find({
     leagueId,
     tournamentOrigin: 'official',
@@ -106,10 +106,7 @@ export async function invalidateLeaguePublicCache(
 ): Promise<void> {
   const id = leagueId.trim()
   if (!id || !mongoose.Types.ObjectId.isValid(id)) return
-  await League.updateOne(
-    { _id: id },
-    { $unset: { leaguePublicCache: 1 } }
-  )
+  await League.updateOne({ _id: id }, { $unset: { leaguePublicCache: 1 } })
 }
 
 export async function refreshLeaguePublicCache(
@@ -152,8 +149,7 @@ export async function refreshLeaguePublicCache(
 }
 
 export async function getOrBuildLeaguePublicCache(
-  leagueId: string,
-  countBestEvents: number | null
+  leagueId: string
 ): Promise<LeaguePublicCachePayload | null> {
   const id = leagueId.trim()
   if (!id || !mongoose.Types.ObjectId.isValid(id)) return null

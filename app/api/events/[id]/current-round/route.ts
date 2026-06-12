@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
-import type { IRoundPairingSnapshot, IRoundSnapshot } from '@/models/WeeklyEvent'
+import type {
+  IRoundPairingSnapshot,
+  IRoundSnapshot
+} from '@/models/WeeklyEvent'
 import WeeklyEvent from '@/models/WeeklyEvent'
 import { effectivePublicRoundNum } from '@/lib/dashboard-round-cap'
 import { loadWeeklyEventRoundSnapshot } from '@/lib/weekly-event-current-round-query'

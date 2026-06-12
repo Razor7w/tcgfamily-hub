@@ -64,8 +64,7 @@ function eventStateLabel(s: WeeklyEventState) {
 
 function defaultTabForEvent(ev: AdminWeeklyEvent | null): number {
   if (!ev || ev.kind !== 'tournament') return 0
-  const rounds =
-    ev.roundSnapshots?.length ?? ev.roundSnapshotsCount ?? 0
+  const rounds = ev.roundSnapshots?.length ?? ev.roundSnapshotsCount ?? 0
   const preferTdf = rounds > 0 || ev.state === 'close' || ev.state === 'running'
   return preferTdf ? 1 : 0
 }
@@ -74,8 +73,7 @@ function eventNextStepHint(ev: AdminWeeklyEvent): string {
   if (ev.kind !== 'tournament') {
     return 'Confirma asistencia en la lista de preinscritos.'
   }
-  const rounds =
-    ev.roundSnapshots?.length ?? ev.roundSnapshotsCount ?? 0
+  const rounds = ev.roundSnapshots?.length ?? ev.roundSnapshotsCount ?? 0
   if (ev.state === 'close') {
     return 'Torneo cerrado. Revisa la clasificación en la pestaña TDF si hace falta corregir puestos.'
   }

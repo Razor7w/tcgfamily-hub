@@ -55,7 +55,10 @@ export async function aggregateWeeklyEventsForUserReport(
   userOid: Types.ObjectId,
   options: WeeklyEventUserReportQueryOptions
 ): Promise<Record<string, unknown>[]> {
-  const pipeline: PipelineStage[] = [{ $match: filter }, { $sort: options.sort }]
+  const pipeline: PipelineStage[] = [
+    { $match: filter },
+    { $sort: options.sort }
+  ]
   if (typeof options.limit === 'number' && options.limit > 0) {
     pipeline.push({ $limit: options.limit })
   }

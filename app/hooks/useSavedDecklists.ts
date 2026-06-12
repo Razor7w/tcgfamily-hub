@@ -102,9 +102,7 @@ export function useRecentPublicDecklists(limit: number) {
     queryKey: ['public-decklists', 'recent', limit],
     staleTime: PUBLIC_DECKLISTS_STALE_MS,
     queryFn: async (): Promise<PublicDecklistSummary[]> => {
-      const res = await fetch(
-        `/api/decklists/public?limit=${limit}&badges=0`
-      )
+      const res = await fetch(`/api/decklists/public?limit=${limit}&badges=0`)
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
         throw new Error(

@@ -86,7 +86,8 @@ export async function GET() {
 
     const events = raw.map(ev =>
       serializeAdminWeeklyEventFromLean(ev as Record<string, unknown>, {
-        roundSnapshotsCount: countById.get(String((ev as { _id: unknown })._id)) ?? 0
+        roundSnapshotsCount:
+          countById.get(String((ev as { _id: unknown })._id)) ?? 0
       })
     )
 

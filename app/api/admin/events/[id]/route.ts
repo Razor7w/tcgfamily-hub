@@ -85,7 +85,9 @@ export async function GET(
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     }
 
-    const event = serializeAdminWeeklyEventFromLean(lean as Record<string, unknown>)
+    const event = serializeAdminWeeklyEventFromLean(
+      lean as Record<string, unknown>
+    )
     return NextResponse.json({ event }, { status: 200 })
   } catch (error) {
     console.error('GET /api/admin/events/[id]:', error)

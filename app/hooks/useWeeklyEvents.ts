@@ -821,9 +821,7 @@ export function useAdminEvent(eventId: string | null) {
   return useQuery<{ event: AdminWeeklyEvent }>({
     queryKey: ['admin-weekly-event', storeKey, id],
     queryFn: async () => {
-      const res = await fetch(
-        `/api/admin/events/${encodeURIComponent(id)}`
-      )
+      const res = await fetch(`/api/admin/events/${encodeURIComponent(id)}`)
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         throw new Error(

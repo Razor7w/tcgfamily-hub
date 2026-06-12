@@ -26,9 +26,7 @@ export function isStandingsFullCacheEligible(doc: {
   state?: string
 }): boolean {
   return (
-    doc.kind === 'tournament' &&
-    doc.game === 'pokemon' &&
-    doc.state === 'close'
+    doc.kind === 'tournament' && doc.game === 'pokemon' && doc.state === 'close'
   )
 }
 
@@ -54,9 +52,7 @@ async function loadLeanForStandingsFull(eventId: string) {
       ...weeklyEventRoundSnapshotsWltProjection
     })
     .lean<{
-      tournamentStandings?: Parameters<
-        typeof buildTournamentStandingsPublic
-      >[0]
+      tournamentStandings?: Parameters<typeof buildTournamentStandingsPublic>[0]
       participants?: {
         displayName: string
         popId?: string
@@ -104,9 +100,7 @@ export async function refreshTournamentStandingsFullCache(
   const id = eventId.trim()
   if (!id) return null
 
-  const gate = await WeeklyEvent.findById(id)
-    .select('kind game state')
-    .lean()
+  const gate = await WeeklyEvent.findById(id).select('kind game state').lean()
   if (!gate || !isStandingsFullCacheEligible(gate)) {
     await invalidateTournamentStandingsFullCache(id)
     return null
