@@ -4,8 +4,7 @@ import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import { buildMyTournamentWeekItemFromLean } from '@/lib/build-my-tournament-week-item'
 import type { MyHomeTournamentItem } from '@/lib/my-tournament-week-types'
-import { weeklyEventTournamentReportProjection } from '@/lib/weekly-event-query-projections'
-import WeeklyEvent from '@/models/WeeklyEvent'
+import { aggregateWeeklyEventsForUserReport } from '@/lib/weekly-event-user-report-query'
 
 const PER_STORE_LIMIT = 2
 
@@ -108,24 +107,22 @@ export async function GET() {
     }
 
     const [upcomingDocs, finishedDocs] = await Promise.all([
-      WeeklyEvent.find({
-        ...participantFilter,
-        state: { $in: ['schedule', 'running'] }
-      })
-        .select(weeklyEventTournamentReportProjection)
-        .populate({ path: 'storeId', select: 'name slug' })
-        .sort({ startsAt: 1 })
-        .limit(80)
-        .lean(),
-      WeeklyEvent.find({
-        ...participantFilter,
-        state: 'close'
-      })
-        .select(weeklyEventTournamentReportProjection)
-        .populate({ path: 'storeId', select: 'name slug' })
-        .sort({ startsAt: -1 })
-        .limit(80)
-        .lean()
+      aggregateWeeklyEventsForUserReport(
+        {
+          ...participantFilter,
+          state: { $in: ['schedule', 'running'] }
+        },
+        uid,
+        { sort: { startsAt: 1 }, limit: 80, lookupStore: true }
+      ),
+      aggregateWeeklyEventsForUserReport(
+        {
+          ...participantFilter,
+          state: 'close'
+        },
+        uid,
+        { sort: { startsAt: -1 }, limit: 80, lookupStore: true }
+      )
     ])
 
     const allUpcoming = upcomingDocs

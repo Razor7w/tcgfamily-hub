@@ -80,10 +80,24 @@ function EstadisticasTorneosContent() {
   const [weekAnchor] = useState(() => new Date())
   const [customTournamentOpen, setCustomTournamentOpen] = useState(false)
 
-  const { data, isPending, isError, error } = useMyMatchupStats(
-    origin,
-    myDeckKey
-  )
+  const {
+    data: overviewData,
+    isPending: overviewPending,
+    isError: overviewError,
+    error: overviewErrorObj
+  } = useMyMatchupStats(origin, null, { enabled: !myDeckKey })
+
+  const {
+    data: detailData,
+    isPending: detailPending,
+    isError: detailError,
+    error: detailErrorObj
+  } = useMyMatchupStats(origin, myDeckKey, { enabled: Boolean(myDeckKey) })
+
+  const data = myDeckKey ? detailData : overviewData
+  const isPending = myDeckKey ? detailPending : overviewPending
+  const isError = myDeckKey ? detailError : overviewError
+  const error = myDeckKey ? detailErrorObj : overviewErrorObj
 
   const isDetail = Boolean(myDeckKey)
 

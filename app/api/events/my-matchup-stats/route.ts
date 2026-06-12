@@ -51,7 +51,12 @@ export async function GET(request: Request) {
     const baseFilter = {
       kind: 'tournament' as const,
       game: 'pokemon' as const,
-      participants: { $elemMatch: { userId: uid } }
+      participants: {
+        $elemMatch:
+          myDeckKeyFilter != null
+            ? { userId: uid, 'matchRounds.0': { $exists: true } }
+            : { userId: uid }
+      }
     }
 
     const docs = await WeeklyEvent.find(baseFilter)

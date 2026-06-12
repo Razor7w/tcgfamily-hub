@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import { buildTournamentMetaPayload } from '@/lib/tournament-meta-build'
 import { canExposeParticipantDecksToOthers } from '@/lib/weekly-events'
+import { weeklyEventMetaProjection } from '@/lib/weekly-event-query-projections'
 import WeeklyEvent from '@/models/WeeklyEvent'
 
 export async function GET(
@@ -21,7 +22,9 @@ export async function GET(
     }
 
     await connectDB()
-    const doc = await WeeklyEvent.findById(id.trim()).lean()
+    const doc = await WeeklyEvent.findById(id.trim())
+      .select(weeklyEventMetaProjection)
+      .lean()
     if (!doc) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
     }

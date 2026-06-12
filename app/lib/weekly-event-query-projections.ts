@@ -117,3 +117,48 @@ export const weeklyEventLeagueAggregateProjection = {
   'participants.ties': 1,
   'participants.matchRounds': 1
 } as const
+
+/** Meta del torneo (`buildTournamentMetaPayload`). */
+export const weeklyEventMetaProjection = {
+  storeId: 1,
+  startsAt: 1,
+  title: 1,
+  kind: 1,
+  game: 1,
+  state: 1,
+  tournamentOrigin: 1,
+  tournamentStandings: 1,
+  roundSnapshots: 1,
+  'participants.displayName': 1,
+  'participants.userId': 1,
+  'participants.popId': 1,
+  'participants.deckPokemonSlugs': 1,
+  'participants.matchRounds': 1,
+  'participants.wins': 1,
+  'participants.losses': 1,
+  'participants.ties': 1,
+  'participants.manualPlacement': 1,
+  'participants.tournamentDecklistRef': 1
+} as const
+
+/** Preview decklist del participante (`resolveViewAsParticipant`). */
+export const weeklyEventDecklistPreviewProjection = {
+  state: 1,
+  tournamentOrigin: 1,
+  createdByUserId: 1,
+  'participants.userId': 1,
+  'participants.displayName': 1,
+  'participants.confirmed': 1,
+  'participants.tournamentDecklistRef': 1
+} as const
+
+/** Decklist de un rival en meta (sin cargar meta completa). */
+export const weeklyEventMetaDecklistProjection = {
+  kind: 1,
+  game: 1,
+  state: 1,
+  tournamentOrigin: 1,
+  'participants.displayName': 1,
+  'participants.userId': 1,
+  'participants.tournamentDecklistRef': 1
+} as const

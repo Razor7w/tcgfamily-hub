@@ -3,9 +3,8 @@ import mongoose from 'mongoose'
 import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import { buildMyTournamentWeekItemFromLean } from '@/lib/build-my-tournament-week-item'
-import WeeklyEvent from '@/models/WeeklyEvent'
+import { aggregateWeeklyEventsForUserReport } from '@/lib/weekly-event-user-report-query'
 import type { MyTournamentWeekItem } from '@/lib/my-tournament-week-types'
-import { weeklyEventTournamentReportProjection } from '@/lib/weekly-event-query-projections'
 
 /**
  * Torneos de la semana en los que el usuario está inscrito (participante con userId).
@@ -52,14 +51,15 @@ export async function GET(request: NextRequest) {
 
     await connectDB()
 
-    const docs = await WeeklyEvent.find({
-      startsAt: { $gte: from, $lte: to },
-      kind: 'tournament',
-      participants: { $elemMatch: { userId: uid } }
-    })
-      .select(weeklyEventTournamentReportProjection)
-      .sort({ startsAt: 1 })
-      .lean()
+    const docs = await aggregateWeeklyEventsForUserReport(
+      {
+        startsAt: { $gte: from, $lte: to },
+        kind: 'tournament',
+        participants: { $elemMatch: { userId: uid } }
+      },
+      uid,
+      { sort: { startsAt: 1 } }
+    )
 
     const items: MyTournamentWeekItem[] = []
     for (const d of docs) {
