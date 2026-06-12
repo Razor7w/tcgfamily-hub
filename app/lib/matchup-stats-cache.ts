@@ -53,7 +53,9 @@ function cacheDeckKey(myDeckKey: string | null): string {
   return myDeckKey?.trim() ? myDeckKey.trim() : ''
 }
 
-function isOverviewPayload(value: unknown): value is MatchupStatsOverviewPayload {
+function isOverviewPayload(
+  value: unknown
+): value is MatchupStatsOverviewPayload {
   if (!value || typeof value !== 'object') return false
   const o = value as MatchupStatsOverviewPayload
   return Array.isArray(o.myDecks) && typeof o.eventsScanned === 'number'
