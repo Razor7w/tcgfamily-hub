@@ -775,6 +775,8 @@ export interface AdminWeeklyEvent {
   league?: { name: string; slug: string } | null
   /** Snapshots guardados al pulsar «Setear ronda» (persistidos en Mongo). */
   roundSnapshots?: AdminSavedRoundSnapshot[]
+  /** Solo en listado admin (`GET /api/admin/events`); detalle trae `roundSnapshots`. */
+  roundSnapshotsCount?: number
   /** Clasificación final por categoría (0 Júnior, 1 Sénior, 2 Máster). */
   tournamentStandings?: {
     categoryIndex: number
@@ -800,6 +802,27 @@ export function useAdminEvents() {
   })
 }
 
+export function useAdminEvent(eventId: string | null) {
+  const storeKey = useDashboardStoreQueryKey()
+  const id = eventId?.trim() ?? ''
+  return useQuery<{ event: AdminWeeklyEvent }>({
+    queryKey: ['admin-weekly-event', storeKey, id],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/admin/events/${encodeURIComponent(id)}`
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === 'string' ? data.error : 'Error al cargar evento'
+        )
+      }
+      return data as { event: AdminWeeklyEvent }
+    },
+    enabled: Boolean(id)
+  })
+}
+
 export function useCreateAdminEvent() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -819,6 +842,7 @@ export function useCreateAdminEvent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-weekly-events'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-weekly-event'] })
       queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
     }
   })
@@ -854,6 +878,7 @@ export function useLinkParticipantByPop() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-weekly-events'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-weekly-event'] })
       queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
       queryClient.invalidateQueries({ queryKey: ['my-tournaments-week'] })
       queryClient.invalidateQueries({ queryKey: ['my-tournaments-all'] })
@@ -894,6 +919,7 @@ export function useConfirmParticipantParticipation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-weekly-events'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-weekly-event'] })
       queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
     }
   })
@@ -956,6 +982,7 @@ export function useAdminUploadFullTournament() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-weekly-events'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-weekly-event'] })
       queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
       queryClient.invalidateQueries({ queryKey: ['event-current-round'] })
       queryClient.invalidateQueries({ queryKey: ['league-public'] })
@@ -1000,6 +1027,7 @@ export function useAdminUploadStandingsPod() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-weekly-events'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-weekly-event'] })
       queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
       queryClient.invalidateQueries({ queryKey: ['league-public'] })
     }
@@ -1058,6 +1086,7 @@ export function useAdminSyncEventRound() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-weekly-events'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-weekly-event'] })
       queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
       queryClient.invalidateQueries({ queryKey: ['event-current-round'] })
       queryClient.invalidateQueries({ queryKey: ['league-public'] })
@@ -1089,6 +1118,7 @@ export function useAdminDeleteEventRound() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-weekly-events'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-weekly-event'] })
       queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
       queryClient.invalidateQueries({ queryKey: ['event-current-round'] })
       queryClient.invalidateQueries({ queryKey: ['league-public'] })
@@ -1123,6 +1153,7 @@ export function useAdminPreinscribeBatch() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-weekly-events'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-weekly-event'] })
       queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
     }
   })
@@ -1150,6 +1181,7 @@ export function useUpdateAdminEvent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-weekly-events'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-weekly-event'] })
       queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-event-detail'] })
       queryClient.invalidateQueries({ queryKey: ['event-current-round'] })
@@ -1175,6 +1207,7 @@ export function useDeleteAdminEvent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-weekly-events'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-weekly-event'] })
       queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
       queryClient.invalidateQueries({ queryKey: ['league-public'] })
     }
@@ -1363,6 +1396,7 @@ export function useDeleteAdminLeague() {
 export function usePublicLeague(slug: string | null) {
   return useQuery<PublicLeagueResponse>({
     queryKey: ['league-public', slug],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       if (!slug?.trim()) throw new Error('Slug requerido')
       const res = await fetch(

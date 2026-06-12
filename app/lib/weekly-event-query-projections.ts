@@ -67,11 +67,9 @@ export const weeklyEventDetailBaseProjection = {
   ...weeklyEventParticipantReportProjection
 } as const
 
-/** Panel admin: snapshots + standings; sin matchRounds de participantes. */
+/** Panel admin listado: sin snapshots TDF (count vía agregación `$size`). */
 export const weeklyEventAdminListProjection = {
   ...weeklyEventCoreFields,
-  roundSnapshots: 1,
-  tournamentStandings: 1,
   createdAt: 1,
   updatedAt: 1,
   'participants.displayName': 1,
@@ -84,6 +82,13 @@ export const weeklyEventAdminListProjection = {
   'participants.wins': 1,
   'participants.losses': 1,
   'participants.ties': 1
+} as const
+
+/** GET /api/admin/events/[id]: snapshots + clasificación TDF. */
+export const weeklyEventAdminDetailProjection = {
+  ...weeklyEventAdminListProjection,
+  roundSnapshots: 1,
+  tournamentStandings: 1
 } as const
 
 /** Resumen de mazos (`aggregateMyDeckStats`): sin snapshots TDF. */
@@ -104,12 +109,19 @@ export const weeklyEventMatchupDetailProjection = {
   'participants.displayName': 1
 } as const
 
-/** Clasificación pública de liga (snapshots + récord; matchRounds bajo tope). */
+/** Clasificación pública de liga: snapshots mínimos para W/L/T (sin syncedAt/skipped/mesa). */
 export const weeklyEventLeagueAggregateProjection = {
   title: 1,
   startsAt: 1,
   dashboardRoundCap: 1,
-  roundSnapshots: 1,
+  'roundSnapshots.roundNum': 1,
+  'roundSnapshots.pairings.player1PopId': 1,
+  'roundSnapshots.pairings.player2PopId': 1,
+  'roundSnapshots.pairings.player1Name': 1,
+  'roundSnapshots.pairings.player2Name': 1,
+  'roundSnapshots.pairings.player1Record': 1,
+  'roundSnapshots.pairings.player2Record': 1,
+  'roundSnapshots.pairings.isBye': 1,
   'participants.displayName': 1,
   'participants.popId': 1,
   'participants.wins': 1,

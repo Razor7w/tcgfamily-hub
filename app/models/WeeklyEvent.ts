@@ -357,6 +357,14 @@ WeeklyEventSchema.index({
   state: 1,
   startsAt: 1
 })
+/** Inicio hub (`my-home-tournaments`): kind + origin + state + participante + sort. */
+WeeklyEventSchema.index({
+  kind: 1,
+  tournamentOrigin: 1,
+  state: 1,
+  'participants.userId': 1,
+  startsAt: -1
+})
 
 if (mongoose.models.WeeklyEvent) {
   delete mongoose.models.WeeklyEvent

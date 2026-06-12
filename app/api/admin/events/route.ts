@@ -11,6 +11,7 @@ import WeeklyEvent, {
   type WeeklyEventState
 } from '@/models/WeeklyEvent'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
+import { serializeAdminWeeklyEventFromLean } from '@/lib/admin-weekly-event-api'
 import { weeklyEventAdminListProjection } from '@/lib/weekly-event-query-projections'
 
 const PRICE_MAX = 99_999_999
@@ -45,49 +46,6 @@ function readState(v: unknown): WeeklyEventState | null {
   return null
 }
 
-function serializeAdminParticipant(p: {
-  displayName: string
-  userId?: unknown
-  createdAt?: Date
-  confirmed?: boolean
-  popId?: string
-  table?: string
-  opponentId?: string
-  wins?: unknown
-  losses?: unknown
-  ties?: unknown
-}) {
-  let userIdStr: string | null = null
-  const u = p.userId
-  if (u && typeof u === 'object') {
-    const o = u as { _id?: unknown; popid?: string }
-    if (o._id !== undefined) userIdStr = String(o._id)
-  } else if (u) {
-    userIdStr = String(u)
-  }
-
-  let popId = ''
-  if (typeof p.popId === 'string' && p.popId.trim()) {
-    popId = p.popId.trim()
-  } else if (u && typeof u === 'object') {
-    const o = u as { popid?: string }
-    if (typeof o.popid === 'string') popId = o.popid.trim()
-  }
-
-  return {
-    displayName: p.displayName,
-    userId: userIdStr,
-    popId: popId || '—',
-    table: typeof p.table === 'string' ? p.table : '',
-    opponentId: typeof p.opponentId === 'string' ? p.opponentId : '',
-    confirmed: Boolean(p.confirmed),
-    wins: Math.max(0, Math.min(999, Math.round(Number(p.wins) || 0))),
-    losses: Math.max(0, Math.min(999, Math.round(Number(p.losses) || 0))),
-    ties: Math.max(0, Math.min(999, Math.round(Number(p.ties) || 0))),
-    createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : undefined
-  }
-}
-
 export async function GET() {
   try {
     const gate = await requireStoreStaffSession()
@@ -98,72 +56,39 @@ export async function GET() {
       gate.activeStoreOid,
       gate.primaryStoreOid ?? null
     )
-    const raw = await WeeklyEvent.find({
+    const match = {
       ...ADMIN_WEEKLY_EVENTS_ORIGIN_FILTER,
       ...(storeScope as Record<string, unknown>)
-    })
-      .select(weeklyEventAdminListProjection)
-      .sort({ startsAt: 1 })
-      .populate({ path: 'participants.userId', select: 'popid' })
-      .populate({ path: 'leagueId', select: 'name slug' })
-      .lean()
-
-    type LeanPart = {
-      displayName: string
-      userId?: unknown
-      createdAt?: Date
-      confirmed?: boolean
-      popId?: string
-      table?: string
-      opponentId?: string
-      wins?: unknown
-      losses?: unknown
-      ties?: unknown
     }
 
-    const events = raw.map(ev => {
-      const doc = ev as Record<string, unknown> & {
-        _id: unknown
-        participants?: LeanPart[]
-        leagueId?: unknown
-      }
-      const { _id, participants, leagueId: leagueRaw, ...rest } = doc
-      const rawState = rest.state
-      const state =
-        rawState === 'schedule' ||
-        rawState === 'running' ||
-        rawState === 'close'
-          ? rawState
-          : 'schedule'
-
-      let leagueId: string | null = null
-      let league: { name: string; slug: string } | null = null
-      if (
-        leagueRaw &&
-        typeof leagueRaw === 'object' &&
-        leagueRaw !== null &&
-        '_id' in leagueRaw
-      ) {
-        leagueId = String((leagueRaw as { _id: unknown })._id)
-        const o = leagueRaw as { name?: string; slug?: string }
-        if (typeof o.name === 'string' && typeof o.slug === 'string') {
-          league = { name: o.name, slug: o.slug }
+    const [raw, snapshotCounts] = await Promise.all([
+      WeeklyEvent.find(match)
+        .select(weeklyEventAdminListProjection)
+        .sort({ startsAt: 1 })
+        .populate({ path: 'participants.userId', select: 'popid' })
+        .populate({ path: 'leagueId', select: 'name slug' })
+        .lean(),
+      WeeklyEvent.aggregate<{ _id: unknown; roundSnapshotsCount: number }>([
+        { $match: match },
+        {
+          $project: {
+            roundSnapshotsCount: {
+              $size: { $ifNull: ['$roundSnapshots', []] }
+            }
+          }
         }
-      } else if (leagueRaw) {
-        leagueId = String(leagueRaw)
-      }
+      ])
+    ])
 
-      return {
-        ...rest,
-        _id: String(_id),
-        state,
-        leagueId,
-        league,
-        participants: (participants ?? []).map(p =>
-          serializeAdminParticipant(p)
-        )
-      }
-    })
+    const countById = new Map(
+      snapshotCounts.map(row => [String(row._id), row.roundSnapshotsCount])
+    )
+
+    const events = raw.map(ev =>
+      serializeAdminWeeklyEventFromLean(ev as Record<string, unknown>, {
+        roundSnapshotsCount: countById.get(String((ev as { _id: unknown })._id)) ?? 0
+      })
+    )
 
     return NextResponse.json({ events }, { status: 200 })
   } catch (error) {

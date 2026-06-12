@@ -16,6 +16,8 @@ import WeeklyEvent, {
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { weeklyOfficialByIdForStaffGate } from '@/lib/multitenancy/staff-queries'
 import { applyTournamentParticipationAwardsOnEventClose } from '@/lib/contribution-points/tournament-contribution-awards'
+import { serializeAdminWeeklyEventFromLean } from '@/lib/admin-weekly-event-api'
+import { weeklyEventAdminDetailProjection } from '@/lib/weekly-event-query-projections'
 
 const PRICE_MAX = 99_999_999
 const PARTICIPANTS_MAX = 2048
@@ -48,6 +50,48 @@ function readPokemonSubtype(
 function readState(v: unknown): WeeklyEventState | null {
   if (v === 'schedule' || v === 'running' || v === 'close') return v
   return null
+}
+
+export async function GET(
+  _request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const gate = await requireStoreStaffSession()
+    if (!gate.ok) return gate.response
+
+    const { id } = await context.params
+    if (!id?.trim()) {
+      return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
+    }
+
+    await connectDB()
+    const doc = await weeklyOfficialByIdForStaffGate(gate, id.trim())
+    if (!doc) {
+      return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+    }
+    const forbidden = adminWeeklyEventForbiddenResponse(doc)
+    if (forbidden) return forbidden
+
+    const lean = await WeeklyEvent.findById(doc._id)
+      .select(weeklyEventAdminDetailProjection)
+      .populate({ path: 'participants.userId', select: 'popid' })
+      .populate({ path: 'leagueId', select: 'name slug' })
+      .lean()
+
+    if (!lean) {
+      return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+    }
+
+    const event = serializeAdminWeeklyEventFromLean(lean as Record<string, unknown>)
+    return NextResponse.json({ event }, { status: 200 })
+  } catch (error) {
+    console.error('GET /api/admin/events/[id]:', error)
+    return NextResponse.json(
+      { error: 'Error al obtener evento' },
+      { status: 500 }
+    )
+  }
 }
 
 export async function PATCH(

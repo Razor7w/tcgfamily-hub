@@ -37,7 +37,7 @@ import { popidForStorage } from '@/lib/rut-chile'
 import {
   AdminWeeklyEvent,
   type WeeklyEventState,
-  useAdminEvents,
+  useAdminEvent,
   useAdminLeagues,
   useConfirmParticipantParticipation,
   useLinkParticipantByPop,
@@ -64,7 +64,8 @@ function eventStateLabel(s: WeeklyEventState) {
 
 function defaultTabForEvent(ev: AdminWeeklyEvent | null): number {
   if (!ev || ev.kind !== 'tournament') return 0
-  const rounds = ev.roundSnapshots?.length ?? 0
+  const rounds =
+    ev.roundSnapshots?.length ?? ev.roundSnapshotsCount ?? 0
   const preferTdf = rounds > 0 || ev.state === 'close' || ev.state === 'running'
   return preferTdf ? 1 : 0
 }
@@ -73,7 +74,8 @@ function eventNextStepHint(ev: AdminWeeklyEvent): string {
   if (ev.kind !== 'tournament') {
     return 'Confirma asistencia en la lista de preinscritos.'
   }
-  const rounds = ev.roundSnapshots?.length ?? 0
+  const rounds =
+    ev.roundSnapshots?.length ?? ev.roundSnapshotsCount ?? 0
   if (ev.state === 'close') {
     return 'Torneo cerrado. Revisa la clasificación en la pestaña TDF si hace falta corregir puestos.'
   }
@@ -89,16 +91,13 @@ function eventNextStepHint(ev: AdminWeeklyEvent): string {
 export default function AdminEventoDetailPage() {
   const params = useParams()
   const id = typeof params.id === 'string' ? params.id : ''
-  const { data, isPending, isError, error, refetch } = useAdminEvents()
+  const { data, isPending, isError, error, refetch } = useAdminEvent(id)
   const { data: leaguesData } = useAdminLeagues()
   const confirmParticipation = useConfirmParticipantParticipation()
   const linkByPop = useLinkParticipantByPop()
   const updateEv = useUpdateAdminEvent()
 
-  const ev = useMemo(
-    () => (id ? (data?.events.find(e => e._id === id) ?? null) : null),
-    [data?.events, id]
-  )
+  const ev = data?.event ?? null
 
   const registeredPopIdsForTdf = useMemo(
     () =>
