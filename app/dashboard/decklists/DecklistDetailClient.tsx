@@ -7,6 +7,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import Button from '@mui/material/Button'
@@ -75,6 +76,10 @@ export default function DecklistDetailClient({
         router.refresh()
       }
     })
+  }
+
+  const handleEditDeckInBuilder = () => {
+    router.push(`/dashboard/deck-builder?edit=${initial.id}`)
   }
 
   return (
@@ -276,7 +281,8 @@ export default function DecklistDetailClient({
                   display: 'grid',
                   gridTemplateColumns: {
                     xs: '1fr',
-                    sm: 'repeat(3, minmax(0, 1fr))'
+                    sm: 'repeat(2, minmax(0, 1fr))',
+                    md: 'repeat(4, minmax(0, 1fr))'
                   },
                   gap: 1.5,
                   width: '100%'
@@ -287,11 +293,30 @@ export default function DecklistDetailClient({
                   color="primary"
                   size="medium"
                   fullWidth
-                  startIcon={<EditOutlinedIcon />}
+                  startIcon={<SettingsOutlinedIcon />}
                   onClick={() => {
                     setEditSpritesOpen(false)
                     setEditFullOpen(true)
                   }}
+                  sx={{
+                    py: 1.15,
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    borderRadius: 2,
+                    transition:
+                      'transform 0.18s ease, border-color 0.2s ease, background-color 0.2s ease',
+                    '&:active': { transform: 'translateY(1px) scale(0.995)' }
+                  }}
+                >
+                  Configuración
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  size="medium"
+                  fullWidth
+                  startIcon={<EditOutlinedIcon />}
+                  onClick={handleEditDeckInBuilder}
                   sx={{
                     py: 1.15,
                     fontWeight: 600,
