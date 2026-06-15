@@ -1,7 +1,10 @@
 'use client'
 
+import { Suspense } from 'react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
+import CircularProgress from '@mui/material/CircularProgress'
+import Stack from '@mui/material/Stack'
 import { alpha } from '@mui/material/styles'
 import DeckBuilderClient from '@/dashboard/deck-builder/DeckBuilderClient'
 
@@ -19,7 +22,15 @@ export default function DeckBuilderPage() {
       })}
     >
       <Container maxWidth="lg">
-        <DeckBuilderClient />
+        <Suspense
+          fallback={
+            <Stack alignItems="center" py={8}>
+              <CircularProgress />
+            </Stack>
+          }
+        >
+          <DeckBuilderClient />
+        </Suspense>
       </Container>
     </Box>
   )

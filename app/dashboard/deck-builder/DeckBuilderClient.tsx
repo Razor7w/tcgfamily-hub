@@ -7,16 +7,20 @@ import {
   useMemo,
   useState
 } from 'react'
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import AddIcon from '@mui/icons-material/Add'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import ContentPasteIcon from '@mui/icons-material/ContentPaste'
 import FilterListIcon from '@mui/icons-material/FilterList'
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined'
 import PostAddIcon from '@mui/icons-material/PostAdd'
 import RemoveIcon from '@mui/icons-material/Remove'
+import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined'
 import SearchIcon from '@mui/icons-material/Search'
+import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
@@ -38,7 +42,13 @@ import LinearProgress from '@mui/material/LinearProgress'
 import ButtonBase from '@mui/material/ButtonBase'
 import { alpha, type SxProps, type Theme } from '@mui/material/styles'
 import DecklistImageDialog from '@/components/decklist/DecklistImageDialog'
+import { DecklistSpritePair } from '@/components/decklist/DecklistPokemonSlotPickers'
+import {
+  useSavedDecklistDetail,
+  useUpdateSavedDecklistText
+} from '@/hooks/useSavedDecklists'
 import { DECKLIST_NUEVO_SESSION_TEXT_KEY } from '@/lib/decklist-nuevo-prefill'
+import { resolvePrincipalDeckTarget } from '@/lib/decklist-principal'
 import {
   flatCardsFromDecklistText,
   limitlessCardImageUrl,
@@ -458,14 +468,68 @@ function deckLinesFromPastedText(text: string): {
   return { lines, unknownCount: parsed.unknownLines.length, trimmedCopies }
 }
 
+function deckRecordFromText(text: string): Record<string, DeckBuilderLine> {
+  const { lines } = deckLinesFromPastedText(text)
+  if (lines.length === 0) return {}
+  const next: Record<string, DeckBuilderLine> = {}
+  for (const line of lines) next[line.key] = line
+  return next
+}
+
 export default function DeckBuilderClient() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const editDecklistId = searchParams.get('edit')?.trim() || null
+  const {
+    data: editDeckDetail,
+    isPending: editDeckLoading,
+    error: editDeckError
+  } = useSavedDecklistDetail(editDecklistId)
+  const updateDecklistText = useUpdateSavedDecklistText()
+
+  const editContext = useMemo(() => {
+    if (!editDecklistId || !editDeckDetail) return null
+    const principal = resolvePrincipalDeckTarget({
+      baseDeckText: editDeckDetail.deckText,
+      principalVariantId: editDeckDetail.principalVariantId,
+      variants: editDeckDetail.variants
+    })
+    return {
+      decklistId: editDecklistId,
+      name: editDeckDetail.name,
+      pokemonSlugs: editDeckDetail.pokemonSlugs,
+      target: principal.target,
+      listLabel: principal.label
+    }
+  }, [editDecklistId, editDeckDetail])
+
+  const isEditMode = Boolean(editDecklistId)
+  const editDeckSourceKey =
+    editDecklistId && editDeckDetail
+      ? `${editDecklistId}:${editDeckDetail.updatedAt}`
+      : null
   const [searchText, setSearchText] = useState('')
   const [debounced, setDebounced] = useState('')
   const [format, setFormat] = useState<LimitlessDmFormat>('standard')
   const [typeFilter, setTypeFilter] = useState<LimitlessDmTypeFilter>('all')
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false)
   const [deck, setDeck] = useState<Record<string, DeckBuilderLine>>({})
+  const [deckSourceKey, setDeckSourceKey] = useState<string | null>(null)
+
+  const nextDeckSourceKey = editDeckSourceKey ?? '__new__'
+  if (nextDeckSourceKey !== deckSourceKey) {
+    setDeckSourceKey(nextDeckSourceKey)
+    if (editDeckSourceKey && editDeckDetail) {
+      const principal = resolvePrincipalDeckTarget({
+        baseDeckText: editDeckDetail.deckText,
+        principalVariantId: editDeckDetail.principalVariantId,
+        variants: editDeckDetail.variants
+      })
+      setDeck(deckRecordFromText(principal.text))
+    } else {
+      setDeck({})
+    }
+  }
   const [detailHit, setDetailHit] = useState<LimitlessDmSearchHit | null>(null)
   const [snack, setSnack] = useState<string | null>(null)
   const [pasteOpen, setPasteOpen] = useState(false)
@@ -713,6 +777,29 @@ export default function DeckBuilderClient() {
     router.push('/dashboard/decklists/nuevo?from=builder')
   }
 
+  const saveEditedList = () => {
+    if (!editContext || !exportText.trim()) return
+    updateDecklistText.mutate(
+      {
+        decklistId: editContext.decklistId,
+        deckText: exportText,
+        target: editContext.target
+      },
+      {
+        onSuccess: () => {
+          setSnack('Lista guardada')
+          router.push(`/dashboard/decklists/${editContext.decklistId}`)
+          router.refresh()
+        },
+        onError: err => {
+          setSnack(
+            err instanceof Error ? err.message : 'No se pudo guardar la lista'
+          )
+        }
+      }
+    )
+  }
+
   const openDetail = (hit: LimitlessDmSearchHit) => setDetailHit(hit)
 
   return (
@@ -735,17 +822,116 @@ export default function DeckBuilderClient() {
               textWrap: 'balance'
             }}
           >
-            Armar mazo
+            {isEditMode ? 'Editar mazo' : 'Armar mazo'}
           </Typography>
           <Typography
             variant="body2"
             color="text.secondary"
             sx={{ maxWidth: '62ch', lineHeight: 1.6, textWrap: 'pretty' }}
           >
-            Haz clic en un resultado para ajustar copias con −1 / +1, y llevate
-            el listado a «Crear lista» o copialo al portapapeles.
+            {isEditMode
+              ? 'Modificá el listado y guardalo en tu mazo. Los cambios reemplazan el listado principal en uso.'
+              : 'Haz clic en un resultado para ajustar copias con −1 / +1, y llevate el listado a «Crear lista» o copialo al portapapeles.'}
           </Typography>
         </Stack>
+
+        {isEditMode ? (
+          editDeckLoading ? (
+            <Paper elevation={0} sx={{ ...deckPanelSx, py: 2.5, px: 2.5 }}>
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <CircularProgress size={22} />
+                <Typography variant="body2" color="text.secondary">
+                  Cargando mazo…
+                </Typography>
+              </Stack>
+            </Paper>
+          ) : editDeckError ? (
+            <Alert severity="error">
+              {editDeckError instanceof Error
+                ? editDeckError.message
+                : 'No se pudo cargar el mazo'}
+            </Alert>
+          ) : editContext ? (
+            <Paper
+              elevation={0}
+              sx={{
+                ...deckPanelSx,
+                borderColor: t => alpha(t.palette.primary.main, 0.28),
+                bgcolor: t => alpha(t.palette.primary.main, 0.04)
+              }}
+            >
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={2}
+                alignItems={{ xs: 'flex-start', sm: 'center' }}
+                justifyContent="space-between"
+              >
+                <Stack spacing={1.25} sx={{ minWidth: 0, flex: 1 }}>
+                  <Button
+                    component={Link}
+                    href={`/dashboard/decklists/${editContext.decklistId}`}
+                    startIcon={<ArrowBackIcon />}
+                    variant="text"
+                    color="inherit"
+                    sx={{
+                      alignSelf: 'flex-start',
+                      px: 0.5,
+                      minWidth: 0,
+                      color: 'text.secondary',
+                      fontWeight: 600,
+                      '&:hover': { color: 'primary.main' }
+                    }}
+                  >
+                    Volver al mazo
+                  </Button>
+                  <Stack
+                    direction="row"
+                    spacing={1.5}
+                    alignItems="center"
+                    useFlexGap
+                    flexWrap="wrap"
+                  >
+                    <Typography
+                      variant="h6"
+                      component="h2"
+                      sx={{
+                        fontWeight: 800,
+                        letterSpacing: '-0.02em',
+                        textWrap: 'balance'
+                      }}
+                    >
+                      {editContext.name}
+                    </Typography>
+                    <DecklistSpritePair
+                      slugs={editContext.pokemonSlugs}
+                      size={36}
+                    />
+                  </Stack>
+                  <Typography variant="body2" color="text.secondary">
+                    Editando el listado{' '}
+                    <Typography
+                      component="span"
+                      variant="body2"
+                      fontWeight={700}
+                      color="text.primary"
+                    >
+                      {editContext.listLabel}
+                    </Typography>
+                    {editContext.target === 'base'
+                      ? ' (listado base del mazo)'
+                      : ' (listado principal en uso)'}
+                  </Typography>
+                </Stack>
+                <Chip
+                  label="Modo edición"
+                  color="primary"
+                  size="small"
+                  sx={{ fontWeight: 700, flexShrink: 0 }}
+                />
+              </Stack>
+            </Paper>
+          ) : null
+        ) : null}
 
         <Paper elevation={0} sx={deckPanelSx}>
           <Stack spacing={2} useFlexGap sx={{ flexDirection: 'column' }}>
@@ -937,11 +1123,24 @@ export default function DeckBuilderClient() {
                   variant="contained"
                   color="primary"
                   size="small"
-                  startIcon={<PostAddIcon />}
-                  onClick={goToCreateList}
+                  startIcon={
+                    isEditMode ? <SaveOutlinedIcon /> : <PostAddIcon />
+                  }
+                  onClick={isEditMode ? saveEditedList : goToCreateList}
+                  disabled={
+                    !exportText ||
+                    (isEditMode &&
+                      (editDeckLoading ||
+                        Boolean(editDeckError) ||
+                        updateDecklistText.isPending))
+                  }
                   sx={mazoBtnPrimary}
                 >
-                  Crear lista
+                  {isEditMode
+                    ? updateDecklistText.isPending
+                      ? 'Guardando…'
+                      : 'Guardar lista'
+                    : 'Crear lista'}
                 </Button>
               </Box>
             </Stack>

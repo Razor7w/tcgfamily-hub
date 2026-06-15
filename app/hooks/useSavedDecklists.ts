@@ -181,3 +181,66 @@ export function useCreateSavedDecklist() {
     }
   })
 }
+
+export type SavedDecklistDetail = {
+  id: string
+  name: string
+  deckText: string
+  pokemonSlugs: string[]
+  variants: { id: string; label: string; deckText: string }[]
+  principalVariantId: string | null
+  isPublic: boolean
+  updatedAt: string
+}
+
+export function useSavedDecklistDetail(id: string | null) {
+  return useQuery({
+    queryKey: ['decklist', id],
+    enabled: Boolean(id),
+    queryFn: async (): Promise<SavedDecklistDetail> => {
+      const res = await fetch(`/api/decklists/${id}`)
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(
+          typeof j.error === 'string' ? j.error : 'No se pudo cargar el mazo'
+        )
+      }
+      return j as SavedDecklistDetail
+    }
+  })
+}
+
+export function useUpdateSavedDecklistText() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: {
+      decklistId: string
+      deckText: string
+      target: 'base' | string
+    }) => {
+      const { decklistId, deckText, target } = payload
+      const url =
+        target === 'base'
+          ? `/api/decklists/${decklistId}`
+          : `/api/decklists/${decklistId}/variants/${target}`
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deckText })
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(
+          typeof j.error === 'string' ? j.error : 'No se pudo guardar la lista'
+        )
+      }
+      return j
+    },
+    onSuccess: (_data, variables) => {
+      void qc.invalidateQueries({ queryKey: ['decklists'] })
+      void qc.invalidateQueries({
+        queryKey: ['decklist', variables.decklistId]
+      })
+    }
+  })
+}

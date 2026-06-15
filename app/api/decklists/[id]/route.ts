@@ -5,7 +5,8 @@ import connectDB from '@/lib/mongodb'
 import SavedDecklist from '@/models/SavedDecklist'
 import {
   normalizeOneOrTwoPokemonSlugs,
-  SAVED_DECKLIST_NAME_MAX
+  SAVED_DECKLIST_NAME_MAX,
+  SAVED_DECKLIST_TEXT_MAX
 } from '@/lib/saved-decklist-validation'
 
 function serializePrincipalVariantId(
@@ -130,12 +131,19 @@ export async function PATCH(
     const hasName = Object.prototype.hasOwnProperty.call(o, 'name')
     const hasPokemon = Object.prototype.hasOwnProperty.call(o, 'pokemon')
     const hasPublic = Object.prototype.hasOwnProperty.call(o, 'isPublic')
+    const hasDeckText = Object.prototype.hasOwnProperty.call(o, 'deckText')
 
-    if (!hasPrincipal && !hasName && !hasPokemon && !hasPublic) {
+    if (
+      !hasPrincipal &&
+      !hasName &&
+      !hasPokemon &&
+      !hasPublic &&
+      !hasDeckText
+    ) {
       return NextResponse.json(
         {
           error:
-            'Envía al menos uno: principalVariantId, name, pokemon o isPublic'
+            'Envía al menos uno: principalVariantId, name, pokemon, isPublic o deckText'
         },
         { status: 400 }
       )
@@ -186,6 +194,20 @@ export async function PATCH(
       doc.isPublic = o.isPublic
     }
 
+    if (hasDeckText) {
+      const deckTextRaw =
+        typeof o.deckText === 'string' ? o.deckText.trim() : ''
+      if (!deckTextRaw || deckTextRaw.length > SAVED_DECKLIST_TEXT_MAX) {
+        return NextResponse.json(
+          {
+            error: `deckText obligatorio (máx. ${SAVED_DECKLIST_TEXT_MAX} caracteres)`
+          },
+          { status: 400 }
+        )
+      }
+      doc.deckText = deckTextRaw
+    }
+
     if (hasPrincipal) {
       const raw = o.principalVariantId
       if (raw === null) {
@@ -218,6 +240,7 @@ export async function PATCH(
 
     return NextResponse.json({
       name: doc.name,
+      deckText: doc.deckText,
       pokemonSlugs: Array.isArray(doc.pokemonSlugs) ? doc.pokemonSlugs : [],
       principalVariantId: serializePrincipalVariantId(doc.principalVariantId),
       isPublic: Boolean(doc.isPublic),
