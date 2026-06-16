@@ -21,14 +21,24 @@ import {
   useEventCurrentRound,
   type EventCurrentRoundResponse
 } from '@/hooks/useWeeklyEvents'
+import { useMatchChatContext } from '@/hooks/useMatchChat'
+import MatchChatPanel from '@/components/events/MatchChatPanel'
 
 type CurrentRoundQuery = ReturnType<typeof useEventCurrentRound>
 
 function WeeklyCurrentRoundDialogContent({
-  query
+  query,
+  eventId,
+  chatEnabled
 }: {
   query: CurrentRoundQuery
+  eventId: string
+  chatEnabled: boolean
 }) {
+  const chatContextQuery = useMatchChatContext(
+    eventId,
+    chatEnabled && Boolean(eventId)
+  )
   if (query.isPending) {
     return (
       <Stack alignItems="center" justifyContent="center" sx={{ py: 5 }}>
@@ -139,6 +149,20 @@ function WeeklyCurrentRoundDialogContent({
           </Stack>
         </Alert>
       ) : null}
+      {chatContextQuery.data?.canChat ? (
+        <MatchChatPanel
+          eventId={eventId}
+          roundNum={chatContextQuery.data.roundNum}
+          tableNumber={chatContextQuery.data.tableNumber}
+          opponentName={chatContextQuery.data.opponentName}
+          enabled
+        />
+      ) : chatContextQuery.data && !chatContextQuery.data.canChat ? (
+        <Alert severity="info" variant="outlined">
+          {chatContextQuery.data.reason ??
+            'El chat no está disponible para tu emparejamiento.'}
+        </Alert>
+      ) : null}
     </Stack>
   )
 }
@@ -147,11 +171,15 @@ export default function WeeklyCurrentRoundDialog({
   open,
   onClose,
   eventTitle,
+  eventId,
+  chatEnabled,
   currentRoundQuery
 }: {
   open: boolean
   onClose: () => void
   eventTitle: string
+  eventId: string
+  chatEnabled: boolean
   currentRoundQuery: CurrentRoundQuery
 }) {
   return (
@@ -172,7 +200,11 @@ export default function WeeklyCurrentRoundDialog({
         {eventTitle}
       </Typography>
       <DialogContent dividers sx={{ pt: 2 }}>
-        <WeeklyCurrentRoundDialogContent query={currentRoundQuery} />
+        <WeeklyCurrentRoundDialogContent
+          query={currentRoundQuery}
+          eventId={eventId}
+          chatEnabled={chatEnabled}
+        />
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
         <Button variant="contained" onClick={onClose}>

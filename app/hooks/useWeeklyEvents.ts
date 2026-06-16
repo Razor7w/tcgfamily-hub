@@ -12,7 +12,12 @@ import type {
 import type { ContributionPointsAwardedItem } from '@/lib/contribution-points-public'
 import type { ParticipantMatchRoundDTO } from '@/lib/participant-match-round'
 import type { FullTournamentUploadPayload } from '@/lib/tournament-tdf-payload'
-import type { TournamentOrigin, WeeklyEventState } from '@/models/WeeklyEvent'
+import type { OnlineRoundTimerPayload } from '@/lib/online-round-timer'
+import type {
+  TournamentOrigin,
+  TournamentMode,
+  WeeklyEventState
+} from '@/models/WeeklyEvent'
 import type { ManualPlacementDTO } from '@/lib/manual-placement'
 import type { MyDeckStatsRowDTO } from '@/lib/pokemon-matchup-stats'
 import type {
@@ -30,6 +35,8 @@ const WEEKLY_FULL_STANDINGS_STALE_MS = 5 * 60_000
 
 export type { WeeklyEventState }
 
+const ONLINE_RUNNING_POLL_MS = 15_000
+
 export interface PublicWeeklyEvent {
   _id: string
   startsAt: string
@@ -38,6 +45,12 @@ export interface PublicWeeklyEvent {
   kind: 'tournament' | 'trade_day' | 'other'
   game: 'pokemon' | 'magic' | 'other_tcg'
   pokemonSubtype: 'casual' | 'cup' | 'challenge' | null
+  /** Presencial u online; chat de mesa solo en online. */
+  tournamentMode: TournamentMode
+  /** Minutos por ronda (online); 0 = sin timer. */
+  onlineRoundTimeMinutes?: number
+  /** Temporizador de la ronda en curso (solo online en curso). */
+  currentRoundTimer?: OnlineRoundTimerPayload | null
   priceClp: number
   maxParticipants: number
   formatNotes: string
@@ -118,7 +131,17 @@ export function useWeekEvents(weekAnchor: Date | null) {
       return res.json()
     },
     enabled: !!weekAnchor,
-    staleTime: 3 * 60_000
+    staleTime: 3 * 60_000,
+    refetchInterval: query => {
+      const events = query.state.data?.events ?? []
+      const pollOnlineRunning = events.some(
+        e =>
+          e.tournamentMode === 'online' &&
+          e.state === 'running' &&
+          Boolean(e.myRegistration)
+      )
+      return pollOnlineRunning ? ONLINE_RUNNING_POLL_MS : false
+    }
   })
 }
 
@@ -390,7 +413,15 @@ export function useDashboardEventDetail(eventId: string | null) {
       if (!data.event) throw new Error('Respuesta inválida')
       return data.event
     },
-    enabled: Boolean(eventId?.trim())
+    enabled: Boolean(eventId?.trim()),
+    staleTime: 0,
+    refetchInterval: query => {
+      const ev = query.state.data
+      if (!ev) return ONLINE_RUNNING_POLL_MS
+      return ev.tournamentMode === 'online' && ev.state === 'running'
+        ? ONLINE_RUNNING_POLL_MS
+        : false
+    }
   })
 }
 
@@ -771,6 +802,8 @@ export interface AdminWeeklyEvent {
   kind: 'tournament' | 'trade_day' | 'other'
   game: 'pokemon' | 'magic' | 'other_tcg'
   pokemonSubtype?: string
+  tournamentMode?: TournamentMode
+  onlineRoundTimeMinutes?: number
   state: WeeklyEventState
   priceClp: number
   maxParticipants: number

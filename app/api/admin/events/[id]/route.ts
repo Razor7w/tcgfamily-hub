@@ -13,6 +13,8 @@ import WeeklyEvent, {
   type PokemonTournamentSubtype,
   type WeeklyEventState
 } from '@/models/WeeklyEvent'
+import { clampOnlineRoundTimeMinutes } from '@/lib/online-round-timer'
+import { readTournamentMode } from '@/lib/tournament-mode'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { weeklyOfficialByIdForStaffGate } from '@/lib/multitenancy/staff-queries'
 import { applyTournamentParticipationAwardsOnEventClose } from '@/lib/contribution-points/tournament-contribution-awards'
@@ -190,6 +192,57 @@ export async function PATCH(
 
     if (doc.kind !== 'tournament' || doc.game !== 'pokemon') {
       doc.pokemonSubtype = undefined
+    }
+
+    if (body.tournamentMode !== undefined) {
+      const mode = readTournamentMode(body.tournamentMode)
+      if (mode === null) {
+        return NextResponse.json(
+          { error: 'Modalidad de torneo inválida (in_person u online)' },
+          { status: 400 }
+        )
+      }
+      if (mode !== undefined) {
+        doc.tournamentMode = doc.kind === 'tournament' ? mode : 'in_person'
+      }
+    }
+
+    if (doc.kind !== 'tournament') {
+      doc.tournamentMode = 'in_person'
+    }
+
+    if (body.onlineRoundTimeMinutes !== undefined) {
+      if (doc.kind !== 'tournament' || doc.tournamentMode !== 'online') {
+        doc.onlineRoundTimeMinutes = 0
+      } else {
+        const minutes = clampOnlineRoundTimeMinutes(body.onlineRoundTimeMinutes)
+        if (
+          body.onlineRoundTimeMinutes !== null &&
+          body.onlineRoundTimeMinutes !== '' &&
+          body.onlineRoundTimeMinutes !== 0 &&
+          minutes <= 0
+        ) {
+          return NextResponse.json(
+            {
+              error: `Tiempo por ronda: entre ${5} y ${180} minutos (o 0 para desactivar)`
+            },
+            { status: 400 }
+          )
+        }
+        doc.onlineRoundTimeMinutes = minutes
+      }
+    }
+
+    if (
+      doc.kind === 'tournament' &&
+      doc.tournamentMode !== 'online' &&
+      body.tournamentMode !== undefined
+    ) {
+      doc.onlineRoundTimeMinutes = 0
+    }
+
+    if (doc.kind !== 'tournament') {
+      doc.onlineRoundTimeMinutes = 0
     }
 
     if (doc.kind !== 'tournament') {
