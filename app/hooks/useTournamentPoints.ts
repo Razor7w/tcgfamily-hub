@@ -443,3 +443,143 @@ export function useDeductTournamentPointsPlayer() {
     }
   })
 }
+
+export function useRemoveTournamentPointsPlayerFromList() {
+  const queryClient = useQueryClient()
+  const storeKey = useDashboardStoreQueryKey()
+
+  return useMutation({
+    mutationFn: async (input: {
+      userId: string | null
+      primaryPopId: string
+      displayName: string
+      reason: string
+    }) => {
+      const res = await fetch('/api/admin/tournament-points/remove-from-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input)
+      })
+      const data = (await res.json()) as {
+        ok?: boolean
+        changed?: boolean
+        error?: string
+        rowsRemoved?: number
+        pointsRemoved?: number
+        adjustments?: number
+        skippedNoUser?: number
+        awardsTouched?: number
+      }
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === 'string'
+            ? data.error
+            : 'Error al quitar jugador'
+        )
+      }
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'tournament-points', 'awards', storeKey]
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'tournament-points', 'audit', storeKey]
+      })
+    }
+  })
+}
+
+export type TournamentPointsManualRegisterResult = {
+  ok: boolean
+  popId: string
+  displayName: string
+  points: number
+  userLinked: boolean
+  credited: boolean
+  adjustments: number
+  skippedNoUser: number
+}
+
+export function useRegisterTournamentPointsPlayer() {
+  const queryClient = useQueryClient()
+  const storeKey = useDashboardStoreQueryKey()
+
+  return useMutation({
+    mutationFn: async (input: {
+      popId: string
+      displayName: string
+      points: number
+      applyBalance: boolean
+    }) => {
+      const res = await fetch('/api/admin/tournament-points/register-manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input)
+      })
+      const data =
+        (await res.json()) as TournamentPointsManualRegisterResult & {
+          error?: string
+        }
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === 'string'
+            ? data.error
+            : 'Error al registrar jugador'
+        )
+      }
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'tournament-points', 'awards', storeKey]
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'tournament-points', 'audit', storeKey]
+      })
+    }
+  })
+}
+
+export function useAddTournamentPointsPlayer() {
+  const queryClient = useQueryClient()
+  const storeKey = useDashboardStoreQueryKey()
+
+  return useMutation({
+    mutationFn: async (input: {
+      userId: string | null
+      primaryPopId: string
+      displayName: string
+      add: number
+      reason: string
+    }) => {
+      const res = await fetch('/api/admin/tournament-points/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input)
+      })
+      const data = (await res.json()) as {
+        ok?: boolean
+        changed?: boolean
+        error?: string
+        adjustments?: number
+        skippedNoUser?: number
+        awardsTouched?: number
+      }
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === 'string' ? data.error : 'Error al sumar puntos'
+        )
+      }
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'tournament-points', 'awards', storeKey]
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'tournament-points', 'audit', storeKey]
+      })
+    }
+  })
+}

@@ -4,7 +4,9 @@ import connectDB from '@/lib/mongodb'
 import { isTournamentPointsEnabledForStore } from '@/lib/tournament-points-settings'
 import {
   aggregateTournamentPointsByPlayer,
-  appendPlayersFromAuditHistory
+  appendPlayersFromAuditHistory,
+  filterExcludedTournamentPointsPlayers,
+  loadExcludedTournamentPointsIdentityKeys
 } from '@/lib/tournament-points-admin'
 import TournamentPointsAward, {
   type ITournamentPointsAward
@@ -107,9 +109,15 @@ export async function GET() {
       }))
     )
 
-    const players = await appendPlayersFromAuditHistory(
-      await aggregateTournamentPointsByPlayer(flatRows),
+    const excluded = await loadExcludedTournamentPointsIdentityKeys(
       gate.activeStoreOid
+    )
+    const players = filterExcludedTournamentPointsPlayers(
+      await appendPlayersFromAuditHistory(
+        await aggregateTournamentPointsByPlayer(flatRows),
+        gate.activeStoreOid
+      ),
+      excluded
     )
 
     return NextResponse.json({ awards: list, players }, { status: 200 })
