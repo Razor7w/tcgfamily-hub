@@ -771,10 +771,41 @@ export async function deductTournamentPointsForPlayer(input: {
 
   for (const slice of slices) {
     if (remaining <= 0) break
-    const take = Math.min(remaining, slice.available)
+    let take = Math.min(remaining, slice.available)
     if (take <= 0) continue
 
-    const applied = applyDeductionsToRows(slice.beforeRows, [
+    const freshAward = await TournamentPointsAward.findById(slice.award._id)
+    if (!freshAward) {
+      throw new Error(
+        'El saldo cambió mientras se procesaba el descuento. Recarga la página e intenta de nuevo.'
+      )
+    }
+
+    const freshBeforeRows: ParsedAwardRow[] = (freshAward.rows ?? []).map(
+      (r: ITournamentPointsAwardRow) => ({
+        place: r.place,
+        displayName: r.displayName,
+        popId: r.popId,
+        userId: r.userId,
+        points: r.points
+      })
+    )
+    const freshRow = freshBeforeRows.find(
+      r =>
+        r.popId === slice.popId &&
+        rowBelongsToIdentity(r, input.userId, input.primaryPopId, popsForUser)
+    )
+    if (!freshRow || freshRow.points <= 0) {
+      throw new Error(
+        'El saldo cambió mientras se procesaba el descuento. Recarga la página e intenta de nuevo.'
+      )
+    }
+    if (freshRow.points < take) {
+      take = freshRow.points
+    }
+    if (take <= 0) continue
+
+    const applied = applyDeductionsToRows(freshBeforeRows, [
       { popId: slice.popId, subtract: take, reason }
     ])
     if (!applied.ok) {
@@ -792,7 +823,7 @@ export async function deductTournamentPointsForPlayer(input: {
     }
 
     const credit = await applyAwardRowCreditDeltas(
-      slice.beforeRows,
+      freshBeforeRows,
       afterParsed,
       popToUser,
       input.storeOid,
@@ -801,16 +832,16 @@ export async function deductTournamentPointsForPlayer(input: {
     adjustments += credit.adjustments
     skippedNoUser += credit.skippedNoUser
 
-    slice.award.rows = rowsToSnapshot(afterParsed)
-    slice.award.topCount = afterParsed.filter(r => r.points > 0).length
-    slice.award.markModified('rows')
-    await slice.award.save()
+    freshAward.rows = rowsToSnapshot(afterParsed)
+    freshAward.topCount = afterParsed.filter(r => r.points > 0).length
+    freshAward.markModified('rows')
+    await freshAward.save()
 
     await writeTournamentPointsAuditLog({
       storeId: input.storeOid,
-      awardId: slice.award._id as mongoose.Types.ObjectId,
-      eventId: slice.award.eventId as mongoose.Types.ObjectId | undefined,
-      eventTitle: slice.award.eventTitle,
+      awardId: freshAward._id as mongoose.Types.ObjectId,
+      eventId: freshAward.eventId as mongoose.Types.ObjectId | undefined,
+      eventTitle: freshAward.eventTitle,
       action: 'deducted',
       changedByUserId: input.changedByUserId,
       changedByName: input.changedByName,

@@ -455,14 +455,11 @@ export function useRemoveTournamentPointsPlayerFromList() {
       displayName: string
       reason: string
     }) => {
-      const res = await fetch(
-        '/api/admin/tournament-points/remove-from-list',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(input)
-        }
-      )
+      const res = await fetch('/api/admin/tournament-points/remove-from-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input)
+      })
       const data = (await res.json()) as {
         ok?: boolean
         changed?: boolean
@@ -515,17 +512,15 @@ export function useRegisterTournamentPointsPlayer() {
       points: number
       applyBalance: boolean
     }) => {
-      const res = await fetch(
-        '/api/admin/tournament-points/register-manual',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(input)
+      const res = await fetch('/api/admin/tournament-points/register-manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input)
+      })
+      const data =
+        (await res.json()) as TournamentPointsManualRegisterResult & {
+          error?: string
         }
-      )
-      const data = (await res.json()) as TournamentPointsManualRegisterResult & {
-        error?: string
-      }
       if (!res.ok) {
         throw new Error(
           typeof data.error === 'string'

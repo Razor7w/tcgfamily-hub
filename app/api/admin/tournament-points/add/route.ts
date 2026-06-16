@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import mongoose from 'mongoose'
-import { requireStoreStaffSession } from '@/lib/api-auth'
+import { requireStoreOwnerSession } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import { isTournamentPointsEnabledForStore } from '@/lib/tournament-points-settings'
 import { normalizeStorePointsAmount } from '@/lib/store-points-amount'
@@ -11,7 +11,7 @@ import {
 
 export async function POST(request: NextRequest) {
   try {
-    const gate = await requireStoreStaffSession()
+    const gate = await requireStoreOwnerSession()
     if (!gate.ok) return gate.response
 
     let body: unknown

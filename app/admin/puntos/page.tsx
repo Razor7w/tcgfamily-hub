@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import {
   Alert,
   alpha,
@@ -31,6 +32,8 @@ type ImportResult = {
 }
 
 export default function AdminPuntosPage() {
+  const { data: session } = useSession()
+  const isOwner = session?.user?.storeRole === 'owner'
   const { storeCredit } = useDashboardModulesFromLayout()
   const csvEnabled = storeCredit.csvEnabled
   const tournamentEnabled = storeCredit.tournamentPointsEnabled
@@ -136,7 +139,7 @@ export default function AdminPuntosPage() {
                 initialCustomName={storeCredit.tournamentPointsCustomName}
                 onLabelChange={setSectionTitle}
               />
-              <TournamentPointsCsvImport />
+              {isOwner ? <TournamentPointsCsvImport /> : null}
               <Divider sx={{ my: 3 }} />
               <TournamentPointsAwardPanel />
               <Divider sx={{ my: 3 }} />

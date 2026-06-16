@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useMemo, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import {
   Alert,
@@ -200,6 +200,7 @@ function AuditEntryRow({ entry }: { entry: TournamentPointsAuditEntry }) {
 
 export default function TournamentPointsManagePanel() {
   const { data: session } = useSession()
+  const isOwner = session?.user?.storeRole === 'owner'
   const { data: meStoresData } = useMeStores()
   const [tab, setTab] = useState(0)
   const [search, setSearch] = useState('')
@@ -229,6 +230,7 @@ export default function TournamentPointsManagePanel() {
   const deduct = useDeductTournamentPointsPlayer()
   const addPoints = useAddTournamentPointsPlayer()
   const removeFromList = useRemoveTournamentPointsPlayerFromList()
+  const pointsMutationInFlightRef = useRef(false)
 
   const players = useMemo(
     () => awardsQuery.data?.players ?? [],
@@ -290,52 +292,69 @@ export default function TournamentPointsManagePanel() {
   }
 
   const handleConfirmRemove = async () => {
-    if (!removeTarget) return
+    if (!removeTarget || pointsMutationInFlightRef.current) return
     const trimmedReason = removeReason.trim()
     if (trimmedReason.length < 3) return
 
-    await removeFromList.mutateAsync({
-      userId: removeTarget.userId,
-      primaryPopId: removeTarget.primaryPopId,
-      displayName: removeTarget.displayName,
-      reason: trimmedReason
-    })
-    closeRemoveDialog()
-    closeDeductForm()
-    closeAddForm()
-    closeAuditPanel()
+    pointsMutationInFlightRef.current = true
+    try {
+      await removeFromList.mutateAsync({
+        userId: removeTarget.userId,
+        primaryPopId: removeTarget.primaryPopId,
+        displayName: removeTarget.displayName,
+        reason: trimmedReason
+      })
+      closeRemoveDialog()
+      closeDeductForm()
+      closeAddForm()
+      closeAuditPanel()
+    } finally {
+      pointsMutationInFlightRef.current = false
+    }
   }
 
   const handleApplyDeduct = async (row: TournamentPointsAggregatedPlayer) => {
+    if (pointsMutationInFlightRef.current) return
     const subtract = normalizeStorePointsAmount(subtractAmount)
     const trimmedReason = reason.trim()
     if (subtract <= 0) return
     if (subtract > row.pointsTotal) return
     if (trimmedReason.length < 3) return
 
-    await deduct.mutateAsync({
-      userId: row.userId,
-      primaryPopId: row.primaryPopId,
-      subtract,
-      reason: trimmedReason
-    })
-    closeDeductForm()
+    pointsMutationInFlightRef.current = true
+    try {
+      await deduct.mutateAsync({
+        userId: row.userId,
+        primaryPopId: row.primaryPopId,
+        subtract,
+        reason: trimmedReason
+      })
+      closeDeductForm()
+    } finally {
+      pointsMutationInFlightRef.current = false
+    }
   }
 
   const handleApplyAdd = async (row: TournamentPointsAggregatedPlayer) => {
+    if (pointsMutationInFlightRef.current) return
     const add = normalizeStorePointsAmount(addAmount)
     const trimmedReason = reason.trim()
     if (add <= 0) return
     if (trimmedReason.length < 3) return
 
-    await addPoints.mutateAsync({
-      userId: row.userId,
-      primaryPopId: row.primaryPopId,
-      displayName: row.displayName,
-      add,
-      reason: trimmedReason
-    })
-    closeAddForm()
+    pointsMutationInFlightRef.current = true
+    try {
+      await addPoints.mutateAsync({
+        userId: row.userId,
+        primaryPopId: row.primaryPopId,
+        displayName: row.displayName,
+        add,
+        reason: trimmedReason
+      })
+      closeAddForm()
+    } finally {
+      pointsMutationInFlightRef.current = false
+    }
   }
 
   const deductRow = deductKey
@@ -375,14 +394,29 @@ export default function TournamentPointsManagePanel() {
     <Stack spacing={2}>
       <Typography variant="body2" color="text.secondary">
         Historial de jugadores que recibieron puntos de torneo (unificados por
-        cuenta o POP), incluidos los que ya no tienen saldo. Puedes{' '}
-        <strong>sumar</strong> o <strong>descontar</strong> puntos,{' '}
-        <strong>quitar de la lista</strong> o ver la <strong>auditoría</strong>{' '}
-        de cada uno.
+        cuenta o POP), incluidos los que ya no tienen saldo.
+        {isOwner ? (
+          <>
+            {' '}
+            Puedes <strong>sumar</strong> o <strong>descontar</strong> puntos,{' '}
+            <strong>quitar de la lista</strong> o ver la{' '}
+            <strong>auditoría</strong> de cada uno.
+          </>
+        ) : (
+          <>
+            {' '}
+            Puedes <strong>descontar</strong> puntos o ver la{' '}
+            <strong>auditoría</strong> de cada uno.
+          </>
+        )}
       </Typography>
 
-      <TournamentPointsCsvImport />
-      <TournamentPointsManualRegister />
+      {isOwner ? (
+        <>
+          <TournamentPointsCsvImport />
+          <TournamentPointsManualRegister />
+        </>
+      ) : null}
 
       <Tabs
         value={tab}
@@ -529,34 +563,36 @@ export default function TournamentPointsManagePanel() {
                                   >
                                     Auditoría
                                   </Button>
-                                  <Button
-                                    size="small"
-                                    variant={
-                                      isAddOpen ? 'contained' : 'outlined'
-                                    }
-                                    color="success"
-                                    startIcon={<AddCircleOutline />}
-                                    disabled={
-                                      pointsMutationPending ||
-                                      (deductKey != null &&
-                                        deductKey !== key) ||
-                                      (addKey != null && addKey !== key) ||
-                                      (auditKey != null && auditKey !== key)
-                                    }
-                                    onClick={() => {
-                                      closeAuditPanel()
-                                      closeDeductForm()
-                                      if (isAddOpen) {
-                                        closeAddForm()
-                                      } else {
-                                        setAddKey(key)
-                                        setAddAmount('1')
-                                        setReason('')
+                                  {isOwner ? (
+                                    <Button
+                                      size="small"
+                                      variant={
+                                        isAddOpen ? 'contained' : 'outlined'
                                       }
-                                    }}
-                                  >
-                                    Sumar
-                                  </Button>
+                                      color="success"
+                                      startIcon={<AddCircleOutline />}
+                                      disabled={
+                                        pointsMutationPending ||
+                                        (deductKey != null &&
+                                          deductKey !== key) ||
+                                        (addKey != null && addKey !== key) ||
+                                        (auditKey != null && auditKey !== key)
+                                      }
+                                      onClick={() => {
+                                        closeAuditPanel()
+                                        closeDeductForm()
+                                        if (isAddOpen) {
+                                          closeAddForm()
+                                        } else {
+                                          setAddKey(key)
+                                          setAddAmount('1')
+                                          setReason('')
+                                        }
+                                      }}
+                                    >
+                                      Sumar
+                                    </Button>
+                                  ) : null}
                                   <Button
                                     size="small"
                                     variant="outlined"
@@ -580,29 +616,32 @@ export default function TournamentPointsManagePanel() {
                                   >
                                     Descontar
                                   </Button>
-                                  <Button
-                                    size="small"
-                                    variant="outlined"
-                                    color="error"
-                                    startIcon={<DeleteOutline />}
-                                    disabled={
-                                      pointsMutationPending ||
-                                      (deductKey != null &&
-                                        deductKey !== key) ||
-                                      (addKey != null && addKey !== key) ||
-                                      (auditKey != null && auditKey !== key) ||
-                                      removeTarget != null
-                                    }
-                                    onClick={() => {
-                                      closeDeductForm()
-                                      closeAddForm()
-                                      closeAuditPanel()
-                                      setRemoveTarget(row)
-                                      setRemoveReason('')
-                                    }}
-                                  >
-                                    Quitar
-                                  </Button>
+                                  {isOwner ? (
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      color="error"
+                                      startIcon={<DeleteOutline />}
+                                      disabled={
+                                        pointsMutationPending ||
+                                        (deductKey != null &&
+                                          deductKey !== key) ||
+                                        (addKey != null && addKey !== key) ||
+                                        (auditKey != null &&
+                                          auditKey !== key) ||
+                                        removeTarget != null
+                                      }
+                                      onClick={() => {
+                                        closeDeductForm()
+                                        closeAddForm()
+                                        closeAuditPanel()
+                                        setRemoveTarget(row)
+                                        setRemoveReason('')
+                                      }}
+                                    >
+                                      Quitar
+                                    </Button>
+                                  ) : null}
                                 </Stack>
                               </TableCell>
                             </TableRow>
@@ -684,7 +723,7 @@ export default function TournamentPointsManagePanel() {
                                 </TableCell>
                               </TableRow>
                             ) : null}
-                            {isAddOpen ? (
+                            {isOwner && isAddOpen ? (
                               <TableRow>
                                 <TableCell
                                   colSpan={3}
