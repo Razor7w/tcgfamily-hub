@@ -1,6 +1,8 @@
 import { after } from 'next/server'
 import { sendMailPickupReadyEmail } from '@/lib/email/send-mail-pickup-ready'
 import { getResendNotifyPickupInStoreEnabledForStore } from '@/lib/get-resend-notify-pickup-enabled'
+import connectDB from '@/lib/mongodb'
+import Store from '@/models/Store'
 
 export type MailPickupReadyEmailJob = {
   toEmail: string
@@ -26,6 +28,13 @@ export function queueMailPickupReadyEmails(
         return
       }
 
+      await connectDB()
+      const storeDoc = await Store.findById(storeId).select('name').lean<{
+        name?: string
+      } | null>()
+      const storeName =
+        typeof storeDoc?.name === 'string' ? storeDoc.name.trim() : ''
+
       for (const job of jobs) {
         const to = job.toEmail.trim()
         const mailCode = job.mailCode.trim()
@@ -34,7 +43,8 @@ export function queueMailPickupReadyEmails(
           await sendMailPickupReadyEmail({
             to,
             recipientName: job.recipientName,
-            mailCode
+            mailCode,
+            storeName: storeName || undefined
           })
         } catch (emailErr) {
           console.error(
