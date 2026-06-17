@@ -69,6 +69,7 @@ export async function sendMailPickupReadyEmail(input: {
   to: string
   recipientName?: string | null
   mailCode: string
+  storeName?: string | null
 }): Promise<{ sent: boolean; skippedReason?: string }> {
   if (shouldSkipResendForLocalEnvironment()) {
     console.info(
@@ -96,11 +97,17 @@ export async function sendMailPickupReadyEmail(input: {
   const greeting = input.recipientName?.trim()
     ? `Hola ${input.recipientName.trim()},`
     : 'Hola,'
+  const storeName = input.storeName?.trim() ?? ''
+  const pickupLine = storeName
+    ? `La tienda ${storeName} recepcionó tu envío. Ya puedes pasar a retirarlo`
+    : 'La tienda recepcionó tu envío. Ya puedes pasar a retirarlo'
 
-  const subject = 'Tu correo ya está en tienda — puedes retirarlo'
+  const subject = storeName
+    ? `Tu correo ya está en ${storeName} — puedes retirarlo`
+    : 'Tu correo ya está en tienda — puedes retirarlo'
   const text = `${greeting}
 
-La tienda recepcionó tu envío. Ya puedes pasar a retirarlo con el código: ${code}
+${pickupLine} con el código: ${code}
 
 Más detalle en tu panel:
 ${dashboardMailUrl}
@@ -113,6 +120,10 @@ ${dashboardMailUrl}
       : 'Hola,'
   )
   const safeCode = escapeHtml(code)
+  const safeStoreName = storeName ? escapeHtml(storeName) : ''
+  const pickupHtml = safeStoreName
+    ? `La tienda <strong>${safeStoreName}</strong> <strong>recepcionó tu envío</strong>. Ya puedes pasar a retirarlo.`
+    : 'La tienda <strong>recepcionó tu envío</strong>. Ya puedes pasar a retirarlo.'
 
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -121,7 +132,7 @@ ${dashboardMailUrl}
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #e4e4e7;border-radius:12px;padding:24px;">
     <tr><td>
       <p style="margin:0 0 16px;font-size:16px;">${safeGreeting}</p>
-      <p style="margin:0 0 16px;font-size:15px;">La tienda <strong>recepcionó tu envío</strong>. Ya puedes pasar a retirarlo.</p>
+      <p style="margin:0 0 16px;font-size:15px;">${pickupHtml}</p>
       <p style="margin:0 0 8px;font-size:13px;color:#52525b;text-transform:uppercase;letter-spacing:0.06em;">Código</p>
       <p style="margin:0 0 24px;font-size:20px;font-weight:700;letter-spacing:0.02em;">${safeCode}</p>
       <a href="${escapeHtml(dashboardMailUrl)}" style="display:inline-block;background:#0f766e;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:10px;font-size:15px;">Ver en mi panel</a>
