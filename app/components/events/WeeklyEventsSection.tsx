@@ -767,22 +767,42 @@ export default function WeeklyEventsSection({
                                     <Typography variant="body2">
                                       {selectedEvent.myTournamentPlacement
                                         .isDnf ? (
-                                        <>
-                                          Clasificación en{' '}
-                                          <strong>
-                                            {
-                                              selectedEvent
-                                                .myTournamentPlacement
-                                                .categoryLabel
-                                            }
-                                          </strong>
-                                          :{' '}
+                                        selectedEvent.standingsUnified ? (
                                           <Box
                                             component="span"
                                             fontWeight={700}
                                           >
                                             DNF (no terminó)
                                           </Box>
+                                        ) : (
+                                          <>
+                                            Clasificación en{' '}
+                                            <strong>
+                                              {
+                                                selectedEvent
+                                                  .myTournamentPlacement
+                                                  .categoryLabel
+                                              }
+                                            </strong>
+                                            :{' '}
+                                            <Box
+                                              component="span"
+                                              fontWeight={700}
+                                            >
+                                              DNF (no terminó)
+                                            </Box>
+                                          </>
+                                        )
+                                      ) : selectedEvent.standingsUnified ? (
+                                        <>
+                                          Puesto{' '}
+                                          <strong>
+                                            {
+                                              selectedEvent
+                                                .myTournamentPlacement.place
+                                            }
+                                            º
+                                          </strong>
                                         </>
                                       ) : (
                                         <>
@@ -838,6 +858,9 @@ export default function WeeklyEventsSection({
                                 eventId={selectedEvent._id}
                                 categories={
                                   selectedEvent.standingsTopByCategory
+                                }
+                                standingsUnified={
+                                  selectedEvent.standingsUnified === true
                                 }
                                 showLeadingDivider={
                                   selectedEvent.myPlayedTournament ||

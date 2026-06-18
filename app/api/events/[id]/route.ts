@@ -412,11 +412,13 @@ export async function GET(
                     losses?: unknown
                     ties?: unknown
                   }[]
-                )
+                ),
+              standingsUnified: standingsPublic?.standingsUnified ?? false
             }
           : {
               standingsTopByCategory:
-                standingsPublic?.standingsTopByCategory ?? []
+                standingsPublic?.standingsTopByCategory ?? [],
+              standingsUnified: standingsPublic?.standingsUnified ?? false
             }
         : {})
     }

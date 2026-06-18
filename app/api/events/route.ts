@@ -192,7 +192,8 @@ function toPublicEvent(
     ...(tournamentClosed
       ? {
           standingsTopByCategory: standingsPublic?.standingsTopByCategory ?? [],
-          myTournamentPlacement: standingsPublic?.myTournamentPlacement ?? null
+          myTournamentPlacement: standingsPublic?.myTournamentPlacement ?? null,
+          standingsUnified: standingsPublic?.standingsUnified ?? false
         }
       : {}),
     league

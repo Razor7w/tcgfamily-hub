@@ -10,6 +10,7 @@ export type StoreLastFinishedTournamentPayload = {
       categoryIndex: number
       rows: { place: number; displayName: string }[]
     }[]
+    standingsUnified?: boolean
   } | null
 }
 

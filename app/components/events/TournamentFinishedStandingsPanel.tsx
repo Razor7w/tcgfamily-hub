@@ -12,6 +12,7 @@ import TournamentFinishedStandingsTabs from '@/components/events/TournamentFinis
 type Props = {
   eventId: string
   categories: PublicWeeklyEvent['standingsTopByCategory']
+  standingsUnified?: boolean
   /** Separador antes del top público; false si no hay bloque personal arriba. */
   showLeadingDivider?: boolean
   onOpenFullStandings: () => void
@@ -24,6 +25,7 @@ type Props = {
 export default function TournamentFinishedStandingsPanel({
   eventId,
   categories,
+  standingsUnified = false,
   showLeadingDivider = true,
   onOpenFullStandings
 }: Props) {
@@ -38,12 +40,13 @@ export default function TournamentFinishedStandingsPanel({
           color="primary"
           sx={{ fontWeight: 800, letterSpacing: '0.08em' }}
         >
-          Top por categoría
+          {standingsUnified ? 'Top del torneo' : 'Top por categoría'}
         </Typography>
         {hasCategories ? (
           <TournamentFinishedStandingsTabs
             key={eventId}
             categories={categories!}
+            hideCategoryTabs={standingsUnified}
           />
         ) : (
           <Alert severity="info" variant="outlined">

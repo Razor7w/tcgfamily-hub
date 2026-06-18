@@ -56,7 +56,9 @@ export default function StoreHubLastTournamentRail({
         title="Último torneo"
         subheader={
           tournament
-            ? 'Top 4 por categoría'
+            ? tournament.standingsUnified
+              ? 'Top 4 del torneo'
+              : 'Top 4 por categoría'
             : 'Resultados del torneo cerrado más reciente'
         }
         slotProps={{
@@ -120,6 +122,7 @@ export default function StoreHubLastTournamentRail({
               <TournamentFinishedStandingsTabs
                 variant="inline"
                 categories={tournament.standingsTopByCategory}
+                hideCategoryTabs={tournament.standingsUnified === true}
               />
             </Box>
 

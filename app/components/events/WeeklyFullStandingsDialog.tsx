@@ -52,12 +52,14 @@ function WeeklyFullStandingsContent({
   }
 
   const cats = query.data?.standingsFullByCategory
+  const standingsUnified = query.data?.standingsUnified === true
   if (cats && cats.length > 0) {
     return (
       <TournamentFinishedStandingsTabs
         key={`${eventId}-full`}
         variant="fullscreen"
         categories={cats}
+        hideCategoryTabs={standingsUnified}
       />
     )
   }

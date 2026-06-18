@@ -75,12 +75,13 @@ export async function GET(
           }))
         : []
 
-      const { standingsTopByCategory } = buildTournamentStandingsPublic(
-        doc.tournamentStandings as TournamentStandingLean[] | undefined,
-        participants,
-        undefined,
-        undefined
-      )
+      const { standingsTopByCategory, standingsUnified } =
+        buildTournamentStandingsPublic(
+          doc.tournamentStandings as TournamentStandingLean[] | undefined,
+          participants,
+          undefined,
+          undefined
+        )
 
       if (standingsTopByCategory.length === 0) continue
 
@@ -97,7 +98,8 @@ export async function GET(
           _id: String(doc._id),
           title: typeof doc.title === 'string' ? doc.title : 'Torneo',
           startsAt,
-          standingsTopByCategory
+          standingsTopByCategory,
+          standingsUnified
         }
       })
     }
