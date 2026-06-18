@@ -47,10 +47,13 @@ function sortStandingsCategoriesForTabs(
 
 export default function TournamentFinishedStandingsTabs({
   categories,
+  /** Sin pestañas Júnior/Sénior/Máster (p. ej. clasificación unificada). */
+  hideCategoryTabs = false,
   /** En drawer pantalla completa: scroll solo en tabla; inline: altura acotada en tarjeta. */
   variant = 'inline'
 }: {
   categories: NonNullable<PublicWeeklyEvent['standingsTopByCategory']>
+  hideCategoryTabs?: boolean
   variant?: 'inline' | 'fullscreen'
 }) {
   const ordered = useMemo(
@@ -86,36 +89,38 @@ export default function TournamentFinishedStandingsTabs({
           : undefined
       }
     >
-      <Tabs
-        value={safeIndex}
-        onChange={(_, v) => setTabIndex(v)}
-        variant={ordered.length <= 4 ? 'fullWidth' : 'scrollable'}
-        scrollButtons={ordered.length <= 4 ? false : 'auto'}
-        sx={{
-          minHeight: compactTable ? 40 : 44,
-          borderRadius: 2,
-          bgcolor: t => alpha(t.palette.text.primary, 0.03),
-          px: 0.5,
-          '& .MuiTab-root': {
+      {hideCategoryTabs ? null : (
+        <Tabs
+          value={safeIndex}
+          onChange={(_, v) => setTabIndex(v)}
+          variant={ordered.length <= 4 ? 'fullWidth' : 'scrollable'}
+          scrollButtons={ordered.length <= 4 ? false : 'auto'}
+          sx={{
             minHeight: compactTable ? 40 : 44,
-            py: compactTable ? 0.75 : 1,
-            fontWeight: 700,
-            textTransform: 'none',
-            borderRadius: 1.5
-          },
-          '& .MuiTabs-indicator': {
-            height: 3,
-            borderRadius: 1
-          }
-        }}
-      >
-        {ordered.map(c => (
-          <Tab
-            key={c.categoryIndex}
-            label={standingsTabLabel(c.categoryIndex)}
-          />
-        ))}
-      </Tabs>
+            borderRadius: 2,
+            bgcolor: t => alpha(t.palette.text.primary, 0.03),
+            px: 0.5,
+            '& .MuiTab-root': {
+              minHeight: compactTable ? 40 : 44,
+              py: compactTable ? 0.75 : 1,
+              fontWeight: 700,
+              textTransform: 'none',
+              borderRadius: 1.5
+            },
+            '& .MuiTabs-indicator': {
+              height: 3,
+              borderRadius: 1
+            }
+          }}
+        >
+          {ordered.map(c => (
+            <Tab
+              key={c.categoryIndex}
+              label={standingsTabLabel(c.categoryIndex)}
+            />
+          ))}
+        </Tabs>
+      )}
       <TableContainer
         component={Paper}
         variant="outlined"

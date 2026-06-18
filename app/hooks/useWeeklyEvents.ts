@@ -71,6 +71,8 @@ export interface PublicWeeklyEvent {
       oowp?: number | null
     }[]
   }[]
+  /** Máster + Sénior fusionados en una sola tabla (sin pestañas por edad). */
+  standingsUnified?: boolean
   /** Posición del usuario (POP) en su categoría; null si no figura. */
   myTournamentPlacement?: {
     categoryIndex: number
@@ -414,6 +416,7 @@ export function useWeeklyEventFullStandings(
           standingsFullByCategory?: NonNullable<
             PublicWeeklyEvent['standingsTopByCategory']
           >
+          standingsUnified?: boolean
         }
       }
       if (!res.ok) {
@@ -427,7 +430,10 @@ export function useWeeklyEventFullStandings(
       if (!Array.isArray(cats)) {
         throw new Error('Respuesta inválida')
       }
-      return { standingsFullByCategory: cats }
+      return {
+        standingsFullByCategory: cats,
+        standingsUnified: data.event?.standingsUnified === true
+      }
     },
     enabled: Boolean(eventId?.trim()) && enabled
   })

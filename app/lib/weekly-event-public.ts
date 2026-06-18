@@ -1,4 +1,6 @@
 import { popidForStorage } from '@/lib/rut-chile'
+import { isUnifiedStandingsPayload } from '@/lib/inferred-tdf-standings'
+import type { TournamentStandingsCategoryPayload } from '@/lib/tournament-xml'
 import {
   buildParsedMatchesFromRoundSnapshots,
   type RoundSnapshotLean,
@@ -38,6 +40,24 @@ export function categoryLabelEs(categoryIndex: number): string {
   return 'Máster'
 }
 
+function toStandingsPayload(
+  standings: TournamentStandingLean[] | undefined
+): TournamentStandingsCategoryPayload[] {
+  return (standings ?? [])
+    .map(cat => ({
+      categoryIndex:
+        typeof cat.categoryIndex === 'number'
+          ? Math.round(cat.categoryIndex)
+          : -1,
+      finished: cat.finished ?? [],
+      dnf: cat.dnf ?? []
+    }))
+    .filter(
+      c =>
+        c.categoryIndex === 0 || c.categoryIndex === 1 || c.categoryIndex === 2
+    )
+}
+
 /**
  * Resuelve la posición del usuario en standings comparando POP normalizado.
  * Usa el POP de la sesión y, si hace falta, el POP guardado en la inscripción al evento
@@ -60,6 +80,7 @@ export function buildTournamentStandingsPublic(
     place: number | null
     isDnf: boolean
   } | null
+  standingsUnified: boolean
 } {
   const maxRows =
     typeof options?.maxRowsPerCategory === 'number' &&
@@ -83,6 +104,10 @@ export function buildTournamentStandingsPublic(
     const n = popidForStorage(raw)
     if (n) myPopNorms.add(n)
   }
+
+  const standingsUnified = isUnifiedStandingsPayload(
+    toStandingsPayload(standings)
+  )
 
   const standingsTopByCategory: {
     categoryIndex: number
@@ -137,7 +162,7 @@ export function buildTournamentStandingsPublic(
     }
   }
 
-  return { standingsTopByCategory, myTournamentPlacement }
+  return { standingsTopByCategory, myTournamentPlacement, standingsUnified }
 }
 
 function clampWltPublic(n: unknown): number {
