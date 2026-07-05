@@ -37,6 +37,7 @@ import { onlyDigits } from '@/lib/rut-input'
 import CheckCircle from '@mui/icons-material/CheckCircle'
 import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked'
 import R2UppyProfileImageUploader from '@/components/r2/R2UppyProfileImageUploader'
+import ButtonBarCode from '@/components/molecule/ButtonBarCode'
 import { meProfileQueryKey, useMe, type MeProfile } from '@/hooks/useMe'
 import { useMeStores } from '@/hooks/useMeStores'
 
@@ -465,6 +466,16 @@ export default function PerfilPage() {
                 helperText="Solo lectura. Contacta a un administrador para cambiarlo."
               />
             </Box>
+
+            <ButtonBarCode
+              id={me.rut?.trim() ?? ''}
+              trigger="button"
+              dialogTitle="Código de barras del RUT"
+              valueLabel="RUT"
+              buttonLabel="Ver código de barras del RUT"
+              ariaLabel="Generar código de barras con tu RUT"
+              disabled={!me.rut?.trim()}
+            />
 
             <TextField
               label="Nombre"

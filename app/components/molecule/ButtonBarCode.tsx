@@ -20,15 +20,28 @@ interface ButtonBarCodeProps {
   trigger?: 'icon' | 'button'
   /** Solo aplica cuando trigger es "button". */
   fullWidth?: boolean
+  dialogTitle?: string
+  valueLabel?: string
+  buttonLabel?: string
+  ariaLabel?: string
+  disabled?: boolean
 }
 
 export default function ButtonBarCode({
   id,
   trigger = 'icon',
-  fullWidth = false
+  fullWidth = false,
+  dialogTitle = 'Código del correo',
+  valueLabel = 'ID',
+  buttonLabel = 'Ver código de barras',
+  ariaLabel,
+  disabled = false
 }: ButtonBarCodeProps) {
   const [barcodeMailId, setBarcodeMailId] = useState<string | null>(null)
-  const open = () => setBarcodeMailId(id)
+  const open = () => {
+    if (disabled || !id.trim()) return
+    setBarcodeMailId(id)
+  }
   return (
     <>
       {trigger === 'button' ? (
@@ -39,7 +52,8 @@ export default function ButtonBarCode({
           fullWidth={fullWidth}
           startIcon={<QrCode2 />}
           onClick={open}
-          aria-label="Ver código de barras del correo"
+          disabled={disabled || !id.trim()}
+          aria-label={ariaLabel ?? buttonLabel}
           sx={{
             py: 1,
             fontWeight: 700,
@@ -48,14 +62,15 @@ export default function ButtonBarCode({
             '&:hover': { borderWidth: 2 }
           }}
         >
-          Ver código de barras
+          {buttonLabel}
         </Button>
       ) : (
         <IconButton
           size="small"
           color="primary"
           onClick={open}
-          title="Generar código por ID"
+          disabled={disabled || !id.trim()}
+          title={buttonLabel}
           sx={{ p: 1 }}
         >
           <QrCode2 fontSize="small" />
@@ -70,7 +85,7 @@ export default function ButtonBarCode({
           sx: { width: '100%', m: 1, maxWidth: t => t.breakpoints.values.sm }
         }}
       >
-        <DialogTitle>Código del correo</DialogTitle>
+        <DialogTitle>{dialogTitle}</DialogTitle>
         <DialogContent>
           {barcodeMailId && (
             <Box
@@ -93,7 +108,7 @@ export default function ButtonBarCode({
                   maxWidth: '100%'
                 }}
               >
-                ID: {barcodeMailId}
+                {valueLabel}: {barcodeMailId}
               </Typography>
               <Box
                 sx={{
