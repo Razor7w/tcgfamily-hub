@@ -2,7 +2,11 @@
 
 export const LIMITLESS_DM_SUFFIX = 'lang:en,en.t is:unreleased,.i' as const
 
-export type LimitlessDmFormat = 'standard' | 'expanded' | 'glc'
+/** Sin filtro de formato; incluye sets japoneses (`lang:jp`) además del pool internacional. */
+export const LIMITLESS_DM_SUFFIX_ALL =
+  'lang:en,en.t is:unreleased,.i,lang:jp' as const
+
+export type LimitlessDmFormat = 'standard' | 'expanded' | 'glc' | 'all'
 
 /** Valores del filtro `type:` en la query de búsqueda (subset alineado con la UI de Limitless). */
 export type LimitlessDmTypeFilter =
@@ -74,8 +78,11 @@ export function buildLimitlessSearchQueryParts(args: {
   typeFilter?: LimitlessDmTypeFilter | null
 }): string {
   const t = args.text.trim()
+  const suffix =
+    args.format === 'all' ? LIMITLESS_DM_SUFFIX_ALL : LIMITLESS_DM_SUFFIX
+
   if (t.length < 1) {
-    return LIMITLESS_DM_SUFFIX
+    return suffix
   }
 
   const withFormat = Boolean(
@@ -88,13 +95,25 @@ export function buildLimitlessSearchQueryParts(args: {
   const withType = Boolean(typeToken)
 
   if (!withFormat && !withType) {
-    return `${t}  ${LIMITLESS_DM_SUFFIX}`
+    return `${t}  ${suffix}`
   }
 
   const mid: string[] = []
   if (withFormat) mid.push(`format:${args.format}`)
   if (withType && typeToken) mid.push(`type:${typeToken}`)
-  return [t, ...mid, LIMITLESS_DM_SUFFIX].join(' ')
+  return [t, ...mid, suffix].join(' ')
+}
+
+/** Detalle de carta en Limitless: `int:SET~num` (internacional) o `tpc:SET~num` (japonés). */
+export function buildLimitlessCardDetailQuery(args: {
+  set: string
+  number: string
+  region?: string | null
+}): string {
+  const set = args.set.trim().toUpperCase()
+  const number = args.number.trim()
+  const region = args.region?.trim() || 'int'
+  return `${region}:${set}~${number}`
 }
 
 function limitlessTypeFilterToQuery(tf: LimitlessDmTypeFilter): string | null {

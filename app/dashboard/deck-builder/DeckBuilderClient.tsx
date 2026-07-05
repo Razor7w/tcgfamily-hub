@@ -81,7 +81,8 @@ const DECK_SECTION_LABELS: Record<(typeof DECK_SECTION_ORDER)[number], string> =
 const FORMAT_OPTIONS: { value: LimitlessDmFormat; label: string }[] = [
   { value: 'standard', label: 'Standard' },
   { value: 'expanded', label: 'Expanded' },
-  { value: 'glc', label: 'GLC' }
+  { value: 'glc', label: 'GLC' },
+  { value: 'all', label: 'Todos' }
 ]
 
 const TYPE_OPTIONS: { value: LimitlessDmTypeFilter; label: string }[] = [
@@ -564,12 +565,18 @@ export default function DeckBuilderClient() {
   const results = searchData ?? []
 
   const { data: cardDetail } = useQuery({
-    queryKey: ['limitless-card', detailHit?.set, detailHit?.number] as const,
+    queryKey: [
+      'limitless-card',
+      detailHit?.set,
+      detailHit?.number,
+      detailHit?.region
+    ] as const,
     queryFn: async (): Promise<LimitlessDmCardDetail | null> => {
       if (!detailHit) return null
       const params = new URLSearchParams({
         set: detailHit.set,
-        number: String(detailHit.number)
+        number: String(detailHit.number),
+        region: detailHit.region || 'int'
       })
       const res = await fetch(`/api/limitless/cards?${params}`)
       const j = await res.json().catch(() => ({}))

@@ -242,6 +242,69 @@ const LIMITLESS_GALLERY_SUBSET_TPCI: Readonly<
   'SIT-TG': { base: 'SIT', suffix: 'TG' }
 }
 
+/**
+ * Sets con arte solo en CDN japonés (`tpc/SET/SET_{n}_R_JP_…`), sin equivalente `tpci` EN.
+ * El número va sin ceros a la izquierda (p. ej. `M5_68`, no `M5_068`).
+ */
+const LIMITLESS_JP_TPC_CDN_SETS = new Set([
+  'BW2',
+  'BW4',
+  'CP1',
+  'CP2',
+  'CP3',
+  'CP4',
+  'CP5',
+  'CP6',
+  'M2',
+  'M3',
+  'M4',
+  'M5',
+  'S2',
+  'S3',
+  'S4',
+  'S8',
+  'S9',
+  'S11',
+  'S12',
+  'SM6',
+  'SM7',
+  'SM8',
+  'SM9',
+  'SM10',
+  'SM11',
+  'SM12',
+  'SV3',
+  'SV6',
+  'SV7',
+  'SV8',
+  'SV9',
+  'SV10',
+  'XY2',
+  'XY3',
+  'XY4',
+  'XY6',
+  'XY7'
+])
+
+function isLimitlessJapaneseTpcCdnSet(setCode: string): boolean {
+  return LIMITLESS_JP_TPC_CDN_SETS.has(setCode.trim().toUpperCase())
+}
+
+function limitlessJapaneseTpcCardNumberToken(numStr: string): string {
+  const digits = numStr.replace(/\D/g, '')
+  if (digits) return String(Number.parseInt(digits, 10))
+  return numStr.trim().toUpperCase()
+}
+
+function limitlessJapaneseTpcImageUrl(
+  setFolder: string,
+  numStr: string,
+  size: 'SM' | 'LG'
+): string {
+  const num = limitlessJapaneseTpcCardNumberToken(numStr)
+  return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpc/${setFolder}/${setFolder}_${num}_R_JP_${size}.png`
+}
+
 function limitlessGallerySubsetImageUrl(
   setCode: string,
   numStr: string,
@@ -266,8 +329,9 @@ function limitlessGallerySubsetImageUrl(
 }
 
 /**
- * Thumbnail o arte completo: Limitless tpci (`SET_###_R_EN_SM|LG.png`), o images.pokemontcg.io
- * para sets clásicos, o patrón HIF Shiny Vault (`HIF_SV#_R_EN_XS|LG.png`) en el CDN Limitless.
+ * Thumbnail o arte completo: Limitless tpci (`SET_###_R_EN_SM|LG.png`), CDN japonés tpc
+ * (`M5_68_R_JP_SM|LG.png`), images.pokemontcg.io para sets clásicos, o patrón HIF Shiny Vault
+ * (`HIF_SV#_R_EN_XS|LG.png`) en el CDN Limitless.
  *
  * @param cardName Nombre de la carta (p. ej. desde el decklist) para corregir energía básica
  *  cuando el set se parseó como `Energy` y el tpci usa `SUM_&lt;tipo&gt;_R_EN_…` en vez de
@@ -306,6 +370,10 @@ export function limitlessCardImageUrl(args: {
 
   const galleryUrl = limitlessGallerySubsetImageUrl(setU, numStr, lang, size)
   if (galleryUrl) return galleryUrl
+
+  if (isLimitlessJapaneseTpcCdnSet(setFolder)) {
+    return limitlessJapaneseTpcImageUrl(setFolder, numStr, size)
+  }
 
   // Hidden Fates — Shiny Vault: numeración SV9, etc.; en tpci no es ### con padding.
   if (setU === 'HIF' && !isAllDigitsString(numStr)) {

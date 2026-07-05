@@ -26,7 +26,10 @@ export async function GET(request: NextRequest) {
     }
 
     const fmt =
-      format === 'standard' || format === 'expanded' || format === 'glc'
+      format === 'standard' ||
+      format === 'expanded' ||
+      format === 'glc' ||
+      format === 'all'
         ? format
         : 'standard'
     const typeFilter =

@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
-import type { LimitlessDmCardDetail } from '@/lib/limitless-dm-api'
+import {
+  buildLimitlessCardDetailQuery,
+  type LimitlessDmCardDetail
+} from '@/lib/limitless-dm-api'
 
 const LIMITLESS_CARDS = 'https://limitlesstcg.com/api/dm/cards'
 
 /**
- * Detalle de carta: `set` + `number` se traducen a `q=int:{SET}~{number}` (región int).
+ * Detalle de carta: `set` + `number` + `region` → `q={region}:{SET}~{number}`
+ * (`int` internacional, `tpc` japonés).
  */
 export async function GET(request: NextRequest) {
   try {
@@ -17,6 +21,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const set = searchParams.get('set')?.trim().toUpperCase() ?? ''
     const number = searchParams.get('number')?.trim() ?? ''
+    const region = searchParams.get('region')?.trim() ?? 'int'
 
     if (!set || !number) {
       return NextResponse.json(
@@ -25,7 +30,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const q = `int:${set}~${number}`
+    const q = buildLimitlessCardDetailQuery({ set, number, region })
     const url = `${LIMITLESS_CARDS}?${new URLSearchParams({
       q,
       lang: 'en'
