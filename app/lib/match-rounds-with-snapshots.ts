@@ -562,7 +562,8 @@ function applyInferredResultsToRounds(
   rounds: ParticipantMatchRoundDTO[],
   myPop: string,
   snapshots: RoundSnapshotLean[],
-  finalRecord: WltRecord | null
+  finalRecord: WltRecord | null,
+  overrideStoredWlt = false
 ): ParticipantMatchRoundDTO[] {
   if (!myPop || snapshots.length === 0) return rounds
 
@@ -577,32 +578,60 @@ function applyInferredResultsToRounds(
         specialOutcome: 'bye' as const
       }
     }
-    if (round.specialOutcome) return round
-    if (round.gameResults.length > 0) return round
 
     const before = recordBeforeRoundFromSnapshots(
       myPop,
       round.roundNum,
       snapshots
     )
-    if (!before) return round
-
     let after: WltRecord | null = null
-    if (round.roundNum < maxRound) {
-      after = recordBeforeRoundFromSnapshots(
-        myPop,
-        round.roundNum + 1,
-        snapshots
-      )
-    } else if (finalRecord) {
-      after = finalRecord
+    if (before) {
+      if (round.roundNum < maxRound) {
+        after = recordBeforeRoundFromSnapshots(
+          myPop,
+          round.roundNum + 1,
+          snapshots
+        )
+      } else if (finalRecord) {
+        after = finalRecord
+      }
     }
-    if (!after) return round
 
-    const inferred = inferRoundOutcomeFromRecordDelta(before, after)
-    if (!inferred) return round
-    return { ...round, ...inferred }
+    if (before && after) {
+      const inferred = inferRoundOutcomeFromRecordDelta(before, after)
+      if (inferred && (overrideStoredWlt || round.gameResults.length === 0)) {
+        return { ...round, ...inferred }
+      }
+    }
+
+    if (!overrideStoredWlt) {
+      if (round.specialOutcome) return round
+      if (round.gameResults.length > 0) return round
+    }
+
+    return round
   })
+}
+
+export type MergeMatchRoundsWithSnapshotsOptions = {
+  /** Torneo oficial cerrado: el W-L-T inferido del TDF reemplaza la bitácora manual. */
+  overrideStoredWltWithSnapshots?: boolean
+}
+
+/** Ajusta W-L-T de rondas guardadas al récord TDF (torneos oficiales cerrados). */
+export function reconcileOfficialClosedRoundsWithSnapshots(
+  rounds: ParticipantMatchRoundDTO[],
+  myPop: string,
+  snapshots: RoundSnapshotLean[],
+  finalRecord: WltRecord | null
+): ParticipantMatchRoundDTO[] {
+  return applyInferredResultsToRounds(
+    rounds,
+    myPop,
+    snapshots,
+    finalRecord,
+    true
+  )
 }
 
 /**
@@ -614,8 +643,10 @@ export function mergeParticipantMatchRoundsWithSnapshots(
   reported: ParticipantMatchRoundDTO[],
   snapshots: RoundSnapshotLean[],
   popToDisplayName: Map<string, string>,
-  finalRecord?: WltRecord | null
+  finalRecord?: WltRecord | null,
+  options?: MergeMatchRoundsWithSnapshotsOptions
 ): ParticipantMatchRoundDTO[] {
+  const overrideStoredWlt = options?.overrideStoredWltWithSnapshots === true
   const myPop = popidForStorage(myPopId ?? '')
   const sortedSnapshots = [...snapshots].sort(
     (a, b) => Math.round(Number(a.roundNum)) - Math.round(Number(b.roundNum))
@@ -644,7 +675,8 @@ export function mergeParticipantMatchRoundsWithSnapshots(
       enriched.sort((a, b) => a.roundNum - b.roundNum),
       myPop,
       sortedSnapshots,
-      finalRecord ?? null
+      finalRecord ?? null,
+      overrideStoredWlt
     )
   }
 
@@ -686,7 +718,8 @@ export function mergeParticipantMatchRoundsWithSnapshots(
     merged,
     myPop,
     sortedSnapshots,
-    finalRecord ?? null
+    finalRecord ?? null,
+    overrideStoredWlt
   )
 }
 
@@ -827,13 +860,15 @@ export function mergeLeanMatchRoundsWithSnapshots(
   rawMatchRounds: unknown,
   snapshots: RoundSnapshotLean[],
   popToDisplayName: Map<string, string>,
-  finalRecord?: WltRecord | null
+  finalRecord?: WltRecord | null,
+  options?: MergeMatchRoundsWithSnapshotsOptions
 ): ParticipantMatchRoundDTO[] {
   return mergeParticipantMatchRoundsWithSnapshots(
     myPopId,
     parseParticipantMatchRoundsFromLean(rawMatchRounds),
     snapshots,
     popToDisplayName,
-    finalRecord
+    finalRecord,
+    options
   )
 }

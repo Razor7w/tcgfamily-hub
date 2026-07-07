@@ -133,7 +133,11 @@ function enrichedMatchRoundsForParticipant(
     mine.matchRounds,
     ev.roundSnapshots ?? [],
     popToDisplayName,
-    finalRecord
+    finalRecord,
+    {
+      overrideStoredWltWithSnapshots:
+        tournamentOrigin === 'official' && ev.state === 'close'
+    }
   )
   const enriched = enrichMatchRoundsWithOpponentDecks(
     myPopId,
@@ -144,11 +148,29 @@ function enrichedMatchRoundsForParticipant(
     exposeOpponentDecksToOthers
   )
 
-  const reportedRoundNums = new Set(
-    parseParticipantMatchRoundsFromLean(mine.matchRounds).map(r => r.roundNum)
-  )
-  if (reportedRoundNums.size === 0) return []
+  const stored = parseParticipantMatchRoundsFromLean(mine.matchRounds)
+  const reportedRoundNums = new Set(stored.map(r => r.roundNum))
+
+  if (reportedRoundNums.size === 0) {
+    const officialRecordSum =
+      tournamentOrigin === 'official' && ev.state === 'close'
+        ? clampWlt(mine.wins) + clampWlt(mine.losses) + clampWlt(mine.ties)
+        : 0
+    if (officialRecordSum > 0) {
+      return enriched
+    }
+    return []
+  }
+
   return enriched.filter(r => reportedRoundNums.has(r.roundNum))
+}
+
+/** Rondas que alimentan resumen de temporada y estadísticas (bitácora + TDF oficial cerrado). */
+export function matchRoundsForSeasonStats(
+  ev: LeanEventForMatchups,
+  mine: LeanParticipant
+): ParticipantMatchRoundDTO[] {
+  return enrichedMatchRoundsForParticipant(ev, mine)
 }
 
 function myDeckSlugsFromParticipant(p: LeanParticipant): string[] {
@@ -240,7 +262,7 @@ export function aggregateMyDeckStats(
     ) as LeanParticipant | undefined
     if (!mine) continue
 
-    const rounds = parseParticipantMatchRoundsFromLean(mine.matchRounds)
+    const rounds = enrichedMatchRoundsForParticipant(ev, mine)
     if (rounds.length === 0) continue
 
     const rawSlugs = myDeckSlugsFromParticipant(mine)

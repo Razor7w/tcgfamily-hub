@@ -6,6 +6,7 @@ import {
   buildParticipantDeckLookup,
   buildPopToDisplayNameMap,
   emptyParticipantDeckLookup,
+  reconcileOfficialClosedRoundsWithSnapshots,
   roundNumsWithSnapshotOpponentName,
   stripManualOpponentDecksWhenPlatformReported,
   validateOfficialPreCloseSpriteSave,
@@ -129,6 +130,23 @@ export async function PUT(
     const t = Math.max(0, Math.min(999, Math.round(Number(part.ties) || 0)))
     const recordSum = w + l + t
     const tournamentClosed = doc.state === 'close'
+
+    let roundsPayload = rounds
+    if (
+      !isCustom &&
+      tournamentClosed &&
+      myPop &&
+      snapshots.length > 0 &&
+      recordSum > 0
+    ) {
+      roundsPayload = reconcileOfficialClosedRoundsWithSnapshots(
+        roundsPayload,
+        myPop,
+        snapshots,
+        { wins: w, losses: l, ties: t }
+      )
+    }
+
     const maxRoundsAllowed = isCustom
       ? 20
       : recordSum > 0
@@ -136,7 +154,7 @@ export async function PUT(
         : tournamentClosed
           ? 0
           : 15
-    if (rounds.length > maxRoundsAllowed) {
+    if (roundsPayload.length > maxRoundsAllowed) {
       return NextResponse.json(
         {
           error:
@@ -166,7 +184,7 @@ export async function PUT(
       : emptyParticipantDeckLookup()
     const roundsToPersist = stripManualOpponentDecksWhenPlatformReported(
       myPop,
-      rounds,
+      roundsPayload,
       snapshots,
       selfReportedDeckLookup,
       exposeOpponentDecksToOthers

@@ -591,6 +591,93 @@ export function useDeleteCustomTournament() {
       queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
       queryClient.invalidateQueries({ queryKey: ['my-recent-tournaments'] })
       queryClient.invalidateQueries({ queryKey: ['my-home-tournaments'] })
+      queryClient.invalidateQueries({ queryKey: ['my-matchup-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['my-season-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['my-season-rounds'] })
+    }
+  })
+}
+
+export type LinkableOfficialTournament = {
+  eventId: string
+  title: string
+  startsAt: string
+  myMatchRecord: { wins: number; losses: number; ties: number } | null
+  hasMyReportedRounds: boolean
+  hasMyDeck: boolean
+}
+
+export function useLinkableOfficialTournaments(
+  customEventId: string | null,
+  options?: { enabled?: boolean }
+) {
+  const enabled = options?.enabled !== false && Boolean(customEventId?.trim())
+  return useQuery<{ tournaments: LinkableOfficialTournament[] }>({
+    queryKey: ['linkable-official-tournaments', customEventId],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/events/${customEventId}/linkable-official-tournaments`,
+        { cache: 'no-store' }
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === 'string'
+            ? data.error
+            : 'No se pudieron cargar torneos'
+        )
+      }
+      return data as { tournaments: LinkableOfficialTournament[] }
+    },
+    enabled,
+    staleTime: 60_000
+  })
+}
+
+export function useMergeCustomIntoOfficial() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: {
+      customEventId: string
+      officialEventId: string
+    }) => {
+      const res = await fetch(
+        `/api/events/${input.customEventId}/merge-into-official`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ officialEventId: input.officialEventId })
+        }
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === 'string'
+            ? data.error
+            : 'No se pudo vincular el torneo'
+        )
+      }
+      return data as {
+        officialEventId: string
+        mergedRoundsCount: number
+        deckMerged: boolean
+        decklistMerged: boolean
+        contributionPointsAwarded?: ContributionPointsAwardedItem[]
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-tournaments-week'] })
+      queryClient.invalidateQueries({ queryKey: ['my-tournaments-all'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-event-detail'] })
+      queryClient.invalidateQueries({ queryKey: ['weekly-events'] })
+      queryClient.invalidateQueries({ queryKey: ['my-recent-tournaments'] })
+      queryClient.invalidateQueries({ queryKey: ['my-home-tournaments'] })
+      queryClient.invalidateQueries({ queryKey: ['my-matchup-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['my-season-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['my-season-rounds'] })
+      queryClient.invalidateQueries({
+        queryKey: ['linkable-official-tournaments']
+      })
     }
   })
 }
@@ -1588,7 +1675,11 @@ export function useMySeasonSummary(
             : 'Error al cargar el resumen'
         )
       }
-      if (!data.kpis || !Array.isArray(data.recentRounds) || !Array.isArray(data.topDecks)) {
+      if (
+        !data.kpis ||
+        !Array.isArray(data.recentRounds) ||
+        !Array.isArray(data.topDecks)
+      ) {
         throw new Error('Respuesta inválida')
       }
       return data as MySeasonSummaryPayload

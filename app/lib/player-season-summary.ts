@@ -4,6 +4,7 @@ import mongoose from 'mongoose'
 import {
   aggregateMyDeckStats,
   flattenUserMatchRounds,
+  matchRoundsForSeasonStats,
   opponentDeckKey,
   winRatePercent,
   type TournamentOriginFilter
@@ -29,6 +30,11 @@ const TOP_DECKS_LIMIT = 3
 
 type LeanParticipant = {
   userId?: unknown
+  popId?: string
+  displayName?: string
+  wins?: unknown
+  losses?: unknown
+  ties?: unknown
   matchRounds?: unknown
   deckPokemonSlugs?: unknown
   tournamentDecklistRef?: {
@@ -44,7 +50,29 @@ type LeanSeasonEvent = {
   startsAt: Date | string
   tournamentOrigin?: string
   state?: string
+  roundSnapshots?: import('@/lib/match-rounds-with-snapshots').RoundSnapshotLean[]
   participants?: LeanParticipant[]
+}
+
+function endOfMonth(refDate: Date): Date {
+  return new Date(
+    refDate.getFullYear(),
+    refDate.getMonth() + 1,
+    0,
+    23,
+    59,
+    59,
+    999
+  )
+}
+
+function endOfQuarter(refDate: Date): Date {
+  const q = Math.floor(refDate.getMonth() / 3)
+  return new Date(refDate.getFullYear(), (q + 1) * 3, 0, 23, 59, 59, 999)
+}
+
+function endOfYear(refDate: Date): Date {
+  return new Date(refDate.getFullYear(), 11, 31, 23, 59, 59, 999)
 }
 
 function seasonPeriodBounds(
@@ -52,15 +80,23 @@ function seasonPeriodBounds(
   refDate = new Date()
 ): { from: Date; to: Date } | null {
   if (period === 'all') return null
-  const to = refDate
   if (period === 'month') {
-    return { from: new Date(refDate.getFullYear(), refDate.getMonth(), 1), to }
+    return {
+      from: new Date(refDate.getFullYear(), refDate.getMonth(), 1),
+      to: endOfMonth(refDate)
+    }
   }
   if (period === 'quarter') {
     const q = Math.floor(refDate.getMonth() / 3)
-    return { from: new Date(refDate.getFullYear(), q * 3, 1), to }
+    return {
+      from: new Date(refDate.getFullYear(), q * 3, 1),
+      to: endOfQuarter(refDate)
+    }
   }
-  return { from: new Date(refDate.getFullYear(), 0, 1), to }
+  return {
+    from: new Date(refDate.getFullYear(), 0, 1),
+    to: endOfYear(refDate)
+  }
 }
 
 function previousSeasonPeriodBounds(
@@ -225,10 +261,12 @@ function countTournamentsWithReport(
     const mine = (ev.participants ?? []).find(
       p => p?.userId != null && String(p.userId) === userId
     )
-    const rounds = Array.isArray(mine?.matchRounds)
-      ? mine.matchRounds.length
-      : 0
-    if (rounds > 0) n++
+    if (!mine) continue
+    const rounds = matchRoundsForSeasonStats(
+      ev as Parameters<typeof matchRoundsForSeasonStats>[0],
+      mine as Parameters<typeof matchRoundsForSeasonStats>[1]
+    )
+    if (rounds.length > 0) n++
   }
   return n
 }

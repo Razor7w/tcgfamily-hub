@@ -125,7 +125,10 @@ export const weeklyEventMatchupDetailProjection = {
 export const weeklyEventSeasonSummaryProjection = {
   ...weeklyEventMatchupDetailProjection,
   title: 1,
-  'participants.tournamentDecklistRef': 1
+  'participants.tournamentDecklistRef': 1,
+  'participants.wins': 1,
+  'participants.losses': 1,
+  'participants.ties': 1
 } as const
 
 /** Clasificación pública de liga: snapshots mínimos para W/L/T (sin syncedAt/skipped/mesa). */
