@@ -44,6 +44,10 @@ import {
   type MyDeckStatsRowDTO,
   type OpponentMatchupRowDTO
 } from '@/lib/pokemon-matchup-stats'
+import {
+  STATS_RETURN_FROM_MI_CUENTA,
+  dashboardStatsHref
+} from '@/lib/player-season-summary-types'
 
 const SPRITE_BOX = limitlessSpriteDimensions(32)
 
@@ -73,6 +77,13 @@ function EstadisticasTorneosContent() {
   const searchParams = useSearchParams()
   const deckParam = searchParams.get('deck')
   const myDeckKey = deckParam ? decodeURIComponent(deckParam) : null
+  const fromMiCuenta = searchParams.get('from') === STATS_RETURN_FROM_MI_CUENTA
+  const backParentHref = fromMiCuenta
+    ? '/dashboard/mi-cuenta'
+    : '/dashboard/torneos-semana'
+  const backParentLabel = fromMiCuenta
+    ? 'Volver a mi cuenta'
+    : 'Volver a mis torneos'
 
   const [origin, setOrigin] = useState<TournamentOriginFilter>('all')
   const [sortKey, setSortKey] = useState<SortKey>('lastPlayed')
@@ -163,11 +174,16 @@ function EstadisticasTorneosContent() {
   }
 
   const goDeckDetail = (key: string) => {
-    router.push(`/dashboard/estadisticas?deck=${encodeURIComponent(key)}`)
+    router.push(
+      dashboardStatsHref({
+        deckKey: key,
+        fromMiCuenta
+      })
+    )
   }
 
   const goList = () => {
-    router.push('/dashboard/estadisticas')
+    router.push(dashboardStatsHref({ fromMiCuenta }))
   }
 
   const rowsForTable = isDetail ? sortedOpponents : sortedMyDecks
@@ -205,7 +221,7 @@ function EstadisticasTorneosContent() {
             ) : (
               <Button
                 component={Link}
-                href="/dashboard/torneos-semana"
+                href={backParentHref}
                 startIcon={<ArrowBackIcon />}
                 size="medium"
                 sx={t => ({
@@ -219,7 +235,7 @@ function EstadisticasTorneosContent() {
                   }
                 })}
               >
-                Volver a mis torneos
+                {backParentLabel}
               </Button>
             )}
           </Stack>

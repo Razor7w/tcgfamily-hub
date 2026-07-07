@@ -19,6 +19,7 @@ import { alpha } from '@mui/material/styles'
 import DashboardModuleRouteGate from '@/components/dashboard/DashboardModuleRouteGate'
 import CustomTournamentManualPlacementSection from '@/components/events/CustomTournamentManualPlacementSection'
 import DeleteCustomTournamentButton from '@/components/events/DeleteCustomTournamentButton'
+import { LinkCustomTournamentButton } from '@/components/events/LinkCustomTournamentDialog'
 import ReportDeckDialog from '@/components/events/ReportDeckDialog'
 import TournamentMatchRoundsCard from '@/components/events/TournamentMatchRoundsCard'
 import { useDashboardEventDetail } from '@/hooks/useWeeklyEvents'
@@ -345,28 +346,41 @@ export default function TorneoSemanaDetallePage() {
                   </Card>
 
                   {ev.tournamentOrigin === 'custom' ? (
-                    <Stack
-                      direction={{ xs: 'column', sm: 'row' }}
-                      spacing={1.5}
-                      alignItems={{ xs: 'stretch', sm: 'center' }}
-                      justifyContent="space-between"
-                    >
-                      <Typography variant="body2" color="text.secondary">
-                        Torneo <strong>custom</strong>: no está vinculado al
-                        calendario de la tienda. Tu récord se calcula con las
-                        rondas que reportes.
-                      </Typography>
-                      {ev.canDeleteCustomTournament ? (
-                        <DeleteCustomTournamentButton
-                          eventId={eventId}
-                          tournamentTitle={ev.title}
-                          onDeleted={() =>
-                            router.push('/dashboard/torneos-semana')
-                          }
-                          size="small"
-                          variant="outlined"
-                        />
-                      ) : null}
+                    <Stack spacing={1.5}>
+                      <Alert severity="info" sx={{ alignItems: 'flex-start' }}>
+                        Torneo <strong>custom</strong>: puedes vincularlo a un
+                        torneo oficial finalizado para transferir tu bitácora y
+                        sumar puntos de contribución. Tu posición final será la
+                        del torneo principal.
+                      </Alert>
+                      <Stack
+                        direction={{ xs: 'column', sm: 'row' }}
+                        spacing={1.5}
+                        alignItems={{ xs: 'stretch', sm: 'center' }}
+                      >
+                        <Box sx={{ flex: 1 }}>
+                          <LinkCustomTournamentButton
+                            customEventId={eventId}
+                            customTitle={ev.title}
+                            onMerged={officialId =>
+                              router.push(
+                                `/dashboard/torneos-semana/${officialId}`
+                              )
+                            }
+                          />
+                        </Box>
+                        {ev.canDeleteCustomTournament ? (
+                          <DeleteCustomTournamentButton
+                            eventId={eventId}
+                            tournamentTitle={ev.title}
+                            onDeleted={() =>
+                              router.push('/dashboard/torneos-semana')
+                            }
+                            size="small"
+                            variant="outlined"
+                          />
+                        ) : null}
+                      </Stack>
                     </Stack>
                   ) : null}
 

@@ -237,7 +237,11 @@ export async function GET(
           viewAs.matchRounds,
           doc.roundSnapshots ?? [],
           popToDisplayName,
-          myTdfFinalForRounds
+          myTdfFinalForRounds,
+          {
+            overrideStoredWltWithSnapshots:
+              tournamentOrigin !== 'custom' && doc.state === 'close'
+          }
         ),
         doc.roundSnapshots ?? [],
         selfReportedDeckLookup,

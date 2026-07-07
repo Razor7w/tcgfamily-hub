@@ -69,7 +69,7 @@ type MyTournamentsDashboardSummaryProps = {
 
 export default function MyTournamentsDashboardSummary({
   onCreateCustom
-}: MyTournamentsDashboardSummaryProps) {
+}: MyTournamentsDashboardSummaryProps = {}) {
   const { data, isPending, isError, error, refetch } = useMyRecentTournaments(2)
   const list = data?.tournaments ?? []
 
@@ -170,9 +170,9 @@ export default function MyTournamentsDashboardSummary({
                   variant="contained"
                   size="small"
                   onClick={onCreateCustom}
-                  sx={{ textTransform: 'none', fontWeight: 700 }}
+                  sx={{ textTransform: 'none', fontWeight: 600 }}
                 >
-                  Registrar torneo custom
+                  Registrar torneo
                 </Button>
               ) : null}
             </Stack>
@@ -370,29 +370,6 @@ export default function MyTournamentsDashboardSummary({
             })}
           </Stack>
         )}
-
-        {!isPending && !isError && list.length > 0 && onCreateCustom ? (
-          <Box
-            sx={{
-              mt: 2,
-              display: 'flex',
-              justifyContent: { xs: 'stretch', sm: 'flex-end' }
-            }}
-          >
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={onCreateCustom}
-              sx={{
-                width: { xs: '100%', sm: 'auto' },
-                textTransform: 'none',
-                fontWeight: 700
-              }}
-            >
-              Registrar torneo custom
-            </Button>
-          </Box>
-        ) : null}
       </CardContent>
     </Card>
   )
