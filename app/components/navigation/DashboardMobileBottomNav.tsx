@@ -4,8 +4,8 @@ import { useMemo } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import {
-  AccountCircleOutlined,
   Home,
+  Insights,
   MarkunreadMailboxOutlined,
   Storefront,
   Style
@@ -193,8 +193,8 @@ export default function DashboardMobileBottomNav() {
         />
         <BottomNavigationAction
           value="account"
-          aria-label="Mi cuenta"
-          icon={<AccountCircleOutlined />}
+          aria-label="Tu actividad"
+          icon={<Insights />}
           onClick={() => go('/dashboard/mi-cuenta')}
           sx={actionSx}
         />

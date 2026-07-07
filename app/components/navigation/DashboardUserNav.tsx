@@ -7,10 +7,10 @@ import {
   ExpandLess,
   ExpandMore,
   Home,
+  Insights,
   Layers,
   Storefront,
   Person,
-  AccountCircleOutlined,
   Public,
   Style,
   ViewModule
@@ -98,9 +98,9 @@ export default function DashboardUserNav({
               selected={pathname === '/dashboard/mi-cuenta'}
             >
               <ListItemIcon>
-                <AccountCircleOutlined />
+                <Insights />
               </ListItemIcon>
-              <ListItemText primary="Mi cuenta" />
+              <ListItemText primary="Tu actividad" />
             </ListItemButton>
           </ListItem>
           <ListItem disablePadding>
