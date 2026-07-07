@@ -46,6 +46,7 @@ import {
 } from '@/lib/pokemon-matchup-stats'
 import {
   STATS_RETURN_FROM_MI_CUENTA,
+  STATS_RETURN_FROM_TU_ACTIVIDAD,
   dashboardStatsHref
 } from '@/lib/player-season-summary-types'
 
@@ -77,12 +78,15 @@ function EstadisticasTorneosContent() {
   const searchParams = useSearchParams()
   const deckParam = searchParams.get('deck')
   const myDeckKey = deckParam ? decodeURIComponent(deckParam) : null
-  const fromMiCuenta = searchParams.get('from') === STATS_RETURN_FROM_MI_CUENTA
-  const backParentHref = fromMiCuenta
-    ? '/dashboard/mi-cuenta'
+  const fromTuActividad =
+    searchParams.get('from') === STATS_RETURN_FROM_TU_ACTIVIDAD ||
+    searchParams.get('from') === STATS_RETURN_FROM_MI_CUENTA ||
+    searchParams.get('from') === 'mi-cuenta'
+  const backParentHref = fromTuActividad
+    ? '/dashboard/tu-actividad'
     : '/dashboard/torneos-semana'
-  const backParentLabel = fromMiCuenta
-    ? 'Volver a mi cuenta'
+  const backParentLabel = fromTuActividad
+    ? 'Volver a tu actividad'
     : 'Volver a mis torneos'
 
   const [origin, setOrigin] = useState<TournamentOriginFilter>('all')
@@ -177,13 +181,13 @@ function EstadisticasTorneosContent() {
     router.push(
       dashboardStatsHref({
         deckKey: key,
-        fromMiCuenta
+        fromTuActividad
       })
     )
   }
 
   const goList = () => {
-    router.push(dashboardStatsHref({ fromMiCuenta }))
+    router.push(dashboardStatsHref({ fromTuActividad }))
   }
 
   const rowsForTable = isDetail ? sortedOpponents : sortedMyDecks

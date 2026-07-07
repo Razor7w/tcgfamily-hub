@@ -299,7 +299,7 @@ export async function PUT(request: NextRequest) {
     revalidatePath('/admin/contribucion')
     revalidatePath('/admin/configuracion')
     revalidatePath('/dashboard', 'layout')
-    revalidatePath('/dashboard/mi-cuenta')
+    revalidatePath('/dashboard/tu-actividad')
     revalidatePath('/dashboard/eventos')
     revalidatePath('/dashboard/torneos-semana')
     revalidatePath('/dashboard/mail')

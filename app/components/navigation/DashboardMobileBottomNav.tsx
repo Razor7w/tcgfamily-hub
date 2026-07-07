@@ -55,8 +55,8 @@ function mobileNavValue(
   }
   if (isUnderDecklistNav(pathname)) return 'decks'
   if (
-    pathname === '/dashboard/mi-cuenta' ||
-    pathname.startsWith('/dashboard/mi-cuenta/')
+    pathname === '/dashboard/tu-actividad' ||
+    pathname.startsWith('/dashboard/tu-actividad/')
   ) {
     return 'account'
   }
@@ -195,7 +195,7 @@ export default function DashboardMobileBottomNav() {
           value="account"
           aria-label="Tu actividad"
           icon={<Insights />}
-          onClick={() => go('/dashboard/mi-cuenta')}
+          onClick={() => go('/dashboard/tu-actividad')}
           sx={actionSx}
         />
       </BottomNavigation>

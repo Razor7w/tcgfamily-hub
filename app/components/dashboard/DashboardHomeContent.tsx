@@ -51,7 +51,7 @@ const WeeklyEventsSection = dynamic(
   { loading: () => <WeeklyEventsSectionSkeleton /> }
 )
 
-export type DashboardHomeVariant = 'tiendas' | 'mi-cuenta'
+export type DashboardHomeVariant = 'tiendas' | 'tu-actividad'
 
 export type DashboardHomeContentProps = {
   /** `tiendas`: solo módulos de tienda activa (accesos rápidos están en Inicio). */

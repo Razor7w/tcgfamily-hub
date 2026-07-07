@@ -11,7 +11,8 @@ export const DEFAULT_CONTRIBUTION_POINT_RULES: Record<
   mail_received_in_store: 3,
   mail_withdrawn_in_store: 3,
   tournament_pre_registered: 1,
-  tournament_participated: 10
+  tournament_participated: 10,
+  tournament_custom_linked: 10
 }
 
 export type ContributionPointRules = Record<ContributionPointAction, number>

@@ -129,7 +129,8 @@ export async function PUT(
         kind: doc.kind,
         game: doc.game,
         state: eventState,
-        myPlayedTournament
+        myPlayedTournament,
+        tournamentOrigin
       })
     ) {
       return NextResponse.json(

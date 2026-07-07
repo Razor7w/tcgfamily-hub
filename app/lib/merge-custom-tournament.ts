@@ -15,6 +15,7 @@ import {
 } from '@/lib/match-rounds-with-snapshots'
 import { applyDeckContributionAwards } from '@/lib/contribution-points/deck-contribution-awards'
 import { applyMatchRoundContributionAwards } from '@/lib/contribution-points/match-round-contribution-awards'
+import { applyTournamentCustomLinkedContributionAward } from '@/lib/contribution-points/tournament-contribution-awards'
 import { resolveWeeklyEventStoreIdForContribution } from '@/lib/contribution-points/resolve-event-store-id'
 import { invalidateMatchupStatsCacheForUser } from '@/lib/matchup-stats-cache'
 import { syncTournamentMetaCacheAfterEventMutation } from '@/lib/tournament-meta-cache'
@@ -597,9 +598,19 @@ export async function executeMergeCustomIntoOfficial(input: {
       next: roundsToPersist
     })
 
-    contributionPointsAwarded = [...deckAwards, ...roundAwards].filter(
-      row => row.awarded && row.points > 0
-    )
+    const linkAward = await applyTournamentCustomLinkedContributionAward({
+      storeId: storeIdForContribution,
+      userId: uid,
+      customEventId: customDoc._id,
+      officialEventId: officialDoc._id,
+      officialEventTitle: String(officialDoc.title ?? 'Torneo')
+    })
+
+    contributionPointsAwarded = [
+      ...deckAwards,
+      ...roundAwards,
+      linkAward
+    ].filter(row => row.awarded && row.points > 0)
   }
 
   await WeeklyEvent.deleteOne({ _id: customDoc._id })

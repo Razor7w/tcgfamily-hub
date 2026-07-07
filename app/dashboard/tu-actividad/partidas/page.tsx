@@ -39,7 +39,7 @@ function PartidasContent() {
   const { data, isPending, isError, error } = useMySeasonRounds(period)
 
   const handlePeriodChange = (next: SeasonPeriod) => {
-    router.replace(`/dashboard/mi-cuenta/partidas?period=${next}`)
+    router.replace(`/dashboard/tu-actividad/partidas?period=${next}`)
   }
 
   const rounds = data?.rounds ?? []
@@ -56,7 +56,7 @@ function PartidasContent() {
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
           <Button
             component={Link}
-            href="/dashboard/mi-cuenta"
+            href="/dashboard/tu-actividad"
             startIcon={<ArrowBackIcon />}
             size="small"
             sx={t => ({
@@ -252,7 +252,7 @@ function PartidasContent() {
   )
 }
 
-export default function MiCuentaPartidasPage() {
+export default function TuActividadPartidasPage() {
   return (
     <Suspense
       fallback={

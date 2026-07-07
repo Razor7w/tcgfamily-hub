@@ -80,21 +80,33 @@ export type PlayerSeasonRoundsPayload = {
   eventsScanned: number
 }
 
-export const STATS_RETURN_FROM_MI_CUENTA = 'mi-cuenta'
+export const STATS_RETURN_FROM_TU_ACTIVIDAD = 'tu-actividad'
+
+/** @deprecated Usar STATS_RETURN_FROM_TU_ACTIVIDAD */
+export const STATS_RETURN_FROM_MI_CUENTA = STATS_RETURN_FROM_TU_ACTIVIDAD
 
 export function dashboardStatsHref(options?: {
   deckKey?: string
+  fromTuActividad?: boolean
+  /** @deprecated Usar fromTuActividad */
   fromMiCuenta?: boolean
 }): string {
   const params = new URLSearchParams()
   if (options?.deckKey) params.set('deck', options.deckKey)
-  if (options?.fromMiCuenta) params.set('from', STATS_RETURN_FROM_MI_CUENTA)
+  if (options?.fromTuActividad || options?.fromMiCuenta) {
+    params.set('from', STATS_RETURN_FROM_TU_ACTIVIDAD)
+  }
   const q = params.toString()
   return `/dashboard/estadisticas${q ? `?${q}` : ''}`
 }
 
+export function tuActividadPartidasHref(period: SeasonPeriod): string {
+  return `/dashboard/tu-actividad/partidas?period=${period}`
+}
+
+/** @deprecated Usar tuActividadPartidasHref */
 export function miCuentaPartidasHref(period: SeasonPeriod): string {
-  return `/dashboard/mi-cuenta/partidas?period=${period}`
+  return tuActividadPartidasHref(period)
 }
 
 export function parseSeasonPeriod(raw: string | null): SeasonPeriod {

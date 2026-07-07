@@ -34,6 +34,7 @@ import {
 } from '@/lib/match-rounds-with-snapshots'
 import { effectivePublicRoundNum } from '@/lib/dashboard-round-cap'
 import {
+  isAdminReadOnlyCustomTournamentView,
   resolveViewAsParticipant,
   serializeTournamentDecklistRef
 } from '@/lib/weekly-event-view-as'
@@ -140,7 +141,11 @@ export async function GET(
       doc.createdByUserId != null ? String(doc.createdByUserId) : ''
 
     const isAdmin = (session.user as { role?: string }).role === 'admin'
-    const adminReadOnlyView = isAdmin && tournamentOrigin === 'custom'
+    const adminReadOnlyView = isAdminReadOnlyCustomTournamentView(
+      doc,
+      uid,
+      isAdmin
+    )
     const viewAs = resolveViewAsParticipant(doc, uid, isAdmin)
     const tournamentClosed = doc.kind === 'tournament' && doc.state === 'close'
 
@@ -387,7 +392,8 @@ export async function GET(
           kind: doc.kind,
           game: doc.game,
           state: eventState,
-          myPlayedTournament
+          myPlayedTournament,
+          tournamentOrigin
         }),
       canReportDeck:
         !adminReadOnlyView &&
@@ -396,7 +402,8 @@ export async function GET(
           kind: doc.kind,
           game: doc.game,
           state: eventState,
-          myPlayedTournament
+          myPlayedTournament,
+          tournamentOrigin
         }),
       myMatchRounds,
       canDeleteCustomTournament,

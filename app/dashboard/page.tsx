@@ -149,7 +149,10 @@ export default function DashboardPage() {
                   </CardActionArea>
                 </Card>
                 <Card variant="outlined" sx={{ borderRadius: 3 }}>
-                  <CardActionArea component={Link} href="/dashboard/mi-cuenta">
+                  <CardActionArea
+                    component={Link}
+                    href="/dashboard/tu-actividad"
+                  >
                     <CardContent
                       sx={{
                         display: 'flex',

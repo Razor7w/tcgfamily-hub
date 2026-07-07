@@ -16,7 +16,8 @@ export const CONTRIBUTION_POINT_ACTIONS = [
   'mail_received_in_store',
   'mail_withdrawn_in_store',
   'tournament_pre_registered',
-  'tournament_participated'
+  'tournament_participated',
+  'tournament_custom_linked'
 ] as const
 
 export type ContributionPointAction =
@@ -48,5 +49,6 @@ export const CONTRIBUTION_ACTION_LABELS: Record<
   mail_received_in_store: 'Correo recibido en tienda',
   mail_withdrawn_in_store: 'Correo retirado en tienda',
   tournament_pre_registered: 'Preinscripción web en torneo oficial',
-  tournament_participated: 'Torneo oficial cerrado (jugó el evento)'
+  tournament_participated: 'Torneo oficial cerrado (jugó el evento)',
+  tournament_custom_linked: 'Torneo custom vinculado a oficial'
 }

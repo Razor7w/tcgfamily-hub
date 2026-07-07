@@ -6,7 +6,7 @@ import DashboardHomeContent from '@/components/dashboard/DashboardHomeContent'
 import PlayerSeasonSummary from '@/components/dashboard/PlayerSeasonSummary'
 import { alpha } from '@mui/material/styles'
 
-export default function MiCuentaDashboardPage() {
+export default function TuActividadDashboardPage() {
   return (
     <Box
       sx={t => ({
@@ -18,7 +18,7 @@ export default function MiCuentaDashboardPage() {
       <Container maxWidth="lg" sx={{ px: { xs: 2, sm: 3 } }}>
         <PlayerSeasonSummary compact />
 
-        <DashboardHomeContent variant="mi-cuenta" />
+        <DashboardHomeContent variant="tu-actividad" />
       </Container>
     </Box>
   )

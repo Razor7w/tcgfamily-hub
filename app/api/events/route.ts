@@ -147,7 +147,8 @@ function toPublicEvent(
     kind: doc.kind,
     game: doc.game,
     state: eventState,
-    myPlayedTournament
+    myPlayedTournament,
+    tournamentOrigin
   })
 
   const tournamentClosed = doc.kind === 'tournament' && doc.state === 'close'

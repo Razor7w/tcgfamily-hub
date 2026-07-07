@@ -29,7 +29,11 @@ const RULE_GROUPS: {
 }[] = [
   {
     category: 'tournament',
-    actions: ['tournament_pre_registered', 'tournament_participated']
+    actions: [
+      'tournament_pre_registered',
+      'tournament_participated',
+      'tournament_custom_linked'
+    ]
   },
   {
     category: 'tournament_deck',
