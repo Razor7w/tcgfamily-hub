@@ -78,13 +78,13 @@ function PartidasContent() {
               component="span"
               sx={{ display: { xs: 'none', sm: 'inline' } }}
             >
-              Volver a mi cuenta
+              Volver a tu actividad
             </Box>
             <Box
               component="span"
               sx={{ display: { xs: 'inline', sm: 'none' } }}
             >
-              Mi cuenta
+              Tu actividad
             </Box>
           </Button>
         </Stack>

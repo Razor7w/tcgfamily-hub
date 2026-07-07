@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import AccountCircleOutlined from '@mui/icons-material/AccountCircleOutlined'
+import Insights from '@mui/icons-material/Insights'
 import Storefront from '@mui/icons-material/Storefront'
 import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
@@ -158,13 +158,10 @@ export default function DashboardPage() {
                         py: 2.5
                       }}
                     >
-                      <AccountCircleOutlined
-                        color="primary"
-                        sx={{ fontSize: 40 }}
-                      />
+                      <Insights color="primary" sx={{ fontSize: 40 }} />
                       <Box>
                         <Typography variant="subtitle1" fontWeight={700}>
-                          Mi cuenta
+                          Tu actividad
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           Torneos, estadísticas y mazos enlazados a tu perfil.

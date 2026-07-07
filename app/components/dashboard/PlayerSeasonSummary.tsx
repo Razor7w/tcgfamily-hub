@@ -221,36 +221,55 @@ export default function PlayerSeasonSummary({
   return (
     <Stack spacing={{ xs: 2, sm: 3 }} sx={{ mb: { xs: 3, sm: 4 } }}>
       {compact ? (
-        <Stack
-          direction="row"
-          spacing={1}
-          alignItems="center"
-          sx={{ display: { xs: 'flex', sm: 'none' } }}
-        >
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <SeasonPeriodFilter value={period} onChange={setPeriod} compact />
+        <Stack spacing={1.5} sx={{ display: { xs: 'flex', sm: 'none' } }}>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography
+              variant="overline"
+              color="primary.main"
+              sx={{ fontWeight: 800, letterSpacing: '0.08em' }}
+            >
+              Tu actividad
+            </Typography>
+            <Typography
+              variant="h4"
+              component="h1"
+              sx={{
+                fontWeight: 900,
+                letterSpacing: '-0.03em',
+                mt: 0.25,
+                fontSize: '1.35rem',
+                textWrap: 'balance'
+              }}
+            >
+              Resumen de temporada
+            </Typography>
           </Box>
-          <IconButton
-            color="primary"
-            onClick={() => setCustomOpen(true)}
-            aria-label="Reportar torneo"
-            sx={t => ({
-              flexShrink: 0,
-              width: 44,
-              height: 44,
-              bgcolor: 'primary.main',
-              color: 'primary.contrastText',
-              boxShadow: `0 4px 14px ${alpha(t.palette.primary.main, 0.35)}`,
-              '&:hover': {
-                bgcolor: 'primary.dark'
-              },
-              '&:active': {
-                transform: 'translateY(1px) scale(0.98)'
-              }
-            })}
-          >
-            <AddIcon fontSize="small" />
-          </IconButton>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <SeasonPeriodFilter value={period} onChange={setPeriod} compact />
+            </Box>
+            <IconButton
+              color="primary"
+              onClick={() => setCustomOpen(true)}
+              aria-label="Reportar torneo"
+              sx={t => ({
+                flexShrink: 0,
+                width: 44,
+                height: 44,
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                boxShadow: `0 4px 14px ${alpha(t.palette.primary.main, 0.35)}`,
+                '&:hover': {
+                  bgcolor: 'primary.dark'
+                },
+                '&:active': {
+                  transform: 'translateY(1px) scale(0.98)'
+                }
+              })}
+            >
+              <AddIcon fontSize="small" />
+            </IconButton>
+          </Stack>
         </Stack>
       ) : null}
 
