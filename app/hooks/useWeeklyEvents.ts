@@ -476,6 +476,9 @@ export function useSaveMyDeck(eventId: string) {
       queryClient.invalidateQueries({ queryKey: ['my-recent-tournaments'] })
       queryClient.invalidateQueries({ queryKey: ['my-home-tournaments'] })
       queryClient.invalidateQueries({ queryKey: ['me', 'contribution-points'] })
+      queryClient.invalidateQueries({ queryKey: ['my-matchup-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['my-season-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['my-season-rounds'] })
     }
   })
 }
@@ -517,6 +520,8 @@ export function useSaveMyManualPlacement(eventId: string) {
       queryClient.invalidateQueries({ queryKey: ['my-recent-tournaments'] })
       queryClient.invalidateQueries({ queryKey: ['my-home-tournaments'] })
       queryClient.invalidateQueries({ queryKey: ['my-matchup-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['my-season-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['my-season-rounds'] })
     }
   })
 }
@@ -557,6 +562,9 @@ export function useCreateCustomTournament() {
       queryClient.invalidateQueries({ queryKey: ['dashboard-event-detail'] })
       queryClient.invalidateQueries({ queryKey: ['my-recent-tournaments'] })
       queryClient.invalidateQueries({ queryKey: ['my-home-tournaments'] })
+      queryClient.invalidateQueries({ queryKey: ['my-matchup-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['my-season-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['my-season-rounds'] })
     }
   })
 }
@@ -618,6 +626,9 @@ export function useSaveMyMatchRounds(eventId: string) {
       queryClient.invalidateQueries({ queryKey: ['my-recent-tournaments'] })
       queryClient.invalidateQueries({ queryKey: ['my-home-tournaments'] })
       queryClient.invalidateQueries({ queryKey: ['me', 'contribution-points'] })
+      queryClient.invalidateQueries({ queryKey: ['my-matchup-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['my-season-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['my-season-rounds'] })
     }
   })
 }
@@ -1499,5 +1510,133 @@ export function useMyMatchupStats(
     enabled,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000
+  })
+}
+
+export type MySeasonSummaryPayload = {
+  period: 'all' | 'month' | 'quarter' | 'year'
+  origin: TournamentOriginFilter
+  kpis: {
+    totalRounds: number
+    globalWinRate: number | null
+    principalDeck: {
+      myDeckKey: string
+      myDeckSlugs: string[]
+      label: string
+      decklistName: string | null
+      roundsPlayed: number
+    } | null
+    tournamentsWithReport: number
+    trends: {
+      roundsDeltaPct: number | null
+      winRateDeltaPts: number | null
+    } | null
+  }
+  recentRounds: Array<{
+    eventId: string
+    eventTitle: string
+    tournamentOrigin: 'official' | 'custom'
+    roundNum: number
+    outcome: 'win' | 'loss' | 'tie' | 'neutral'
+    myDeckSlugs: string[]
+    myDeckKey: string
+    myDeckLabel: string
+    opponentDisplayName: string | null
+    opponentDeckSlugs: string[]
+    opponentDeckLabel: string
+    gamesSummary: string
+    playedAt: string
+    decklistName: string | null
+  }>
+  topDecks: Array<{
+    myDeckKey: string
+    myDeckSlugs: string[]
+    label: string
+    decklistName: string | null
+    listLabel: string | null
+    wins: number
+    losses: number
+    ties: number
+    roundsPlayed: number
+    winRate: number | null
+    lastPlayedAt: string
+  }>
+  eventsScanned: number
+}
+
+export function useMySeasonSummary(
+  period: 'all' | 'month' | 'quarter' | 'year',
+  origin: TournamentOriginFilter = 'all',
+  options?: { enabled?: boolean }
+) {
+  const enabled = options?.enabled !== false
+  return useQuery<MySeasonSummaryPayload>({
+    queryKey: ['my-season-summary', period, origin],
+    queryFn: async () => {
+      const params = new URLSearchParams({ period, origin })
+      const res = await fetch(
+        `/api/events/my-season-summary?${params.toString()}`,
+        { cache: 'no-store' }
+      )
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string
+      } & Partial<MySeasonSummaryPayload>
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === 'string'
+            ? data.error
+            : 'Error al cargar el resumen'
+        )
+      }
+      if (!data.kpis || !Array.isArray(data.recentRounds) || !Array.isArray(data.topDecks)) {
+        throw new Error('Respuesta inválida')
+      }
+      return data as MySeasonSummaryPayload
+    },
+    enabled,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 15 * 60 * 1000
+  })
+}
+
+export type MySeasonRoundsPayload = {
+  period: 'all' | 'month' | 'quarter' | 'year'
+  origin: TournamentOriginFilter
+  rounds: MySeasonSummaryPayload['recentRounds']
+  eventsScanned: number
+}
+
+export function useMySeasonRounds(
+  period: 'all' | 'month' | 'quarter' | 'year',
+  origin: TournamentOriginFilter = 'all',
+  options?: { enabled?: boolean }
+) {
+  const enabled = options?.enabled !== false
+  return useQuery<MySeasonRoundsPayload>({
+    queryKey: ['my-season-rounds', period, origin],
+    queryFn: async () => {
+      const params = new URLSearchParams({ period, origin })
+      const res = await fetch(
+        `/api/events/my-season-rounds?${params.toString()}`,
+        { cache: 'no-store' }
+      )
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string
+      } & Partial<MySeasonRoundsPayload>
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === 'string'
+            ? data.error
+            : 'Error al cargar las partidas'
+        )
+      }
+      if (!Array.isArray(data.rounds)) {
+        throw new Error('Respuesta inválida')
+      }
+      return data as MySeasonRoundsPayload
+    },
+    enabled,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 15 * 60 * 1000
   })
 }

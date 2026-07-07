@@ -10,6 +10,8 @@ import {
 import {
   parseParticipantMatchRoundsFromLean,
   roundTableOutcome,
+  summarizeRoundResult,
+  trimOpponentDisplayName,
   type ParticipantMatchRoundDTO
 } from '@/lib/participant-match-round'
 import { canExposeParticipantDecksToOthers } from '@/lib/weekly-events'
@@ -73,6 +75,7 @@ type LeanParticipant = {
 
 type LeanEventForMatchups = {
   _id?: unknown
+  title?: string
   startsAt: Date | string
   tournamentOrigin?: string
   state?: string
@@ -495,6 +498,82 @@ export function aggregateOpponentMatchups(
     (a, b) =>
       new Date(b.lastPlayedAt).getTime() - new Date(a.lastPlayedAt).getTime()
   )
+  return rows
+}
+
+export type UserMatchRoundFlatRow = {
+  eventId: string
+  eventTitle: string
+  tournamentOrigin: 'official' | 'custom'
+  roundNum: number
+  outcome: 'win' | 'loss' | 'tie' | 'neutral'
+  myDeckSlugs: string[]
+  myDeckKey: string
+  opponentDisplayName: string | null
+  opponentDeckSlugs: string[]
+  gamesSummary: string
+  playedAt: string
+}
+
+/** Mesas reportadas del usuario, aplanadas y ordenadas por fecha de torneo (más reciente primero). */
+export function flattenUserMatchRounds(
+  events: LeanEventForMatchups[],
+  userIdStr: string,
+  origin: TournamentOriginFilter
+): UserMatchRoundFlatRow[] {
+  const rows: UserMatchRoundFlatRow[] = []
+
+  for (const ev of events) {
+    const tor = ev.tournamentOrigin === 'custom' ? 'custom' : 'official'
+    if (origin === 'official' && tor !== 'official') continue
+    if (origin === 'custom' && tor !== 'custom') continue
+
+    const parts = ev.participants ?? []
+    const mine = parts.find(
+      p => p?.userId != null && String(p.userId) === userIdStr
+    ) as LeanParticipant | undefined
+    if (!mine) continue
+
+    const mySlugs = myDeckSlugsFromParticipant(mine)
+    const myKey = opponentDeckKey(mySlugs)
+    const rounds = enrichedMatchRoundsForParticipant(ev, mine)
+    if (rounds.length === 0) continue
+
+    const startsAtRaw = ev.startsAt
+    const startsAt =
+      startsAtRaw instanceof Date
+        ? startsAtRaw
+        : new Date(
+            typeof startsAtRaw === 'string' ? startsAtRaw : String(startsAtRaw)
+          )
+    const eventId = ev._id != null ? String(ev._id) : ''
+    const eventTitle =
+      typeof ev.title === 'string' && ev.title.trim()
+        ? ev.title.trim()
+        : 'Torneo'
+
+    for (const r of rounds) {
+      rows.push({
+        eventId,
+        eventTitle,
+        tournamentOrigin: tor,
+        roundNum: r.roundNum,
+        outcome: roundTableOutcome(r),
+        myDeckSlugs: slugsDisplayOrderForDeckKey(myKey, mySlugs),
+        myDeckKey: myKey,
+        opponentDisplayName: trimOpponentDisplayName(r.opponentDisplayName),
+        opponentDeckSlugs: r.opponentDeckSlugs ?? [],
+        gamesSummary: summarizeRoundResult(r),
+        playedAt: startsAt.toISOString()
+      })
+    }
+  }
+
+  rows.sort((a, b) => {
+    const t = new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime()
+    if (t !== 0) return t
+    return b.roundNum - a.roundNum
+  })
   return rows
 }
 

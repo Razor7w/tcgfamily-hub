@@ -121,6 +121,13 @@ export const weeklyEventMatchupDetailProjection = {
   'participants.displayName': 1
 } as const
 
+/** Resumen de temporada / últimas mesas del jugador. */
+export const weeklyEventSeasonSummaryProjection = {
+  ...weeklyEventMatchupDetailProjection,
+  title: 1,
+  'participants.tournamentDecklistRef': 1
+} as const
+
 /** Clasificación pública de liga: snapshots mínimos para W/L/T (sin syncedAt/skipped/mesa). */
 export const weeklyEventLeagueAggregateProjection = {
   title: 1,
