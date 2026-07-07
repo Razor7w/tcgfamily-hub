@@ -94,8 +94,11 @@ export default function DashboardUserNav({
           <ListItem disablePadding>
             <ListItemButton
               component={Link}
-              href="/dashboard/mi-cuenta"
-              selected={pathname === '/dashboard/mi-cuenta'}
+              href="/dashboard/tu-actividad"
+              selected={
+                pathname === '/dashboard/tu-actividad' ||
+                pathname.startsWith('/dashboard/tu-actividad/')
+              }
             >
               <ListItemIcon>
                 <Insights />

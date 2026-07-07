@@ -46,7 +46,11 @@ export async function GET() {
     )
 
     const items = docs
-      .map(d => buildMyTournamentWeekItemFromLean(d, userId, userPopId))
+      .map(d =>
+        buildMyTournamentWeekItemFromLean(d, userId, userPopId, {
+          skipPlayedGate: true
+        })
+      )
       .filter((x): x is NonNullable<typeof x> => x != null)
 
     return NextResponse.json(

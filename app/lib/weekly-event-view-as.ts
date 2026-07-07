@@ -26,6 +26,27 @@ type LeanEventMinimal = {
   participants?: LeanParticipant[]
 }
 
+function isOwnCustomTournament(
+  doc: LeanEventMinimal,
+  sessionUserId: string
+): boolean {
+  const createdByStr =
+    doc.createdByUserId != null ? String(doc.createdByUserId) : ''
+  if (createdByStr && createdByStr === sessionUserId) return true
+  const parts = doc.participants ?? []
+  return parts.some(p => p.userId && String(p.userId) === sessionUserId)
+}
+
+/** Admin revisando torneo custom ajeno (no el suyo). */
+export function isAdminReadOnlyCustomTournamentView(
+  doc: LeanEventMinimal,
+  sessionUserId: string,
+  isAdmin: boolean
+): boolean {
+  if (!isAdmin || doc.tournamentOrigin !== 'custom') return false
+  return !isOwnCustomTournament(doc, sessionUserId)
+}
+
 /**
  * Misma lógica que `GET /api/events/[id]`: qué fila de participante representa
  * «mis datos» (jugador o admin viendo torneo custom como el creador).
@@ -45,9 +66,11 @@ export function resolveViewAsParticipant(
   if (!creatorParticipant) {
     creatorParticipant = parts.find(p => p.userId)
   }
-  const tournamentOrigin: 'official' | 'custom' =
-    doc.tournamentOrigin === 'custom' ? 'custom' : 'official'
-  const adminReadOnlyView = isAdmin && tournamentOrigin === 'custom'
+  const adminReadOnlyView = isAdminReadOnlyCustomTournamentView(
+    doc,
+    sessionUserId,
+    isAdmin
+  )
   const viewAs =
     adminReadOnlyView && creatorParticipant ? creatorParticipant : mine
   return viewAs

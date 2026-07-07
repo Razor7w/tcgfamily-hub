@@ -52,6 +52,7 @@ const ContributionPointEntrySchema = new Schema<IContributionPointEntry>(
         'mail_withdrawn_in_store',
         'tournament_pre_registered',
         'tournament_participated',
+        'tournament_custom_linked',
         /** @deprecated ledger histórico */
         'mail_registered'
       ]

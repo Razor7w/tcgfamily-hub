@@ -121,7 +121,9 @@ export default function TorneoSemanaDetallePage() {
               {ev.myRegistration &&
               ev.kind === 'tournament' &&
               ev.game === 'pokemon' &&
-              (ev.state !== 'close' || ev.myPlayedTournament) ? (
+              (ev.state !== 'close' ||
+                ev.myPlayedTournament ||
+                ev.tournamentOrigin === 'custom') ? (
                 <>
                   {ev.tournamentOrigin === 'custom' ? (
                     <CustomTournamentManualPlacementSection
@@ -393,7 +395,7 @@ export default function TorneoSemanaDetallePage() {
                     initialDecklistPick={initialDecklistPick}
                   />
                 </>
-              ) : ev.myRegistration ? (
+              ) : ev.myRegistration && ev.tournamentOrigin !== 'custom' ? (
                 <Alert severity="warning">
                   El reporte de deck y rondas solo aplica a torneos Pokémon TCG.
                   Este evento es de otro tipo o juego.

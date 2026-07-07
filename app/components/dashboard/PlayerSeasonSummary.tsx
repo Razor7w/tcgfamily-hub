@@ -28,7 +28,7 @@ import {
   SEASON_PERIOD_LABELS,
   SEASON_TREND_LABELS,
   dashboardStatsHref,
-  miCuentaPartidasHref,
+  tuActividadPartidasHref,
   type SeasonPeriod
 } from '@/lib/player-season-summary-types'
 
@@ -471,7 +471,7 @@ export default function PlayerSeasonSummary({
                 </Typography>
                 <Button
                   component={Link}
-                  href={miCuentaPartidasHref(period)}
+                  href={tuActividadPartidasHref(period)}
                   size="small"
                   endIcon={
                     <ChevronRightIcon
@@ -595,7 +595,7 @@ export default function PlayerSeasonSummary({
                       component={Link}
                       href={dashboardStatsHref({
                         deckKey: row.myDeckKey,
-                        fromMiCuenta: true
+                        fromTuActividad: true
                       })}
                       sx={t => ({
                         display: 'flex',
@@ -666,7 +666,7 @@ export default function PlayerSeasonSummary({
               >
                 <Button
                   component={Link}
-                  href={dashboardStatsHref({ fromMiCuenta: true })}
+                  href={dashboardStatsHref({ fromTuActividad: true })}
                   variant="outlined"
                   fullWidth
                   endIcon={

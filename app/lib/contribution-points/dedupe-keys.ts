@@ -65,3 +65,12 @@ export function contributionDedupeTournamentParticipated(
 ): string {
   return `${storeId}:${userId}:event:${eventId}:participated`
 }
+
+export function contributionDedupeTournamentCustomLinked(
+  storeId: string,
+  userId: string,
+  customEventId: string,
+  officialEventId: string
+): string {
+  return `${storeId}:${userId}:custom:${customEventId}:linked:${officialEventId}`
+}

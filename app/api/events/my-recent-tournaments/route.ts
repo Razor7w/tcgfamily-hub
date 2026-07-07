@@ -7,6 +7,8 @@ import { aggregateWeeklyEventsForUserReport } from '@/lib/weekly-event-user-repo
 
 const DEFAULT_LIMIT = 2
 const MAX_LIMIT = 5
+/** Margen para compensar torneos filtrados tras el aggregate. */
+const RECENT_FETCH_BUFFER = 24
 
 /**
  * Últimos torneos en los que participa el usuario (por fecha de inicio, más recientes primero).
@@ -51,12 +53,21 @@ export async function GET(request: NextRequest) {
         participants: { $elemMatch: { userId: uid } }
       },
       uid,
-      { sort: { startsAt: -1 }, limit }
+      {
+        sort: { startsAt: -1 },
+        limit: Math.min(RECENT_FETCH_BUFFER, Math.max(limit * 8, limit))
+      }
     )
 
-    const tournaments = docs
-      .map(d => buildMyTournamentWeekItemFromLean(d, userId, userPopId))
-      .filter((x): x is NonNullable<typeof x> => x != null)
+    const tournaments = []
+    for (const d of docs) {
+      const item = buildMyTournamentWeekItemFromLean(d, userId, userPopId, {
+        skipPlayedGate: true
+      })
+      if (!item) continue
+      tournaments.push(item)
+      if (tournaments.length >= limit) break
+    }
 
     return NextResponse.json({ tournaments }, { status: 200 })
   } catch (error) {

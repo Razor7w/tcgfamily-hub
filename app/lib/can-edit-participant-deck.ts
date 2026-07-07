@@ -8,6 +8,7 @@ export function canEditParticipantDeck(input: {
   game: string
   state?: string
   myPlayedTournament?: boolean
+  tournamentOrigin?: 'official' | 'custom'
 }): boolean {
   if (
     !Boolean(input.myRegistration) ||
@@ -15,6 +16,9 @@ export function canEditParticipantDeck(input: {
     input.game !== 'pokemon'
   ) {
     return false
+  }
+  if (input.tournamentOrigin === 'custom') {
+    return true
   }
   if (input.state === 'close') {
     return Boolean(input.myPlayedTournament)

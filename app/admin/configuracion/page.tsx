@@ -90,7 +90,7 @@ const SCOPE_VISIBILITY_GROUP: Record<DashboardModuleScope, string> = {
 
 const SCOPE_ORDER_GROUP: Record<DashboardModuleScope, string> = {
   store: 'Orden en Tiendas (/{slug})',
-  player: 'Orden en Mi cuenta (/dashboard/mi-cuenta)'
+  player: 'Orden en Tu actividad (/dashboard/tu-actividad)'
 }
 
 function moveOrder(
@@ -259,7 +259,8 @@ function DashboardModulesEditor({
         >
           Los ajustes aplican a quienes usen esta tienda como contexto en el
           header: los módulos de tienda viven en Tiendas en la URL raíz (p. ej.
-          /tcgfamily) y los de jugador en Mi cuenta (/dashboard/mi-cuenta).
+          /tcgfamily) y los de jugador en Tu actividad
+          (/dashboard/tu-actividad).
         </Typography>
         <Stack spacing={2.5} sx={{ mb: 3 }}>
           {scopeSequence.map(scope => (
@@ -964,11 +965,11 @@ export default function AdminConfiguracionPage() {
                 </Link>
                 , los de jugador en{' '}
                 <Link
-                  href="/dashboard/mi-cuenta"
+                  href="/dashboard/tu-actividad"
                   component={NextLink}
                   fontWeight={600}
                 >
-                  Mi cuenta
+                  Tu actividad
                 </Link>
                 , el límite diario de registro de correos por jugador en esa
                 tienda y los avisos por correo (Resend) cuando un envío queda

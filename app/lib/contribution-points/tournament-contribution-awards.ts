@@ -3,6 +3,7 @@ import 'server-only'
 import mongoose from 'mongoose'
 import { awardContributionPoints } from '@/lib/contribution-points/award-contribution-points'
 import {
+  contributionDedupeTournamentCustomLinked,
   contributionDedupeTournamentParticipated,
   contributionDedupeTournamentPreRegistered
 } from '@/lib/contribution-points/dedupe-keys'
@@ -60,7 +61,10 @@ async function awardTournamentAction(input: {
   userId: mongoose.Types.ObjectId | string
   eventId: mongoose.Types.ObjectId | string
   eventTitle: string
-  action: 'tournament_pre_registered' | 'tournament_participated'
+  action:
+    | 'tournament_pre_registered'
+    | 'tournament_participated'
+    | 'tournament_custom_linked'
   dedupeKey: string
 }): Promise<ContributionPointsAwardedItem> {
   try {
@@ -144,6 +148,34 @@ export async function applyTournamentParticipatedContributionAward(input: {
       )
     })
   ]
+}
+
+/** Vincular torneo custom a uno oficial finalizado (una vez por par custom→oficial). */
+export async function applyTournamentCustomLinkedContributionAward(input: {
+  storeId: mongoose.Types.ObjectId | string
+  userId: mongoose.Types.ObjectId | string
+  customEventId: mongoose.Types.ObjectId | string
+  officialEventId: mongoose.Types.ObjectId | string
+  officialEventTitle: string
+}): Promise<ContributionPointsAwardedItem> {
+  const storeIdStr = String(input.storeId)
+  const userIdStr = String(input.userId)
+  const customEventIdStr = String(input.customEventId)
+  const officialEventIdStr = String(input.officialEventId)
+
+  return awardTournamentAction({
+    storeId: storeIdStr,
+    userId: userIdStr,
+    eventId: officialEventIdStr,
+    eventTitle: input.officialEventTitle,
+    action: 'tournament_custom_linked',
+    dedupeKey: contributionDedupeTournamentCustomLinked(
+      storeIdStr,
+      userIdStr,
+      customEventIdStr,
+      officialEventIdStr
+    )
+  })
 }
 
 /** Al cerrar torneo oficial: puntos solo a quienes jugaron (TDF, snapshots o récord W/L/T). */

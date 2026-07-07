@@ -14,7 +14,7 @@ export const DASHBOARD_PLAYER_TOUR_STEPS: Step[] = [
     target: tourSelector(PRODUCT_TOUR_TARGETS.dashboardMainNav),
     title: 'Navegación',
     content:
-      'Inicio: atajos globales. Tiendas: vista de la tienda activa (eventos, correo en tienda). Mi cuenta: tus torneos, estadísticas y mazos.',
+      'Inicio: atajos globales. Tiendas: vista de la tienda activa (eventos, correo en tienda). Tu actividad: tus torneos, estadísticas y mazos.',
     placement: 'right',
     skipBeacon: true
   },
@@ -22,7 +22,7 @@ export const DASHBOARD_PLAYER_TOUR_STEPS: Step[] = [
     target: tourSelector(PRODUCT_TOUR_TARGETS.dashboardMobileNav),
     title: 'Navegación',
     content:
-      'En el celular usa esta barra: Inicio, Tiendas, Tus correos (centro), Mazos y Mi cuenta. Tiendas muestra la tienda activa del selector superior.',
+      'En el celular usa esta barra: Inicio, Tiendas, Tus correos (centro), Mazos y Tu actividad. Tiendas muestra la tienda activa del selector superior.',
     placement: 'top',
     skipBeacon: true
   },

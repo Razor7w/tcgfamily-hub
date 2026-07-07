@@ -73,6 +73,14 @@ type LeanWeeklyForItem = {
   participants?: LeanParticipant[]
 }
 
+type BuildMyTournamentWeekItemOptions = {
+  /**
+   * Listados del usuario (últimos torneos, historial): incluir inscripción
+   * aunque TDF no confirme POP o aún no haya bitácora.
+   */
+  skipPlayedGate?: boolean
+}
+
 /**
  * Construye el ítem de reporte para el usuario a partir de un documento WeeklyEvent lean.
  * Devuelve null si el usuario no participa en el evento.
@@ -80,7 +88,8 @@ type LeanWeeklyForItem = {
 export function buildMyTournamentWeekItemFromLean(
   d: unknown,
   userId: string,
-  userPopId: string
+  userPopId: string,
+  options?: BuildMyTournamentWeekItemOptions
 ): MyTournamentWeekItem | null {
   const doc = d as LeanWeeklyForItem
   const participants = (doc.participants ?? []) as LeanParticipant[]
@@ -110,7 +119,7 @@ export function buildMyTournamentWeekItemFromLean(
     myMatchRecord = matchRecordFromRounds(rounds)
   }
 
-  if (stateRaw === 'close') {
+  if (stateRaw === 'close' && !options?.skipPlayedGate) {
     const played =
       tournamentOrigin === 'custom'
         ? participantPlayedTournament(
