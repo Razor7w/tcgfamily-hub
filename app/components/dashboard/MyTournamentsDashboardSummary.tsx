@@ -63,7 +63,13 @@ function hasReportedDetails(t: MyTournamentWeekItem): boolean {
   return Boolean(wlt || place || deck)
 }
 
-export default function MyTournamentsDashboardSummary() {
+type MyTournamentsDashboardSummaryProps = {
+  onCreateCustom?: () => void
+}
+
+export default function MyTournamentsDashboardSummary({
+  onCreateCustom
+}: MyTournamentsDashboardSummaryProps = {}) {
   const { data, isPending, isError, error, refetch } = useMyRecentTournaments(2)
   const list = data?.tournaments ?? []
 
@@ -159,6 +165,16 @@ export default function MyTournamentsDashboardSummary() {
               >
                 Ver eventos
               </Button>
+              {onCreateCustom ? (
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={onCreateCustom}
+                  sx={{ textTransform: 'none', fontWeight: 600 }}
+                >
+                  Registrar torneo
+                </Button>
+              ) : null}
             </Stack>
           </Stack>
         ) : (
