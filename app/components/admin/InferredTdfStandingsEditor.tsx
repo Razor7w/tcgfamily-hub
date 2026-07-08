@@ -23,6 +23,8 @@ import {
   categoryLabelFromIndex,
   isUnifiedStandingsPayload,
   reorderStandingRows,
+  UNIFIED_STANDINGS_CATEGORY_INDEX,
+  unifiedStandingsHostCategoryIndex,
   unifyStandingsCategories,
   type InferredStandingRow
 } from '@/lib/inferred-tdf-standings'
@@ -140,25 +142,30 @@ export default function InferredTdfStandingsEditor({
     if (!eventId) return
     const cat = standings.find(c => c.categoryIndex === categoryIndex)
     if (!cat || cat.finished.length === 0) return
+    const unifiedHost = unifiedStandingsHostCategoryIndex(standings)
     await uploadStandingsPod.mutateAsync({
       eventId,
       categoryIndex,
       podType: 'finished',
       rows: cat.finished.map(r => ({ popId: r.popId, place: r.place })),
-      clearOtherAgeCategories: isUnifiedView && categoryIndex === 1
+      clearOtherAgeCategories:
+        unifiedHost != null && categoryIndex === unifiedHost
     })
   }
 
   const handleSaveAll = async () => {
     if (!eventId) return
     if (isUnifiedView) {
-      const senior = standings.find(c => c.categoryIndex === 1)
-      if (!senior || senior.finished.length === 0) return
+      const hostCi =
+        unifiedStandingsHostCategoryIndex(standings) ??
+        UNIFIED_STANDINGS_CATEGORY_INDEX
+      const host = standings.find(c => c.categoryIndex === hostCi)
+      if (!host || host.finished.length === 0) return
       await uploadStandingsPod.mutateAsync({
         eventId,
-        categoryIndex: 1,
+        categoryIndex: hostCi,
         podType: 'finished',
-        rows: senior.finished.map(r => ({ popId: r.popId, place: r.place })),
+        rows: host.finished.map(r => ({ popId: r.popId, place: r.place })),
         clearOtherAgeCategories: true
       })
       return
@@ -215,8 +222,8 @@ export default function InferredTdfStandingsEditor({
       ) : null}
       {isUnifiedView ? (
         <Typography variant="caption" color="text.secondary">
-          Clasificación unificada en Sénior (todas las edades en una sola
-          tabla). Al guardar Sénior se vacían Júnior y Máster en el evento para
+          Clasificación unificada en Máster (todas las edades en una sola
+          tabla). Al guardar Máster se vacían Júnior y Sénior en el evento para
           no dejar puestos antiguos del TDF.
         </Typography>
       ) : null}
@@ -372,7 +379,7 @@ export default function InferredTdfStandingsEditor({
             >
               Clasificación guardada en el evento.
               {isUnifiedView
-                ? ' Júnior y Máster quedaron sin puestos (tabla unificada).'
+                ? ' Júnior y Sénior quedaron sin puestos (tabla unificada).'
                 : ''}
             </Alert>
           ) : null}

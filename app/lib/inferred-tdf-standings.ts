@@ -181,24 +181,47 @@ export function buildInferredStandingsByCategory(
   return out
 }
 
-/** Índices Júnior y Máster (vacíos cuando la clasificación está unificada en Sénior). */
-export const NON_SENIOR_STANDING_CATEGORY_INDICES = [0, 2] as const
+/** Categoría destino al unificar (Máster). */
+export const UNIFIED_STANDINGS_CATEGORY_INDEX = 2 as const
+
+/** Júnior y Sénior (vacíos cuando la clasificación está unificada en Máster). */
+export const NON_UNIFIED_STANDING_CATEGORY_INDICES = [0, 1] as const
+
+/** @deprecated Usar NON_UNIFIED_STANDING_CATEGORY_INDICES */
+export const NON_SENIOR_STANDING_CATEGORY_INDICES =
+  NON_UNIFIED_STANDING_CATEGORY_INDICES
 
 /**
- * Clasificación unificada: todos los puestos en Sénior (1), sin finished en 0 ni 2.
+ * Host de tabla unificada: Máster (2), o Sénior (1) en eventos legacy.
+ * null si no está unificada.
+ */
+export function unifiedStandingsHostCategoryIndex(
+  standings: TournamentStandingsCategoryPayload[]
+): 1 | 2 | null {
+  for (const host of [2, 1] as const) {
+    const hostCat = standings.find(c => c.categoryIndex === host)
+    const otherFinished = standings
+      .filter(c => c.categoryIndex !== host)
+      .reduce((n, c) => n + c.finished.length, 0)
+    if (hostCat && hostCat.finished.length > 0 && otherFinished === 0) {
+      return host
+    }
+  }
+  return null
+}
+
+/**
+ * Clasificación unificada: todos los puestos en Máster (2) — o Sénior (1) legacy —
+ * sin finished en las otras categorías de edad.
  */
 export function isUnifiedStandingsPayload(
   standings: TournamentStandingsCategoryPayload[]
 ): boolean {
-  const senior = standings.find(c => c.categoryIndex === 1)
-  const otherFinished = standings
-    .filter(c => c.categoryIndex !== 1)
-    .reduce((n, c) => n + c.finished.length, 0)
-  return Boolean(senior && senior.finished.length > 0 && otherFinished === 0)
+  return unifiedStandingsHostCategoryIndex(standings) != null
 }
 
 /**
- * Una sola tabla de clasificación (categoría Sénior / índice 1) con todos los jugadores.
+ * Una sola tabla de clasificación (categoría Máster / índice 2) con todos los jugadores.
  */
 export function buildUnifiedInferredStandings(
   players: ParsedPlayer[],
@@ -216,13 +239,13 @@ export function buildUnifiedInferredStandings(
   )
   return [
     { categoryIndex: 0, finished: [], dnf: [] },
-    { categoryIndex: 1, finished: assignPlaces(sorted), dnf: [] },
-    { categoryIndex: 2, finished: [], dnf: [] }
+    { categoryIndex: 1, finished: [], dnf: [] },
+    { categoryIndex: 2, finished: assignPlaces(sorted), dnf: [] }
   ]
 }
 
 /**
- * Reordena y fusiona las categorías actuales en una sola (índice 1), conservando DNF.
+ * Reordena y fusiona las categorías actuales en una sola (Máster / índice 2), conservando DNF.
  */
 export function unifyStandingsCategories(
   standings: TournamentStandingsCategoryPayload[],
@@ -252,12 +275,12 @@ export function unifyStandingsCategories(
   )
   return [
     { categoryIndex: 0, finished: [], dnf: [] },
+    { categoryIndex: 1, finished: [], dnf: [] },
     {
-      categoryIndex: 1,
+      categoryIndex: UNIFIED_STANDINGS_CATEGORY_INDEX,
       finished: assignPlaces(sorted),
       dnf: [...dnfPops].map(popId => ({ popId }))
-    },
-    { categoryIndex: 2, finished: [], dnf: [] }
+    }
   ]
 }
 

@@ -1075,8 +1075,8 @@ export default function TournamentTdfLoader({
           {editedInferredStandings != null ? (
             <Typography variant="caption" color="primary" fontWeight={600}>
               Hay una clasificación ajustada abajo; «Subir torneo completo» la
-              usará en lugar de los puestos del XML. «Guardar Sénior» vacía
-              Júnior y Máster en el evento si la tabla está unificada.
+              usará en lugar de los puestos del XML. «Guardar Máster» vacía
+              Júnior y Sénior en el evento si la tabla está unificada.
             </Typography>
           ) : null}
           <Stack spacing={2}>

@@ -16,7 +16,8 @@ function trimPop(v: unknown): string {
 
 /**
  * POST — Guardar solo la tabla finished o DNF de una categoría (0 Júnior, 1 Sénior, 2 Máster).
- * Con `clearOtherAgeCategories: true` al guardar Sénior finished, vacía finished y DNF en 0 y 2.
+ * Con `clearOtherAgeCategories: true` al guardar finished unificado (Máster o Sénior legacy),
+ * vacía finished y DNF en las otras categorías de edad.
  */
 export async function POST(
   request: NextRequest,
@@ -128,10 +129,11 @@ export async function POST(
     const clearedCategoryIndices: number[] = []
     if (
       clearOtherAgeCategories &&
-      categoryIndex === 1 &&
+      (categoryIndex === 1 || categoryIndex === 2) &&
       podType === 'finished'
     ) {
-      for (const otherCi of [0, 2] as const) {
+      for (const otherCi of [0, 1, 2] as const) {
+        if (otherCi === categoryIndex) continue
         let other = list.find(e => e.categoryIndex === otherCi) as
           | Entry
           | undefined
