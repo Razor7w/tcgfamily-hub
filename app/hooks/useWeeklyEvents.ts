@@ -1114,7 +1114,7 @@ export function useAdminUploadStandingsPod() {
       categoryIndex: 0 | 1 | 2
       podType: 'finished' | 'dnf'
       rows: { popId: string; place?: number }[]
-      /** Tras guardar Sénior unificado, vacía finished y DNF en Júnior (0) y Máster (2). */
+      /** Tras guardar Máster unificado (o Sénior legacy), vacía finished y DNF en las otras categorías. */
       clearOtherAgeCategories?: boolean
     }) => {
       const res = await fetch(

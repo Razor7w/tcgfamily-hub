@@ -23,7 +23,7 @@ const STEPS = [
   {
     n: 4,
     title: 'Guardar',
-    detail: 'Guardar Sénior o subir torneo completo para cerrar.'
+    detail: 'Guardar Máster o subir torneo completo para cerrar.'
   }
 ] as const
 

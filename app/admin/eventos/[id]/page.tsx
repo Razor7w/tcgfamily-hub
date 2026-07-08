@@ -78,7 +78,7 @@ function eventNextStepHint(ev: AdminWeeklyEvent): string {
     return 'Torneo cerrado. Revisa la clasificación en la pestaña TDF si hace falta corregir puestos.'
   }
   if (rounds > 0) {
-    return `Hay ${rounds} ronda(s) publicada(s). Al terminar, carga el TDF, unifica categorías y guarda Sénior.`
+    return `Hay ${rounds} ronda(s) publicada(s). Al terminar, carga el TDF, unifica categorías y guarda Máster.`
   }
   if ((ev.participants?.length ?? 0) === 0) {
     return 'Primero revisa preinscritos o carga el TDF para añadir jugadores.'
