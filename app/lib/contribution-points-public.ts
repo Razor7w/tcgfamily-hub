@@ -60,4 +60,12 @@ export type ContributionLeaderboardRow = {
   totalPoints: number
   tierLabel: string
   hideBadge: boolean
+  playPokemonRank?: {
+    rank: number
+    championshipPoints: number
+    playPoints?: number
+    divisionLabel?: string
+    seasonLabel?: string
+    linkedDisplayName?: string
+  } | null
 }

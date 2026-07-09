@@ -15,6 +15,7 @@ import {
   validatePopidOptional
 } from '@/lib/rut-chile'
 import { getRutFieldError } from '@/lib/rut-input'
+import { linkAwaitingTeamInvitationsForUser } from '@/lib/teams/invite-by-rut'
 import { createSlidingWindowLimiter } from '@/lib/auth-rate-limit'
 import { resolveValidSignupStoreObjectId } from '@/lib/signup-default-store.server'
 
@@ -150,10 +151,21 @@ export async function POST(request: NextRequest) {
       existing.popid = popidForStorage(popidStr)
       existing.defaultStoreId = storeResolved.objectId
       await existing.save()
+      try {
+        await linkAwaitingTeamInvitationsForUser(
+          String(existing._id),
+          rutStored
+        )
+      } catch (e) {
+        console.error(
+          'linkAwaitingTeamInvitationsForUser (register existing):',
+          e
+        )
+      }
       return NextResponse.json({ ok: true }, { status: 200 })
     }
 
-    await User.create({
+    const created = await User.create({
       name: nameStr.trim(),
       email,
       passwordHash,
@@ -166,6 +178,12 @@ export async function POST(request: NextRequest) {
       accounts: [],
       sessions: []
     })
+
+    try {
+      await linkAwaitingTeamInvitationsForUser(String(created._id), rutStored)
+    } catch (e) {
+      console.error('linkAwaitingTeamInvitationsForUser (register):', e)
+    }
 
     return NextResponse.json({ ok: true }, { status: 201 })
   } catch (e) {

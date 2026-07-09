@@ -2,6 +2,7 @@
 
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
+import ChampionshipPointsCard from '@/components/dashboard/ChampionshipPointsCard'
 import DashboardHomeContent from '@/components/dashboard/DashboardHomeContent'
 import PlayerSeasonSummary from '@/components/dashboard/PlayerSeasonSummary'
 import { alpha } from '@mui/material/styles'
@@ -17,6 +18,10 @@ export default function TuActividadDashboardPage() {
     >
       <Container maxWidth="lg" sx={{ px: { xs: 2, sm: 3 } }}>
         <PlayerSeasonSummary compact />
+
+        <Box sx={{ mb: { xs: 3, sm: 4 } }}>
+          <ChampionshipPointsCard />
+        </Box>
 
         <DashboardHomeContent variant="tu-actividad" />
       </Container>

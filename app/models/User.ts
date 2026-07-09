@@ -1,4 +1,8 @@
 import mongoose, { Schema, Document, Types } from 'mongoose'
+import {
+  PLAY_POKEMON_LEADERBOARD_DIVISIONS,
+  type PlayPokemonLeaderboardDivision
+} from '@/lib/play-pokemon-leaderboard/constants'
 
 export type UserRole = 'user' | 'admin'
 
@@ -38,8 +42,40 @@ export interface IUser extends Document {
   storeCredits: IUserStoreCreditSlice[]
   /** Ocultar insignia de contribución en meta de torneo y rankings. */
   contributionHideBadge?: boolean
+  /** CP ingresados manualmente en Mi perfil (Play! Pokémon). */
+  playPokemonChampionshipPoints?: number | null
+  /** Clasificación ingresada manualmente en Mi perfil. */
+  playPokemonChampionshipRank?: number | null
+  /** Play! Points ingresados manualmente en Mi perfil. */
+  playPokemonPlayPoints?: number | null
+  /** División Play! Pokémon (masters / seniors / juniors). */
+  playPokemonDivision?: PlayPokemonLeaderboardDivision | null
+  /** Display name del leaderboard al vincular fila. */
+  playPokemonLinkedDisplayName?: string | null
+  /** Última actualización del leaderboard al vincular fila. */
+  playPokemonLeaderboardUpdatedAt?: Date | null
+  /** Periodo SPAR activo al vincular (temporada). */
+  playPokemonSeasonPeriod?: string | null
+  /** Etiqueta legible de la temporada vinculada (p. ej. «2026»). */
+  playPokemonSeasonLabel?: string | null
+  /** Mostrar # de ranking junto al nombre en la plataforma. */
+  playPokemonRankPublic?: boolean
+  /** Historial de vinculaciones anteriores por temporada. */
+  playPokemonHistory?: IUserPlayPokemonHistoryEntry[]
   accounts: mongoose.Types.ObjectId[]
   sessions: mongoose.Types.ObjectId[]
+}
+
+export interface IUserPlayPokemonHistoryEntry {
+  period: string
+  seasonLabel: string
+  division: PlayPokemonLeaderboardDivision
+  rank: number
+  championshipPoints: number
+  playPoints: number
+  linkedDisplayName: string
+  leaderboardUpdatedAt?: Date
+  archivedAt: Date
 }
 
 const UserSchema = new Schema<IUser>(
@@ -124,6 +160,84 @@ const UserSchema = new Schema<IUser>(
     contributionHideBadge: {
       type: Boolean,
       default: false
+    },
+    playPokemonChampionshipPoints: {
+      type: Number,
+      default: null,
+      min: 0,
+      max: 99999
+    },
+    playPokemonChampionshipRank: {
+      type: Number,
+      default: null,
+      min: 1,
+      max: 999999
+    },
+    playPokemonPlayPoints: {
+      type: Number,
+      default: null,
+      min: 0,
+      max: 99999
+    },
+    playPokemonDivision: {
+      type: String,
+      enum: PLAY_POKEMON_LEADERBOARD_DIVISIONS,
+      default: undefined
+    },
+    playPokemonLinkedDisplayName: {
+      type: String,
+      default: undefined,
+      maxlength: 120
+    },
+    playPokemonLeaderboardUpdatedAt: {
+      type: Date,
+      default: undefined
+    },
+    playPokemonSeasonPeriod: {
+      type: String,
+      default: undefined,
+      maxlength: 64
+    },
+    playPokemonSeasonLabel: {
+      type: String,
+      default: undefined,
+      maxlength: 32
+    },
+    playPokemonRankPublic: {
+      type: Boolean,
+      default: false
+    },
+    playPokemonHistory: {
+      type: [
+        new Schema<IUserPlayPokemonHistoryEntry>(
+          {
+            period: { type: String, required: true, maxlength: 64 },
+            seasonLabel: { type: String, required: true, maxlength: 32 },
+            division: {
+              type: String,
+              enum: PLAY_POKEMON_LEADERBOARD_DIVISIONS,
+              required: true
+            },
+            rank: { type: Number, required: true, min: 1, max: 999999 },
+            championshipPoints: {
+              type: Number,
+              required: true,
+              min: 0,
+              max: 99999
+            },
+            playPoints: { type: Number, required: true, min: 0, max: 99999 },
+            linkedDisplayName: {
+              type: String,
+              required: true,
+              maxlength: 120
+            },
+            leaderboardUpdatedAt: { type: Date, required: false },
+            archivedAt: { type: Date, required: true }
+          },
+          { _id: false }
+        )
+      ],
+      default: []
     },
     accounts: [{ type: Schema.Types.ObjectId, ref: 'Account' }],
     sessions: [{ type: Schema.Types.ObjectId, ref: 'Session' }]

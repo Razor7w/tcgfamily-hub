@@ -29,7 +29,7 @@ type ActionItem = {
   onClick: () => void
 }
 
-function ActionTile({
+export function DashboardActionTile({
   icon,
   title,
   description,
@@ -333,7 +333,7 @@ export default function DashboardQuickActions({
                 })
             }}
           >
-            <ActionTile
+            <DashboardActionTile
               icon={item.icon}
               title={item.title}
               titleAttr={item.description}

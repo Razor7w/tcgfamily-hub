@@ -27,6 +27,7 @@ import Typography from '@mui/material/Typography'
 import { alpha, type SxProps, type Theme } from '@mui/material/styles'
 import { ExpandMore, InfoOutlined, WorkspacePremium } from '@mui/icons-material'
 import ContributionTierBadge from '@/components/contribution/ContributionTierBadge'
+import PlayPokemonRankChip from '@/components/play-pokemon/PlayPokemonRankChip'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
 import {
   useContributionPreferences,
@@ -198,7 +199,7 @@ function ContributionLeaderboardPanel({
             direction="row"
             spacing={1}
             alignItems="center"
-            sx={{ minWidth: 0, flex: 1 }}
+            sx={{ minWidth: 0, flex: 1, flexWrap: 'wrap', rowGap: 0.5 }}
           >
             <Typography
               variant="body2"
@@ -218,6 +219,9 @@ function ContributionLeaderboardPanel({
             >
               {row.displayName}
             </Typography>
+            {row.playPokemonRank ? (
+              <PlayPokemonRankChip data={row.playPokemonRank} />
+            ) : null}
             {!row.hideBadge ? (
               <ContributionTierBadge label={row.tierLabel} />
             ) : null}

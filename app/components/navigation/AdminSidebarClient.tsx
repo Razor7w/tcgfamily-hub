@@ -70,6 +70,12 @@ export default function AdminSidebarClient({ isOwner }: { isOwner: boolean }) {
               </ListItemIcon>
               <ListItemText primary="Tiendas" />
             </ListItemButton>
+            <ListItemButton sx={{ pl: 4 }} href="/admin/equipos">
+              <ListItemIcon>
+                <SportsEsports />
+              </ListItemIcon>
+              <ListItemText primary="Equipos" />
+            </ListItemButton>
             <ListItemButton sx={{ pl: 4 }} href="/admin/sugerencias">
               <ListItemIcon>
                 <LightbulbOutlined />

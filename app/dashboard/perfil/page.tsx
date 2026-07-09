@@ -38,8 +38,11 @@ import CheckCircle from '@mui/icons-material/CheckCircle'
 import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked'
 import R2UppyProfileImageUploader from '@/components/r2/R2UppyProfileImageUploader'
 import ButtonBarCode from '@/components/molecule/ButtonBarCode'
+import ChampionshipPointsCard from '@/components/dashboard/ChampionshipPointsCard'
+import PlayPokemonRankChip from '@/components/play-pokemon/PlayPokemonRankChip'
 import { meProfileQueryKey, useMe, type MeProfile } from '@/hooks/useMe'
 import { useMeStores } from '@/hooks/useMeStores'
+import { useMyChampionshipPoints } from '@/hooks/useMyChampionshipPoints'
 
 type StoreOption = { id: string; name: string }
 
@@ -58,6 +61,13 @@ export default function PerfilPage() {
     isError: meError,
     error: meQueryError
   } = useMe()
+  const { data: championshipPoints } = useMyChampionshipPoints()
+
+  const showPublicRankChip =
+    championshipPoints?.found === true &&
+    championshipPoints.rankPublic === true &&
+    typeof championshipPoints.rank === 'number' &&
+    typeof championshipPoints.primaryPointTotal === 'number'
 
   const [name, setName] = useState('')
   const [popid, setPopid] = useState('')
@@ -420,9 +430,41 @@ export default function PerfilPage() {
                     sx={{ width: 44, height: 44 }}
                   />
                   <Box sx={{ display: 'grid', gap: 0.25 }}>
-                    <Typography sx={{ fontWeight: 900, lineHeight: 1.1 }}>
-                      {me.name}
-                    </Typography>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.75,
+                        flexWrap: 'wrap'
+                      }}
+                    >
+                      <Typography sx={{ fontWeight: 900, lineHeight: 1.1 }}>
+                        {me.name}
+                      </Typography>
+                      {showPublicRankChip ? (
+                        <PlayPokemonRankChip
+                          data={{
+                            rank: championshipPoints.rank!,
+                            championshipPoints:
+                              championshipPoints.primaryPointTotal!,
+                            playPoints: championshipPoints.secondaryPointTotal,
+                            divisionLabel: championshipPoints.division
+                              ? championshipPoints.division === 'masters'
+                                ? 'Master'
+                                : championshipPoints.division === 'seniors'
+                                  ? 'Senior'
+                                  : championshipPoints.division === 'juniors'
+                                    ? 'Junior'
+                                    : championshipPoints.division
+                              : undefined,
+                            seasonLabel: championshipPoints.seasonLabel,
+                            linkedDisplayName:
+                              championshipPoints.displayName ??
+                              championshipPoints.searchedAs
+                          }}
+                        />
+                      ) : null}
+                    </Box>
                     <Typography variant="body2" color="text.secondary">
                       Se verá en el header y tu perfil.
                     </Typography>
@@ -759,6 +801,10 @@ export default function PerfilPage() {
             </Box>
           )}
         </Paper>
+      </Box>
+
+      <Box sx={{ mt: { xs: 2, md: 2.5 } }}>
+        <ChampionshipPointsCard variant="profile" />
       </Box>
 
       <Dialog

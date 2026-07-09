@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
+import type { PlayPokemonLeaderboardDivision } from '@/lib/play-pokemon-leaderboard/constants'
 
 export type MeProfile = {
   id: string
@@ -15,6 +16,10 @@ export type MeProfile = {
   hasPassword: boolean
   mustChangePassword: boolean
   defaultStoreId: string | null
+  playPokemonChampionshipPoints: number | null
+  playPokemonChampionshipRank: number | null
+  playPokemonPlayPoints: number | null
+  playPokemonDivision: PlayPokemonLeaderboardDivision | null
 }
 
 /** Clave por usuario: evita servir caché de otra sesión. */

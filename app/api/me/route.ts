@@ -65,6 +65,10 @@ export async function GET() {
       passwordHash?: string
       mustChangePassword?: boolean
       defaultStoreId?: mongoose.Types.ObjectId | null
+      playPokemonChampionshipPoints?: number | null
+      playPokemonChampionshipRank?: number | null
+      playPokemonPlayPoints?: number | null
+      playPokemonDivision?: 'masters' | 'seniors' | 'juniors' | null
     }
 
     const defSid = u.defaultStoreId != null ? u.defaultStoreId.toString() : null
@@ -81,7 +85,20 @@ export async function GET() {
       role: u.role ?? 'user',
       hasPassword: Boolean(u.passwordHash),
       mustChangePassword: Boolean(u.mustChangePassword),
-      defaultStoreId: defSid
+      defaultStoreId: defSid,
+      playPokemonChampionshipPoints:
+        typeof u.playPokemonChampionshipPoints === 'number'
+          ? u.playPokemonChampionshipPoints
+          : null,
+      playPokemonChampionshipRank:
+        typeof u.playPokemonChampionshipRank === 'number'
+          ? u.playPokemonChampionshipRank
+          : null,
+      playPokemonPlayPoints:
+        typeof u.playPokemonPlayPoints === 'number'
+          ? u.playPokemonPlayPoints
+          : null,
+      playPokemonDivision: u.playPokemonDivision ?? null
     })
   } catch (e) {
     console.error('GET /api/me:', e)
@@ -347,7 +364,20 @@ export async function PATCH(request: NextRequest) {
       mustChangePassword: Boolean(user.mustChangePassword),
       image: user.image ?? '',
       imageKey: typeof user.imageKey === 'string' ? user.imageKey : '',
-      defaultStoreId: defOut
+      defaultStoreId: defOut,
+      playPokemonChampionshipPoints:
+        typeof user.playPokemonChampionshipPoints === 'number'
+          ? user.playPokemonChampionshipPoints
+          : null,
+      playPokemonChampionshipRank:
+        typeof user.playPokemonChampionshipRank === 'number'
+          ? user.playPokemonChampionshipRank
+          : null,
+      playPokemonPlayPoints:
+        typeof user.playPokemonPlayPoints === 'number'
+          ? user.playPokemonPlayPoints
+          : null,
+      playPokemonDivision: user.playPokemonDivision ?? null
     })
   } catch (e) {
     console.error('PATCH /api/me:', e)

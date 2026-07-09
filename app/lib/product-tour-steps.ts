@@ -27,10 +27,10 @@ export const DASHBOARD_PLAYER_TOUR_STEPS: Step[] = [
     skipBeacon: true
   },
   {
-    target: tourSelector(PRODUCT_TOUR_TARGETS.dashboardQuickActions),
-    title: 'Accesos rápidos',
+    target: tourSelector(PRODUCT_TOUR_TARGETS.dashboardRegisterMail),
+    title: 'Registrar correo',
     content:
-      'Registrar correo o abrir el generador de lista PDF. Siempre con la tienda del encabezado.',
+      'Añade un envío a la tienda activa del encabezado sin salir del inicio.',
     placement: 'bottom',
     skipBeacon: true
   },
@@ -43,11 +43,11 @@ export const DASHBOARD_PLAYER_TOUR_STEPS: Step[] = [
     skipBeacon: true
   },
   {
-    target: tourSelector(PRODUCT_TOUR_TARGETS.dashboardSuggestionRail),
-    title: '¿Alguna idea?',
+    target: tourSelector(PRODUCT_TOUR_TARGETS.dashboardDiscoverCard),
+    title: 'Equipos y Championship Points',
     content:
-      'Puedes enviar una sugerencia para mejorar TCG Nexo (un mensaje por usuario).',
-    placement: 'left',
+      'Crea tu equipo para jugar en grupo o vincula tus CP desde Ranking Chile. Todo queda guardado en tu perfil.',
+    placement: 'bottom',
     skipBeacon: true
   }
 ]
@@ -81,7 +81,7 @@ export const STORE_HUB_TOUR_STEPS: Step[] = [
 
 export type DashboardTourStepFilter = {
   showStoreSwitcher: boolean
-  showQuickActions: boolean
+  showRegisterMail: boolean
   showDesktopNav: boolean
   showMobileNav: boolean
 }
@@ -111,8 +111,8 @@ export function filterDashboardPlayerTourSteps(
       return false
     }
     if (
-      target === tourSelector(PRODUCT_TOUR_TARGETS.dashboardQuickActions) &&
-      !filter.showQuickActions
+      target === tourSelector(PRODUCT_TOUR_TARGETS.dashboardRegisterMail) &&
+      !filter.showRegisterMail
     ) {
       return false
     }
