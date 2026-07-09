@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EmojiEvents from '@mui/icons-material/EmojiEvents'
@@ -23,9 +22,6 @@ import DeleteCustomTournamentButton from '@/components/events/DeleteCustomTourna
 import { LinkCustomTournamentButton } from '@/components/events/LinkCustomTournamentDialog'
 import ReportDeckDialog from '@/components/events/ReportDeckDialog'
 import TournamentMatchRoundsCard from '@/components/events/TournamentMatchRoundsCard'
-import MatchChatPanel from '@/components/events/MatchChatPanel'
-import OnlineRoundTimer from '@/components/events/OnlineRoundTimer'
-import { useMatchChatContext } from '@/hooks/useMatchChat'
 import { useDashboardEventDetail } from '@/hooks/useWeeklyEvents'
 import { initialDecklistPickFromTournament } from '@/lib/tournament-decklist-initial-pick'
 import {
@@ -39,7 +35,6 @@ const CHIP_DECK_SPRITE_BOX = limitlessSpriteDimensions(24)
 export default function TorneoSemanaDetallePage() {
   const params = useParams()
   const router = useRouter()
-  const queryClient = useQueryClient()
   const eventId = typeof params.eventId === 'string' ? params.eventId : ''
   const {
     data: ev,
@@ -48,7 +43,6 @@ export default function TorneoSemanaDetallePage() {
     error
   } = useDashboardEventDetail(eventId || null)
   const [deckOpen, setDeckOpen] = useState(false)
-  const prevChatRoundRef = useRef<number | null>(null)
 
   const initialDecklistPick = useMemo(() => {
     if (!ev) return null
@@ -58,32 +52,6 @@ export default function TorneoSemanaDetallePage() {
       ev.myDeckPokemonSlugs ?? []
     )
   }, [ev])
-
-  const showMatchChat =
-    Boolean(ev) &&
-    ev!.kind === 'tournament' &&
-    ev!.tournamentMode === 'online' &&
-    ev!.state === 'running' &&
-    Boolean(ev!.myRegistration)
-
-  const matchChatContextQuery = useMatchChatContext(
-    showMatchChat ? eventId : null,
-    showMatchChat
-  )
-
-  useEffect(() => {
-    const chatRound = matchChatContextQuery.data?.roundNum
-    if (!eventId || !chatRound || chatRound < 1) return
-    if (
-      prevChatRoundRef.current !== null &&
-      prevChatRoundRef.current !== chatRound
-    ) {
-      void queryClient.invalidateQueries({
-        queryKey: ['dashboard-event-detail', eventId]
-      })
-    }
-    prevChatRoundRef.current = chatRound
-  }, [eventId, matchChatContextQuery.data?.roundNum, queryClient])
 
   return (
     <DashboardModuleRouteGate moduleId="myTournaments">
@@ -181,23 +149,6 @@ export default function TorneoSemanaDetallePage() {
                       ev.state === 'close' && ev.tournamentOrigin !== 'custom'
                     }
                   />
-
-                  {ev.currentRoundTimer ? (
-                    <OnlineRoundTimer
-                      timer={ev.currentRoundTimer}
-                      variant="card"
-                    />
-                  ) : null}
-
-                  {matchChatContextQuery.data?.canChat ? (
-                    <MatchChatPanel
-                      eventId={eventId}
-                      roundNum={matchChatContextQuery.data.roundNum}
-                      tableNumber={matchChatContextQuery.data.tableNumber}
-                      opponentName={matchChatContextQuery.data.opponentName}
-                      enabled
-                    />
-                  ) : null}
 
                   <Card
                     elevation={0}

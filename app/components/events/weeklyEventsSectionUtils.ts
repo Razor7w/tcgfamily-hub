@@ -1,5 +1,4 @@
 import type { PublicWeeklyEvent } from '@/hooks/useWeeklyEvents'
-import type { TournamentMode } from '@/models/WeeklyEvent'
 import { WEEKLY_EVENT_PARTICIPANTS_MAX } from '@/lib/parse-pasted-event-flyer'
 
 export const WEEKDAY_SHORT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
@@ -26,10 +25,6 @@ export function pokemonSubtypeLabel(
   if (s === 'casual') return 'Casual'
   if (s === 'cup') return 'Cup'
   return 'Challenge'
-}
-
-export function tournamentModeLabel(mode: TournamentMode) {
-  return mode === 'online' ? 'Online' : 'Presencial'
 }
 
 export function formatPrice(ev: PublicWeeklyEvent) {

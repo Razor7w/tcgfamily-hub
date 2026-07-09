@@ -51,8 +51,7 @@ import {
   gameLabel,
   isUnlimitedWeeklyCapacity,
   kindLabel,
-  pokemonSubtypeLabel,
-  tournamentModeLabel
+  pokemonSubtypeLabel
 } from '@/components/events/weeklyEventsSectionUtils'
 import WeeklyEventsSectionSkeleton from '@/components/events/WeeklyEventsSectionSkeleton'
 import WeeklyEventsSectionHeader from '@/components/events/WeeklyEventsSectionHeader'
@@ -63,9 +62,6 @@ import WeeklyEventsSameDayEventChips from '@/components/events/WeeklyEventsSameD
 import WeeklyParticipantsDialog from '@/components/events/WeeklyParticipantsDialog'
 import WeeklyFullStandingsDialog from '@/components/events/WeeklyFullStandingsDialog'
 import WeeklyCurrentRoundDialog from '@/components/events/WeeklyCurrentRoundDialog'
-import MatchChatPanel from '@/components/events/MatchChatPanel'
-import OnlineRoundTimer from '@/components/events/OnlineRoundTimer'
-import { useMatchChatContext } from '@/hooks/useMatchChat'
 import ReportDeckDialog from '@/components/events/ReportDeckDialog'
 import TournamentDeckSpritesSummary from '@/components/events/TournamentDeckSpritesSummary'
 import TournamentMetaExploreCta from '@/components/events/TournamentMetaExploreCta'
@@ -215,18 +211,6 @@ export default function WeeklyEventsSection({
   const currentRoundQuery = useEventCurrentRound(
     currentRoundModalOpen ? selectedEvent._id : null,
     currentRoundModalOpen
-  )
-
-  const showMatchChatInline =
-    Boolean(selectedEvent) &&
-    selectedEvent!.kind === 'tournament' &&
-    selectedEvent!.tournamentMode === 'online' &&
-    selectedEvent!.state === 'running' &&
-    Boolean(selectedEvent!.myRegistration)
-
-  const matchChatContextQuery = useMatchChatContext(
-    showMatchChatInline ? selectedEvent!._id : null,
-    showMatchChatInline
   )
 
   const dayKeys = useMemo(() => {
@@ -485,15 +469,6 @@ export default function WeeklyEventsSection({
                                     selectedEvent.pokemonSubtype
                                   )}
                                   color="primary"
-                                  variant="outlined"
-                                />
-                              ) : null}
-                              {selectedEvent.kind === 'tournament' &&
-                              selectedEvent.tournamentMode === 'online' ? (
-                                <Chip
-                                  size="small"
-                                  color="info"
-                                  label={tournamentModeLabel('online')}
                                   variant="outlined"
                                 />
                               ) : null}
@@ -1020,14 +995,6 @@ export default function WeeklyEventsSection({
                                         >
                                           Emparejamiento
                                         </Typography>
-                                        {selectedEvent.currentRoundTimer ? (
-                                          <OnlineRoundTimer
-                                            timer={
-                                              selectedEvent.currentRoundTimer
-                                            }
-                                            variant="card"
-                                          />
-                                        ) : null}
                                         {selectedEvent.roundNum > 0 ? (
                                           <Typography variant="body2">
                                             Ronda{' '}
@@ -1119,23 +1086,6 @@ export default function WeeklyEventsSection({
                                       >
                                         Ver emparejamientos de la ronda
                                       </Button>
-                                      {matchChatContextQuery.data?.canChat ? (
-                                        <MatchChatPanel
-                                          eventId={selectedEvent._id}
-                                          roundNum={
-                                            matchChatContextQuery.data.roundNum
-                                          }
-                                          tableNumber={
-                                            matchChatContextQuery.data
-                                              .tableNumber
-                                          }
-                                          opponentName={
-                                            matchChatContextQuery.data
-                                              .opponentName
-                                          }
-                                          enabled
-                                        />
-                                      ) : null}
                                     </>
                                   ) : null}
                                   {!selectedEventClosed ? (
@@ -1274,11 +1224,6 @@ export default function WeeklyEventsSection({
                             open={currentRoundModalOpen}
                             onClose={() => setCurrentRoundOpenForEventId(null)}
                             eventTitle={selectedEvent.title}
-                            eventId={selectedEvent._id}
-                            chatEnabled={
-                              selectedEvent.kind === 'tournament' &&
-                              selectedEvent.tournamentMode === 'online'
-                            }
                             currentRoundQuery={currentRoundQuery}
                           />
                         </CardContent>
