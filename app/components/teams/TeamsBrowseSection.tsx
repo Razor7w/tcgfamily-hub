@@ -1,6 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
+import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import Avatar from '@mui/material/Avatar'
@@ -15,6 +17,7 @@ import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
+import TeamTournamentPointsRankingSection from '@/components/teams/TeamTournamentPointsRankingSection'
 import { usePublicTeamsDirectory } from '@/hooks/useTeams'
 
 type TeamsBrowseSectionProps = {
@@ -33,6 +36,7 @@ export default function TeamsBrowseSection({
   canApplyForTeam,
   onFormTeam
 }: TeamsBrowseSectionProps) {
+  const [showRanking, setShowRanking] = useState(false)
   const { data, isPending, isError, error, refetch } = usePublicTeamsDirectory()
   const teams = data?.teams ?? []
 
@@ -52,16 +56,30 @@ export default function TeamsBrowseSection({
             Explora equipos activos de la comunidad antes de formar el tuyo.
           </Typography>
         </Box>
-        {canApplyForTeam ? (
+        <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
           <Button
-            variant="contained"
-            onClick={onFormTeam}
-            sx={{ flexShrink: 0 }}
+            variant={showRanking ? 'contained' : 'outlined'}
+            startIcon={<EmojiEventsOutlinedIcon />}
+            onClick={() => setShowRanking(current => !current)}
           >
-            Formar un equipo
+            {showRanking ? 'Ocultar ranking' : 'Ver ranking'}
           </Button>
-        ) : null}
+          {canApplyForTeam ? (
+            <Button variant="contained" onClick={onFormTeam}>
+              Formar un equipo
+            </Button>
+          ) : null}
+        </Stack>
       </Stack>
+
+      {showRanking ? (
+        <Paper
+          variant="outlined"
+          sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: 3 }}
+        >
+          <TeamTournamentPointsRankingSection />
+        </Paper>
+      ) : null}
 
       {isPending ? (
         <Grid container spacing={2}>

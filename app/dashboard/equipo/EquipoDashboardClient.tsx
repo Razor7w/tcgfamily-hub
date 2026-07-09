@@ -31,6 +31,7 @@ import TeamInviteRutField, {
 } from '@/components/teams/TeamInviteRutField'
 import TeamMedalsRow from '@/components/teams/TeamMedalsRow'
 import TeamFriendlyMatchesSection from '@/components/teams/TeamFriendlyMatchesSection'
+import TeamTournamentPointsRankingSection from '@/components/teams/TeamTournamentPointsRankingSection'
 import { useNotifications } from '@/hooks/useNotifications'
 import {
   useCancelTeamInvitation,
@@ -460,6 +461,7 @@ export default function EquipoDashboardClient() {
                     <Tab label="Miembros" />
                     <Tab label="Mazo favorito" />
                     <Tab label="Versus" />
+                    <Tab label="Ranking" />
                   </Tabs>
 
                   <Box sx={{ p: { xs: 2, sm: 2.5 } }}>
@@ -769,6 +771,13 @@ export default function EquipoDashboardClient() {
                         canManage={manage.viewer.canManage}
                         isCaptain={manage.viewer.isCaptain}
                         viewerUserId={manage.viewer.userId}
+                      />
+                    ) : null}
+
+                    {teamTab === 5 ? (
+                      <TeamTournamentPointsRankingSection
+                        highlightTeamSlug={teamSlug}
+                        showIntro={false}
                       />
                     ) : null}
                   </Box>
