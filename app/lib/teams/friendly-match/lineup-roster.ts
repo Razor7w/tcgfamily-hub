@@ -4,7 +4,7 @@ import mongoose from 'mongoose'
 import connectDB from '@/lib/mongodb'
 import { canManageTeam, getMembershipForUserOnTeam } from '@/lib/teams/access'
 import {
-  TEAM_FRIENDLY_LINEUP_SIZE,
+  resolveFriendlyLineupSize,
   isFriendlyMatchIntramural
 } from '@/lib/teams/friendly-match/constants'
 import { buildFriendlyMatchDuelsForSlot } from '@/lib/teams/friendly-match/generate-duels'
@@ -121,7 +121,6 @@ export async function replaceFriendlyMatchLineupSlot(input: {
   if (
     !mongoose.Types.ObjectId.isValid(input.newUserId) ||
     input.slot < 0 ||
-    input.slot > TEAM_FRIENDLY_LINEUP_SIZE - 1 ||
     !Number.isInteger(input.slot)
   ) {
     return { ok: false, error: 'Datos inválidos', status: 400 }
@@ -132,6 +131,11 @@ export async function replaceFriendlyMatchLineupSlot(input: {
   const match = await TeamFriendlyMatch.findById(input.matchId)
   if (!match) {
     return { ok: false, error: 'Match no encontrado', status: 404 }
+  }
+
+  const lineupSize = resolveFriendlyLineupSize(match)
+  if (input.slot > lineupSize - 1) {
+    return { ok: false, error: 'Datos inválidos', status: 400 }
   }
 
   if (
@@ -217,7 +221,8 @@ export async function replaceFriendlyMatchLineupSlot(input: {
       input.newUserId,
       challengerSlots,
       opponentSlots,
-      startIndex
+      startIndex,
+      lineupSize
     )
 
     if (seeds.length > 0) {

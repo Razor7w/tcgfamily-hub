@@ -33,7 +33,6 @@ import Chip from '@mui/material/Chip'
 import LeaderboardOutlined from '@mui/icons-material/LeaderboardOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import { alpha, useTheme } from '@mui/material/styles'
-import Header from '@/components/Header'
 import PlayPokemonPointsLabel from '@/components/play-pokemon/PlayPokemonPointsLabel'
 import {
   PLAY_POKEMON_CHILE_LEADERBOARD_PATH,
@@ -364,7 +363,6 @@ export default function PlayPokemonCommunityRankingClient() {
 
   return (
     <Box sx={{ minHeight: '100dvh', bgcolor: 'background.default' }}>
-      <Header />
       <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 4 } }}>
         <Stack spacing={2.5}>
           <Stack spacing={1}>

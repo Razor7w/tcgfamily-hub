@@ -2,13 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import mongoose from 'mongoose'
 import { requireSessionUser } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
-import {
-  getPendingTeamApplicationForUser,
-  userAlreadyInAnyTeam
-} from '@/lib/teams/access'
+import { activateUserTeamMembership } from '@/lib/teams/activate-team-membership'
 import Team from '@/models/Team'
 import TeamInvitation from '@/models/TeamInvitation'
-import TeamMembership from '@/models/TeamMembership'
 
 async function acceptInvitationForUser(
   userId: string,
@@ -43,40 +39,13 @@ async function acceptInvitationForUser(
     return { error: 'El equipo ya no existe', status: 404 as const }
   }
 
-  if (await userAlreadyInAnyTeam(userId)) {
+  const activation = await activateUserTeamMembership(userId, inv.teamId)
+  if (!activation.ok) {
     return {
-      error: 'Ya perteneces a un equipo',
-      code: 'already_in_team',
-      status: 409 as const
+      error: activation.error,
+      code: activation.code,
+      status: activation.status
     }
-  }
-
-  const pendingApplication = await getPendingTeamApplicationForUser(userId)
-  if (pendingApplication) {
-    return {
-      error: 'Tienes una solicitud de equipo pendiente de aprobación',
-      code: 'team_application_pending',
-      status: 409 as const
-    }
-  }
-
-  const existingLeft = await TeamMembership.findOne({
-    teamId: inv.teamId,
-    userId: uid
-  }).lean()
-
-  if (existingLeft) {
-    await TeamMembership.updateOne(
-      { _id: existingLeft._id },
-      { $set: { status: 'active', role: 'member' } }
-    )
-  } else {
-    await TeamMembership.create({
-      teamId: inv.teamId,
-      userId: uid,
-      role: 'member',
-      status: 'active'
-    })
   }
 
   await TeamInvitation.updateOne(

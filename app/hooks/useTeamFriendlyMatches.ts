@@ -116,12 +116,14 @@ export type FriendlyLineupInput = { userId: string; slot: number }
 
 export type CreateIntramuralFriendlyMatchInput = {
   intramural: true
+  lineupSize: 2 | 3
   lineup: FriendlyLineupInput[]
   opponentLineup: FriendlyLineupInput[]
 }
 
 export type CreateExternalFriendlyMatchInput = {
   opponentTeamSlug: string
+  lineupSize: 2 | 3
   lineup: FriendlyLineupInput[]
 }
 

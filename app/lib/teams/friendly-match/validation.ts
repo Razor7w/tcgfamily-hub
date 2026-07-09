@@ -2,19 +2,23 @@ import 'server-only'
 
 import mongoose from 'mongoose'
 import {
-  TEAM_FRIENDLY_LINEUP_SIZE,
-  type TeamFriendlyDuelReport
+  friendlyLineupSlots,
+  type TeamFriendlyDuelReport,
+  type TeamFriendlyLineupSize
 } from '@/lib/teams/friendly-match/constants'
 import type { FriendlyLineupSlot } from '@/lib/teams/friendly-match/generate-duels'
 import TeamMembership from '@/models/TeamMembership'
 
 export function parseFriendlyLineupInput(
-  raw: unknown
+  raw: unknown,
+  lineupSize: TeamFriendlyLineupSize
 ): { ok: true; lineup: FriendlyLineupSlot[] } | { ok: false; error: string } {
-  if (!Array.isArray(raw) || raw.length !== TEAM_FRIENDLY_LINEUP_SIZE) {
+  const slots = friendlyLineupSlots(lineupSize)
+
+  if (!Array.isArray(raw) || raw.length !== lineupSize) {
     return {
       ok: false,
-      error: `Debes elegir exactamente ${TEAM_FRIENDLY_LINEUP_SIZE} jugadores`
+      error: `Debes elegir exactamente ${lineupSize} jugadores`
     }
   }
 
@@ -35,16 +39,22 @@ export function parseFriendlyLineupInput(
     if (
       typeof slot !== 'number' ||
       slot < 0 ||
-      slot > 2 ||
+      slot > lineupSize - 1 ||
       !Number.isInteger(slot)
     ) {
-      return { ok: false, error: 'Slot inválido (usa 0, 1 y 2)' }
+      return {
+        ok: false,
+        error: `Slot inválido (usa ${slots.join(', ')})`
+      }
     }
     if (seenUsers.has(userId)) {
       return { ok: false, error: 'No repitas jugadores en la alineación' }
     }
     if (seenSlots.has(slot)) {
-      return { ok: false, error: 'Cada slot debe ser único (0, 1 y 2)' }
+      return {
+        ok: false,
+        error: `Cada slot debe ser único (${slots.join(', ')})`
+      }
     }
 
     seenUsers.add(userId)
@@ -52,8 +62,11 @@ export function parseFriendlyLineupInput(
     lineup.push({ userId, slot })
   }
 
-  if (seenSlots.size !== TEAM_FRIENDLY_LINEUP_SIZE) {
-    return { ok: false, error: 'Debes asignar los slots 0, 1 y 2' }
+  if (seenSlots.size !== lineupSize) {
+    return {
+      ok: false,
+      error: `Debes asignar los slots ${slots.join(', ')}`
+    }
   }
 
   lineup.sort((a, b) => a.slot - b.slot)
@@ -62,7 +75,8 @@ export function parseFriendlyLineupInput(
 
 export async function assertLineupBelongsToTeam(
   teamId: mongoose.Types.ObjectId,
-  lineup: FriendlyLineupSlot[]
+  lineup: FriendlyLineupSlot[],
+  lineupSize: TeamFriendlyLineupSize
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const userIds = lineup.map(l => new mongoose.Types.ObjectId(l.userId))
   const count = await TeamMembership.countDocuments({
@@ -71,7 +85,7 @@ export async function assertLineupBelongsToTeam(
     status: 'active'
   })
 
-  if (count !== TEAM_FRIENDLY_LINEUP_SIZE) {
+  if (count !== lineupSize) {
     return {
       ok: false,
       error: 'La alineación debe incluir solo miembros activos del equipo'
@@ -100,15 +114,21 @@ export function assertDisjointLineups(
 export async function assertIntramuralLineups(
   teamId: mongoose.Types.ObjectId,
   challengerLineup: FriendlyLineupSlot[],
-  opponentLineup: FriendlyLineupSlot[]
+  opponentLineup: FriendlyLineupSlot[],
+  lineupSize: TeamFriendlyLineupSize
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const challengerCheck = await assertLineupBelongsToTeam(
     teamId,
-    challengerLineup
+    challengerLineup,
+    lineupSize
   )
   if (!challengerCheck.ok) return challengerCheck
 
-  const opponentCheck = await assertLineupBelongsToTeam(teamId, opponentLineup)
+  const opponentCheck = await assertLineupBelongsToTeam(
+    teamId,
+    opponentLineup,
+    lineupSize
+  )
   if (!opponentCheck.ok) return opponentCheck
 
   return assertDisjointLineups(challengerLineup, opponentLineup)

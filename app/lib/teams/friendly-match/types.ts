@@ -47,6 +47,7 @@ export type TeamFriendlyMatchListItemDTO = {
   viewerCanManage: boolean
   tier: 'social'
   isIntramural: boolean
+  lineupSize: 2 | 3
   confirmedDuels: number
   totalDuels: number
   /** Capitán: reiniciar/eliminar solo versus amistoso aceptado (con rondas). */

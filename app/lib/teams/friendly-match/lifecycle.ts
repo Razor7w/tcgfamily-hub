@@ -6,7 +6,8 @@ import {
   TEAM_FRIENDLY_POINTS_PER_TIE,
   TEAM_FRIENDLY_POINTS_PER_WIN,
   normalizeFriendlyDuelReport,
-  type TeamFriendlyDuelReport
+  type TeamFriendlyDuelReport,
+  type TeamFriendlyLineupSize
 } from '@/lib/teams/friendly-match/constants'
 import { buildFriendlyMatchDuels } from '@/lib/teams/friendly-match/generate-duels'
 import {
@@ -93,9 +94,14 @@ export async function refreshFriendlyMatchScore(
 export async function createFriendlyMatchDuels(
   matchId: mongoose.Types.ObjectId,
   challengerLineup: { userId: string; slot: number }[],
-  opponentLineup: { userId: string; slot: number }[]
+  opponentLineup: { userId: string; slot: number }[],
+  lineupSize: TeamFriendlyLineupSize
 ): Promise<void> {
-  const seeds = buildFriendlyMatchDuels(challengerLineup, opponentLineup)
+  const seeds = buildFriendlyMatchDuels(
+    challengerLineup,
+    opponentLineup,
+    lineupSize
+  )
 
   await TeamFriendlyMatchDuel.insertMany(
     seeds.map(seed => ({

@@ -1,6 +1,6 @@
 import {
-  TEAM_FRIENDLY_DUEL_COUNT,
-  TEAM_FRIENDLY_LINEUP_SIZE
+  friendlyDuelCount,
+  type TeamFriendlyLineupSize
 } from '@/lib/teams/friendly-match/constants'
 
 export type FriendlyLineupSlot = {
@@ -17,16 +17,19 @@ export type FriendlyDuelSeed = {
   opponentSlot: number
 }
 
-/** Cada jugador del retador enfrenta a los 3 del rival (9 duelos). */
+/** Cada jugador del retador enfrenta a cada jugador del rival (lineup × lineup duelos). */
 export function buildFriendlyMatchDuels(
   challengerLineup: FriendlyLineupSlot[],
-  opponentLineup: FriendlyLineupSlot[]
+  opponentLineup: FriendlyLineupSlot[],
+  lineupSize: TeamFriendlyLineupSize
 ): FriendlyDuelSeed[] {
   if (
-    challengerLineup.length !== TEAM_FRIENDLY_LINEUP_SIZE ||
-    opponentLineup.length !== TEAM_FRIENDLY_LINEUP_SIZE
+    challengerLineup.length !== lineupSize ||
+    opponentLineup.length !== lineupSize
   ) {
-    throw new Error('Ambos equipos deben alinear exactamente 3 jugadores')
+    throw new Error(
+      `Ambos equipos deben alinear exactamente ${lineupSize} jugadores`
+    )
   }
 
   const bySlot = (lineup: FriendlyLineupSlot[]) => {
@@ -43,13 +46,13 @@ export function buildFriendlyMatchDuels(
   const duels: FriendlyDuelSeed[] = []
   let duelIndex = 0
 
-  for (let cSlot = 0; cSlot < TEAM_FRIENDLY_LINEUP_SIZE; cSlot += 1) {
+  for (let cSlot = 0; cSlot < lineupSize; cSlot += 1) {
     const challengerUserId = challengerBySlot.get(cSlot)
     if (!challengerUserId) {
       throw new Error('Lineup del retador incompleto')
     }
 
-    for (let oSlot = 0; oSlot < TEAM_FRIENDLY_LINEUP_SIZE; oSlot += 1) {
+    for (let oSlot = 0; oSlot < lineupSize; oSlot += 1) {
       const opponentUserId = opponentBySlot.get(oSlot)
       if (!opponentUserId) {
         throw new Error('Lineup del rival incompleto')
@@ -72,7 +75,7 @@ export function buildFriendlyMatchDuels(
     }
   }
 
-  if (duels.length !== TEAM_FRIENDLY_DUEL_COUNT) {
+  if (duels.length !== friendlyDuelCount(lineupSize)) {
     throw new Error('No se pudieron generar los duelos del match')
   }
 
@@ -94,13 +97,14 @@ export function buildFriendlyMatchDuelsForSlot(
   userId: string,
   challengerLineup: FriendlyLineupSlot[],
   opponentLineup: FriendlyLineupSlot[],
-  startingDuelIndex: number
+  startingDuelIndex: number,
+  lineupSize: TeamFriendlyLineupSize
 ): FriendlyDuelSeed[] {
   const duels: FriendlyDuelSeed[] = []
   let duelIndex = startingDuelIndex
 
   if (side === 'challenger') {
-    for (let oSlot = 0; oSlot < TEAM_FRIENDLY_LINEUP_SIZE; oSlot += 1) {
+    for (let oSlot = 0; oSlot < lineupSize; oSlot += 1) {
       const opponentUserId = lineupUserIdAt(opponentLineup, oSlot)
       if (!opponentUserId) continue
       duels.push({
@@ -116,7 +120,7 @@ export function buildFriendlyMatchDuelsForSlot(
     return duels
   }
 
-  for (let cSlot = 0; cSlot < TEAM_FRIENDLY_LINEUP_SIZE; cSlot += 1) {
+  for (let cSlot = 0; cSlot < lineupSize; cSlot += 1) {
     const challengerUserId = lineupUserIdAt(challengerLineup, cSlot)
     if (!challengerUserId) continue
     duels.push({

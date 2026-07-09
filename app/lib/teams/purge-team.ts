@@ -8,6 +8,7 @@ import Team from '@/models/Team'
 import TeamFriendlyMatch from '@/models/TeamFriendlyMatch'
 import TeamFriendlyMatchDuel from '@/models/TeamFriendlyMatchDuel'
 import TeamInvitation from '@/models/TeamInvitation'
+import TeamJoinRequest from '@/models/TeamJoinRequest'
 import TeamMedalAward from '@/models/TeamMedalAward'
 import TeamMembership from '@/models/TeamMembership'
 import TeamPost from '@/models/TeamPost'
@@ -22,6 +23,7 @@ export type PurgeTeamResult = {
   friendlyDuels: number
   medalAwards: number
   invitations: number
+  joinRequests: number
   memberships: number
 }
 
@@ -84,12 +86,17 @@ export async function purgeTeamData(
   })
   const friendlyMatches = matchesResult.deletedCount ?? 0
 
-  const [medalsResult, invitationsResult, membershipsResult] =
-    await Promise.all([
-      TeamMedalAward.deleteMany({ teamId }),
-      TeamInvitation.deleteMany({ teamId }),
-      TeamMembership.deleteMany({ teamId })
-    ])
+  const [
+    medalsResult,
+    invitationsResult,
+    joinRequestsResult,
+    membershipsResult
+  ] = await Promise.all([
+    TeamMedalAward.deleteMany({ teamId }),
+    TeamInvitation.deleteMany({ teamId }),
+    TeamJoinRequest.deleteMany({ teamId }),
+    TeamMembership.deleteMany({ teamId })
+  ])
 
   await Team.deleteOne({ _id: teamId })
 
@@ -103,6 +110,7 @@ export async function purgeTeamData(
     friendlyDuels,
     medalAwards: medalsResult.deletedCount ?? 0,
     invitations: invitationsResult.deletedCount ?? 0,
+    joinRequests: joinRequestsResult.deletedCount ?? 0,
     memberships: membershipsResult.deletedCount ?? 0
   }
 }

@@ -4,6 +4,7 @@ import { ownerPublicDisplay } from '@/lib/public-decklist-owner'
 import Team from '@/models/Team'
 import TeamFriendlyMatch from '@/models/TeamFriendlyMatch'
 import TeamInvitation from '@/models/TeamInvitation'
+import TeamJoinRequest from '@/models/TeamJoinRequest'
 import TeamMembership from '@/models/TeamMembership'
 import User from '@/models/User'
 
@@ -38,9 +39,25 @@ export type TeamFriendlyMatchNotification = {
   expiresAt: string
 }
 
+export type TeamJoinRequestNotification = {
+  id: string
+  kind: 'team_join_request'
+  teamId: string
+  teamName: string
+  teamSlug: string
+  teamLogoUrl: string
+  requesterUserId: string
+  requesterName: string
+  requesterImage: string | null
+  joinRequestId: string
+  createdAt: string
+  expiresAt: string
+}
+
 export type NotificationItem =
   | TeamInvitationNotification
   | TeamFriendlyMatchNotification
+  | TeamJoinRequestNotification
 
 export type NotificationsPayload = {
   unreadCount: number
@@ -79,7 +96,7 @@ export async function buildUserNotifications(
         )
       : []
 
-  const [teams, inviters, friendlyItems] = await Promise.all([
+  const [teams, inviters, friendlyItems, joinRequestItems] = await Promise.all([
     teamIds.length > 0
       ? Team.find({ _id: { $in: teamIds }, isActive: true })
           .select('name slug logoUrl')
@@ -97,7 +114,8 @@ export async function buildUserNotifications(
             }[]
           >()
       : Promise.resolve([]),
-    buildFriendlyMatchNotifications(userId)
+    buildFriendlyMatchNotifications(userId),
+    buildJoinRequestNotifications(userId)
   ])
 
   const teamById = new Map(teams.map(t => [String(t._id), t]))
@@ -130,6 +148,7 @@ export async function buildUserNotifications(
   }
 
   items.push(...friendlyItems)
+  items.push(...joinRequestItems)
   items.sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   )
@@ -238,4 +257,85 @@ async function buildFriendlyMatchNotifications(
   }
 
   return items
+}
+
+async function buildJoinRequestNotifications(
+  userId: string
+): Promise<TeamJoinRequestNotification[]> {
+  if (!mongoose.Types.ObjectId.isValid(userId)) return []
+
+  const uid = new mongoose.Types.ObjectId(userId)
+  const membership = await TeamMembership.findOne({
+    userId: uid,
+    status: 'active',
+    role: { $in: ['captain', 'co_captain'] }
+  })
+    .select('teamId')
+    .lean<{ teamId: mongoose.Types.ObjectId } | null>()
+
+  if (!membership) return []
+
+  const pending = await TeamJoinRequest.find({
+    teamId: membership.teamId,
+    status: 'pending',
+    expiresAt: { $gt: new Date() }
+  })
+    .sort({ createdAt: -1 })
+    .limit(20)
+    .lean()
+
+  if (pending.length === 0) return []
+
+  const requesterIds = [
+    ...new Set(pending.map(row => String(row.requesterUserId)))
+  ].map(id => new mongoose.Types.ObjectId(id))
+
+  const [team, requesters] = await Promise.all([
+    Team.findById(membership.teamId)
+      .select('name slug logoUrl')
+      .lean<{ name: string; slug: string; logoUrl?: string } | null>(),
+    User.find({ _id: { $in: requesterIds } })
+      .select('name email image')
+      .lean<
+        {
+          _id: mongoose.Types.ObjectId
+          name?: string
+          email?: string
+          image?: string
+        }[]
+      >()
+  ])
+
+  if (!team) return []
+
+  const requesterById = new Map(
+    requesters.map(u => {
+      const { displayName, imageUrl } = ownerPublicDisplay(u)
+      return [String(u._id), { displayName, imageUrl }]
+    })
+  )
+
+  return pending.map(row => {
+    const requester = requesterById.get(String(row.requesterUserId))
+    return {
+      id: `team_join_request:${String(row._id)}`,
+      kind: 'team_join_request' as const,
+      teamId: String(membership.teamId),
+      teamName: team.name,
+      teamSlug: team.slug,
+      teamLogoUrl: typeof team.logoUrl === 'string' ? team.logoUrl : '',
+      requesterUserId: String(row.requesterUserId),
+      requesterName: requester?.displayName ?? 'Un jugador',
+      requesterImage: requester?.imageUrl ?? null,
+      joinRequestId: String(row._id),
+      createdAt:
+        row.createdAt instanceof Date
+          ? row.createdAt.toISOString()
+          : new Date().toISOString(),
+      expiresAt:
+        row.expiresAt instanceof Date
+          ? row.expiresAt.toISOString()
+          : new Date().toISOString()
+    }
+  })
 }

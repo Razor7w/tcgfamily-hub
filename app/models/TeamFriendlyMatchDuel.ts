@@ -3,7 +3,11 @@ import type {
   TeamFriendlyDuelReport,
   TeamFriendlyDuelStatus
 } from '@/lib/teams/friendly-match/constants'
-import { normalizeFriendlyDuelReport } from '@/lib/teams/friendly-match/constants'
+import {
+  TEAM_FRIENDLY_MAX_DUEL_COUNT,
+  TEAM_FRIENDLY_MAX_LINEUP_SIZE,
+  normalizeFriendlyDuelReport
+} from '@/lib/teams/friendly-match/constants'
 
 export interface ITeamFriendlyMatchDuel extends Document {
   matchId: Types.ObjectId
@@ -29,8 +33,18 @@ const TeamFriendlyMatchDuelSchema = new Schema<ITeamFriendlyMatchDuel>(
       required: true,
       index: true
     },
-    duelIndex: { type: Number, required: true, min: 0, max: 8 },
-    roundNumber: { type: Number, required: true, min: 1, max: 9 },
+    duelIndex: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: TEAM_FRIENDLY_MAX_DUEL_COUNT - 1
+    },
+    roundNumber: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: TEAM_FRIENDLY_MAX_DUEL_COUNT
+    },
     challengerUserId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
@@ -43,8 +57,18 @@ const TeamFriendlyMatchDuelSchema = new Schema<ITeamFriendlyMatchDuel>(
       required: true,
       index: true
     },
-    challengerSlot: { type: Number, required: true, min: 0, max: 2 },
-    opponentSlot: { type: Number, required: true, min: 0, max: 2 },
+    challengerSlot: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: TEAM_FRIENDLY_MAX_LINEUP_SIZE - 1
+    },
+    opponentSlot: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: TEAM_FRIENDLY_MAX_LINEUP_SIZE - 1
+    },
     status: {
       type: String,
       enum: ['pending_reports', 'confirmed', 'disputed'],

@@ -18,6 +18,7 @@ import { getCachedTeamLeagueMedals } from '@/lib/teams/public-cache'
 import type { TeamMedalDTO } from '@/lib/teams/medals/types'
 import { formatRutOnBlur } from '@/lib/rut-input'
 import TeamInvitation from '@/models/TeamInvitation'
+import TeamJoinRequest from '@/models/TeamJoinRequest'
 import TeamMembership from '@/models/TeamMembership'
 import User from '@/models/User'
 
@@ -37,6 +38,16 @@ export type TeamManageInvitationDTO = {
   inviteePopid: string
   inviteeRut: string
   linkStatus: 'linked' | 'awaiting_user'
+  expiresAt: string
+  createdAt: string
+}
+
+export type TeamManageJoinRequestDTO = {
+  id: string
+  requesterUserId: string
+  requesterName: string
+  requesterImage: string | null
+  requesterPopid: string
   expiresAt: string
   createdAt: string
 }
@@ -202,6 +213,63 @@ export async function loadTeamManageInvitations(
         r.status === 'awaiting_user'
           ? ('awaiting_user' as const)
           : ('linked' as const),
+      expiresAt: (r.expiresAt as Date).toISOString(),
+      createdAt: r.createdAt.toISOString()
+    }
+  })
+}
+
+export async function loadTeamManageJoinRequests(
+  teamOid: mongoose.Types.ObjectId
+): Promise<TeamManageJoinRequestDTO[]> {
+  await connectDB()
+  const rows = await TeamJoinRequest.find({
+    teamId: teamOid,
+    status: 'pending',
+    expiresAt: { $gt: new Date() }
+  })
+    .sort({ createdAt: -1 })
+    .lean()
+
+  const requesterIds = rows.map(r => r.requesterUserId)
+  const requesters =
+    requesterIds.length > 0
+      ? await User.find({ _id: { $in: requesterIds } })
+          .select('name email image popid')
+          .lean<
+            {
+              _id: mongoose.Types.ObjectId
+              name?: string
+              email?: string
+              image?: string
+              popid?: string
+            }[]
+          >()
+      : []
+
+  const requesterById = new Map(
+    requesters.map(u => {
+      const { displayName, imageUrl } = ownerPublicDisplay(u)
+      return [
+        String(u._id),
+        {
+          displayName,
+          imageUrl,
+          popid: typeof u.popid === 'string' ? u.popid.trim() : ''
+        }
+      ]
+    })
+  )
+
+  return rows.map(r => {
+    const uid = String(r.requesterUserId)
+    const u = requesterById.get(uid)
+    return {
+      id: String(r._id),
+      requesterUserId: uid,
+      requesterName: u?.displayName ?? 'Jugador',
+      requesterImage: u?.imageUrl ?? null,
+      requesterPopid: u?.popid ?? '',
       expiresAt: (r.expiresAt as Date).toISOString(),
       createdAt: r.createdAt.toISOString()
     }
