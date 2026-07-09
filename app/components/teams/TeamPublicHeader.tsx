@@ -4,11 +4,13 @@ import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import { alpha } from '@mui/material/styles'
 import TeamHeaderIdentityRow from '@/components/teams/TeamHeaderIdentityRow'
+import TeamMedalsRow from '@/components/teams/TeamMedalsRow'
 import {
   TeamHeaderAvatar,
   TeamHeaderCover,
   TeamHeaderIdentityContent
 } from '@/components/teams/team-header-ui'
+import type { TeamMedalDTO } from '@/lib/teams/medals/types'
 
 type Props = {
   name: string
@@ -16,6 +18,7 @@ type Props = {
   logoUrl: string
   coverUrl: string
   memberCount: number
+  medals?: TeamMedalDTO[]
 }
 
 export default function TeamPublicHeader({
@@ -23,7 +26,8 @@ export default function TeamPublicHeader({
   bio,
   logoUrl,
   coverUrl,
-  memberCount
+  memberCount,
+  medals = []
 }: Props) {
   return (
     <Paper
@@ -50,6 +54,9 @@ export default function TeamPublicHeader({
             bio={bio}
           />
         </TeamHeaderIdentityRow>
+        <Box sx={{ mt: 2 }}>
+          <TeamMedalsRow medals={medals} />
+        </Box>
       </Box>
     </Paper>
   )

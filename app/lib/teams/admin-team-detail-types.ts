@@ -1,6 +1,7 @@
 import type { TeamApprovalStatus } from '@/lib/teams/constants'
 import type { AdminTeamDisplayStatus } from '@/lib/teams/approval-workflow-display'
 import type { TeamPostDTO } from '@/lib/teams/post-payload'
+import type { TeamMedalDTO } from '@/lib/teams/medals/types'
 
 export type AdminTeamMemberDTO = {
   userId: string
@@ -38,4 +39,5 @@ export type AdminTeamDetailDTO = {
   memberCount: number
   posts: TeamPostDTO[]
   postCount: number
+  medals: TeamMedalDTO[]
 }

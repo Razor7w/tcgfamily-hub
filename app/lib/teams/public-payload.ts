@@ -7,6 +7,8 @@ import {
   emptyTeamMonthlyActivity
 } from '@/lib/teams/monthly-activity'
 import type { TeamMonthlyActivityDTO } from '@/lib/teams/monthly-activity'
+import { buildTeamMedals } from '@/lib/teams/medals/build-team-medals'
+import type { TeamMedalDTO } from '@/lib/teams/medals/types'
 import { normalizeTeamPublicDTO } from '@/lib/teams/normalize-team-public'
 import Team from '@/models/Team'
 import TeamMembership from '@/models/TeamMembership'
@@ -42,6 +44,7 @@ export type TeamPublicDTO = {
   roster: TeamRosterMemberDTO[]
   decklists: TeamPublicDecklistDTO[]
   monthlyActivity: TeamMonthlyActivityDTO
+  medals: TeamMedalDTO[]
 }
 
 type LeanUser = {
@@ -65,6 +68,7 @@ export async function buildTeamPublicPayload(
     coverUrl?: string
     isActive?: boolean
     approvalStatus?: 'pending' | 'approved' | 'rejected'
+    createdAt: Date
   } | null>()
 
   if (!team || team.isActive === false) return null
@@ -158,6 +162,18 @@ export async function buildTeamPublicPayload(
     monthlyActivity = emptyTeamMonthlyActivity()
   }
 
+  let medals: TeamMedalDTO[] = []
+  try {
+    medals = await buildTeamMedals(team._id as mongoose.Types.ObjectId, {
+      teamCreatedAt: team.createdAt,
+      memberCount: roster.length,
+      featuredDeckMemberCount: decklistDtos.length,
+      monthlyActivity
+    })
+  } catch (e) {
+    console.error('buildTeamMedals:', e)
+  }
+
   return normalizeTeamPublicDTO({
     id: team._id.toString(),
     name: team.name,
@@ -168,6 +184,7 @@ export async function buildTeamPublicPayload(
     memberCount: roster.length,
     roster,
     decklists: decklistDtos,
-    monthlyActivity
+    monthlyActivity,
+    medals
   })
 }

@@ -17,6 +17,7 @@ import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
+import TeamMedalsRow from '@/components/teams/TeamMedalsRow'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -179,6 +180,12 @@ export default function AdminTeamDetailDialog({
                   </Stack>
                 </Stack>
                 <Divider />
+                {(data.medals?.length ?? 0) > 0 ? (
+                  <>
+                    <TeamMedalsRow medals={data.medals} />
+                    <Divider />
+                  </>
+                ) : null}
                 <Stack spacing={0.5}>
                   <Typography variant="body2" color="text.secondary">
                     Solicitud enviada:{' '}

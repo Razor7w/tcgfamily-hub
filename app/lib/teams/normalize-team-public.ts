@@ -27,6 +27,7 @@ export function normalizeTeamPublicDTO(
     memberCount: team.memberCount ?? team.roster?.length ?? 0,
     roster: team.roster ?? [],
     decklists: team.decklists ?? [],
-    monthlyActivity: team.monthlyActivity ?? emptyMonthlyActivity()
+    monthlyActivity: team.monthlyActivity ?? emptyMonthlyActivity(),
+    medals: team.medals ?? []
   }
 }

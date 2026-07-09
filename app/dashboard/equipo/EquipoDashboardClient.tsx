@@ -29,6 +29,7 @@ import TeamsBrowseSection from '@/components/teams/TeamsBrowseSection'
 import TeamInviteRutField, {
   isTeamInviteRutValid
 } from '@/components/teams/TeamInviteRutField'
+import TeamMedalsRow from '@/components/teams/TeamMedalsRow'
 import { useNotifications } from '@/hooks/useNotifications'
 import {
   useCancelTeamInvitation,
@@ -145,6 +146,7 @@ export default function EquipoDashboardClient() {
 
   const [createName, setCreateName] = useState('')
   const [createSlug, setCreateSlug] = useState('')
+  const [slugTouched, setSlugTouched] = useState(false)
   const [createBio, setCreateBio] = useState('')
   const [createErr, setCreateErr] = useState<string | null>(null)
   const applyForTeam = useApplyForTeam()
@@ -168,6 +170,7 @@ export default function EquipoDashboardClient() {
     () => slugFromTeamName(createName),
     [createName]
   )
+  const effectiveCreateSlug = slugTouched ? createSlug : suggestedSlug
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -175,11 +178,12 @@ export default function EquipoDashboardClient() {
     try {
       await applyForTeam.mutateAsync({
         name: createName.trim(),
-        slug: (createSlug.trim() || suggestedSlug).trim(),
+        slug: effectiveCreateSlug.trim(),
         bio: createBio.trim()
       })
       setCreateName('')
       setCreateSlug('')
+      setSlugTouched(false)
       setCreateBio('')
       setShowApplyForm(false)
     } catch (err) {
@@ -334,20 +338,19 @@ export default function EquipoDashboardClient() {
               <TextField
                 label="Nombre del equipo"
                 value={createName}
-                onChange={e => {
-                  setCreateName(e.target.value)
-                  if (!createSlug)
-                    setCreateSlug(slugFromTeamName(e.target.value))
-                }}
+                onChange={e => setCreateName(e.target.value)}
                 required
                 fullWidth
                 inputProps={{ maxLength: me.limits.nameMax }}
               />
               <TextField
                 label="URL (slug)"
-                value={createSlug || suggestedSlug}
-                onChange={e => setCreateSlug(e.target.value)}
-                helperText={`Página pública: /equipos/${createSlug || suggestedSlug || '…'}`}
+                value={effectiveCreateSlug}
+                onChange={e => {
+                  setSlugTouched(true)
+                  setCreateSlug(e.target.value)
+                }}
+                helperText={`Página pública: /equipos/${effectiveCreateSlug || '…'}`}
                 fullWidth
               />
               <TextField
@@ -460,6 +463,13 @@ export default function EquipoDashboardClient() {
                   <Box sx={{ p: { xs: 2, sm: 2.5 } }}>
                     {teamTab === 0 ? (
                       <Stack spacing={3}>
+                        <Paper
+                          variant="outlined"
+                          sx={{ p: 2.5, borderRadius: 3 }}
+                        >
+                          <TeamMedalsRow medals={manage.medals ?? []} />
+                        </Paper>
+
                         {manage.viewer.isCaptain ? (
                           <TeamBrandingEditor
                             teamId={manage.team.id}

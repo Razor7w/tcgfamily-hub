@@ -10,6 +10,7 @@ import {
   isCaptain
 } from '@/lib/teams/access'
 import { ownerPublicDisplay } from '@/lib/public-decklist-owner'
+import { buildTeamMedals } from '@/lib/teams/medals/build-team-medals'
 import { formatRutOnBlur } from '@/lib/rut-input'
 import TeamInvitation from '@/models/TeamInvitation'
 import TeamMembership from '@/models/TeamMembership'
@@ -160,6 +161,13 @@ export async function GET(
       })
     }
 
+    let medals: Awaited<ReturnType<typeof buildTeamMedals>> = []
+    try {
+      medals = await buildTeamMedals(teamOid)
+    } catch (medalErr) {
+      console.error('GET manage buildTeamMedals:', medalErr)
+    }
+
     return NextResponse.json({
       team: {
         id: String(team._id),
@@ -183,7 +191,8 @@ export async function GET(
       },
       members,
       invitations,
-      memberCount: members.length
+      memberCount: members.length,
+      medals
     })
   } catch (e) {
     console.error('GET /api/teams/[slug]/manage:', e)

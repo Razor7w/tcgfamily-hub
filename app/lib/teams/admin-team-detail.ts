@@ -8,6 +8,7 @@ import {
   type TeamApprovalStatus
 } from '@/lib/teams/constants'
 import { adminTeamDisplayStatus } from '@/lib/teams/approval-workflow-display'
+import { buildTeamMedals } from '@/lib/teams/medals/build-team-medals'
 import type {
   AdminTeamDetailDTO,
   AdminTeamMemberDTO
@@ -137,6 +138,15 @@ export async function buildAdminTeamDetail(
   const isActive = team.isActive !== false
   const approvalStatus = team.approvalStatus
 
+  let medals: Awaited<ReturnType<typeof buildTeamMedals>> = []
+  if (isActive && approvalStatus === 'approved') {
+    try {
+      medals = await buildTeamMedals(teamId)
+    } catch (e) {
+      console.error('buildAdminTeamDetail buildTeamMedals:', e)
+    }
+  }
+
   return {
     id: String(team._id),
     name: team.name,
@@ -171,6 +181,7 @@ export async function buildAdminTeamDetail(
     members,
     memberCount: members.length,
     posts,
-    postCount
+    postCount,
+    medals
   }
 }

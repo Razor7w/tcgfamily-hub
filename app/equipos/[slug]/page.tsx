@@ -65,6 +65,7 @@ export default function EquipoPublicPage() {
                 logoUrl={data.team.logoUrl}
                 coverUrl={data.team.coverUrl ?? ''}
                 memberCount={data.team.memberCount}
+                medals={data.team.medals}
               />
 
               <TeamPostsSection teamSlug={slug} />

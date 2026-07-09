@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { notificationsQueryKey } from '@/hooks/useNotifications'
 import type { TeamPublicDTO } from '@/lib/teams/public-payload'
+import type { TeamMedalDTO } from '@/lib/teams/medals/types'
 import { normalizeTeamPublicDTO } from '@/lib/teams/normalize-team-public'
 
 export const teamsPublicDirectoryQueryKey = [
@@ -105,6 +106,7 @@ export type TeamManageResponse = {
     createdAt: string
   }[]
   memberCount: number
+  medals: TeamMedalDTO[]
 }
 
 export const teamsMeQueryKey = ['teams', 'me'] as const
