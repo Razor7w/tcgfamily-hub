@@ -13,7 +13,11 @@ import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
-import { useNotifications } from '@/hooks/useNotifications'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  useNotifications,
+  notificationsQueryKey
+} from '@/hooks/useNotifications'
 import {
   useAcceptTeamInvitation,
   useDeclineTeamInvitation
@@ -34,6 +38,23 @@ export default function NotificationsClient() {
   const { data, isPending, isError, error, refetch } = useNotifications()
   const acceptInvite = useAcceptTeamInvitation()
   const declineInvite = useDeclineTeamInvitation()
+  const qc = useQueryClient()
+  const declineFriendly = useMutation({
+    mutationFn: async (matchId: string) => {
+      const res = await fetch(
+        `/api/teams/friendly-matches/${encodeURIComponent(matchId)}/decline`,
+        { method: 'POST' }
+      )
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(typeof j.error === 'string' ? j.error : 'Error')
+      }
+      return j
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: notificationsQueryKey })
+    }
+  })
 
   return (
     <Container maxWidth="md" sx={{ py: { xs: 2, sm: 4 } }}>
@@ -79,67 +100,116 @@ export default function NotificationsClient() {
           </Alert>
         ) : data && data.items.length > 0 ? (
           <Stack spacing={1.5}>
-            {data.items.map(item => (
-              <Paper
-                key={item.id}
-                variant="outlined"
-                sx={{ p: 2.5, borderRadius: 3 }}
-              >
-                <Stack spacing={1.5}>
-                  <Stack direction="row" spacing={1.5} alignItems="center">
-                    <Avatar src={item.teamLogoUrl || undefined}>
-                      {item.teamName.slice(0, 1).toUpperCase()}
-                    </Avatar>
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography fontWeight={700}>
-                        Invitación a {item.teamName}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {item.invitedByName} te invitó a unirte al equipo
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {formatDate(item.createdAt)} · expira{' '}
-                        {formatDate(item.expiresAt)}
-                      </Typography>
-                    </Box>
+            {data.items.map(item =>
+              item.kind === 'team_invitation' ? (
+                <Paper
+                  key={item.id}
+                  variant="outlined"
+                  sx={{ p: 2.5, borderRadius: 3 }}
+                >
+                  <Stack spacing={1.5}>
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <Avatar src={item.teamLogoUrl || undefined}>
+                        {item.teamName.slice(0, 1).toUpperCase()}
+                      </Avatar>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography fontWeight={700}>
+                          Invitación a {item.teamName}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {item.invitedByName} te invitó a unirte al equipo
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {formatDate(item.createdAt)} · expira{' '}
+                          {formatDate(item.expiresAt)}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                    <Divider />
+                    <Stack direction="row" spacing={1} flexWrap="wrap">
+                      <Button
+                        variant="contained"
+                        size="small"
+                        disabled={acceptInvite.isPending}
+                        onClick={() =>
+                          void acceptInvite.mutateAsync({
+                            invitationId: item.invitationId
+                          })
+                        }
+                      >
+                        Aceptar
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        disabled={declineInvite.isPending}
+                        onClick={() =>
+                          void declineInvite.mutateAsync({
+                            invitationId: item.invitationId
+                          })
+                        }
+                      >
+                        Rechazar
+                      </Button>
+                      <Button
+                        component={Link}
+                        href={`/equipos/${item.teamSlug}`}
+                        size="small"
+                      >
+                        Ver equipo
+                      </Button>
+                    </Stack>
                   </Stack>
-                  <Divider />
-                  <Stack direction="row" spacing={1} flexWrap="wrap">
-                    <Button
-                      variant="contained"
-                      size="small"
-                      disabled={acceptInvite.isPending}
-                      onClick={() =>
-                        void acceptInvite.mutateAsync({
-                          invitationId: item.invitationId
-                        })
-                      }
-                    >
-                      Aceptar
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      disabled={declineInvite.isPending}
-                      onClick={() =>
-                        void declineInvite.mutateAsync({
-                          invitationId: item.invitationId
-                        })
-                      }
-                    >
-                      Rechazar
-                    </Button>
-                    <Button
-                      component={Link}
-                      href={`/equipos/${item.teamSlug}`}
-                      size="small"
-                    >
-                      Ver equipo
-                    </Button>
+                </Paper>
+              ) : (
+                <Paper
+                  key={item.id}
+                  variant="outlined"
+                  sx={{ p: 2.5, borderRadius: 3 }}
+                >
+                  <Stack spacing={1.5}>
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <Avatar src={item.challengerTeamLogoUrl || undefined}>
+                        {item.challengerTeamName.slice(0, 1).toUpperCase()}
+                      </Avatar>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography fontWeight={700}>
+                          Versus amistoso: {item.challengerTeamName}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {item.requestedByName} retó a tu equipo
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {formatDate(item.createdAt)} · expira{' '}
+                          {formatDate(item.expiresAt)}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                    <Divider />
+                    <Stack direction="row" spacing={1} flexWrap="wrap">
+                      <Button
+                        component={Link}
+                        href="/dashboard/equipo"
+                        variant="contained"
+                        size="small"
+                      >
+                        Responder en Versus
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        disabled={declineFriendly.isPending}
+                        onClick={() =>
+                          void declineFriendly.mutateAsync(item.matchId)
+                        }
+                      >
+                        Rechazar
+                      </Button>
+                    </Stack>
                   </Stack>
-                </Stack>
-              </Paper>
-            ))}
+                </Paper>
+              )
+            )}
           </Stack>
         ) : (
           <Paper

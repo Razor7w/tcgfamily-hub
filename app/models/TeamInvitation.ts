@@ -61,8 +61,7 @@ const TeamInvitationSchema = new Schema<ITeamInvitation>(
     token: {
       type: String,
       required: true,
-      trim: true,
-      index: true
+      trim: true
     },
     status: {
       type: String,

@@ -234,12 +234,19 @@ Cada jugador debe enfrentar **un rival de cada equipo ajeno** → **(n − 1) pa
 - [ ] Grants manuales desde admin
 - [ ] Medallas de Team Wars cuando exista el modo
 
-### Fase 3 (Team Wars)
+### Fase 3 (Team Wars oficial en tienda)
 
-- [ ] Modelos clash + duelos + fixtures
 - [ ] Panel staff tienda (bracket, resultados)
 - [ ] Ranking clash oficial separado de liga
 - [ ] Medallas «Campeón Team Wars [tienda] [temporada]»
+
+### Implementado: Versus amistoso nivel A
+
+- [x] Modelos `TeamFriendlyMatch` + `TeamFriendlyMatchDuel`
+- [x] Solicitud / aceptar / rechazar / cancelar
+- [x] 9 duelos cruzados (3×3), 3 pts por win confirmada, sin ranking global
+- [x] Reporte dual gané/perdí por jugador
+- [x] UI pestaña **Versus** + notificaciones
 
 ### MVP primer evento físico (sin app completa)
 
@@ -269,6 +276,14 @@ app/lib/teams/
   league-ranking.ts   # Ranking liga por equipo (torneos oficiales)
   monthly-activity.ts # Actividad mensual por miembro
   public-payload.ts   # Expone medals en API pública
+  friendly-match/     # Versus amistoso nivel A
+
+app/models/
+  TeamFriendlyMatch.ts
+  TeamFriendlyMatchDuel.ts
+
+app/components/teams/
+  TeamFriendlyMatchesSection.tsx
 ```
 
 ---
