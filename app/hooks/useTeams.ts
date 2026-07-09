@@ -2,9 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { notificationsQueryKey } from '@/hooks/useNotifications'
-import type { TeamPublicDTO } from '@/lib/teams/public-payload'
+import type { TeamPublicCoreDTO } from '@/lib/teams/public-payload'
 import type { TeamMedalDTO } from '@/lib/teams/medals/types'
-import { normalizeTeamPublicDTO } from '@/lib/teams/normalize-team-public'
+import type { TeamMonthlyActivityDTO } from '@/lib/teams/monthly-activity'
 
 export const teamsPublicDirectoryQueryKey = [
   'teams',
@@ -119,7 +119,11 @@ export type TeamManageInvitationsResponse = {
 
 export const teamsMeQueryKey = ['teams', 'me'] as const
 export const teamPublicQueryKey = (slug: string) =>
-  ['teams', 'public', 'v3', slug] as const
+  ['teams', 'public', 'v5', slug] as const
+export const teamPublicMedalsQueryKey = (slug: string) =>
+  ['teams', 'public', slug, 'medals'] as const
+export const teamPublicActivityQueryKey = (slug: string) =>
+  ['teams', 'public', slug, 'activity'] as const
 export const teamManageQueryKey = (slug: string) =>
   ['teams', 'manage', slug] as const
 export const teamManageMedalsQueryKey = (slug: string) =>
@@ -147,19 +151,47 @@ export function useTeamsMe() {
 export function usePublicTeam(slug: string) {
   return useQuery({
     queryKey: teamPublicQueryKey(slug),
-    queryFn: async (): Promise<{ team: TeamPublicDTO }> => {
+    queryFn: async (): Promise<{ team: TeamPublicCoreDTO }> => {
       const res = await fetch(`/api/teams/${encodeURIComponent(slug)}`, {
         cache: 'no-store'
       })
       if (!res.ok) await parseError(res, 'No se pudo cargar el equipo')
-      const data = (await res.json()) as {
-        team: Partial<TeamPublicDTO> &
-          Pick<TeamPublicDTO, 'id' | 'name' | 'slug'>
-      }
-      return { team: normalizeTeamPublicDTO(data.team) }
+      const data = (await res.json()) as { team: TeamPublicCoreDTO }
+      return { team: data.team }
     },
     enabled: Boolean(slug?.trim()),
     staleTime: 120_000
+  })
+}
+
+export function usePublicTeamMedals(slug: string, enabled = true) {
+  return useQuery({
+    queryKey: teamPublicMedalsQueryKey(slug),
+    queryFn: async (): Promise<{ medals: TeamMedalDTO[] }> => {
+      const res = await fetch(`/api/teams/${encodeURIComponent(slug)}/medals`, {
+        cache: 'no-store'
+      })
+      if (!res.ok) await parseError(res, 'No se pudieron cargar las medallas')
+      return res.json()
+    },
+    enabled: Boolean(slug?.trim()) && enabled,
+    staleTime: 120_000
+  })
+}
+
+export function usePublicTeamActivity(slug: string, enabled = true) {
+  return useQuery({
+    queryKey: teamPublicActivityQueryKey(slug),
+    queryFn: async (): Promise<{ activity: TeamMonthlyActivityDTO }> => {
+      const res = await fetch(
+        `/api/teams/${encodeURIComponent(slug)}/activity`,
+        { cache: 'no-store' }
+      )
+      if (!res.ok) await parseError(res, 'No se pudo cargar la actividad')
+      return res.json()
+    },
+    enabled: Boolean(slug?.trim()) && enabled,
+    staleTime: 60_000
   })
 }
 

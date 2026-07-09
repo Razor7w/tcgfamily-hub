@@ -3,6 +3,7 @@
 import Avatar from '@mui/material/Avatar'
 import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
+import CircularProgress from '@mui/material/CircularProgress'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
@@ -54,11 +55,33 @@ function emptyMonthlyActivity(): TeamMonthlyActivityDTO {
 
 type Props = {
   activity?: TeamMonthlyActivityDTO | null
+  loading?: boolean
 }
 
-export default function TeamMonthlyActivityCard({ activity }: Props) {
+export default function TeamMonthlyActivityCard({
+  activity,
+  loading = false
+}: Props) {
   const safe = activity ?? emptyMonthlyActivity()
   const members = safe.members ?? []
+
+  if (loading) {
+    return (
+      <Paper
+        elevation={0}
+        sx={{
+          borderRadius: 3,
+          border: '1px solid',
+          borderColor: t => alpha(t.palette.primary.main, 0.14),
+          p: 3,
+          display: 'flex',
+          justifyContent: 'center'
+        }}
+      >
+        <CircularProgress size={24} />
+      </Paper>
+    )
+  }
 
   return (
     <Paper

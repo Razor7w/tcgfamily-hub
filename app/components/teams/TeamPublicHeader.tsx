@@ -19,6 +19,7 @@ type Props = {
   coverUrl: string
   memberCount: number
   medals?: TeamMedalDTO[]
+  medalsLoading?: boolean
 }
 
 export default function TeamPublicHeader({
@@ -27,7 +28,8 @@ export default function TeamPublicHeader({
   logoUrl,
   coverUrl,
   memberCount,
-  medals = []
+  medals = [],
+  medalsLoading = false
 }: Props) {
   return (
     <Paper
@@ -55,7 +57,7 @@ export default function TeamPublicHeader({
           />
         </TeamHeaderIdentityRow>
         <Box sx={{ mt: 2 }}>
-          <TeamMedalsRow medals={medals} />
+          <TeamMedalsRow medals={medals} loading={medalsLoading} />
         </Box>
       </Box>
     </Paper>

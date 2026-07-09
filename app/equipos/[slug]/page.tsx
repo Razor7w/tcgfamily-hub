@@ -19,12 +19,22 @@ import { DecklistSpritePair } from '@/components/decklist/DecklistPokemonSlotPic
 import TeamMonthlyActivityCard from '@/components/teams/TeamMonthlyActivityCard'
 import TeamPostsSection from '@/components/teams/TeamPostsSection'
 import TeamPublicHeader from '@/components/teams/TeamPublicHeader'
-import { usePublicTeam } from '@/hooks/useTeams'
+import {
+  usePublicTeam,
+  usePublicTeamActivity,
+  usePublicTeamMedals
+} from '@/hooks/useTeams'
 
 export default function EquipoPublicPage() {
   const params = useParams()
   const slug = typeof params.slug === 'string' ? params.slug : ''
   const { data, isPending, isError, error, refetch } = usePublicTeam(slug)
+  const { data: medalsData, isPending: medalsPending } = usePublicTeamMedals(
+    slug,
+    Boolean(data?.team)
+  )
+  const { data: activityData, isPending: activityPending } =
+    usePublicTeamActivity(slug, Boolean(data?.team))
 
   return (
     <Box sx={{ minHeight: '100dvh', bgcolor: 'background.default' }}>
@@ -65,7 +75,8 @@ export default function EquipoPublicPage() {
                 logoUrl={data.team.logoUrl}
                 coverUrl={data.team.coverUrl ?? ''}
                 memberCount={data.team.memberCount}
-                medals={data.team.medals}
+                medals={medalsData?.medals ?? []}
+                medalsLoading={medalsPending}
               />
 
               <TeamPostsSection teamSlug={slug} />
@@ -98,7 +109,10 @@ export default function EquipoPublicPage() {
                 </Stack>
               </Paper>
 
-              <TeamMonthlyActivityCard activity={data.team.monthlyActivity} />
+              <TeamMonthlyActivityCard
+                activity={activityData?.activity}
+                loading={activityPending}
+              />
 
               {(data.team.decklists?.length ?? 0) > 0 ? (
                 <Paper

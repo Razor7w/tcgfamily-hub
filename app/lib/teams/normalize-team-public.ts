@@ -1,4 +1,7 @@
-import type { TeamPublicDTO } from '@/lib/teams/public-payload'
+import type {
+  TeamPublicCoreDTO,
+  TeamPublicDTO
+} from '@/lib/teams/public-payload'
 
 function emptyMonthlyActivity(): TeamPublicDTO['monthlyActivity'] {
   const raw = new Intl.DateTimeFormat('es-CL', {
@@ -15,7 +18,7 @@ function emptyMonthlyActivity(): TeamPublicDTO['monthlyActivity'] {
 
 /** Respuestas cacheadas o legacy sin campos nuevos (client-safe). */
 export function normalizeTeamPublicDTO(
-  team: Partial<TeamPublicDTO> & Pick<TeamPublicDTO, 'id' | 'name' | 'slug'>
+  team: Partial<TeamPublicDTO> & Pick<TeamPublicCoreDTO, 'id' | 'name' | 'slug'>
 ): TeamPublicDTO {
   return {
     id: team.id,
