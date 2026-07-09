@@ -553,12 +553,7 @@ export default function Header() {
               alignItems: 'center'
             }}
           >
-            <BrandLogo
-              variant={isDesktop ? 'wordmark' : 'mark'}
-              size="sm"
-              surface="dark"
-              href="/"
-            />
+            <BrandLogo variant="wordmark" size="sm" surface="dark" href="/" />
           </Box>
         </Stack>
 
