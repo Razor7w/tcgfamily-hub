@@ -12,6 +12,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import EmojiEventsOutlined from '@mui/icons-material/EmojiEventsOutlined'
+import PlayPokemonPointsLabel from '@/components/play-pokemon/PlayPokemonPointsLabel'
 
 export type PlayPokemonRankChipData = {
   rank: number
@@ -94,7 +95,11 @@ export default function PlayPokemonRankChip({
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <EmojiEventsOutlined color="primary" fontSize="small" />
-          Championship Points
+          <PlayPokemonPointsLabel
+            kind="championship"
+            label="Championship Points"
+            iconSize={16}
+          />
         </DialogTitle>
         <DialogContent>
           <Stack spacing={1.5}>
@@ -134,7 +139,7 @@ export default function PlayPokemonRankChip({
             </Box>
             {typeof data.playPoints === 'number' ? (
               <Typography variant="body2" color="text.secondary">
-                Play! Points:{' '}
+                <PlayPokemonPointsLabel kind="play" label="Play! Points" />:{' '}
                 <Box
                   component="strong"
                   sx={{

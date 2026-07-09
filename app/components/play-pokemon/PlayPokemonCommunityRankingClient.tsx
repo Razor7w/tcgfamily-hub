@@ -1,7 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useSession } from 'next-auth/react'
+import { useQueryClient } from '@tanstack/react-query'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Container from '@mui/material/Container'
@@ -9,6 +11,8 @@ import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import Switch from '@mui/material/Switch'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -28,12 +32,19 @@ import ClearIcon from '@mui/icons-material/Clear'
 import LeaderboardOutlined from '@mui/icons-material/LeaderboardOutlined'
 import { alpha, useTheme } from '@mui/material/styles'
 import Header from '@/components/Header'
+import PlayPokemonPointsLabel from '@/components/play-pokemon/PlayPokemonPointsLabel'
 import {
   PLAY_POKEMON_CHILE_LEADERBOARD_PATH,
   PLAY_POKEMON_LEADERBOARD_DIVISIONS,
   type PlayPokemonLeaderboardDivision
 } from '@/lib/play-pokemon-leaderboard/constants'
+import type { PlayPokemonCommunityRankingRow } from '@/lib/play-pokemon-leaderboard/types'
 import { usePlayPokemonCommunityRanking } from '@/hooks/usePlayPokemonCommunityRanking'
+import { useMyChampionshipPoints } from '@/hooks/useMyChampionshipPoints'
+import {
+  usePlayPokemonRankVisibility,
+  useUpdatePlayPokemonRankVisibility
+} from '@/hooks/usePlayPokemonRankVisibility'
 
 const DIVISION_LABELS: Record<PlayPokemonLeaderboardDivision, string> = {
   masters: 'Master',
@@ -52,13 +63,220 @@ function formatUpdated(iso: string | null | undefined): string | null {
   })
 }
 
+function CommunityRankingStat({
+  label,
+  value,
+  pointsKind
+}: {
+  label: ReactNode
+  value: string
+  pointsKind?: 'championship' | 'play'
+}) {
+  return (
+    <Box
+      sx={t => ({
+        flex: 1,
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        minHeight: 68,
+        px: 1,
+        py: 1,
+        borderRadius: 1.5,
+        bgcolor: alpha(t.palette.text.primary, 0.04),
+        border: '1px solid',
+        borderColor: alpha(t.palette.divider, 0.9)
+      })}
+    >
+      <Box
+        sx={{
+          minHeight: 28,
+          display: 'flex',
+          alignItems: 'flex-end',
+          mb: 0.5
+        }}
+      >
+        {typeof label === 'string' && pointsKind ? (
+          <PlayPokemonPointsLabel
+            kind={pointsKind}
+            label={label}
+            iconSize={12}
+            compact
+          />
+        ) : (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{
+              fontWeight: 700,
+              letterSpacing: '0.02em',
+              fontSize: '0.6875rem',
+              lineHeight: 1.2,
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {label}
+          </Typography>
+        )}
+      </Box>
+      <Typography
+        variant="body2"
+        sx={{
+          fontWeight: 800,
+          fontVariantNumeric: 'tabular-nums',
+          lineHeight: 1,
+          mt: 'auto'
+        }}
+      >
+        {value}
+      </Typography>
+    </Box>
+  )
+}
+
+function CommunityRankingMobileCards({
+  rows,
+  page,
+  pageSize
+}: {
+  rows: PlayPokemonCommunityRankingRow[]
+  page: number
+  pageSize: number
+}) {
+  return (
+    <Stack
+      spacing={1.25}
+      role="list"
+      aria-label="Ranking de jugadores"
+      sx={{ display: { xs: 'flex', sm: 'none' } }}
+    >
+      {rows.map((row, index) => {
+        const listRank = (page - 1) * pageSize + index + 1
+        const isTopThree = listRank <= 3
+
+        return (
+          <Paper
+            key={row.userId}
+            component="article"
+            role="listitem"
+            variant="outlined"
+            sx={t => ({
+              p: 1.5,
+              borderRadius: 2.5,
+              borderColor: isTopThree
+                ? alpha(t.palette.primary.main, 0.28)
+                : alpha(t.palette.divider, 0.95),
+              bgcolor: isTopThree
+                ? alpha(t.palette.primary.main, 0.04)
+                : 'background.paper',
+              transition:
+                'transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
+              '&:active': {
+                transform: 'scale(0.995)'
+              }
+            })}
+          >
+            <Stack direction="row" spacing={1.25} alignItems="flex-start">
+              <Box
+                sx={t => ({
+                  width: 36,
+                  height: 36,
+                  mt: 0.15,
+                  borderRadius: 1.5,
+                  flexShrink: 0,
+                  display: 'grid',
+                  placeItems: 'center',
+                  fontWeight: 900,
+                  fontSize: '0.9rem',
+                  fontVariantNumeric: 'tabular-nums',
+                  color: isTopThree ? 'primary.main' : 'text.secondary',
+                  bgcolor: isTopThree
+                    ? alpha(t.palette.primary.main, 0.12)
+                    : alpha(t.palette.text.primary, 0.06)
+                })}
+              >
+                {listRank}
+              </Box>
+              <Box sx={{ minWidth: 0, flex: 1, minHeight: 40 }}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    fontWeight: 800,
+                    letterSpacing: '-0.01em',
+                    lineHeight: 1.25,
+                    textWrap: 'balance'
+                  }}
+                >
+                  {row.displayName}
+                </Typography>
+                {row.linkedDisplayName &&
+                row.linkedDisplayName !== row.displayName ? (
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    display="block"
+                    sx={{ mt: 0.25 }}
+                  >
+                    Como {row.linkedDisplayName}
+                  </Typography>
+                ) : null}
+              </Box>
+            </Stack>
+
+            <Stack
+              direction="row"
+              spacing={0.75}
+              alignItems="stretch"
+              sx={{ mt: 1.25 }}
+            >
+              <CommunityRankingStat
+                pointsKind="championship"
+                label="CP"
+                value={row.championshipPoints.toLocaleString('es-CL')}
+              />
+              <CommunityRankingStat
+                label="Clasif."
+                value={`#${row.championshipRank.toLocaleString('es-CL')}`}
+              />
+              <CommunityRankingStat
+                pointsKind="play"
+                label="Play! Pts"
+                value={
+                  typeof row.playPoints === 'number'
+                    ? row.playPoints.toLocaleString('es-CL')
+                    : '—'
+                }
+              />
+            </Stack>
+          </Paper>
+        )
+      })}
+    </Stack>
+  )
+}
+
 export default function PlayPokemonCommunityRankingClient() {
   const theme = useTheme()
+  const queryClient = useQueryClient()
+  const { status: sessionStatus } = useSession()
+  const isAuthenticated = sessionStatus === 'authenticated'
   const [division, setDivision] =
     useState<PlayPokemonLeaderboardDivision>('masters')
   const [page, setPage] = useState(1)
   const [nameInput, setNameInput] = useState('')
   const [search, setSearch] = useState('')
+
+  const { data: myCp, isPending: myCpPending } = useMyChampionshipPoints({
+    enabled: isAuthenticated
+  })
+  const isLinked = myCp?.found === true && myCp?.source === 'linked'
+  const { data: visibility } = usePlayPokemonRankVisibility({
+    enabled: isAuthenticated && isLinked
+  })
+  const updateVisibility = useUpdatePlayPokemonRankVisibility()
+  const rankPublic =
+    visibility?.rankPublic === true || myCp?.rankPublic === true
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -80,6 +298,13 @@ export default function PlayPokemonCommunityRankingClient() {
       .filter((value): value is string => Boolean(value))
     return dates[0] ?? null
   }, [data?.rows])
+
+  const showSignInPrompt = sessionStatus === 'unauthenticated'
+  const showLinkPrompt =
+    isAuthenticated && !myCpPending && myCp?.enabled !== false && !isLinked
+  const showVisibilityToggle =
+    isAuthenticated && !myCpPending && isLinked && !rankPublic
+  const signInHref = `/?callbackUrl=${encodeURIComponent(PLAY_POKEMON_CHILE_LEADERBOARD_PATH)}`
 
   return (
     <Box sx={{ minHeight: '100dvh', bgcolor: 'background.default' }}>
@@ -119,6 +344,82 @@ export default function PlayPokemonCommunityRankingClient() {
               </Button>
             </Stack>
           </Stack>
+
+          {showSignInPrompt ? (
+            <Alert
+              severity="info"
+              action={
+                <Button
+                  component={Link}
+                  href={signInHref}
+                  size="small"
+                  color="inherit"
+                  sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}
+                >
+                  Inicia sesión ahora y vincula tus puntos
+                </Button>
+              }
+            >
+              Inicia sesión para vincular tus Championship Points y aparecer en
+              este ranking.
+            </Alert>
+          ) : null}
+
+          {showLinkPrompt ? (
+            <Alert
+              severity="info"
+              action={
+                <Button
+                  component={Link}
+                  href={PLAY_POKEMON_CHILE_LEADERBOARD_PATH}
+                  size="small"
+                  color="inherit"
+                  sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}
+                >
+                  Vincula tus puntos ahora
+                </Button>
+              }
+            >
+              Para aparecer en este ranking, búscate en Ranking Chile y vincula
+              tus Championship Points a tu cuenta.
+            </Alert>
+          ) : null}
+
+          {showVisibilityToggle ? (
+            <Paper
+              variant="outlined"
+              sx={{
+                px: 2,
+                py: 1.5,
+                borderRadius: 2.5,
+                borderColor: alpha(theme.palette.primary.main, 0.2),
+                bgcolor: alpha(theme.palette.primary.main, 0.04)
+              }}
+            >
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={false}
+                    disabled={updateVisibility.isPending}
+                    onChange={(_, checked) => {
+                      void updateVisibility.mutateAsync(checked, {
+                        onSuccess: () => {
+                          void queryClient.invalidateQueries({
+                            queryKey: ['play-pokemon', 'community-ranking']
+                          })
+                        }
+                      })
+                    }}
+                  />
+                }
+                label={
+                  <Typography variant="body2" color="text.secondary">
+                    Mostrar mi ranking (#) junto a mi nombre en este listado.
+                  </Typography>
+                }
+              />
+            </Paper>
+          ) : null}
 
           <Paper
             elevation={0}
@@ -222,7 +523,13 @@ export default function PlayPokemonCommunityRankingClient() {
                 </Alert>
               ) : (
                 <>
-                  <TableContainer>
+                  <CommunityRankingMobileCards
+                    rows={data.rows}
+                    page={data.page}
+                    pageSize={data.pageSize}
+                  />
+
+                  <TableContainer sx={{ display: { xs: 'none', sm: 'block' } }}>
                     <Table size="small" aria-label="Ranking de jugadores">
                       <TableHead>
                         <TableRow>
@@ -231,13 +538,21 @@ export default function PlayPokemonCommunityRankingClient() {
                             Jugador
                           </TableCell>
                           <TableCell align="right" sx={{ fontWeight: 800 }}>
-                            CP
+                            <PlayPokemonPointsLabel
+                              kind="championship"
+                              label="CP"
+                              align="right"
+                            />
                           </TableCell>
                           <TableCell align="right" sx={{ fontWeight: 800 }}>
                             Clasif.
                           </TableCell>
                           <TableCell align="right" sx={{ fontWeight: 800 }}>
-                            Play! Pts
+                            <PlayPokemonPointsLabel
+                              kind="play"
+                              label="Play! Pts"
+                              align="right"
+                            />
                           </TableCell>
                         </TableRow>
                       </TableHead>

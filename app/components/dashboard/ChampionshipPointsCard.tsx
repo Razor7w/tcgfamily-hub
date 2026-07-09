@@ -17,6 +17,7 @@ import EmojiEventsOutlined from '@mui/icons-material/EmojiEventsOutlined'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import LeaderboardOutlinedIcon from '@mui/icons-material/LeaderboardOutlined'
 import LinkIcon from '@mui/icons-material/Link'
+import PlayPokemonPointsLabel from '@/components/play-pokemon/PlayPokemonPointsLabel'
 import {
   usePlayPokemonRankVisibility,
   useUpdatePlayPokemonRankVisibility
@@ -86,7 +87,13 @@ export default function ChampionshipPointsCard({
     <Card variant="outlined" sx={{ borderRadius: 2 }}>
       <CardHeader
         avatar={<EmojiEventsOutlined color="primary" />}
-        title="Championship Points"
+        title={
+          <PlayPokemonPointsLabel
+            kind="championship"
+            label="Championship Points"
+            iconSize={16}
+          />
+        }
         subheader={
           isLinked
             ? seasonLabel
@@ -165,7 +172,7 @@ export default function ChampionshipPointsCard({
                   color="text.secondary"
                   display="block"
                 >
-                  Play! Points
+                  <PlayPokemonPointsLabel kind="play" label="Play! Points" />
                 </Typography>
                 <Typography
                   variant="h6"
@@ -357,7 +364,7 @@ export default function ChampionshipPointsCard({
                   color="text.secondary"
                   display="block"
                 >
-                  Play! Points
+                  <PlayPokemonPointsLabel kind="play" label="Play! Points" />
                 </Typography>
                 <Typography
                   variant="h6"
