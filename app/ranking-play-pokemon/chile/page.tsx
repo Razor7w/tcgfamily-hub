@@ -31,7 +31,6 @@ import ClearIcon from '@mui/icons-material/Clear'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import { alpha, useTheme } from '@mui/material/styles'
 import Snackbar from '@mui/material/Snackbar'
-import Header from '@/components/Header'
 import PlayPokemonPointsLabel from '@/components/play-pokemon/PlayPokemonPointsLabel'
 import { useLinkChampionshipPoints } from '@/hooks/useLinkChampionshipPoints'
 import {
@@ -318,7 +317,6 @@ export default function PlayPokemonChileRankingPage() {
 
   return (
     <Box sx={{ minHeight: '100dvh', bgcolor: 'background.default' }}>
-      <Header />
       <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 4 } }}>
         <Stack spacing={2.5}>
           <Stack spacing={1}>
