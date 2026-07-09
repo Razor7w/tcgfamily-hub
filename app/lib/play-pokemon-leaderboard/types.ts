@@ -66,12 +66,30 @@ export type PlayPokemonCommunityRankingRow = {
   linkedDisplayName: string | null
   seasonLabel: string | null
   leaderboardUpdatedAt: string | null
+  storeName?: string | null
+  storeSlug?: string | null
+}
+
+export type PlayPokemonCommunityRankingStoreOption = {
+  id: string
+  name: string
+  slug: string
+  playerCount: number
+}
+
+export type PlayPokemonCommunityRankingStoresResponse = {
+  enabled: boolean
+  stores: PlayPokemonCommunityRankingStoreOption[]
+  defaultStoreId: string | null
+  totalPlayerCount: number
 }
 
 export type PlayPokemonCommunityRankingResponse = {
   enabled: boolean
   seasonLabel: string
-  division: PlayPokemonLeaderboardDivision
+  storeId: string
+  storeName: string
+  storeSlug: string
   page: number
   pageSize: number
   count: number

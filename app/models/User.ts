@@ -251,7 +251,7 @@ const UserSchema = new Schema<IUser>(
 UserSchema.index({ rut: 1 })
 UserSchema.index({
   playPokemonRankPublic: 1,
-  playPokemonDivision: 1,
+  defaultStoreId: 1,
   playPokemonChampionshipRank: 1
 })
 

@@ -58,3 +58,6 @@ export const PLAY_POKEMON_COMMUNITY_RANKING_PATH =
   '/ranking-play-pokemon/comunidad'
 
 export const PLAY_POKEMON_COMMUNITY_RANKING_PAGE_SIZE = 50
+
+/** Valor de `storeId` para listar jugadores de todas las tiendas. */
+export const PLAY_POKEMON_COMMUNITY_RANKING_ALL_STORES_ID = 'all'
