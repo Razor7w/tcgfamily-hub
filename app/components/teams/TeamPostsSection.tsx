@@ -12,6 +12,7 @@ import { alpha } from '@mui/material/styles'
 import TeamPostCard from '@/components/teams/TeamPostCard'
 import TeamPostComposerDrawer from '@/components/teams/TeamPostComposerDrawer'
 import { useTeamPosts } from '@/hooks/useTeamPosts'
+import { useLazyInView } from '@/hooks/useLazyInView'
 import type { TeamPostsScope } from '@/lib/teams/post-payload'
 
 type Props = {
@@ -20,6 +21,7 @@ type Props = {
   showComposer?: boolean
   title?: string
   scope?: TeamPostsScope
+  lazyLoad?: boolean
 }
 
 export default function TeamPostsSection({
@@ -27,12 +29,15 @@ export default function TeamPostsSection({
   teamId,
   showComposer = false,
   title = 'Publicaciones',
-  scope = 'public'
+  scope = 'public',
+  lazyLoad = false
 }: Props) {
   const [composerOpen, setComposerOpen] = useState(false)
+  const { ref: lazyRef, inView } = useLazyInView('160px')
+  const postsEnabled = !lazyLoad || inView
   const { data, isPending, isError, error, refetch } = useTeamPosts(
     teamSlug,
-    true,
+    postsEnabled,
     scope
   )
   const embedded = title === ''
@@ -85,7 +90,7 @@ export default function TeamPostsSection({
 
   return (
     <>
-      <Stack spacing={2}>
+      <Stack spacing={2} ref={lazyLoad ? lazyRef : undefined}>
         {showComposer && teamId ? (
           <Stack direction="row" justifyContent="flex-end">
             <Button

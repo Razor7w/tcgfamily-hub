@@ -39,21 +39,25 @@ export async function GET(
     const scope: 'public' | 'members' =
       scopeRaw === 'members' ? 'members' : 'public'
 
-    const session = await auth()
-    const viewerUserId = session?.user?.id ?? null
+    let viewerUserId: string | null = null
     let viewerCanManage = false
     let viewerIsMember = false
-    if (viewerUserId) {
-      const membership = await getMembershipForUserOnTeam(
-        viewerUserId,
-        team._id as mongoose.Types.ObjectId
-      )
-      viewerIsMember = membership != null
-      viewerCanManage = membership ? canManageTeam(membership.role) : false
-    }
 
-    if (scope === 'members' && !viewerIsMember) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    if (scope === 'members') {
+      const session = await auth()
+      viewerUserId = session?.user?.id ?? null
+      if (viewerUserId) {
+        const membership = await getMembershipForUserOnTeam(
+          viewerUserId,
+          team._id as mongoose.Types.ObjectId
+        )
+        viewerIsMember = membership != null
+        viewerCanManage = membership ? canManageTeam(membership.role) : false
+      }
+
+      if (!viewerIsMember) {
+        return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+      }
     }
 
     const result = await listTeamPosts(team._id as mongoose.Types.ObjectId, {
@@ -68,7 +72,7 @@ export async function GET(
       headers: {
         'Cache-Control':
           scope === 'public'
-            ? 'public, max-age=0, must-revalidate'
+            ? 'public, s-maxage=30, stale-while-revalidate=120'
             : 'private, no-cache'
       }
     })

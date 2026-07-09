@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import mongoose from 'mongoose'
 import { getApprovedTeamBySlug } from '@/lib/teams/access'
-import { buildTeamPublicMonthlyActivity } from '@/lib/teams/public-payload'
+import { getCachedTeamPublicActivity } from '@/lib/teams/public-cache'
 import { isValidTeamSlug } from '@/lib/teams/slug'
 
 const CACHE_HEADERS = {
@@ -27,7 +27,7 @@ export async function GET(
       )
     }
 
-    const activity = await buildTeamPublicMonthlyActivity(
+    const activity = await getCachedTeamPublicActivity(
       team._id as mongoose.Types.ObjectId
     )
     if (!activity) {

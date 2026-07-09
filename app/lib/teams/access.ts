@@ -36,6 +36,17 @@ export function getApprovedTeamFilter() {
   }
 }
 
+export function isTeamApproved(team: {
+  isActive?: boolean
+  approvalStatus?: string
+}): boolean {
+  if (team.isActive === false) return false
+  if (team.approvalStatus === 'pending' || team.approvalStatus === 'rejected') {
+    return false
+  }
+  return true
+}
+
 export async function getActiveTeamForUser(userId: string) {
   const membership = await getActiveMembershipForUser(userId)
   if (!membership) return null
@@ -50,10 +61,11 @@ export async function getActiveTeamForUser(userId: string) {
 
 export async function getApprovedTeamBySlug(slug: string) {
   await connectDB()
-  return Team.findOne({
-    slug: slug.trim().toLowerCase(),
-    ...getApprovedTeamFilter()
+  const team = await Team.findOne({
+    slug: slug.trim().toLowerCase()
   }).lean()
+  if (!team || !isTeamApproved(team)) return null
+  return team
 }
 
 export async function getPendingTeamApplicationForUser(userId: string) {

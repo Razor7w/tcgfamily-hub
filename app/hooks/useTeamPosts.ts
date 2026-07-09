@@ -30,8 +30,7 @@ export function useTeamPosts(
       nextCursor: string | null
     }> => {
       const res = await fetch(
-        `/api/teams/${encodeURIComponent(slug)}/posts?scope=${scope}`,
-        { cache: 'no-store' }
+        `/api/teams/${encodeURIComponent(slug)}/posts?scope=${scope}`
       )
       if (!res.ok)
         await parseError(res, 'No se pudieron cargar las publicaciones')

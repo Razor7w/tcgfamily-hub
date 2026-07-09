@@ -119,11 +119,13 @@ export type TeamManageInvitationsResponse = {
 
 export const teamsMeQueryKey = ['teams', 'me'] as const
 export const teamPublicQueryKey = (slug: string) =>
-  ['teams', 'public', 'v5', slug] as const
+  ['teams', 'public', 'v6', slug] as const
 export const teamPublicMedalsQueryKey = (slug: string) =>
-  ['teams', 'public', slug, 'medals'] as const
+  ['teams', 'public', slug, 'medals', 'v2'] as const
+export const teamPublicLeagueMedalsQueryKey = (slug: string) =>
+  ['teams', 'public', slug, 'medals', 'league'] as const
 export const teamPublicActivityQueryKey = (slug: string) =>
-  ['teams', 'public', slug, 'activity'] as const
+  ['teams', 'public', slug, 'activity', 'v2'] as const
 export const teamManageQueryKey = (slug: string) =>
   ['teams', 'manage', slug] as const
 export const teamManageMedalsQueryKey = (slug: string) =>
@@ -152,9 +154,7 @@ export function usePublicTeam(slug: string) {
   return useQuery({
     queryKey: teamPublicQueryKey(slug),
     queryFn: async (): Promise<{ team: TeamPublicCoreDTO }> => {
-      const res = await fetch(`/api/teams/${encodeURIComponent(slug)}`, {
-        cache: 'no-store'
-      })
+      const res = await fetch(`/api/teams/${encodeURIComponent(slug)}`)
       if (!res.ok) await parseError(res, 'No se pudo cargar el equipo')
       const data = (await res.json()) as { team: TeamPublicCoreDTO }
       return { team: data.team }
@@ -168,9 +168,7 @@ export function usePublicTeamMedals(slug: string, enabled = true) {
   return useQuery({
     queryKey: teamPublicMedalsQueryKey(slug),
     queryFn: async (): Promise<{ medals: TeamMedalDTO[] }> => {
-      const res = await fetch(`/api/teams/${encodeURIComponent(slug)}/medals`, {
-        cache: 'no-store'
-      })
+      const res = await fetch(`/api/teams/${encodeURIComponent(slug)}/medals`)
       if (!res.ok) await parseError(res, 'No se pudieron cargar las medallas')
       return res.json()
     },
@@ -179,14 +177,27 @@ export function usePublicTeamMedals(slug: string, enabled = true) {
   })
 }
 
+export function usePublicTeamLeagueMedals(slug: string, enabled = true) {
+  return useQuery({
+    queryKey: teamPublicLeagueMedalsQueryKey(slug),
+    queryFn: async (): Promise<{ medals: TeamMedalDTO[] }> => {
+      const res = await fetch(
+        `/api/teams/${encodeURIComponent(slug)}/medals/league`
+      )
+      if (!res.ok)
+        await parseError(res, 'No se pudieron cargar las medallas de liga')
+      return res.json()
+    },
+    enabled: Boolean(slug?.trim()) && enabled,
+    staleTime: 300_000
+  })
+}
+
 export function usePublicTeamActivity(slug: string, enabled = true) {
   return useQuery({
     queryKey: teamPublicActivityQueryKey(slug),
     queryFn: async (): Promise<{ activity: TeamMonthlyActivityDTO }> => {
-      const res = await fetch(
-        `/api/teams/${encodeURIComponent(slug)}/activity`,
-        { cache: 'no-store' }
-      )
+      const res = await fetch(`/api/teams/${encodeURIComponent(slug)}/activity`)
       if (!res.ok) await parseError(res, 'No se pudo cargar la actividad')
       return res.json()
     },

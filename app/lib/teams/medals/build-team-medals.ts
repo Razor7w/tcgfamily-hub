@@ -133,7 +133,7 @@ function computeDynamicTeamMedals(
   return medals
 }
 
-async function computeLeagueTeamMedals(
+export async function buildTeamLeagueMedals(
   teamId: mongoose.Types.ObjectId
 ): Promise<TeamMedalDTO[]> {
   const results = await buildTeamLeagueResultsForTeam(teamId)
@@ -215,7 +215,7 @@ async function loadPersistedTeamMedals(
   return medals
 }
 
-function mergeTeamMedals(
+export function mergeTeamMedals(
   dynamicMedals: TeamMedalDTO[],
   persistedMedals: TeamMedalDTO[]
 ): TeamMedalDTO[] {
@@ -235,7 +235,8 @@ function mergeTeamMedals(
 }
 
 export async function loadTeamMedalsContext(
-  teamId: mongoose.Types.ObjectId
+  teamId: mongoose.Types.ObjectId,
+  options?: { monthlyActivity?: TeamMonthlyActivityDTO }
 ): Promise<TeamMedalsBuildContext | null> {
   await connectDB()
 
@@ -285,14 +286,18 @@ export async function loadTeamMedalsContext(
   }
 
   let monthlyActivity: TeamMonthlyActivityDTO
-  try {
-    monthlyActivity = await buildTeamMonthlyActivity(
-      memberOids,
-      memberships.map(m => ({ userId: m.userId, role: m.role }))
-    )
-  } catch (e) {
-    console.error('loadTeamMedalsContext monthly activity:', e)
-    monthlyActivity = emptyTeamMonthlyActivity()
+  if (options?.monthlyActivity) {
+    monthlyActivity = options.monthlyActivity
+  } else {
+    try {
+      monthlyActivity = await buildTeamMonthlyActivity(
+        memberOids,
+        memberships.map(m => ({ userId: m.userId, role: m.role }))
+      )
+    } catch (e) {
+      console.error('loadTeamMedalsContext monthly activity:', e)
+      monthlyActivity = emptyTeamMonthlyActivity()
+    }
   }
 
   return {
@@ -303,18 +308,22 @@ export async function loadTeamMedalsContext(
   }
 }
 
+export type BuildTeamMedalsOptions = {
+  context?: TeamMedalsBuildContext
+  includeLeague?: boolean
+}
+
 export async function buildTeamMedals(
   teamId: mongoose.Types.ObjectId,
-  context?: TeamMedalsBuildContext
+  options?: BuildTeamMedalsOptions
 ): Promise<TeamMedalDTO[]> {
-  const ctx = context ?? (await loadTeamMedalsContext(teamId))
+  const includeLeague = options?.includeLeague !== false
+  const ctx = options?.context ?? (await loadTeamMedalsContext(teamId))
   if (!ctx) return []
 
-  const dynamic = [
-    ...computeDynamicTeamMedals(ctx, ctx.monthlyActivity),
-    ...(await computeLeagueTeamMedals(teamId))
-  ]
+  const dynamic = computeDynamicTeamMedals(ctx, ctx.monthlyActivity)
+  const leagueMedals = includeLeague ? await buildTeamLeagueMedals(teamId) : []
   const persisted = await loadPersistedTeamMedals(teamId)
 
-  return mergeTeamMedals(dynamic, persisted)
+  return mergeTeamMedals([...dynamic, ...leagueMedals], persisted)
 }

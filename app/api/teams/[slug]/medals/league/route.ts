@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import mongoose from 'mongoose'
 import { getApprovedTeamBySlug } from '@/lib/teams/access'
-import { getCachedTeamPublicMedals } from '@/lib/teams/public-cache'
+import { getCachedTeamLeagueMedals } from '@/lib/teams/public-cache'
 import { isValidTeamSlug } from '@/lib/teams/slug'
 
 const CACHE_HEADERS = {
-  'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300'
+  'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
 }
 
 export async function GET(
@@ -27,9 +27,8 @@ export async function GET(
       )
     }
 
-    const medals = await getCachedTeamPublicMedals(
-      team._id as mongoose.Types.ObjectId,
-      { includeLeague: false }
+    const medals = await getCachedTeamLeagueMedals(
+      team._id as mongoose.Types.ObjectId
     )
 
     return NextResponse.json(
@@ -37,9 +36,9 @@ export async function GET(
       { status: 200, headers: CACHE_HEADERS }
     )
   } catch (e) {
-    console.error('GET /api/teams/[slug]/medals:', e)
+    console.error('GET /api/teams/[slug]/medals/league:', e)
     return NextResponse.json(
-      { error: 'No se pudieron cargar las medallas' },
+      { error: 'No se pudieron cargar las medallas de liga' },
       { status: 500 }
     )
   }

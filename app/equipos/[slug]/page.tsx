@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import Link from 'next/link'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -22,19 +23,40 @@ import TeamPublicHeader from '@/components/teams/TeamPublicHeader'
 import {
   usePublicTeam,
   usePublicTeamActivity,
+  usePublicTeamLeagueMedals,
   usePublicTeamMedals
 } from '@/hooks/useTeams'
+import { useIdleEnable } from '@/hooks/useIdleEnable'
+import { useLazyInView } from '@/hooks/useLazyInView'
+import { mergeTeamMedalLists } from '@/lib/teams/medals/merge-lists'
 
 export default function EquipoPublicPage() {
   const params = useParams()
   const slug = typeof params.slug === 'string' ? params.slug : ''
   const { data, isPending, isError, error, refetch } = usePublicTeam(slug)
+  const coreReady = Boolean(data?.team)
   const { data: medalsData, isPending: medalsPending } = usePublicTeamMedals(
     slug,
-    Boolean(data?.team)
+    coreReady
   )
+  const leagueMedalsIdle = useIdleEnable(
+    coreReady && !medalsPending && Boolean(medalsData)
+  )
+  const { data: leagueMedalsData, isPending: leagueMedalsPending } =
+    usePublicTeamLeagueMedals(slug, leagueMedalsIdle)
+  const medals = useMemo(
+    () =>
+      mergeTeamMedalLists(
+        medalsData?.medals ?? [],
+        leagueMedalsData?.medals ?? []
+      ),
+    [medalsData?.medals, leagueMedalsData?.medals]
+  )
+  const medalsLoading = medalsPending || leagueMedalsPending
+
+  const { ref: activityRef, inView: activityInView } = useLazyInView('200px')
   const { data: activityData, isPending: activityPending } =
-    usePublicTeamActivity(slug, Boolean(data?.team))
+    usePublicTeamActivity(slug, activityInView)
 
   return (
     <Box sx={{ minHeight: '100dvh', bgcolor: 'background.default' }}>
@@ -75,11 +97,11 @@ export default function EquipoPublicPage() {
                 logoUrl={data.team.logoUrl}
                 coverUrl={data.team.coverUrl ?? ''}
                 memberCount={data.team.memberCount}
-                medals={medalsData?.medals ?? []}
-                medalsLoading={medalsPending}
+                medals={medals}
+                medalsLoading={medalsLoading}
               />
 
-              <TeamPostsSection teamSlug={slug} />
+              <TeamPostsSection teamSlug={slug} lazyLoad />
 
               <Paper
                 elevation={0}
@@ -109,10 +131,12 @@ export default function EquipoPublicPage() {
                 </Stack>
               </Paper>
 
-              <TeamMonthlyActivityCard
-                activity={activityData?.activity}
-                loading={activityPending}
-              />
+              <Box ref={activityRef}>
+                <TeamMonthlyActivityCard
+                  activity={activityData?.activity}
+                  loading={activityPending}
+                />
+              </Box>
 
               {(data.team.decklists?.length ?? 0) > 0 ? (
                 <Paper

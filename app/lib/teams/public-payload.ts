@@ -7,7 +7,10 @@ import {
   emptyTeamMonthlyActivity
 } from '@/lib/teams/monthly-activity'
 import type { TeamMonthlyActivityDTO } from '@/lib/teams/monthly-activity'
-import { buildTeamMedals } from '@/lib/teams/medals/build-team-medals'
+import {
+  buildTeamMedals,
+  loadTeamMedalsContext
+} from '@/lib/teams/medals/build-team-medals'
 import type { TeamMedalDTO } from '@/lib/teams/medals/types'
 import { normalizeTeamPublicDTO } from '@/lib/teams/normalize-team-public'
 import Team from '@/models/Team'
@@ -188,37 +191,20 @@ export async function buildTeamPublicCorePayload(
 }
 
 export async function buildTeamPublicMedals(
-  teamId: mongoose.Types.ObjectId
-): Promise<TeamMedalDTO[]> {
-  await connectDB()
-
-  const team = await Team.findById(teamId)
-    .select('createdAt isActive approvalStatus')
-    .lean<LeanTeamDoc | null>()
-
-  if (!team || !isTeamPublicVisible(team)) return []
-
-  const rosterData = await loadTeamPublicRoster(teamId)
-  if (!rosterData) return []
-
-  let monthlyActivity: TeamMonthlyActivityDTO
-  try {
-    monthlyActivity = await buildTeamMonthlyActivity(
-      rosterData.memberOids,
-      rosterData.memberships.map(m => ({ userId: m.userId, role: m.role }))
-    )
-  } catch (e) {
-    console.error('buildTeamPublicMedals monthly activity:', e)
-    monthlyActivity = emptyTeamMonthlyActivity()
+  teamId: mongoose.Types.ObjectId,
+  options?: {
+    includeLeague?: boolean
+    monthlyActivity?: TeamMonthlyActivityDTO
   }
+): Promise<TeamMedalDTO[]> {
+  const includeLeague = options?.includeLeague === true
+  const ctx = await loadTeamMedalsContext(teamId, {
+    monthlyActivity: options?.monthlyActivity
+  })
+  if (!ctx) return []
 
   try {
-    return await buildTeamMedals(teamId, {
-      teamCreatedAt: team.createdAt,
-      memberCount: rosterData.roster.length,
-      featuredDeckMemberCount: rosterData.decklists.length,
-      monthlyActivity
-    })
+    return await buildTeamMedals(teamId, { context: ctx, includeLeague })
   } catch (e) {
     console.error('buildTeamPublicMedals:', e)
     return []

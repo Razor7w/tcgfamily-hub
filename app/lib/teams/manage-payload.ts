@@ -10,7 +10,11 @@ import {
   isCaptain
 } from '@/lib/teams/access'
 import { ownerPublicDisplay } from '@/lib/public-decklist-owner'
-import { buildTeamMedals } from '@/lib/teams/medals/build-team-medals'
+import {
+  buildTeamMedals,
+  mergeTeamMedals
+} from '@/lib/teams/medals/build-team-medals'
+import { getCachedTeamLeagueMedals } from '@/lib/teams/public-cache'
 import type { TeamMedalDTO } from '@/lib/teams/medals/types'
 import { formatRutOnBlur } from '@/lib/rut-input'
 import TeamInvitation from '@/models/TeamInvitation'
@@ -208,7 +212,11 @@ export async function loadTeamManageMedals(
   teamOid: mongoose.Types.ObjectId
 ): Promise<TeamMedalDTO[]> {
   try {
-    return await buildTeamMedals(teamOid)
+    const [baseMedals, leagueMedals] = await Promise.all([
+      buildTeamMedals(teamOid, { includeLeague: false }),
+      getCachedTeamLeagueMedals(teamOid)
+    ])
+    return mergeTeamMedals(leagueMedals, baseMedals)
   } catch (medalErr) {
     console.error('loadTeamManageMedals:', medalErr)
     return []

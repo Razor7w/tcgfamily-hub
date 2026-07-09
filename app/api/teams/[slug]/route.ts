@@ -9,7 +9,7 @@ import {
   getMembershipForUserOnTeam,
   isCaptain
 } from '@/lib/teams/access'
-import { buildTeamPublicCorePayload } from '@/lib/teams/public-payload'
+import { getCachedTeamPublicCore } from '@/lib/teams/public-cache'
 import { isValidTeamSlug } from '@/lib/teams/slug'
 import { resolveTeamBrandingAsset } from '@/lib/teams/branding'
 import {
@@ -39,19 +39,8 @@ export async function GET(
       )
     }
 
-    const payload = await buildTeamPublicCorePayload(
-      team._id as mongoose.Types.ObjectId,
-      {
-        _id: team._id as mongoose.Types.ObjectId,
-        name: team.name,
-        slug: team.slug,
-        bio: team.bio,
-        logoUrl: team.logoUrl,
-        coverUrl: team.coverUrl,
-        isActive: team.isActive,
-        approvalStatus: team.approvalStatus,
-        createdAt: team.createdAt
-      }
+    const payload = await getCachedTeamPublicCore(
+      team._id as mongoose.Types.ObjectId
     )
     if (!payload) {
       return NextResponse.json(
