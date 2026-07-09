@@ -19,7 +19,13 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import { normalizeEmail, validateEmailFormat } from '@/lib/password-rules'
 import { storeTempPasswordHint } from '@/lib/temp-password-hint'
 
-export default function EmailPasswordSignInForm() {
+type EmailPasswordSignInFormProps = {
+  callbackUrl?: string
+}
+
+export default function EmailPasswordSignInForm({
+  callbackUrl = '/dashboard'
+}: EmailPasswordSignInFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
@@ -55,7 +61,7 @@ export default function EmailPasswordSignInForm() {
         email: em,
         password,
         redirect: false,
-        callbackUrl: '/dashboard'
+        callbackUrl
       })
       if (res?.error) {
         setError('Correo o contraseña incorrectos.')

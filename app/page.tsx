@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { resolveAuthCallbackUrl } from '@/lib/auth-callback-url'
 import { useEffect, Suspense } from 'react'
 import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
@@ -33,9 +34,11 @@ function LoginAlerts() {
   )
 }
 
-export default function LoginPage() {
+function LoginPageContent() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const callbackUrl = resolveAuthCallbackUrl(searchParams.get('callbackUrl'))
 
   useEffect(() => {
     if (status !== 'authenticated') return
@@ -43,8 +46,8 @@ export default function LoginPage() {
       router.replace(MUST_CHANGE_PASSWORD_PATH)
       return
     }
-    router.replace('/dashboard')
-  }, [status, session, router])
+    router.replace(callbackUrl)
+  }, [status, session, router, callbackUrl])
 
   if (status === 'loading') {
     return (
@@ -122,14 +125,14 @@ export default function LoginPage() {
           <Typography variant="body1" color="text.secondary" textAlign="center">
             Accede con tu correo o elige otra opción más abajo.
           </Typography>
-          <EmailPasswordSignInForm />
+          <EmailPasswordSignInForm callbackUrl={callbackUrl} />
           <Divider sx={{ my: 1 }}>Otras opciones para iniciar sesión</Divider>
           <Button
             variant="outlined"
             size="large"
             fullWidth
             startIcon={<GoogleIcon />}
-            onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
+            onClick={() => signIn('google', { callbackUrl })}
             sx={{ py: 1.5, textTransform: 'none', fontSize: '1rem' }}
           >
             Iniciar sesión con Google
@@ -140,5 +143,36 @@ export default function LoginPage() {
         <AppVersion />
       </Box>
     </Box>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <Box
+          sx={{
+            minHeight: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            bgcolor: 'background.default'
+          }}
+        >
+          <Header />
+          <Box
+            sx={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <CircularProgress />
+          </Box>
+        </Box>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   )
 }

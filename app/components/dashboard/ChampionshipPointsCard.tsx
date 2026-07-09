@@ -17,11 +17,15 @@ import EmojiEventsOutlined from '@mui/icons-material/EmojiEventsOutlined'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import LeaderboardOutlinedIcon from '@mui/icons-material/LeaderboardOutlined'
 import LinkIcon from '@mui/icons-material/Link'
+import PlayPokemonPointsLabel from '@/components/play-pokemon/PlayPokemonPointsLabel'
 import {
   usePlayPokemonRankVisibility,
   useUpdatePlayPokemonRankVisibility
 } from '@/hooks/usePlayPokemonRankVisibility'
-import { PLAY_POKEMON_CHILE_LEADERBOARD_PATH } from '@/lib/play-pokemon-leaderboard/constants'
+import {
+  PLAY_POKEMON_CHILE_LEADERBOARD_PATH,
+  PLAY_POKEMON_COMMUNITY_RANKING_PATH
+} from '@/lib/play-pokemon-leaderboard/constants'
 import { useMyChampionshipPoints } from '@/hooks/useMyChampionshipPoints'
 
 const DIVISION_LABELS: Record<string, string> = {
@@ -83,7 +87,13 @@ export default function ChampionshipPointsCard({
     <Card variant="outlined" sx={{ borderRadius: 2 }}>
       <CardHeader
         avatar={<EmojiEventsOutlined color="primary" />}
-        title="Championship Points"
+        title={
+          <PlayPokemonPointsLabel
+            kind="championship"
+            label="Championship Points"
+            iconSize={16}
+          />
+        }
         subheader={
           isLinked
             ? seasonLabel
@@ -162,7 +172,7 @@ export default function ChampionshipPointsCard({
                   color="text.secondary"
                   display="block"
                 >
-                  Play! Points
+                  <PlayPokemonPointsLabel kind="play" label="Play! Points" />
                 </Typography>
                 <Typography
                   variant="h6"
@@ -215,6 +225,22 @@ export default function ChampionshipPointsCard({
                   }}
                 >
                   Leaderboard oficial
+                </Button>
+              ) : null}
+              {visibility?.rankPublic === true || data.rankPublic === true ? (
+                <Button
+                  component={Link}
+                  href={PLAY_POKEMON_COMMUNITY_RANKING_PATH}
+                  size="small"
+                  variant="outlined"
+                  startIcon={<LeaderboardOutlinedIcon fontSize="small" />}
+                  sx={{
+                    alignSelf: 'flex-start',
+                    textTransform: 'none',
+                    fontWeight: 700
+                  }}
+                >
+                  Ranking de jugadores
                 </Button>
               ) : null}
             </Stack>
@@ -338,7 +364,7 @@ export default function ChampionshipPointsCard({
                   color="text.secondary"
                   display="block"
                 >
-                  Play! Points
+                  <PlayPokemonPointsLabel kind="play" label="Play! Points" />
                 </Typography>
                 <Typography
                   variant="h6"

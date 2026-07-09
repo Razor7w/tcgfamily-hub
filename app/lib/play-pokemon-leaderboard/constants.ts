@@ -52,3 +52,9 @@ export function playPokemonLeaderboardPublicUrl(): string {
 }
 
 export const PLAY_POKEMON_CHILE_LEADERBOARD_PATH = '/ranking-play-pokemon/chile'
+
+/** Jugadores de Nexo que comparten su ranking vinculado. */
+export const PLAY_POKEMON_COMMUNITY_RANKING_PATH =
+  '/ranking-play-pokemon/comunidad'
+
+export const PLAY_POKEMON_COMMUNITY_RANKING_PAGE_SIZE = 50

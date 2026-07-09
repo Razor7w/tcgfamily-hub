@@ -32,6 +32,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import { alpha, useTheme } from '@mui/material/styles'
 import Snackbar from '@mui/material/Snackbar'
 import Header from '@/components/Header'
+import PlayPokemonPointsLabel from '@/components/play-pokemon/PlayPokemonPointsLabel'
 import { useLinkChampionshipPoints } from '@/hooks/useLinkChampionshipPoints'
 import {
   PLAY_POKEMON_LEADERBOARD_DIVISIONS,
@@ -290,13 +291,21 @@ export default function PlayPokemonChileRankingPage() {
                             align="right"
                             sx={{ fontWeight: 800, width: 120 }}
                           >
-                            CP
+                            <PlayPokemonPointsLabel
+                              kind="championship"
+                              label="CP"
+                              align="right"
+                            />
                           </TableCell>
                           <TableCell
                             align="right"
                             sx={{ fontWeight: 800, width: 120 }}
                           >
-                            Play! Pts
+                            <PlayPokemonPointsLabel
+                              kind="play"
+                              label="Play! Pts"
+                              align="right"
+                            />
                           </TableCell>
                           {searchActive && isAuthenticated ? (
                             <TableCell sx={{ fontWeight: 800, width: 148 }} />
