@@ -3,6 +3,7 @@ import mongoose from 'mongoose'
 import { requireSessionUser } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import { getActiveTeamForUser } from '@/lib/teams/access'
+import { vacatePlayerFromTeamFriendlyMatches } from '@/lib/teams/friendly-match/lineup-roster'
 import TeamMembership from '@/models/TeamMembership'
 import type { TeamRole } from '@/lib/teams/constants'
 
@@ -32,13 +33,18 @@ export async function POST() {
     }
 
     await connectDB()
+    const teamOid = active.team._id as mongoose.Types.ObjectId
+    const userId = gate.session.user!.id!
+
+    await vacatePlayerFromTeamFriendlyMatches(teamOid, userId)
+
     await TeamMembership.updateOne(
       {
-        teamId: active.team._id as mongoose.Types.ObjectId,
-        userId: new mongoose.Types.ObjectId(gate.session.user!.id!),
+        teamId: teamOid,
+        userId: new mongoose.Types.ObjectId(userId),
         status: 'active'
       },
-      { $set: { status: 'left' } }
+      { $set: { status: 'left' }, $unset: { featuredDecklistId: '' } }
     )
 
     return NextResponse.json({ ok: true })

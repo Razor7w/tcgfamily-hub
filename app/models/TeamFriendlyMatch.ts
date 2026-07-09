@@ -3,8 +3,9 @@ import type { TeamFriendlyMatchStatus } from '@/lib/teams/friendly-match/constan
 import { TEAM_FRIENDLY_POINTS_PER_WIN } from '@/lib/teams/friendly-match/constants'
 
 export interface ITeamFriendlyLineupSlot {
-  userId: Types.ObjectId
+  userId?: Types.ObjectId
   slot: number
+  vacantSince?: Date
 }
 
 export interface ITeamFriendlyMatch extends Document {
@@ -33,9 +34,11 @@ const LineupSlotSchema = new Schema<ITeamFriendlyLineupSlot>(
     userId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true
+      required: false,
+      default: undefined
     },
-    slot: { type: Number, required: true, min: 0, max: 2 }
+    slot: { type: Number, required: true, min: 0, max: 2 },
+    vacantSince: { type: Date, default: undefined }
   },
   { _id: false }
 )

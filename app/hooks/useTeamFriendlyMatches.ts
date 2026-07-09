@@ -238,6 +238,35 @@ export function useDeleteTeamFriendlyMatch(teamSlug: string) {
   })
 }
 
+export function useReplaceFriendlyLineupSlot(
+  teamSlug: string,
+  matchId: string
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: {
+      side: 'challenger' | 'opponent'
+      slot: number
+      userId: string
+    }) => {
+      const res = await fetch(
+        `/api/teams/friendly-matches/${encodeURIComponent(matchId)}/replace-lineup`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input)
+        }
+      )
+      if (!res.ok) await parseError(res, 'No se pudo asignar el jugador')
+      return res.json() as Promise<{ match: TeamFriendlyMatchDetailDTO }>
+    },
+    onSuccess: data => {
+      invalidateFriendly(qc, teamSlug)
+      void qc.setQueryData(teamFriendlyMatchDetailQueryKey(matchId), data)
+    }
+  })
+}
+
 export function useReportTeamFriendlyDuel(teamSlug: string, matchId: string) {
   const qc = useQueryClient()
   return useMutation({

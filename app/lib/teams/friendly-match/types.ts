@@ -3,10 +3,11 @@ import type { TeamFriendlyDuelReport } from '@/lib/teams/friendly-match/constant
 import type { TeamFriendlyMatchStatus } from '@/lib/teams/friendly-match/constants'
 
 export type FriendlyLineupPlayerDTO = {
-  userId: string
+  userId: string | null
   displayName: string
   imageUrl: string | null
   slot: number
+  vacant: boolean
 }
 
 export type FriendlyDuelDTO = {

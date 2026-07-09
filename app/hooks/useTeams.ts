@@ -406,7 +406,10 @@ export function useLeaveTeam() {
       if (!res.ok) await parseError(res, 'No se pudo salir del equipo')
       return res.json()
     },
-    onSuccess: () => invalidateTeams(qc)
+    onSuccess: () => {
+      invalidateTeams(qc)
+      void qc.invalidateQueries({ queryKey: ['teams'] })
+    }
   })
 }
 

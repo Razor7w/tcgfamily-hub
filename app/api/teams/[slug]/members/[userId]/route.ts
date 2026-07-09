@@ -9,6 +9,7 @@ import {
   getApprovedTeamBySlug,
   isCaptain
 } from '@/lib/teams/access'
+import { vacatePlayerFromTeamFriendlyMatches } from '@/lib/teams/friendly-match/lineup-roster'
 import TeamMembership from '@/models/TeamMembership'
 
 export async function PATCH(
@@ -163,9 +164,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
+    await vacatePlayerFromTeamFriendlyMatches(teamOid, targetUserId)
+
     await TeamMembership.updateOne(
       { teamId: teamOid, userId: targetOid, status: 'active' },
-      { $set: { status: 'left' } }
+      { $set: { status: 'left' }, $unset: { featuredDecklistId: '' } }
     )
 
     return NextResponse.json({ ok: true })

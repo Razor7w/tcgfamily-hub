@@ -34,6 +34,7 @@ import {
   useCancelTeamFriendlyMatch,
   useDeclineTeamFriendlyMatch,
   useDeleteTeamFriendlyMatch,
+  useReplaceFriendlyLineupSlot,
   useReportTeamFriendlyDuel,
   useRequestTeamFriendlyMatch,
   useResetTeamFriendlyMatch,
@@ -162,7 +163,7 @@ function matchIncludesViewer(
   userId: string
 ) {
   return [...match.challenger.lineup, ...match.opponent.lineup].some(
-    player => player.userId === userId
+    player => !player.vacant && player.userId === userId
   )
 }
 
@@ -307,9 +308,93 @@ function canReportDuel(
   )
 }
 
+function FriendlyLineupVacancyPanel({
+  label,
+  side,
+  team,
+  teamSlug,
+  matchId,
+  members,
+  canManageSide,
+  assignedUserIds
+}: {
+  label: string
+  side: 'challenger' | 'opponent'
+  team: TeamFriendlyMatchDetailDTO['challenger']
+  teamSlug: string
+  matchId: string
+  members: TeamManageMember[]
+  canManageSide: boolean
+  assignedUserIds: string[]
+}) {
+  const replace = useReplaceFriendlyLineupSlot(teamSlug, matchId)
+  const vacantSlots = team.lineup.filter(p => p.vacant)
+
+  if (vacantSlots.length === 0) return null
+
+  return (
+    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2.5 }}>
+      <Typography variant="subtitle2" fontWeight={800} gutterBottom>
+        {label} · cupos vacantes
+      </Typography>
+      <Stack spacing={1.5}>
+        {vacantSlots.map(slot => (
+          <Stack
+            key={`${side}-${slot.slot}`}
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1}
+            alignItems={{ sm: 'center' }}
+          >
+            <Typography variant="body2" sx={{ minWidth: 88 }}>
+              Slot {slot.slot + 1}
+            </Typography>
+            {canManageSide ? (
+              <FormControl fullWidth size="small">
+                <InputLabel id={`replace-${side}-${slot.slot}`}>
+                  Asignar jugador
+                </InputLabel>
+                <Select
+                  labelId={`replace-${side}-${slot.slot}`}
+                  label="Asignar jugador"
+                  defaultValue=""
+                  disabled={replace.isPending}
+                  onChange={e => {
+                    const userId = e.target.value
+                    if (!userId) return
+                    void replace.mutateAsync({ side, slot: slot.slot, userId })
+                  }}
+                >
+                  <MenuItem value="">
+                    <em>Elegir reemplazo</em>
+                  </MenuItem>
+                  {members.map(member => (
+                    <MenuItem
+                      key={member.userId}
+                      value={member.userId}
+                      disabled={assignedUserIds.includes(member.userId)}
+                    >
+                      {member.displayName} · {member.roleLabel}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                Pendiente de reemplazo por el staff del equipo
+              </Typography>
+            )}
+          </Stack>
+        ))}
+      </Stack>
+    </Paper>
+  )
+}
+
 function FriendlyMatchDetailPanel({
   matchId,
   teamSlug,
+  members,
+  canManage,
   viewerUserId,
   isCaptain,
   onModerate,
@@ -317,6 +402,8 @@ function FriendlyMatchDetailPanel({
 }: {
   matchId: string
   teamSlug: string
+  members: TeamManageMember[]
+  canManage: boolean
   viewerUserId: string
   isCaptain: boolean
   onModerate: (target: ModerationTarget) => void
@@ -359,6 +446,14 @@ function FriendlyMatchDetailPanel({
   const teamDuels = filterDuelsForView(match.duels, 'team', viewerUserId)
   const visibleDuels = detailTab === 'mine' ? myDuels : teamDuels
   const showDuelTabs = match.duels.length > 0
+  const assignedUserIds = [...match.challenger.lineup, ...match.opponent.lineup]
+    .filter(p => !p.vacant && p.userId)
+    .map(p => p.userId as string)
+  const canManageChallenger = canManage && match.challenger.slug === teamSlug
+  const canManageOpponent = canManage && match.opponent.slug === teamSlug
+  const hasVacancies =
+    match.challenger.lineup.some(p => p.vacant) ||
+    match.opponent.lineup.some(p => p.vacant)
 
   return (
     <Stack spacing={2}>
@@ -433,6 +528,31 @@ function FriendlyMatchDetailPanel({
           reporta victoria y el rival derrota, o cuando ambos reportan empate.
           Corrige tus reportes hasta que coincidan.
         </Alert>
+      ) : null}
+
+      {hasVacancies ? (
+        <Stack spacing={1.5}>
+          <FriendlyLineupVacancyPanel
+            label={match.challenger.name}
+            side="challenger"
+            team={match.challenger}
+            teamSlug={teamSlug}
+            matchId={match.id}
+            members={members}
+            canManageSide={canManageChallenger}
+            assignedUserIds={assignedUserIds}
+          />
+          <FriendlyLineupVacancyPanel
+            label={match.opponent.name}
+            side="opponent"
+            team={match.opponent}
+            teamSlug={teamSlug}
+            matchId={match.id}
+            members={members}
+            canManageSide={canManageOpponent}
+            assignedUserIds={assignedUserIds}
+          />
+        </Stack>
       ) : null}
 
       {showDuelTabs ? (
@@ -924,6 +1044,8 @@ export default function TeamFriendlyMatchesSection({
         <FriendlyMatchDetailPanel
           matchId={selectedMatchId}
           teamSlug={teamSlug}
+          members={members}
+          canManage={canManage}
           viewerUserId={viewerUserId}
           isCaptain={isCaptain}
           onModerate={target => {

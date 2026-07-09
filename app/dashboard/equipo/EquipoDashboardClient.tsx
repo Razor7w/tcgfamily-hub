@@ -11,6 +11,10 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Container from '@mui/material/Container'
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
 import Divider from '@mui/material/Divider'
 import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
@@ -171,6 +175,8 @@ export default function EquipoDashboardClient() {
   const inviteToTeam = useInviteToTeam(teamSlug)
 
   const leaveTeam = useLeaveTeam()
+  const [leaveOpen, setLeaveOpen] = useState(false)
+  const [leaveErr, setLeaveErr] = useState<string | null>(null)
   const disbandTeam = useDisbandTeam(teamSlug)
   const [disbandOpen, setDisbandOpen] = useState(false)
   const [disbandErr, setDisbandErr] = useState<string | null>(null)
@@ -820,7 +826,10 @@ export default function EquipoDashboardClient() {
                       color="warning"
                       variant="outlined"
                       disabled={leaveTeam.isPending}
-                      onClick={() => void leaveTeam.mutateAsync()}
+                      onClick={() => {
+                        setLeaveErr(null)
+                        setLeaveOpen(true)
+                      }}
                     >
                       Salir del equipo
                     </Button>
@@ -864,6 +873,52 @@ export default function EquipoDashboardClient() {
           }
         }}
       />
+
+      <Dialog
+        open={leaveOpen}
+        onClose={() => !leaveTeam.isPending && setLeaveOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>¿Salir del equipo?</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5}>
+            <Typography variant="body2" color="text.secondary">
+              Si estás en un versus activo, quedarás fuera de la alineación y el
+              capitán o co-capitan deberá asignar un reemplazo.
+            </Typography>
+            {leaveErr ? <Alert severity="error">{leaveErr}</Alert> : null}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button
+            onClick={() => setLeaveOpen(false)}
+            disabled={leaveTeam.isPending}
+          >
+            Cancelar
+          </Button>
+          <Button
+            color="warning"
+            variant="contained"
+            disabled={leaveTeam.isPending}
+            onClick={async () => {
+              setLeaveErr(null)
+              try {
+                await leaveTeam.mutateAsync()
+                setLeaveOpen(false)
+              } catch (err) {
+                setLeaveErr(
+                  err instanceof Error
+                    ? err.message
+                    : 'No se pudo salir del equipo'
+                )
+              }
+            }}
+          >
+            {leaveTeam.isPending ? 'Saliendo…' : 'Salir del equipo'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   )
 }

@@ -38,19 +38,34 @@ type LeanUser = {
 }
 
 function lineupToDto(
-  slots: { userId: mongoose.Types.ObjectId; slot: number }[],
+  slots: {
+    userId?: mongoose.Types.ObjectId
+    slot: number
+    vacantSince?: Date
+  }[],
   userById: Map<string, LeanUser>
 ): FriendlyLineupPlayerDTO[] {
   return [...slots]
     .sort((a, b) => a.slot - b.slot)
     .map(slot => {
+      const vacant = slot.userId == null || slot.vacantSince != null
+      if (vacant) {
+        return {
+          userId: null,
+          displayName: 'Cupos vacante',
+          imageUrl: null,
+          slot: slot.slot,
+          vacant: true
+        }
+      }
       const u = userById.get(String(slot.userId))
       const { displayName, imageUrl } = ownerPublicDisplay(u ?? null)
       return {
         userId: String(slot.userId),
         displayName,
         imageUrl,
-        slot: slot.slot
+        slot: slot.slot,
+        vacant: false
       }
     })
 }
@@ -77,8 +92,8 @@ function viewerSideForMatch(
   match: {
     challengerTeamId: mongoose.Types.ObjectId
     opponentTeamId: mongoose.Types.ObjectId
-    challengerLineup?: { userId: mongoose.Types.ObjectId }[]
-    opponentLineup?: { userId: mongoose.Types.ObjectId }[]
+    challengerLineup?: { userId?: mongoose.Types.ObjectId }[]
+    opponentLineup?: { userId?: mongoose.Types.ObjectId }[]
     isIntramural?: boolean
   },
   viewerTeamId: string | null,
@@ -86,10 +101,10 @@ function viewerSideForMatch(
 ): 'challenger' | 'opponent' | null {
   if (isFriendlyMatchIntramural(match) && viewerUserId) {
     const inChallenger = (match.challengerLineup ?? []).some(
-      slot => String(slot.userId) === viewerUserId
+      slot => slot.userId != null && String(slot.userId) === viewerUserId
     )
     const inOpponent = (match.opponentLineup ?? []).some(
-      slot => String(slot.userId) === viewerUserId
+      slot => slot.userId != null && String(slot.userId) === viewerUserId
     )
     if (inChallenger && !inOpponent) return 'challenger'
     if (inOpponent && !inChallenger) return 'opponent'
@@ -174,10 +189,10 @@ async function buildFriendlyMatchListFromRows(
     userIds.add(String(match.requestedByUserId))
     matchIds.push(match._id as mongoose.Types.ObjectId)
     for (const slot of match.challengerLineup ?? []) {
-      userIds.add(String(slot.userId))
+      if (slot.userId) userIds.add(String(slot.userId))
     }
     for (const slot of match.opponentLineup ?? []) {
-      userIds.add(String(slot.userId))
+      if (slot.userId) userIds.add(String(slot.userId))
     }
   }
 
@@ -197,6 +212,7 @@ async function buildFriendlyMatchListFromRows(
     TeamFriendlyMatchDuel.aggregate<{
       _id: mongoose.Types.ObjectId
       confirmed: number
+      total: number
     }>([
       { $match: { matchId: { $in: matchIds } } },
       {
@@ -204,7 +220,8 @@ async function buildFriendlyMatchListFromRows(
           _id: '$matchId',
           confirmed: {
             $sum: { $cond: [{ $eq: ['$status', 'confirmed'] }, 1, 0] }
-          }
+          },
+          total: { $sum: 1 }
         }
       }
     ])
@@ -214,6 +231,9 @@ async function buildFriendlyMatchListFromRows(
   const userById = new Map(users.map(u => [String(u._id), u]))
   const confirmedByMatch = new Map(
     duelCounts.map(row => [String(row._id), row.confirmed])
+  )
+  const totalDuelsByMatch = new Map(
+    duelCounts.map(row => [String(row._id), row.total])
   )
 
   const viewerTeamId = String(teamId)
@@ -263,7 +283,11 @@ async function buildFriendlyMatchListFromRows(
         tier: 'social',
         isIntramural: intramural,
         confirmedDuels: confirmedByMatch.get(String(match._id)) ?? 0,
-        totalDuels: status === 'pending' ? 0 : TEAM_FRIENDLY_DUEL_COUNT,
+        totalDuels:
+          status === 'pending'
+            ? 0
+            : (totalDuelsByMatch.get(String(match._id)) ??
+              TEAM_FRIENDLY_DUEL_COUNT),
         captainCanModerate: friendlyMatchAllowsCaptainModeration({
           status,
           tier: match.tier ?? 'social'
@@ -348,10 +372,10 @@ export async function buildTeamFriendlyMatchDetail(
 
   const userIds = new Set<string>()
   for (const slot of match.challengerLineup ?? []) {
-    userIds.add(String(slot.userId))
+    if (slot.userId) userIds.add(String(slot.userId))
   }
   for (const slot of match.opponentLineup ?? []) {
-    userIds.add(String(slot.userId))
+    if (slot.userId) userIds.add(String(slot.userId))
   }
   for (const duel of duels) {
     userIds.add(String(duel.challengerUserId))
@@ -369,7 +393,7 @@ export async function buildTeamFriendlyMatchDetail(
   const opponentLineup = lineupToDto(match.opponentLineup ?? [], userById)
   const lineupByUserId = new Map<string, FriendlyLineupPlayerDTO>()
   for (const p of [...challengerLineup, ...opponentLineup]) {
-    lineupByUserId.set(p.userId, p)
+    if (p.userId) lineupByUserId.set(p.userId, p)
   }
 
   const viewerSide = viewerSideForMatch(match, viewerTeamId, viewerUserId)
@@ -396,13 +420,15 @@ export async function buildTeamFriendlyMatchDetail(
         userId: String(duel.challengerUserId),
         displayName: 'Jugador',
         imageUrl: null,
-        slot: duel.challengerSlot
+        slot: duel.challengerSlot,
+        vacant: false
       },
       opponentPlayer: opponentPlayer ?? {
         userId: String(duel.opponentUserId),
         displayName: 'Jugador',
         imageUrl: null,
-        slot: duel.opponentSlot
+        slot: duel.opponentSlot,
+        vacant: false
       },
       status: duel.status,
       winnerUserId: duel.winnerUserId ? String(duel.winnerUserId) : null,
@@ -455,7 +481,7 @@ export async function buildTeamFriendlyMatchDetail(
     tier: 'social',
     isIntramural: intramural,
     confirmedDuels,
-    totalDuels: match.status === 'pending' ? 0 : TEAM_FRIENDLY_DUEL_COUNT,
+    totalDuels: match.status === 'pending' ? 0 : duelDtos.length,
     captainCanModerate: friendlyMatchAllowsCaptainModeration({
       status,
       tier: match.tier ?? 'social'
