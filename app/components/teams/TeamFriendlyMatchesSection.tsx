@@ -50,14 +50,26 @@ import type {
   TeamFriendlyMatchDetailDTO
 } from '@/lib/teams/friendly-match/types'
 import {
+  TEAM_FRIENDLY_DEFAULT_LINEUP_SIZE,
   TEAM_FRIENDLY_DUEL_REPORT_LABELS,
   TEAM_FRIENDLY_DUEL_STATUS_LABELS,
-  TEAM_FRIENDLY_INTRAMURAL_MIN_MEMBERS,
-  TEAM_FRIENDLY_LINEUP_SIZE,
+  TEAM_FRIENDLY_LINEUP_SIZES,
+  TEAM_FRIENDLY_MIN_LINEUP_SIZE,
   TEAM_FRIENDLY_POINTS_PER_TIE,
   TEAM_FRIENDLY_POINTS_PER_WIN,
-  type TeamFriendlyDuelReport
+  friendlyDuelCount,
+  friendlyIntramuralMinMembers,
+  friendlyLineupSizeLabel,
+  friendlyLineupSlots,
+  type TeamFriendlyDuelReport,
+  type TeamFriendlyLineupSize
 } from '@/lib/teams/friendly-match/constants'
+
+function emptyFriendlyLineupSlots(
+  size: TeamFriendlyLineupSize = TEAM_FRIENDLY_DEFAULT_LINEUP_SIZE
+): (string | '')[] {
+  return Array.from({ length: size }, () => '')
+}
 
 type VersusViewMode = 'mine' | 'team'
 
@@ -106,11 +118,13 @@ function statusChipColor(status: string) {
 type RequestVersusMode = 'external' | 'intramural'
 
 function LineupPicker({
+  lineupSize,
   members,
   slots,
   onChange,
   excludeUserIds = []
 }: {
+  lineupSize: TeamFriendlyLineupSize
   members: TeamManageMember[]
   slots: (string | '')[]
   onChange: (slots: (string | '')[]) => void
@@ -118,7 +132,7 @@ function LineupPicker({
 }) {
   return (
     <Stack spacing={1.5}>
-      {[0, 1, 2].map(slot => (
+      {friendlyLineupSlots(lineupSize).map(slot => (
         <FormControl key={slot} fullWidth size="small">
           <InputLabel id={`lineup-slot-${slot}`}>Slot {slot + 1}</InputLabel>
           <Select
@@ -153,9 +167,43 @@ function LineupPicker({
   )
 }
 
-function slotsToLineup(slots: (string | '')[]): FriendlyLineupInput[] | null {
-  if (slots.some(id => !id)) return null
+function slotsToLineup(
+  slots: (string | '')[],
+  lineupSize: TeamFriendlyLineupSize
+): FriendlyLineupInput[] | null {
+  if (slots.length !== lineupSize || slots.some(id => !id)) return null
   return slots.map((userId, slot) => ({ userId: userId as string, slot }))
+}
+
+function FriendlyFormatPicker({
+  value,
+  onChange,
+  disabled = false
+}: {
+  value: TeamFriendlyLineupSize
+  onChange: (size: TeamFriendlyLineupSize) => void
+  disabled?: boolean
+}) {
+  return (
+    <FormControl fullWidth size="small">
+      <InputLabel id="friendly-format-label">Formato</InputLabel>
+      <Select
+        labelId="friendly-format-label"
+        label="Formato"
+        value={value}
+        disabled={disabled}
+        onChange={e =>
+          onChange(Number(e.target.value) as TeamFriendlyLineupSize)
+        }
+      >
+        {TEAM_FRIENDLY_LINEUP_SIZES.map(size => (
+          <MenuItem key={size} value={size}>
+            {friendlyLineupSizeLabel(size)} · {friendlyDuelCount(size)} duelos
+          </MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  )
 }
 
 function matchIncludesViewer(
@@ -745,58 +793,78 @@ export default function TeamFriendlyMatchesSection({
   const [requestMode, setRequestMode] = useState<RequestVersusMode>('external')
   const [acceptMatchId, setAcceptMatchId] = useState<string | null>(null)
   const [opponentSlug, setOpponentSlug] = useState('')
-  const [lineupSlots, setLineupSlots] = useState<(string | '')[]>(['', '', ''])
+  const [requestLineupSize, setRequestLineupSize] =
+    useState<TeamFriendlyLineupSize>(TEAM_FRIENDLY_DEFAULT_LINEUP_SIZE)
+  const [acceptLineupSize, setAcceptLineupSize] =
+    useState<TeamFriendlyLineupSize>(TEAM_FRIENDLY_DEFAULT_LINEUP_SIZE)
+  const [lineupSlots, setLineupSlots] = useState<(string | '')[]>(() =>
+    emptyFriendlyLineupSlots(TEAM_FRIENDLY_DEFAULT_LINEUP_SIZE)
+  )
   const [intramuralOpponentSlots, setIntramuralOpponentSlots] = useState<
     (string | '')[]
-  >(['', '', ''])
+  >(() => emptyFriendlyLineupSlots(TEAM_FRIENDLY_DEFAULT_LINEUP_SIZE))
   const [formErr, setFormErr] = useState<string | null>(null)
 
   const opponentOptions = useMemo(
     () =>
       (directory?.teams ?? []).filter(
-        t => t.slug !== teamSlug && t.memberCount >= TEAM_FRIENDLY_LINEUP_SIZE
+        t => t.slug !== teamSlug && t.memberCount >= requestLineupSize
       ),
-    [directory?.teams, teamSlug]
+    [directory?.teams, requestLineupSize, teamSlug]
   )
 
   const undersizedOpponents = useMemo(
     () =>
       (directory?.teams ?? []).filter(
-        t => t.slug !== teamSlug && t.memberCount < TEAM_FRIENDLY_LINEUP_SIZE
+        t =>
+          t.slug !== teamSlug &&
+          t.memberCount >= TEAM_FRIENDLY_MIN_LINEUP_SIZE &&
+          t.memberCount < requestLineupSize
       ),
-    [directory?.teams, teamSlug]
+    [directory?.teams, requestLineupSize, teamSlug]
   )
 
   const directoryStats = useMemo(() => {
     const others = (directory?.teams ?? []).filter(t => t.slug !== teamSlug)
-    const undersized = others.filter(
-      t => t.memberCount < TEAM_FRIENDLY_LINEUP_SIZE
-    )
+    const undersized = others.filter(t => t.memberCount < requestLineupSize)
     return {
       otherTeams: others.length,
       undersizedTeams: undersized.length,
       eligibleTeams: opponentOptions.length
     }
-  }, [directory?.teams, opponentOptions.length, teamSlug])
+  }, [directory?.teams, opponentOptions.length, requestLineupSize, teamSlug])
 
   const matches = data?.matches ?? []
-  const canFieldLineup = members.length >= TEAM_FRIENDLY_LINEUP_SIZE
-  const canIntramural = members.length >= TEAM_FRIENDLY_INTRAMURAL_MIN_MEMBERS
+  const canFieldLineup = members.length >= TEAM_FRIENDLY_MIN_LINEUP_SIZE
+  const canIntramural =
+    members.length >= friendlyIntramuralMinMembers(requestLineupSize)
   const challengerLineupIds = lineupSlots.filter(Boolean) as string[]
   const canRequestExternal =
     canFieldLineup &&
     !directoryPending &&
     opponentOptions.length > 0 &&
-    Boolean(opponentSlug)
+    Boolean(opponentSlug) &&
+    Boolean(slotsToLineup(lineupSlots, requestLineupSize))
   const canRequestIntramural =
     canIntramural &&
-    Boolean(slotsToLineup(lineupSlots)) &&
-    Boolean(slotsToLineup(intramuralOpponentSlots))
+    Boolean(slotsToLineup(lineupSlots, requestLineupSize)) &&
+    Boolean(slotsToLineup(intramuralOpponentSlots, requestLineupSize))
 
   function resetRequestForm() {
     setOpponentSlug('')
-    setLineupSlots(['', '', ''])
-    setIntramuralOpponentSlots(['', '', ''])
+    setRequestLineupSize(TEAM_FRIENDLY_DEFAULT_LINEUP_SIZE)
+    setLineupSlots(emptyFriendlyLineupSlots(TEAM_FRIENDLY_DEFAULT_LINEUP_SIZE))
+    setIntramuralOpponentSlots(
+      emptyFriendlyLineupSlots(TEAM_FRIENDLY_DEFAULT_LINEUP_SIZE)
+    )
+    setFormErr(null)
+  }
+
+  function handleRequestLineupSizeChange(size: TeamFriendlyLineupSize) {
+    setRequestLineupSize(size)
+    setLineupSlots(emptyFriendlyLineupSlots(size))
+    setIntramuralOpponentSlots(emptyFriendlyLineupSlots(size))
+    setOpponentSlug('')
     setFormErr(null)
   }
 
@@ -809,15 +877,21 @@ export default function TeamFriendlyMatchesSection({
   async function handleRequest() {
     setFormErr(null)
     if (requestMode === 'intramural') {
-      const lineup = slotsToLineup(lineupSlots)
-      const opponentLineup = slotsToLineup(intramuralOpponentSlots)
+      const lineup = slotsToLineup(lineupSlots, requestLineupSize)
+      const opponentLineup = slotsToLineup(
+        intramuralOpponentSlots,
+        requestLineupSize
+      )
       if (!lineup || !opponentLineup) {
-        setFormErr('Debes elegir 3 jugadores distintos en cada escuadra')
+        setFormErr(
+          `Debes elegir ${requestLineupSize} jugadores distintos en cada escuadra`
+        )
         return
       }
       try {
         const result = await requestMatch.mutateAsync({
           intramural: true,
+          lineupSize: requestLineupSize,
           lineup,
           opponentLineup
         })
@@ -832,18 +906,21 @@ export default function TeamFriendlyMatchesSection({
       return
     }
 
-    const lineup = slotsToLineup(lineupSlots)
+    const lineup = slotsToLineup(lineupSlots, requestLineupSize)
     if (!opponentSlug) {
       setFormErr('Elige un equipo rival')
       return
     }
     if (!lineup) {
-      setFormErr('Debes elegir 3 jugadores en slots distintos')
+      setFormErr(
+        `Debes elegir ${requestLineupSize} jugadores en slots distintos`
+      )
       return
     }
     try {
       const result = await requestMatch.mutateAsync({
         opponentTeamSlug: opponentSlug,
+        lineupSize: requestLineupSize,
         lineup
       })
       setRequestOpen(false)
@@ -857,9 +934,11 @@ export default function TeamFriendlyMatchesSection({
   async function handleAccept() {
     if (!acceptMatchId) return
     setFormErr(null)
-    const lineup = slotsToLineup(lineupSlots)
+    const lineup = slotsToLineup(lineupSlots, acceptLineupSize)
     if (!lineup) {
-      setFormErr('Debes elegir 3 jugadores en slots distintos')
+      setFormErr(
+        `Debes elegir ${acceptLineupSize} jugadores en slots distintos`
+      )
       return
     }
     try {
@@ -868,7 +947,7 @@ export default function TeamFriendlyMatchesSection({
         lineup
       })
       setAcceptMatchId(null)
-      setLineupSlots(['', '', ''])
+      setLineupSlots(emptyFriendlyLineupSlots(acceptLineupSize))
       setSelectedMatchId(result.match.id)
     } catch (e) {
       setFormErr(e instanceof Error ? e.message : 'Error al aceptar')
@@ -961,7 +1040,8 @@ export default function TeamFriendlyMatchesSection({
             variant="contained"
             onClick={() => {
               setAcceptMatchId(match.id)
-              setLineupSlots(['', '', ''])
+              setAcceptLineupSize(match.lineupSize)
+              setLineupSlots(emptyFriendlyLineupSlots(match.lineupSize))
               setFormErr(null)
             }}
           >
@@ -1075,7 +1155,7 @@ export default function TeamFriendlyMatchesSection({
             </Typography>
           </Stack>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Nivel A: sin puntuación global. 3 jugadores por equipo, 9 rondas
+            Nivel A: sin puntuación global. Formatos 2v2 o 3v3 con rondas
             cruzadas, {TEAM_FRIENDLY_POINTS_PER_WIN} puntos por victoria y{' '}
             {TEAM_FRIENDLY_POINTS_PER_TIE} punto por empate confirmado.
           </Typography>
@@ -1102,15 +1182,16 @@ export default function TeamFriendlyMatchesSection({
 
       {!canFieldLineup ? (
         <Alert severity="info">
-          Necesitas al menos {TEAM_FRIENDLY_LINEUP_SIZE} miembros activos para
-          jugar un versus amistoso.
+          Necesitas al menos {TEAM_FRIENDLY_MIN_LINEUP_SIZE} miembros activos
+          para jugar un versus amistoso.
         </Alert>
       ) : null}
 
       {canFieldLineup && !canIntramural ? (
         <Alert severity="info">
-          Con {TEAM_FRIENDLY_INTRAMURAL_MIN_MEMBERS} o más miembros puedes armar
-          un versus interno (dos escuadras de 3 del mismo equipo).
+          Con {friendlyIntramuralMinMembers(2)} o más miembros puedes armar un
+          versus interno 2v2; con {friendlyIntramuralMinMembers(3)} o más,
+          también 3v3.
         </Alert>
       ) : null}
 
@@ -1183,6 +1264,11 @@ export default function TeamFriendlyMatchesSection({
                           color="secondary"
                         />
                       ) : null}
+                      <Chip
+                        size="small"
+                        label={friendlyLineupSizeLabel(match.lineupSize)}
+                        variant="outlined"
+                      />
                     </Stack>
                   </Stack>
                   <Typography variant="caption" color="text.secondary">
@@ -1214,16 +1300,22 @@ export default function TeamFriendlyMatchesSection({
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
+            <FriendlyFormatPicker
+              value={requestLineupSize}
+              onChange={handleRequestLineupSizeChange}
+            />
             {requestMode === 'intramural' ? (
               <>
                 <Typography variant="body2" color="text.secondary">
-                  Elige dos escuadras de 3 jugadores distintos. El match inicia
-                  de inmediato con 9 duelos cruzados.
+                  Elige dos escuadras de {requestLineupSize} jugadores
+                  distintos. El match inicia de inmediato con{' '}
+                  {friendlyDuelCount(requestLineupSize)} duelos cruzados.
                 </Typography>
                 <Typography variant="subtitle2" fontWeight={700}>
                   Escuadra A
                 </Typography>
                 <LineupPicker
+                  lineupSize={requestLineupSize}
                   members={members}
                   slots={lineupSlots}
                   onChange={setLineupSlots}
@@ -1235,6 +1327,7 @@ export default function TeamFriendlyMatchesSection({
                   Escuadra B
                 </Typography>
                 <LineupPicker
+                  lineupSize={requestLineupSize}
                   members={members}
                   slots={intramuralOpponentSlots}
                   onChange={setIntramuralOpponentSlots}
@@ -1293,8 +1386,8 @@ export default function TeamFriendlyMatchesSection({
                     ? 'Solo tu equipo está publicado. Necesitas al menos otro equipo aprobado en la comunidad.'
                     : directoryStats.undersizedTeams > 0 &&
                         directoryStats.eligibleTeams === 0
-                      ? `Hay ${directoryStats.otherTeams} equipo${directoryStats.otherTeams === 1 ? '' : 's'} publicado${directoryStats.otherTeams === 1 ? '' : 's'}, pero ninguno con al menos ${TEAM_FRIENDLY_LINEUP_SIZE} miembros para jugar un versus.`
-                      : 'No hay equipos elegibles en este momento. Cada rival necesita al menos 3 miembros activos.'}
+                      ? `Hay ${directoryStats.otherTeams} equipo${directoryStats.otherTeams === 1 ? '' : 's'} publicado${directoryStats.otherTeams === 1 ? '' : 's'}, pero ninguno con al menos ${requestLineupSize} miembros para un versus ${friendlyLineupSizeLabel(requestLineupSize)}.`
+                      : `No hay equipos elegibles en este momento. Cada rival necesita al menos ${requestLineupSize} miembros activos.`}
                 </Typography>
                 {undersizedOpponents.length > 0 ? (
                   <Stack spacing={1} sx={{ mt: 2.5, textAlign: 'left' }}>
@@ -1330,8 +1423,7 @@ export default function TeamFriendlyMatchesSection({
                             color="text.secondary"
                             sx={{ ml: 1, flexShrink: 0 }}
                           >
-                            {team.memberCount}/{TEAM_FRIENDLY_LINEUP_SIZE}{' '}
-                            miembros
+                            {team.memberCount}/{requestLineupSize} miembros
                           </Typography>
                         </Button>
                       ))}
@@ -1363,9 +1455,10 @@ export default function TeamFriendlyMatchesSection({
             {opponentOptions.length > 0 ? (
               <>
                 <Typography variant="subtitle2" fontWeight={700}>
-                  Tu alineación (3 jugadores)
+                  Tu alineación ({requestLineupSize} jugadores)
                 </Typography>
                 <LineupPicker
+                  lineupSize={requestLineupSize}
                   members={members}
                   slots={lineupSlots}
                   onChange={setLineupSlots}
@@ -1404,10 +1497,13 @@ export default function TeamFriendlyMatchesSection({
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
             <Typography variant="body2" color="text.secondary">
-              Elige a los 3 jugadores que representarán a {teamName}. Se
-              generarán 9 duelos cruzados automáticamente.
+              Formato acordado: {friendlyLineupSizeLabel(acceptLineupSize)}.
+              Elige a los {acceptLineupSize} jugadores que representarán a{' '}
+              {teamName}. Se generarán {friendlyDuelCount(acceptLineupSize)}{' '}
+              duelos cruzados automáticamente.
             </Typography>
             <LineupPicker
+              lineupSize={acceptLineupSize}
               members={members}
               slots={lineupSlots}
               onChange={setLineupSlots}

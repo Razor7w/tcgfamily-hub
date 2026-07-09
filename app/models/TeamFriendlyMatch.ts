@@ -1,6 +1,10 @@
 import mongoose, { Schema, type Document, type Types } from 'mongoose'
 import type { TeamFriendlyMatchStatus } from '@/lib/teams/friendly-match/constants'
-import { TEAM_FRIENDLY_POINTS_PER_WIN } from '@/lib/teams/friendly-match/constants'
+import {
+  TEAM_FRIENDLY_MAX_LINEUP_SIZE,
+  TEAM_FRIENDLY_POINTS_PER_WIN,
+  type TeamFriendlyLineupSize
+} from '@/lib/teams/friendly-match/constants'
 
 export interface ITeamFriendlyLineupSlot {
   userId?: Types.ObjectId
@@ -16,6 +20,7 @@ export interface ITeamFriendlyMatch extends Document {
   status: TeamFriendlyMatchStatus
   tier: 'social'
   isIntramural: boolean
+  lineupSize: TeamFriendlyLineupSize
   pointsPerWin: number
   challengerLineup: ITeamFriendlyLineupSlot[]
   opponentLineup: ITeamFriendlyLineupSlot[]
@@ -37,7 +42,12 @@ const LineupSlotSchema = new Schema<ITeamFriendlyLineupSlot>(
       required: false,
       default: undefined
     },
-    slot: { type: Number, required: true, min: 0, max: 2 },
+    slot: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: TEAM_FRIENDLY_MAX_LINEUP_SIZE - 1
+    },
     vacantSince: { type: Date, default: undefined }
   },
   { _id: false }
@@ -92,6 +102,12 @@ const TeamFriendlyMatchSchema = new Schema<ITeamFriendlyMatch>(
       default: false,
       required: true,
       index: true
+    },
+    lineupSize: {
+      type: Number,
+      enum: [2, 3],
+      default: 3,
+      required: true
     },
     pointsPerWin: {
       type: Number,

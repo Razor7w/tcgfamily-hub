@@ -1,11 +1,60 @@
-export const TEAM_FRIENDLY_LINEUP_SIZE = 3
-/** Mínimo de miembros activos para armar dos escuadras de 3 en un versus interno. */
-export const TEAM_FRIENDLY_INTRAMURAL_MIN_MEMBERS = 6
+export const TEAM_FRIENDLY_LINEUP_SIZES = [2, 3] as const
+export type TeamFriendlyLineupSize = (typeof TEAM_FRIENDLY_LINEUP_SIZES)[number]
+
+export const TEAM_FRIENDLY_MIN_LINEUP_SIZE = 2
+export const TEAM_FRIENDLY_MAX_LINEUP_SIZE = 3
+export const TEAM_FRIENDLY_DEFAULT_LINEUP_SIZE: TeamFriendlyLineupSize = 2
+export const TEAM_FRIENDLY_MAX_DUEL_COUNT =
+  TEAM_FRIENDLY_MAX_LINEUP_SIZE * TEAM_FRIENDLY_MAX_LINEUP_SIZE
+
+export function isFriendlyLineupSize(
+  value: unknown
+): value is TeamFriendlyLineupSize {
+  return value === 2 || value === 3
+}
+
+export function friendlyLineupSlots(
+  size: TeamFriendlyLineupSize
+): readonly number[] {
+  return Array.from({ length: size }, (_, index) => index)
+}
+
+export function friendlyDuelCount(size: TeamFriendlyLineupSize): number {
+  return size * size
+}
+
+export function friendlyIntramuralMinMembers(
+  size: TeamFriendlyLineupSize
+): number {
+  return size * 2
+}
+
+export function resolveFriendlyLineupSize(match: {
+  lineupSize?: unknown
+  challengerLineup?: unknown[] | null
+}): TeamFriendlyLineupSize {
+  if (isFriendlyLineupSize(match.lineupSize)) return match.lineupSize
+  const len = Array.isArray(match.challengerLineup)
+    ? match.challengerLineup.length
+    : 0
+  if (isFriendlyLineupSize(len)) return len
+  return 3
+}
+
+export function parseFriendlyLineupSizeInput(
+  raw: unknown
+):
+  | { ok: true; lineupSize: TeamFriendlyLineupSize }
+  | { ok: false; error: string } {
+  if (isFriendlyLineupSize(raw)) {
+    return { ok: true, lineupSize: raw }
+  }
+  return { ok: false, error: 'Formato inválido (elige 2v2 o 3v3)' }
+}
+
 export const TEAM_FRIENDLY_POINTS_PER_WIN = 3
 export const TEAM_FRIENDLY_POINTS_PER_TIE = 1
 export const TEAM_FRIENDLY_CHALLENGE_EXPIRY_DAYS = 14
-export const TEAM_FRIENDLY_DUEL_COUNT =
-  TEAM_FRIENDLY_LINEUP_SIZE * TEAM_FRIENDLY_LINEUP_SIZE
 
 export const TEAM_FRIENDLY_MATCH_STATUSES = [
   'pending',
@@ -81,6 +130,10 @@ export const TEAM_FRIENDLY_INTRAMURAL_SIDE_LABELS = {
   challenger: 'Escuadra A',
   opponent: 'Escuadra B'
 } as const
+
+export function friendlyLineupSizeLabel(size: TeamFriendlyLineupSize): string {
+  return `${size}v${size}`
+}
 
 export function isFriendlyMatchIntramural(match: {
   isIntramural?: boolean

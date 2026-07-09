@@ -11,7 +11,8 @@ import {
 import { buildTeamFriendlyMatchList } from '@/lib/teams/friendly-match/build-payload'
 import {
   TEAM_FRIENDLY_CHALLENGE_EXPIRY_DAYS,
-  TEAM_FRIENDLY_INTRAMURAL_MIN_MEMBERS
+  friendlyIntramuralMinMembers,
+  parseFriendlyLineupSizeInput
 } from '@/lib/teams/friendly-match/constants'
 import { createFriendlyMatchDuels } from '@/lib/teams/friendly-match/lifecycle'
 import {
@@ -93,19 +94,31 @@ export async function POST(
 
     const body = await request.json().catch(() => null)
     const isIntramural = body?.intramural === true
+    const parsedLineupSize = parseFriendlyLineupSizeInput(body?.lineupSize)
+    if (!parsedLineupSize.ok) {
+      return NextResponse.json(
+        { error: parsedLineupSize.error },
+        { status: 400 }
+      )
+    }
+    const { lineupSize } = parsedLineupSize
 
     if (isIntramural) {
       const memberCount = await countActiveMembers(challengerOid)
-      if (memberCount < TEAM_FRIENDLY_INTRAMURAL_MIN_MEMBERS) {
+      const minMembers = friendlyIntramuralMinMembers(lineupSize)
+      if (memberCount < minMembers) {
         return NextResponse.json(
           {
-            error: `Se necesitan al menos ${TEAM_FRIENDLY_INTRAMURAL_MIN_MEMBERS} miembros activos para un versus interno`
+            error: `Se necesitan al menos ${minMembers} miembros activos para un versus interno ${lineupSize}v${lineupSize}`
           },
           { status: 400 }
         )
       }
 
-      const parsedChallengerLineup = parseFriendlyLineupInput(body?.lineup)
+      const parsedChallengerLineup = parseFriendlyLineupInput(
+        body?.lineup,
+        lineupSize
+      )
       if (!parsedChallengerLineup.ok) {
         return NextResponse.json(
           { error: parsedChallengerLineup.error },
@@ -114,7 +127,8 @@ export async function POST(
       }
 
       const parsedOpponentLineup = parseFriendlyLineupInput(
-        body?.opponentLineup
+        body?.opponentLineup,
+        lineupSize
       )
       if (!parsedOpponentLineup.ok) {
         return NextResponse.json(
@@ -126,7 +140,8 @@ export async function POST(
       const intramuralCheck = await assertIntramuralLineups(
         challengerOid,
         parsedChallengerLineup.lineup,
-        parsedOpponentLineup.lineup
+        parsedOpponentLineup.lineup,
+        lineupSize
       )
       if (!intramuralCheck.ok) {
         return NextResponse.json(
@@ -159,6 +174,7 @@ export async function POST(
         status: 'in_progress',
         tier: 'social',
         isIntramural: true,
+        lineupSize,
         challengerLineup: parsedChallengerLineup.lineup.map(slot => ({
           userId: new mongoose.Types.ObjectId(slot.userId),
           slot: slot.slot
@@ -173,7 +189,8 @@ export async function POST(
       await createFriendlyMatchDuels(
         match._id as mongoose.Types.ObjectId,
         parsedChallengerLineup.lineup,
-        parsedOpponentLineup.lineup
+        parsedOpponentLineup.lineup,
+        lineupSize
       )
 
       return NextResponse.json({
@@ -200,7 +217,7 @@ export async function POST(
       )
     }
 
-    const parsedLineup = parseFriendlyLineupInput(body?.lineup)
+    const parsedLineup = parseFriendlyLineupInput(body?.lineup, lineupSize)
     if (!parsedLineup.ok) {
       return NextResponse.json({ error: parsedLineup.error }, { status: 400 })
     }
@@ -214,9 +231,30 @@ export async function POST(
     }
 
     const opponentOid = opponentTeam._id as mongoose.Types.ObjectId
+    const opponentMemberCount = await countActiveMembers(opponentOid)
+    if (opponentMemberCount < lineupSize) {
+      return NextResponse.json(
+        {
+          error: `El equipo rival necesita al menos ${lineupSize} miembros activos para un versus ${lineupSize}v${lineupSize}`
+        },
+        { status: 400 }
+      )
+    }
+
+    const challengerMemberCount = await countActiveMembers(challengerOid)
+    if (challengerMemberCount < lineupSize) {
+      return NextResponse.json(
+        {
+          error: `Tu equipo necesita al menos ${lineupSize} miembros activos para este formato`
+        },
+        { status: 400 }
+      )
+    }
+
     const lineupCheck = await assertLineupBelongsToTeam(
       challengerOid,
-      parsedLineup.lineup
+      parsedLineup.lineup,
+      lineupSize
     )
     if (!lineupCheck.ok) {
       return NextResponse.json({ error: lineupCheck.error }, { status: 400 })
@@ -249,6 +287,7 @@ export async function POST(
       status: 'pending',
       tier: 'social',
       isIntramural: false,
+      lineupSize,
       challengerLineup: parsedLineup.lineup.map(slot => ({
         userId: new mongoose.Types.ObjectId(slot.userId),
         slot: slot.slot

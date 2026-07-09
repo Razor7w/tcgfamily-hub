@@ -4,10 +4,11 @@ import mongoose from 'mongoose'
 import connectDB from '@/lib/mongodb'
 import { ownerPublicDisplay } from '@/lib/public-decklist-owner'
 import {
-  TEAM_FRIENDLY_DUEL_COUNT,
   TEAM_FRIENDLY_INTRAMURAL_SIDE_LABELS,
   TEAM_FRIENDLY_MATCH_STATUS_LABELS,
+  friendlyDuelCount,
   isFriendlyMatchIntramural,
+  resolveFriendlyLineupSize,
   type TeamFriendlyMatchStatus
 } from '@/lib/teams/friendly-match/constants'
 import { friendlyMatchAllowsCaptainModeration } from '@/lib/teams/friendly-match/lifecycle'
@@ -251,6 +252,7 @@ async function buildFriendlyMatchListFromRows(
       )
       const opponentLineup = lineupToDto(match.opponentLineup ?? [], userById)
       const intramural = isFriendlyMatchIntramural(match)
+      const lineupSize = resolveFriendlyLineupSize(match)
       const viewerSide = viewerSideForMatch(match, viewerTeamId, viewerUserId)
 
       const row: TeamFriendlyMatchListItemDTO = {
@@ -282,12 +284,13 @@ async function buildFriendlyMatchListFromRows(
         viewerCanManage: canManage,
         tier: 'social',
         isIntramural: intramural,
+        lineupSize,
         confirmedDuels: confirmedByMatch.get(String(match._id)) ?? 0,
         totalDuels:
           status === 'pending'
             ? 0
             : (totalDuelsByMatch.get(String(match._id)) ??
-              TEAM_FRIENDLY_DUEL_COUNT),
+              friendlyDuelCount(lineupSize)),
         captainCanModerate: friendlyMatchAllowsCaptainModeration({
           status,
           tier: match.tier ?? 'social'
@@ -399,6 +402,7 @@ export async function buildTeamFriendlyMatchDetail(
   const viewerSide = viewerSideForMatch(match, viewerTeamId, viewerUserId)
   const confirmedDuels = duels.filter(d => d.status === 'confirmed').length
   const intramural = isFriendlyMatchIntramural(match)
+  const lineupSize = resolveFriendlyLineupSize(match)
 
   const duelDtos: FriendlyDuelDTO[] = duels.map(duel => {
     const challengerPlayer = lineupByUserId.get(String(duel.challengerUserId))
@@ -480,6 +484,7 @@ export async function buildTeamFriendlyMatchDetail(
     viewerCanManage: canManage,
     tier: 'social',
     isIntramural: intramural,
+    lineupSize,
     confirmedDuels,
     totalDuels: match.status === 'pending' ? 0 : duelDtos.length,
     captainCanModerate: friendlyMatchAllowsCaptainModeration({

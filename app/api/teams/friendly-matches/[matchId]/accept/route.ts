@@ -4,6 +4,7 @@ import { requireSessionUser } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import { canManageTeam, getMembershipForUserOnTeam } from '@/lib/teams/access'
 import { buildTeamFriendlyMatchDetail } from '@/lib/teams/friendly-match/build-payload'
+import { resolveFriendlyLineupSize } from '@/lib/teams/friendly-match/constants'
 import { createFriendlyMatchDuels } from '@/lib/teams/friendly-match/lifecycle'
 import {
   assertLineupBelongsToTeam,
@@ -59,14 +60,16 @@ export async function POST(
     }
 
     const body = await request.json().catch(() => null)
-    const parsedLineup = parseFriendlyLineupInput(body?.lineup)
+    const lineupSize = resolveFriendlyLineupSize(match)
+    const parsedLineup = parseFriendlyLineupInput(body?.lineup, lineupSize)
     if (!parsedLineup.ok) {
       return NextResponse.json({ error: parsedLineup.error }, { status: 400 })
     }
 
     const lineupCheck = await assertLineupBelongsToTeam(
       match.opponentTeamId as mongoose.Types.ObjectId,
-      parsedLineup.lineup
+      parsedLineup.lineup,
+      lineupSize
     )
     if (!lineupCheck.ok) {
       return NextResponse.json({ error: lineupCheck.error }, { status: 400 })
@@ -91,7 +94,8 @@ export async function POST(
     await createFriendlyMatchDuels(
       matchOid,
       challengerLineup,
-      parsedLineup.lineup
+      parsedLineup.lineup,
+      lineupSize
     )
 
     const detail = await buildTeamFriendlyMatchDetail(
