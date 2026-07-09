@@ -65,11 +65,12 @@ export default function TeamDisbandConfirmDialog({
               <Typography variant="body2" color="text.secondary">
                 {teamName ? (
                   <>
-                    Se disolverá <strong>{teamName}</strong>. Todos los miembros
-                    quedarán libres y la página pública dejará de mostrarse.
+                    Se eliminará <strong>{teamName}</strong> y todos sus datos:
+                    publicaciones, versus amistosos, medallas, invitaciones,
+                    imágenes y membresías. Los miembros quedarán libres.
                   </>
                 ) : (
-                  'Todos los miembros quedarán libres y la página pública dejará de mostrarse.'
+                  'Se eliminarán publicaciones, versus, medallas, invitaciones, imágenes y membresías. Los miembros quedarán libres.'
                 )}
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>

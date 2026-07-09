@@ -12,13 +12,9 @@ import {
 import { getCachedTeamPublicCore } from '@/lib/teams/public-cache'
 import { isValidTeamSlug } from '@/lib/teams/slug'
 import { resolveTeamBrandingAsset } from '@/lib/teams/branding'
-import {
-  deleteAllTeamR2Media,
-  deleteR2ObjectBestEffort
-} from '@/lib/teams/r2-cleanup'
+import { purgeTeamData } from '@/lib/teams/purge-team'
+import { deleteR2ObjectBestEffort } from '@/lib/teams/r2-cleanup'
 import Team from '@/models/Team'
-import TeamInvitation from '@/models/TeamInvitation'
-import TeamMembership from '@/models/TeamMembership'
 
 export async function GET(
   _request: NextRequest,
@@ -211,28 +207,10 @@ export async function DELETE(
 
     await connectDB()
 
-    await deleteAllTeamR2Media(teamOid, {
+    await purgeTeamData(teamOid, {
       logoKey: team.logoKey,
       coverKey: team.coverKey
     })
-
-    await Team.updateOne(
-      { _id: teamOid },
-      {
-        $set: {
-          isActive: false,
-          reviewedAt: new Date()
-        }
-      }
-    )
-    await TeamMembership.updateMany(
-      { teamId: teamOid, status: 'active' },
-      { $set: { status: 'left' } }
-    )
-    await TeamInvitation.updateMany(
-      { teamId: teamOid, status: 'pending' },
-      { $set: { status: 'cancelled' } }
-    )
 
     return NextResponse.json({ ok: true })
   } catch (e) {
