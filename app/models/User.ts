@@ -249,5 +249,10 @@ const UserSchema = new Schema<IUser>(
 )
 
 UserSchema.index({ rut: 1 })
+UserSchema.index({
+  playPokemonRankPublic: 1,
+  playPokemonDivision: 1,
+  playPokemonChampionshipRank: 1
+})
 
 export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema)

@@ -55,6 +55,33 @@ export type PlayPokemonChileLeaderboardResponse = {
   rows: PlayPokemonChileLeaderboardRow[]
 }
 
+export type PlayPokemonCommunityRankingRow = {
+  userId: string
+  displayName: string
+  championshipRank: number
+  championshipPoints: number
+  playPoints: number | null
+  division: PlayPokemonLeaderboardDivision | null
+  divisionLabel: string | null
+  linkedDisplayName: string | null
+  seasonLabel: string | null
+  leaderboardUpdatedAt: string | null
+}
+
+export type PlayPokemonCommunityRankingResponse = {
+  enabled: boolean
+  seasonLabel: string
+  division: PlayPokemonLeaderboardDivision
+  page: number
+  pageSize: number
+  count: number
+  totalPages: number
+  hasNext: boolean
+  hasPrevious: boolean
+  search: string
+  rows: PlayPokemonCommunityRankingRow[]
+}
+
 export type PlayPokemonChampionshipPointsLookup = {
   enabled: boolean
   found: boolean

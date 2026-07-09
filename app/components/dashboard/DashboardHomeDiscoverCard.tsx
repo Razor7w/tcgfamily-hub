@@ -10,7 +10,10 @@ import { alpha } from '@mui/material/styles'
 import ChevronRight from '@mui/icons-material/ChevronRight'
 import EmojiEventsOutlined from '@mui/icons-material/EmojiEventsOutlined'
 import GroupsOutlined from '@mui/icons-material/GroupsOutlined'
-import { PLAY_POKEMON_CHILE_LEADERBOARD_PATH } from '@/lib/play-pokemon-leaderboard/constants'
+import {
+  PLAY_POKEMON_CHILE_LEADERBOARD_PATH,
+  PLAY_POKEMON_COMMUNITY_RANKING_PATH
+} from '@/lib/play-pokemon-leaderboard/constants'
 import { useMyChampionshipPoints } from '@/hooks/useMyChampionshipPoints'
 import { useTeamsMe } from '@/hooks/useTeams'
 
@@ -22,6 +25,10 @@ type DiscoverTileProps = {
   body: string
   statusLabel: string
   statusTone: 'default' | 'success' | 'warning'
+  secondaryAction?: {
+    href: string
+    label: string
+  }
 }
 
 function DiscoverTile({
@@ -31,13 +38,11 @@ function DiscoverTile({
   title,
   body,
   statusLabel,
-  statusTone
+  statusTone,
+  secondaryAction
 }: DiscoverTileProps) {
   return (
     <Box
-      component={Link}
-      href={href}
-      aria-label={`${title}. ${body}`}
       sx={{
         display: 'flex',
         flexDirection: 'column',
@@ -46,130 +51,186 @@ function DiscoverTile({
         p: { xs: 2, sm: 2.25 },
         minHeight: { xs: 0, sm: 168 },
         color: 'inherit',
-        textDecoration: 'none',
         position: 'relative',
-        transition:
-          'transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.22s ease, box-shadow 0.22s ease',
-        '&:hover': {
-          bgcolor: theme => alpha(theme.palette.primary.main, 0.04),
-          transform: 'translateY(-1px)',
-          '& [data-discover-chevron]': {
-            transform: 'translateX(3px)',
-            color: 'primary.main'
-          },
-          '& [data-discover-icon]': {
-            borderColor: theme => alpha(theme.palette.primary.main, 0.38),
-            bgcolor: theme => alpha(theme.palette.primary.main, 0.14)
-          }
-        },
-        '&:active': {
-          transform: 'translateY(0) scale(0.995)',
-          transitionDuration: '0.1s'
-        },
-        '&:focus-visible': {
-          outline: '2px solid',
-          outlineColor: 'primary.main',
-          outlineOffset: -2
-        }
+        transition: 'background-color 0.22s ease'
       }}
     >
-      <Stack direction="row" spacing={1.5} alignItems="flex-start">
-        <Box
-          data-discover-icon
-          sx={{
-            width: 44,
-            height: 44,
-            borderRadius: 2,
-            flexShrink: 0,
-            display: 'grid',
-            placeItems: 'center',
-            border: '1px solid',
-            borderColor: theme => alpha(theme.palette.primary.main, 0.18),
-            bgcolor: theme => alpha(theme.palette.primary.main, 0.08),
-            color: 'primary.main',
-            transition: 'border-color 0.22s ease, background-color 0.22s ease'
-          }}
-        >
-          {icon}
-        </Box>
-        <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Stack
-            direction="row"
-            alignItems="center"
-            justifyContent="space-between"
-            spacing={1}
-            sx={{ mb: 0.5 }}
-          >
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ fontWeight: 600, letterSpacing: '0.02em' }}
-            >
-              {eyebrow}
-            </Typography>
-            <Chip
-              label={statusLabel}
-              size="small"
-              color={
-                statusTone === 'success'
-                  ? 'success'
-                  : statusTone === 'warning'
-                    ? 'warning'
-                    : 'default'
-              }
-              variant="outlined"
-              sx={{
-                height: 22,
-                fontSize: '0.65rem',
-                fontWeight: 700,
-                '& .MuiChip-label': { px: 0.85 }
-              }}
-            />
-          </Stack>
-          <Typography
-            variant="subtitle1"
+      <Box
+        component={Link}
+        href={href}
+        aria-label={`${title}. ${body}`}
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1.5,
+          flex: 1,
+          color: 'inherit',
+          textDecoration: 'none',
+          borderRadius: 1.5,
+          transition:
+            'transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.22s ease',
+          '&:hover': {
+            bgcolor: theme => alpha(theme.palette.primary.main, 0.04),
+            transform: 'translateY(-1px)',
+            '& [data-discover-chevron]': {
+              transform: 'translateX(3px)',
+              color: 'primary.main'
+            },
+            '& [data-discover-icon]': {
+              borderColor: theme => alpha(theme.palette.primary.main, 0.38),
+              bgcolor: theme => alpha(theme.palette.primary.main, 0.14)
+            }
+          },
+          '&:active': {
+            transform: 'translateY(0) scale(0.995)',
+            transitionDuration: '0.1s'
+          },
+          '&:focus-visible': {
+            outline: '2px solid',
+            outlineColor: 'primary.main',
+            outlineOffset: 2
+          }
+        }}
+      >
+        <Stack direction="row" spacing={1.5} alignItems="flex-start">
+          <Box
+            data-discover-icon
             sx={{
-              fontWeight: 800,
-              letterSpacing: '-0.02em',
-              lineHeight: 1.2,
-              textWrap: 'balance',
-              mb: 0.5
+              width: 44,
+              height: 44,
+              borderRadius: 2,
+              flexShrink: 0,
+              display: 'grid',
+              placeItems: 'center',
+              border: '1px solid',
+              borderColor: theme => alpha(theme.palette.primary.main, 0.18),
+              bgcolor: theme => alpha(theme.palette.primary.main, 0.08),
+              color: 'primary.main',
+              transition: 'border-color 0.22s ease, background-color 0.22s ease'
             }}
           >
-            {title}
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ lineHeight: 1.5, maxWidth: '36ch', textWrap: 'pretty' }}
-          >
-            {body}
-          </Typography>
-        </Box>
-      </Stack>
+            {icon}
+          </Box>
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              spacing={1}
+              sx={{ mb: 0.5 }}
+            >
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ fontWeight: 600, letterSpacing: '0.02em' }}
+              >
+                {eyebrow}
+              </Typography>
+              <Chip
+                label={statusLabel}
+                size="small"
+                color={
+                  statusTone === 'success'
+                    ? 'success'
+                    : statusTone === 'warning'
+                      ? 'warning'
+                      : 'default'
+                }
+                variant="outlined"
+                sx={{
+                  height: 22,
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  '& .MuiChip-label': { px: 0.85 }
+                }}
+              />
+            </Stack>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontWeight: 800,
+                letterSpacing: '-0.02em',
+                lineHeight: 1.2,
+                textWrap: 'balance',
+                mb: 0.5
+              }}
+            >
+              {title}
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ lineHeight: 1.5, maxWidth: '36ch', textWrap: 'pretty' }}
+            >
+              {body}
+            </Typography>
+          </Box>
+        </Stack>
+      </Box>
 
       <Stack
         direction="row"
         alignItems="center"
-        spacing={0.5}
-        sx={{
-          mt: 'auto',
-          pt: 0.25,
-          color: 'text.secondary',
-          fontWeight: 700,
-          fontSize: '0.8125rem'
-        }}
+        spacing={1.5}
+        flexWrap="wrap"
+        sx={{ mt: 'auto' }}
       >
-        <Typography component="span" variant="body2" sx={{ fontWeight: 700 }}>
-          Ver más
-        </Typography>
-        <ChevronRight
-          data-discover-chevron
+        <Box
+          component={Link}
+          href={href}
           sx={{
-            fontSize: 18,
-            transition: 'transform 0.22s ease, color 0.22s ease'
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 0.5,
+            color: 'text.secondary',
+            fontWeight: 700,
+            fontSize: '0.8125rem',
+            textDecoration: 'none',
+            '&:hover': { color: 'primary.main' },
+            '&:focus-visible': {
+              outline: '2px solid',
+              outlineColor: 'primary.main',
+              outlineOffset: 2,
+              borderRadius: 1
+            }
           }}
-        />
+        >
+          <Typography component="span" variant="body2" sx={{ fontWeight: 700 }}>
+            Ver más
+          </Typography>
+          <ChevronRight sx={{ fontSize: 18 }} />
+        </Box>
+        {secondaryAction ? (
+          <Box
+            component={Link}
+            href={secondaryAction.href}
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 0.5,
+              color: 'primary.main',
+              fontWeight: 700,
+              fontSize: '0.8125rem',
+              textDecoration: 'none',
+              '&:hover': { textDecoration: 'underline' },
+              '&:focus-visible': {
+                outline: '2px solid',
+                outlineColor: 'primary.main',
+                outlineOffset: 2,
+                borderRadius: 1
+              }
+            }}
+          >
+            <Typography
+              component="span"
+              variant="body2"
+              sx={{ fontWeight: 700 }}
+            >
+              {secondaryAction.label}
+            </Typography>
+            <ChevronRight sx={{ fontSize: 18 }} />
+          </Box>
+        ) : null}
       </Stack>
     </Box>
   )
@@ -196,6 +257,7 @@ export default function DashboardHomeDiscoverCard() {
 
   const loading = cpPending || teamsPending
   const cpLinked = cp?.found === true && cp?.source === 'linked'
+  const cpRankPublic = cp?.rankPublic === true
   const membership = teamsMe?.membership ?? null
   const pendingApplication = teamsMe?.application ?? null
   const cpEnabled = cp?.enabled !== false
@@ -239,7 +301,15 @@ export default function DashboardHomeDiscoverCard() {
           title: 'Championship Points',
           body: 'Tus CP quedan en el perfil aunque el leaderboard oficial se reinicie.',
           statusLabel: 'Vinculado',
-          statusTone: 'success'
+          statusTone: 'success',
+          ...(cpRankPublic
+            ? {
+                secondaryAction: {
+                  href: PLAY_POKEMON_COMMUNITY_RANKING_PATH,
+                  label: 'Ranking de jugadores'
+                }
+              }
+            : {})
         }
       : {
           href: PLAY_POKEMON_CHILE_LEADERBOARD_PATH,

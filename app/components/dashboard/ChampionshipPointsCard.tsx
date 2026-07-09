@@ -21,7 +21,10 @@ import {
   usePlayPokemonRankVisibility,
   useUpdatePlayPokemonRankVisibility
 } from '@/hooks/usePlayPokemonRankVisibility'
-import { PLAY_POKEMON_CHILE_LEADERBOARD_PATH } from '@/lib/play-pokemon-leaderboard/constants'
+import {
+  PLAY_POKEMON_CHILE_LEADERBOARD_PATH,
+  PLAY_POKEMON_COMMUNITY_RANKING_PATH
+} from '@/lib/play-pokemon-leaderboard/constants'
 import { useMyChampionshipPoints } from '@/hooks/useMyChampionshipPoints'
 
 const DIVISION_LABELS: Record<string, string> = {
@@ -215,6 +218,22 @@ export default function ChampionshipPointsCard({
                   }}
                 >
                   Leaderboard oficial
+                </Button>
+              ) : null}
+              {visibility?.rankPublic === true || data.rankPublic === true ? (
+                <Button
+                  component={Link}
+                  href={PLAY_POKEMON_COMMUNITY_RANKING_PATH}
+                  size="small"
+                  variant="outlined"
+                  startIcon={<LeaderboardOutlinedIcon fontSize="small" />}
+                  sx={{
+                    alignSelf: 'flex-start',
+                    textTransform: 'none',
+                    fontWeight: 700
+                  }}
+                >
+                  Ranking de jugadores
                 </Button>
               ) : null}
             </Stack>
