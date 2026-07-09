@@ -34,6 +34,17 @@ export const TEAM_INVITATION_STATUSES = [
 ] as const
 export type TeamInvitationStatus = (typeof TEAM_INVITATION_STATUSES)[number]
 
+export const TEAM_JOIN_REQUEST_STATUSES = [
+  'pending',
+  'accepted',
+  'declined',
+  'cancelled',
+  'expired'
+] as const
+export type TeamJoinRequestStatus = (typeof TEAM_JOIN_REQUEST_STATUSES)[number]
+
+export const TEAM_JOIN_REQUEST_EXPIRY_DAYS = 14
+
 export const TEAM_ROLE_LABELS: Record<TeamRole, string> = {
   captain: 'Capitán',
   co_captain: 'Co-capitán',

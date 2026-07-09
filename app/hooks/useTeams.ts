@@ -117,6 +117,28 @@ export type TeamManageInvitationsResponse = {
   invitations: TeamManageInvitation[]
 }
 
+export type TeamManageJoinRequest = {
+  id: string
+  requesterUserId: string
+  requesterName: string
+  requesterImage: string | null
+  requesterPopid: string
+  expiresAt: string
+  createdAt: string
+}
+
+export type TeamManageJoinRequestsResponse = {
+  joinRequests: TeamManageJoinRequest[]
+}
+
+export type TeamJoinRequestMeResponse = {
+  joinRequest: {
+    id: string
+    expiresAt: string
+    createdAt: string
+  } | null
+}
+
 export const teamsMeQueryKey = ['teams', 'me'] as const
 export const teamPublicQueryKey = (slug: string) =>
   ['teams', 'public', 'v6', slug] as const
@@ -132,6 +154,10 @@ export const teamManageMedalsQueryKey = (slug: string) =>
   ['teams', 'manage', slug, 'medals'] as const
 export const teamManageInvitationsQueryKey = (slug: string) =>
   ['teams', 'manage', slug, 'invitations'] as const
+export const teamManageJoinRequestsQueryKey = (slug: string) =>
+  ['teams', 'manage', slug, 'join-requests'] as const
+export const teamJoinRequestMeQueryKey = (slug: string) =>
+  ['teams', slug, 'join-request', 'me'] as const
 
 async function parseError(res: Response, fallback: string): Promise<never> {
   const j = await res.json().catch(() => ({}))
@@ -250,12 +276,115 @@ export function useTeamManageInvitations(slug: string, enabled = true) {
   })
 }
 
+export function useTeamManageJoinRequests(slug: string, enabled = true) {
+  return useQuery({
+    queryKey: teamManageJoinRequestsQueryKey(slug),
+    queryFn: async (): Promise<TeamManageJoinRequestsResponse> => {
+      const res = await fetch(
+        `/api/teams/${encodeURIComponent(slug)}/manage/join-requests`
+      )
+      if (!res.ok)
+        await parseError(res, 'No se pudieron cargar las solicitudes')
+      return res.json()
+    },
+    enabled: Boolean(slug?.trim()) && enabled,
+    staleTime: 30_000
+  })
+}
+
+export function useMyTeamJoinRequest(slug: string, enabled = true) {
+  return useQuery({
+    queryKey: teamJoinRequestMeQueryKey(slug),
+    queryFn: async (): Promise<TeamJoinRequestMeResponse> => {
+      const res = await fetch(
+        `/api/teams/${encodeURIComponent(slug)}/join-requests/me`
+      )
+      if (!res.ok) await parseError(res, 'No se pudo cargar tu solicitud')
+      return res.json()
+    },
+    enabled: Boolean(slug?.trim()) && enabled,
+    staleTime: 30_000
+  })
+}
+
+export function useRequestJoinTeam(slug: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch(
+        `/api/teams/${encodeURIComponent(slug)}/join-requests`,
+        { method: 'POST' }
+      )
+      if (!res.ok) await parseError(res, 'No se pudo enviar la solicitud')
+      return res.json() as Promise<{
+        joinRequest: {
+          id: string
+          teamSlug: string
+          teamName: string
+          expiresAt: string
+        }
+      }>
+    },
+    onSuccess: () => invalidateTeams(qc, slug)
+  })
+}
+
+export function useCancelTeamJoinRequest(slug: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch(
+        `/api/teams/${encodeURIComponent(slug)}/join-requests/me`,
+        { method: 'DELETE' }
+      )
+      if (!res.ok) await parseError(res, 'No se pudo cancelar')
+      return res.json()
+    },
+    onSuccess: () => invalidateTeams(qc, slug)
+  })
+}
+
+export function useAcceptTeamJoinRequest(slug: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (joinRequestId: string) => {
+      const res = await fetch(
+        `/api/teams/${encodeURIComponent(slug)}/join-requests/${encodeURIComponent(joinRequestId)}/accept`,
+        { method: 'POST' }
+      )
+      if (!res.ok) await parseError(res, 'No se pudo aceptar')
+      return res.json()
+    },
+    onSuccess: () => invalidateTeams(qc, slug)
+  })
+}
+
+export function useDeclineTeamJoinRequest(slug: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (joinRequestId: string) => {
+      const res = await fetch(
+        `/api/teams/${encodeURIComponent(slug)}/join-requests/${encodeURIComponent(joinRequestId)}/decline`,
+        { method: 'POST' }
+      )
+      if (!res.ok) await parseError(res, 'No se pudo rechazar')
+      return res.json()
+    },
+    onSuccess: () => invalidateTeams(qc, slug)
+  })
+}
+
 function invalidateTeams(qc: ReturnType<typeof useQueryClient>, slug?: string) {
   void qc.invalidateQueries({ queryKey: teamsMeQueryKey })
   void qc.invalidateQueries({ queryKey: notificationsQueryKey })
   if (slug) {
     void qc.invalidateQueries({ queryKey: teamPublicQueryKey(slug) })
     void qc.invalidateQueries({ queryKey: teamManageQueryKey(slug) })
+    void qc.invalidateQueries({ queryKey: teamManageInvitationsQueryKey(slug) })
+    void qc.invalidateQueries({
+      queryKey: teamManageJoinRequestsQueryKey(slug)
+    })
+    void qc.invalidateQueries({ queryKey: teamJoinRequestMeQueryKey(slug) })
   }
 }
 

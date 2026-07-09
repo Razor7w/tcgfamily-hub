@@ -17,6 +17,7 @@ import { alpha } from '@mui/material/styles'
 import { useParams } from 'next/navigation'
 import Header from '@/components/Header'
 import { DecklistSpritePair } from '@/components/decklist/DecklistPokemonSlotPickers'
+import TeamJoinRequestSection from '@/components/teams/TeamJoinRequestSection'
 import TeamMonthlyActivityCard from '@/components/teams/TeamMonthlyActivityCard'
 import TeamPostsSection from '@/components/teams/TeamPostsSection'
 import TeamPublicActiveMatchesSection from '@/components/teams/TeamPublicActiveMatchesSection'
@@ -100,6 +101,11 @@ export default function EquipoPublicPage() {
                 memberCount={data.team.memberCount}
                 medals={medals}
                 medalsLoading={medalsLoading}
+              />
+
+              <TeamJoinRequestSection
+                teamSlug={slug}
+                teamName={data.team.name}
               />
 
               <TeamPublicActiveMatchesSection

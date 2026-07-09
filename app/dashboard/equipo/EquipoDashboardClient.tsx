@@ -39,13 +39,16 @@ import TeamTournamentPointsRankingSection from '@/components/teams/TeamTournamen
 import { useNotifications } from '@/hooks/useNotifications'
 import {
   useCancelTeamInvitation,
+  useAcceptTeamJoinRequest,
   useApplyForTeam,
+  useDeclineTeamJoinRequest,
   useDisbandTeam,
   useInviteToTeam,
   useLeaveTeam,
   useRemoveTeamMember,
   useTeamManage,
   useTeamManageInvitations,
+  useTeamManageJoinRequests,
   useTeamManageMedals,
   useTeamsMe,
   useUpdateTeam,
@@ -182,6 +185,13 @@ export default function EquipoDashboardClient() {
   const [disbandErr, setDisbandErr] = useState<string | null>(null)
   const [showApplyForm, setShowApplyForm] = useState(false)
   const cancelInvitation = useCancelTeamInvitation(teamSlug)
+  const { data: manageJoinRequests, isPending: manageJoinRequestsPending } =
+    useTeamManageJoinRequests(
+      teamSlug,
+      Boolean(teamSlug) && teamTab === 2 && Boolean(manage?.viewer.canManage)
+    )
+  const acceptJoinRequest = useAcceptTeamJoinRequest(teamSlug)
+  const declineJoinRequest = useDeclineTeamJoinRequest(teamSlug)
   const updateMemberRole = useUpdateTeamMemberRole(teamSlug)
   const removeMember = useRemoveTeamMember(teamSlug)
 
@@ -655,6 +665,108 @@ export default function EquipoDashboardClient() {
                             ))}
                           </Stack>
                         </Paper>
+
+                        {manage.viewer.canManage &&
+                        (manageJoinRequestsPending ||
+                          (manageJoinRequests?.joinRequests.length ?? 0) >
+                            0) ? (
+                          <Paper
+                            variant="outlined"
+                            sx={{ p: 2.5, borderRadius: 3 }}
+                          >
+                            <Typography
+                              variant="subtitle1"
+                              fontWeight={700}
+                              gutterBottom
+                            >
+                              Solicitudes recibidas
+                            </Typography>
+                            {manageJoinRequestsPending ? (
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  justifyContent: 'center',
+                                  py: 2
+                                }}
+                              >
+                                <CircularProgress size={22} />
+                              </Box>
+                            ) : (
+                              <Stack spacing={1}>
+                                {(manageJoinRequests?.joinRequests ?? []).map(
+                                  req => (
+                                    <Stack
+                                      key={req.id}
+                                      direction={{ xs: 'column', sm: 'row' }}
+                                      spacing={1}
+                                      justifyContent="space-between"
+                                      alignItems={{ sm: 'center' }}
+                                    >
+                                      <Stack
+                                        direction="row"
+                                        spacing={1.25}
+                                        alignItems="center"
+                                      >
+                                        <Avatar
+                                          src={req.requesterImage ?? undefined}
+                                        >
+                                          {req.requesterName
+                                            .slice(0, 1)
+                                            .toUpperCase()}
+                                        </Avatar>
+                                        <Box>
+                                          <Typography
+                                            variant="body2"
+                                            fontWeight={600}
+                                          >
+                                            {req.requesterName}
+                                          </Typography>
+                                          <Typography
+                                            variant="caption"
+                                            color="text.secondary"
+                                          >
+                                            {req.requesterPopid
+                                              ? `POP ${req.requesterPopid} · `
+                                              : ''}
+                                            expira {formatDate(req.expiresAt)}
+                                          </Typography>
+                                        </Box>
+                                      </Stack>
+                                      <Stack direction="row" spacing={1}>
+                                        <Button
+                                          size="small"
+                                          variant="contained"
+                                          disabled={acceptJoinRequest.isPending}
+                                          onClick={() =>
+                                            void acceptJoinRequest.mutateAsync(
+                                              req.id
+                                            )
+                                          }
+                                        >
+                                          Aceptar
+                                        </Button>
+                                        <Button
+                                          size="small"
+                                          variant="outlined"
+                                          disabled={
+                                            declineJoinRequest.isPending
+                                          }
+                                          onClick={() =>
+                                            void declineJoinRequest.mutateAsync(
+                                              req.id
+                                            )
+                                          }
+                                        >
+                                          Rechazar
+                                        </Button>
+                                      </Stack>
+                                    </Stack>
+                                  )
+                                )}
+                              </Stack>
+                            )}
+                          </Paper>
+                        ) : null}
 
                         {manage.viewer.canManage ? (
                           <Paper

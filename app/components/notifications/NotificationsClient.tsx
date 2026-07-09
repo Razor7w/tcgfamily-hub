@@ -39,6 +39,27 @@ export default function NotificationsClient() {
   const acceptInvite = useAcceptTeamInvitation()
   const declineInvite = useDeclineTeamInvitation()
   const qc = useQueryClient()
+  const respondJoinRequest = useMutation({
+    mutationFn: async (input: {
+      teamSlug: string
+      joinRequestId: string
+      action: 'accept' | 'decline'
+    }) => {
+      const res = await fetch(
+        `/api/teams/${encodeURIComponent(input.teamSlug)}/join-requests/${encodeURIComponent(input.joinRequestId)}/${input.action}`,
+        { method: 'POST' }
+      )
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(typeof j.error === 'string' ? j.error : 'Error')
+      }
+      return j
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: notificationsQueryKey })
+      void qc.invalidateQueries({ queryKey: ['teams'] })
+    }
+  })
   const declineFriendly = useMutation({
     mutationFn: async (matchId: string) => {
       const res = await fetch(
@@ -100,68 +121,140 @@ export default function NotificationsClient() {
           </Alert>
         ) : data && data.items.length > 0 ? (
           <Stack spacing={1.5}>
-            {data.items.map(item =>
-              item.kind === 'team_invitation' ? (
-                <Paper
-                  key={item.id}
-                  variant="outlined"
-                  sx={{ p: 2.5, borderRadius: 3 }}
-                >
-                  <Stack spacing={1.5}>
-                    <Stack direction="row" spacing={1.5} alignItems="center">
-                      <Avatar src={item.teamLogoUrl || undefined}>
-                        {item.teamName.slice(0, 1).toUpperCase()}
-                      </Avatar>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography fontWeight={700}>
-                          Invitación a {item.teamName}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {item.invitedByName} te invitó a unirte al equipo
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {formatDate(item.createdAt)} · expira{' '}
-                          {formatDate(item.expiresAt)}
-                        </Typography>
-                      </Box>
+            {data.items.map(item => {
+              if (item.kind === 'team_invitation') {
+                return (
+                  <Paper
+                    key={item.id}
+                    variant="outlined"
+                    sx={{ p: 2.5, borderRadius: 3 }}
+                  >
+                    <Stack spacing={1.5}>
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        <Avatar src={item.teamLogoUrl || undefined}>
+                          {item.teamName.slice(0, 1).toUpperCase()}
+                        </Avatar>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography fontWeight={700}>
+                            Invitación a {item.teamName}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {item.invitedByName} te invitó a unirte al equipo
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {formatDate(item.createdAt)} · expira{' '}
+                            {formatDate(item.expiresAt)}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                      <Divider />
+                      <Stack direction="row" spacing={1} flexWrap="wrap">
+                        <Button
+                          variant="contained"
+                          size="small"
+                          disabled={acceptInvite.isPending}
+                          onClick={() =>
+                            void acceptInvite.mutateAsync({
+                              invitationId: item.invitationId
+                            })
+                          }
+                        >
+                          Aceptar
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          disabled={declineInvite.isPending}
+                          onClick={() =>
+                            void declineInvite.mutateAsync({
+                              invitationId: item.invitationId
+                            })
+                          }
+                        >
+                          Rechazar
+                        </Button>
+                        <Button
+                          component={Link}
+                          href={`/equipos/${item.teamSlug}`}
+                          size="small"
+                        >
+                          Ver equipo
+                        </Button>
+                      </Stack>
                     </Stack>
-                    <Divider />
-                    <Stack direction="row" spacing={1} flexWrap="wrap">
-                      <Button
-                        variant="contained"
-                        size="small"
-                        disabled={acceptInvite.isPending}
-                        onClick={() =>
-                          void acceptInvite.mutateAsync({
-                            invitationId: item.invitationId
-                          })
-                        }
-                      >
-                        Aceptar
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        disabled={declineInvite.isPending}
-                        onClick={() =>
-                          void declineInvite.mutateAsync({
-                            invitationId: item.invitationId
-                          })
-                        }
-                      >
-                        Rechazar
-                      </Button>
-                      <Button
-                        component={Link}
-                        href={`/equipos/${item.teamSlug}`}
-                        size="small"
-                      >
-                        Ver equipo
-                      </Button>
+                  </Paper>
+                )
+              }
+
+              if (item.kind === 'team_join_request') {
+                return (
+                  <Paper
+                    key={item.id}
+                    variant="outlined"
+                    sx={{ p: 2.5, borderRadius: 3 }}
+                  >
+                    <Stack spacing={1.5}>
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        <Avatar src={item.requesterImage || undefined}>
+                          {item.requesterName.slice(0, 1).toUpperCase()}
+                        </Avatar>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography fontWeight={700}>
+                            Solicitud para unirse a {item.teamName}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {item.requesterName} quiere unirse a tu equipo
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {formatDate(item.createdAt)} · expira{' '}
+                            {formatDate(item.expiresAt)}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                      <Divider />
+                      <Stack direction="row" spacing={1} flexWrap="wrap">
+                        <Button
+                          variant="contained"
+                          size="small"
+                          disabled={respondJoinRequest.isPending}
+                          onClick={() =>
+                            void respondJoinRequest.mutateAsync({
+                              teamSlug: item.teamSlug,
+                              joinRequestId: item.joinRequestId,
+                              action: 'accept'
+                            })
+                          }
+                        >
+                          Aceptar
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          disabled={respondJoinRequest.isPending}
+                          onClick={() =>
+                            void respondJoinRequest.mutateAsync({
+                              teamSlug: item.teamSlug,
+                              joinRequestId: item.joinRequestId,
+                              action: 'decline'
+                            })
+                          }
+                        >
+                          Rechazar
+                        </Button>
+                        <Button
+                          component={Link}
+                          href="/dashboard/equipo"
+                          size="small"
+                        >
+                          Ver en Miembros
+                        </Button>
+                      </Stack>
                     </Stack>
-                  </Stack>
-                </Paper>
-              ) : (
+                  </Paper>
+                )
+              }
+
+              return (
                 <Paper
                   key={item.id}
                   variant="outlined"
@@ -209,7 +302,7 @@ export default function NotificationsClient() {
                   </Stack>
                 </Paper>
               )
-            )}
+            })}
           </Stack>
         ) : (
           <Paper
