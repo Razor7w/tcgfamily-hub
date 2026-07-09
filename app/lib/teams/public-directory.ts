@@ -32,7 +32,10 @@ export async function buildPublicTeamsDirectory(
   if (teams.length === 0) return []
 
   const teamIds = teams.map(t => t._id as mongoose.Types.ObjectId)
-  const countRows = await TeamMembership.aggregate<{ _id: mongoose.Types.ObjectId; count: number }>([
+  const countRows = await TeamMembership.aggregate<{
+    _id: mongoose.Types.ObjectId
+    count: number
+  }>([
     { $match: { teamId: { $in: teamIds }, status: 'active' } },
     { $group: { _id: '$teamId', count: { $sum: 1 } } }
   ])
