@@ -271,7 +271,7 @@ export default function EquipoDashboardClient() {
               Tu equipo
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Un jugador, un equipo. Independiente de la tienda activa.
+              Tu equipo es el mismo en cualquier tienda de la comunidad.
             </Typography>
           </Box>
         </Stack>
