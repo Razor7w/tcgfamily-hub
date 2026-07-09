@@ -1,4 +1,6 @@
-import DOMPurify from 'isomorphic-dompurify'
+import 'server-only'
+
+import sanitizeHtml from 'sanitize-html'
 import { TEAM_POST_BODY_HTML_MAX } from '@/lib/teams/post-constants'
 import { teamPostBodyIsEmpty } from '@/lib/teams/post-text'
 
@@ -23,10 +25,21 @@ export function sanitizeTeamPostHtml(raw: string): string {
   const trimmed = raw.trim().slice(0, TEAM_POST_BODY_HTML_MAX)
   if (!trimmed) return ''
 
-  const clean = DOMPurify.sanitize(trimmed, {
-    ALLOWED_TAGS,
-    ALLOWED_ATTR: ['href', 'target', 'rel'],
-    ALLOW_DATA_ATTR: false
+  const clean = sanitizeHtml(trimmed, {
+    allowedTags: ALLOWED_TAGS,
+    allowedAttributes: {
+      a: ['href', 'target', 'rel']
+    },
+    allowedSchemes: ['http', 'https', 'mailto'],
+    allowedSchemesByTag: {
+      a: ['http', 'https', 'mailto']
+    },
+    transformTags: {
+      a: sanitizeHtml.simpleTransform('a', {
+        rel: 'noopener noreferrer',
+        target: '_blank'
+      })
+    }
   })
 
   return clean.replace(/<p><\/p>/g, '').trim()

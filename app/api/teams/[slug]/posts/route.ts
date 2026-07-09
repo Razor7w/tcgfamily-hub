@@ -12,10 +12,7 @@ import { TEAM_POST_TITLE_MAX } from '@/lib/teams/post-constants'
 import type { TeamPostVisibility } from '@/lib/teams/post-constants'
 import { resolveTeamPostCoverAsset } from '@/lib/teams/post-media'
 import { buildTeamPostDTOs, listTeamPosts } from '@/lib/teams/post-payload'
-import {
-  sanitizeTeamPostHtml,
-  teamPostBodyIsEmpty
-} from '@/lib/teams/post-sanitize'
+import { teamPostBodyIsEmpty } from '@/lib/teams/post-text'
 import SavedDecklist from '@/models/SavedDecklist'
 import TeamPost from '@/models/TeamPost'
 
@@ -119,6 +116,7 @@ export async function POST(
     const titleRaw = typeof body?.title === 'string' ? body.title.trim() : ''
     const title = titleRaw.slice(0, TEAM_POST_TITLE_MAX)
     const bodyHtmlRaw = typeof body?.bodyHtml === 'string' ? body.bodyHtml : ''
+    const { sanitizeTeamPostHtml } = await import('@/lib/teams/post-sanitize')
     const bodyHtml = sanitizeTeamPostHtml(bodyHtmlRaw)
 
     if (teamPostBodyIsEmpty(bodyHtml)) {
