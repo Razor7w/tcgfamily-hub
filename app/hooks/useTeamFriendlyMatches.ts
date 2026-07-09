@@ -11,6 +11,14 @@ import type {
 export const teamFriendlyMatchesQueryKey = (slug: string) =>
   ['teams', slug, 'friendly-matches'] as const
 
+export const teamPublicActiveFriendlyMatchesQueryKey = (slug: string) =>
+  ['teams', 'public', slug, 'friendly-matches', 'active'] as const
+
+export const teamPublicFriendlyMatchDetailQueryKey = (
+  slug: string,
+  matchId: string
+) => ['teams', 'public', slug, 'friendly-matches', matchId] as const
+
 export const teamFriendlyMatchDetailQueryKey = (matchId: string) =>
   ['teams', 'friendly-matches', matchId] as const
 
@@ -40,6 +48,46 @@ export function useTeamFriendlyMatches(slug: string, enabled = true) {
       return res.json()
     },
     enabled: Boolean(slug) && enabled,
+    staleTime: 15_000
+  })
+}
+
+export function usePublicTeamActiveFriendlyMatches(
+  slug: string,
+  enabled = true
+) {
+  return useQuery({
+    queryKey: teamPublicActiveFriendlyMatchesQueryKey(slug),
+    queryFn: async (): Promise<{ matches: TeamFriendlyMatchListItemDTO[] }> => {
+      const res = await fetch(
+        `/api/teams/${encodeURIComponent(slug)}/friendly-matches/active`
+      )
+      if (!res.ok)
+        await parseError(res, 'No se pudieron cargar los versus activos')
+      return res.json()
+    },
+    enabled: Boolean(slug?.trim()) && enabled,
+    staleTime: 20_000,
+    refetchInterval: 30_000
+  })
+}
+
+export function usePublicTeamFriendlyMatchDetail(
+  slug: string,
+  matchId: string | null,
+  enabled = true
+) {
+  const id = matchId?.trim() ?? ''
+  return useQuery({
+    queryKey: teamPublicFriendlyMatchDetailQueryKey(slug, id),
+    queryFn: async (): Promise<{ match: TeamFriendlyMatchDetailDTO }> => {
+      const res = await fetch(
+        `/api/teams/${encodeURIComponent(slug)}/friendly-matches/${encodeURIComponent(id)}`
+      )
+      if (!res.ok) await parseError(res, 'No se pudo cargar el versus')
+      return res.json()
+    },
+    enabled: Boolean(slug?.trim() && id && enabled),
     staleTime: 15_000
   })
 }

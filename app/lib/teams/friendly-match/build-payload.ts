@@ -83,15 +83,37 @@ function viewerSideForMatch(
 
 const FRIENDLY_MATCH_LIST_LIMIT = 40
 
-async function loadFriendlyMatchesForTeam(teamId: mongoose.Types.ObjectId) {
+export const TEAM_FRIENDLY_ACTIVE_STATUSES: TeamFriendlyMatchStatus[] = [
+  'pending',
+  'in_progress',
+  'disputed'
+]
+
+type FriendlyMatchListOptions = {
+  viewerUserId?: string
+  canManage?: boolean
+  statuses?: TeamFriendlyMatchStatus[]
+  limit?: number
+}
+
+async function loadFriendlyMatchesForTeam(
+  teamId: mongoose.Types.ObjectId,
+  options?: Pick<FriendlyMatchListOptions, 'statuses' | 'limit'>
+) {
+  const limit = options?.limit ?? FRIENDLY_MATCH_LIST_LIMIT
+  const statusFilter =
+    options?.statuses && options.statuses.length > 0
+      ? { status: { $in: options.statuses } }
+      : {}
+
   const [asChallenger, asOpponent] = await Promise.all([
-    TeamFriendlyMatch.find({ challengerTeamId: teamId })
+    TeamFriendlyMatch.find({ challengerTeamId: teamId, ...statusFilter })
       .sort({ createdAt: -1 })
-      .limit(FRIENDLY_MATCH_LIST_LIMIT)
+      .limit(limit)
       .lean(),
-    TeamFriendlyMatch.find({ opponentTeamId: teamId })
+    TeamFriendlyMatch.find({ opponentTeamId: teamId, ...statusFilter })
       .sort({ createdAt: -1 })
-      .limit(FRIENDLY_MATCH_LIST_LIMIT)
+      .limit(limit)
       .lean()
   ])
 
@@ -108,20 +130,17 @@ async function loadFriendlyMatchesForTeam(teamId: mongoose.Types.ObjectId) {
       const bMs = b.createdAt instanceof Date ? b.createdAt.getTime() : 0
       return bMs - aMs
     })
-    .slice(0, FRIENDLY_MATCH_LIST_LIMIT)
+    .slice(0, limit)
 
   return merged
 }
 
-export async function buildTeamFriendlyMatchList(
+async function buildFriendlyMatchListFromRows(
   teamId: mongoose.Types.ObjectId,
+  matches: Awaited<ReturnType<typeof loadFriendlyMatchesForTeam>>,
   viewerUserId: string,
   canManage: boolean
 ): Promise<TeamFriendlyMatchListItemDTO[]> {
-  await connectDB()
-
-  const matches = await loadFriendlyMatchesForTeam(teamId)
-
   if (matches.length === 0) return []
 
   const teamIds = new Set<string>()
@@ -228,6 +247,55 @@ export async function buildTeamFriendlyMatchList(
       return row
     })
     .filter((row): row is TeamFriendlyMatchListItemDTO => row != null)
+}
+
+export async function buildTeamFriendlyMatchList(
+  teamId: mongoose.Types.ObjectId,
+  viewerUserId: string,
+  canManage: boolean
+): Promise<TeamFriendlyMatchListItemDTO[]> {
+  await connectDB()
+  const matches = await loadFriendlyMatchesForTeam(teamId)
+  return buildFriendlyMatchListFromRows(
+    teamId,
+    matches,
+    viewerUserId,
+    canManage
+  )
+}
+
+export async function buildTeamPublicActiveFriendlyMatches(
+  teamId: mongoose.Types.ObjectId
+): Promise<TeamFriendlyMatchListItemDTO[]> {
+  await connectDB()
+  const matches = await loadFriendlyMatchesForTeam(teamId, {
+    statuses: TEAM_FRIENDLY_ACTIVE_STATUSES,
+    limit: 12
+  })
+  return buildFriendlyMatchListFromRows(teamId, matches, '', false)
+}
+
+export async function buildTeamPublicFriendlyMatchDetail(
+  matchId: mongoose.Types.ObjectId,
+  perspectiveTeamId: mongoose.Types.ObjectId
+): Promise<TeamFriendlyMatchDetailDTO | null> {
+  await connectDB()
+
+  const match = await TeamFriendlyMatch.findById(matchId).lean()
+  if (!match) return null
+
+  const status = match.status as TeamFriendlyMatchStatus
+  if (!TEAM_FRIENDLY_ACTIVE_STATUSES.includes(status)) return null
+
+  const perspective = String(perspectiveTeamId)
+  if (
+    String(match.challengerTeamId) !== perspective &&
+    String(match.opponentTeamId) !== perspective
+  ) {
+    return null
+  }
+
+  return buildTeamFriendlyMatchDetail(matchId, '', perspective, false)
 }
 
 export async function buildTeamFriendlyMatchDetail(

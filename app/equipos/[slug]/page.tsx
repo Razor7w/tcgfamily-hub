@@ -19,6 +19,7 @@ import Header from '@/components/Header'
 import { DecklistSpritePair } from '@/components/decklist/DecklistPokemonSlotPickers'
 import TeamMonthlyActivityCard from '@/components/teams/TeamMonthlyActivityCard'
 import TeamPostsSection from '@/components/teams/TeamPostsSection'
+import TeamPublicActiveMatchesSection from '@/components/teams/TeamPublicActiveMatchesSection'
 import TeamPublicHeader from '@/components/teams/TeamPublicHeader'
 import {
   usePublicTeam,
@@ -99,6 +100,12 @@ export default function EquipoPublicPage() {
                 memberCount={data.team.memberCount}
                 medals={medals}
                 medalsLoading={medalsLoading}
+              />
+
+              <TeamPublicActiveMatchesSection
+                teamSlug={slug}
+                teamId={data.team.id}
+                enabled={coreReady}
               />
 
               <TeamPostsSection teamSlug={slug} lazyLoad />
