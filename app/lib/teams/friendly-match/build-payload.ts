@@ -81,6 +81,38 @@ function viewerSideForMatch(
   return null
 }
 
+const FRIENDLY_MATCH_LIST_LIMIT = 40
+
+async function loadFriendlyMatchesForTeam(teamId: mongoose.Types.ObjectId) {
+  const [asChallenger, asOpponent] = await Promise.all([
+    TeamFriendlyMatch.find({ challengerTeamId: teamId })
+      .sort({ createdAt: -1 })
+      .limit(FRIENDLY_MATCH_LIST_LIMIT)
+      .lean(),
+    TeamFriendlyMatch.find({ opponentTeamId: teamId })
+      .sort({ createdAt: -1 })
+      .limit(FRIENDLY_MATCH_LIST_LIMIT)
+      .lean()
+  ])
+
+  const seen = new Set<string>()
+  const merged = [...asChallenger, ...asOpponent]
+    .filter(match => {
+      const id = String(match._id)
+      if (seen.has(id)) return false
+      seen.add(id)
+      return true
+    })
+    .sort((a, b) => {
+      const aMs = a.createdAt instanceof Date ? a.createdAt.getTime() : 0
+      const bMs = b.createdAt instanceof Date ? b.createdAt.getTime() : 0
+      return bMs - aMs
+    })
+    .slice(0, FRIENDLY_MATCH_LIST_LIMIT)
+
+  return merged
+}
+
 export async function buildTeamFriendlyMatchList(
   teamId: mongoose.Types.ObjectId,
   viewerUserId: string,
@@ -88,12 +120,7 @@ export async function buildTeamFriendlyMatchList(
 ): Promise<TeamFriendlyMatchListItemDTO[]> {
   await connectDB()
 
-  const matches = await TeamFriendlyMatch.find({
-    $or: [{ challengerTeamId: teamId }, { opponentTeamId: teamId }]
-  })
-    .sort({ createdAt: -1 })
-    .limit(40)
-    .lean()
+  const matches = await loadFriendlyMatchesForTeam(teamId)
 
   if (matches.length === 0) return []
 

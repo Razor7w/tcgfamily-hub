@@ -113,6 +113,8 @@ const TeamFriendlyMatchSchema = new Schema<ITeamFriendlyMatch>(
 
 TeamFriendlyMatchSchema.index({ challengerTeamId: 1, status: 1, createdAt: -1 })
 TeamFriendlyMatchSchema.index({ opponentTeamId: 1, status: 1, createdAt: -1 })
+TeamFriendlyMatchSchema.index({ challengerTeamId: 1, createdAt: -1 })
+TeamFriendlyMatchSchema.index({ opponentTeamId: 1, createdAt: -1 })
 TeamFriendlyMatchSchema.index(
   { challengerTeamId: 1, opponentTeamId: 1, status: 1 },
   {

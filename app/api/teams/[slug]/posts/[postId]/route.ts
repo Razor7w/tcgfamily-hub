@@ -7,7 +7,10 @@ import {
   getApprovedTeamBySlug,
   getMembershipForUserOnTeam
 } from '@/lib/teams/access'
-import { TEAM_POST_TITLE_MAX } from '@/lib/teams/post-constants'
+import {
+  TEAM_POST_TITLE_MAX,
+  TEAM_POST_NOT_DELETED_FILTER
+} from '@/lib/teams/post-constants'
 import type { TeamPostVisibility } from '@/lib/teams/post-constants'
 import { resolveTeamPostCoverAsset } from '@/lib/teams/post-media'
 import { buildTeamPostDTOs } from '@/lib/teams/post-payload'
@@ -40,18 +43,18 @@ async function getPostForDelete(slug: string, postId: string, userId: string) {
   if (!team)
     return { error: 'Equipo no encontrado' as const, status: 404 as const }
   if (!mongoose.Types.ObjectId.isValid(postId)) {
-    return { error: 'Publicación inválida' as const, status: 400 as const }
+    return { error: 'Publicaci?n inv?lida' as const, status: 400 as const }
   }
 
   await connectDB()
   const post = await TeamPost.findOne({
     _id: new mongoose.Types.ObjectId(postId),
     teamId: team._id,
-    deletedAt: { $exists: false }
+    ...TEAM_POST_NOT_DELETED_FILTER
   }).lean<PostLean | null>()
 
   if (!post) {
-    return { error: 'Publicación no encontrada' as const, status: 404 as const }
+    return { error: 'Publicaci?n no encontrada' as const, status: 404 as const }
   }
 
   const membership = await getMembershipForUserOnTeam(
@@ -73,18 +76,18 @@ async function getPostForEdit(slug: string, postId: string, userId: string) {
   if (!team)
     return { error: 'Equipo no encontrado' as const, status: 404 as const }
   if (!mongoose.Types.ObjectId.isValid(postId)) {
-    return { error: 'Publicación inválida' as const, status: 400 as const }
+    return { error: 'Publicaci?n inv?lida' as const, status: 400 as const }
   }
 
   await connectDB()
   const post = await TeamPost.findOne({
     _id: new mongoose.Types.ObjectId(postId),
     teamId: team._id,
-    deletedAt: { $exists: false }
+    ...TEAM_POST_NOT_DELETED_FILTER
   }).lean<PostLean | null>()
 
   if (!post) {
-    return { error: 'Publicación no encontrada' as const, status: 404 as const }
+    return { error: 'Publicaci?n no encontrada' as const, status: 404 as const }
   }
 
   if (String(post.authorUserId) !== userId) {
@@ -122,7 +125,7 @@ export async function PATCH(
 
     if (teamPostBodyIsEmpty(bodyHtml)) {
       return NextResponse.json(
-        { error: 'Escribe el contenido de la publicación' },
+        { error: 'Escribe el contenido de la publicaci?n' },
         { status: 400 }
       )
     }
@@ -157,7 +160,7 @@ export async function PATCH(
         )
         if (!resolved) {
           return NextResponse.json(
-            { error: 'Portada inválida' },
+            { error: 'Portada inv?lida' },
             { status: 400 }
           )
         }
@@ -177,7 +180,7 @@ export async function PATCH(
       visibility = 'public'
     } else if (visibilityRaw != null && visibilityRaw !== '') {
       return NextResponse.json(
-        { error: 'Visibilidad inválida' },
+        { error: 'Visibilidad inv?lida' },
         { status: 400 }
       )
     }
@@ -188,7 +191,7 @@ export async function PATCH(
     } else if (typeof body?.decklistId === 'string' && body.decklistId.trim()) {
       const decklistIdRaw = body.decklistId.trim()
       if (!mongoose.Types.ObjectId.isValid(decklistIdRaw)) {
-        return NextResponse.json({ error: 'Mazo inválido' }, { status: 400 })
+        return NextResponse.json({ error: 'Mazo inv?lido' }, { status: 400 })
       }
       const deck = await SavedDecklist.findOne({
         _id: new mongoose.Types.ObjectId(decklistIdRaw),
@@ -201,7 +204,7 @@ export async function PATCH(
         return NextResponse.json(
           {
             error:
-              'El mazo no existe, no es tuyo o no está marcado como público'
+              'El mazo no existe, no es tuyo o no est? marcado como p?blico'
           },
           { status: 400 }
         )
@@ -227,7 +230,7 @@ export async function PATCH(
     ).lean<PostLean | null>()
     if (!updated) {
       return NextResponse.json(
-        { error: 'Publicación no encontrada' },
+        { error: 'Publicaci?n no encontrada' },
         { status: 404 }
       )
     }

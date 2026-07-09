@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSessionUser } from '@/lib/api-auth'
 import {
-  buildTeamManageCore,
+  loadTeamManageMedals,
   requireTeamManageAccess
 } from '@/lib/teams/manage-payload'
 
@@ -23,18 +23,13 @@ export async function GET(
       )
     }
 
-    const payload = await buildTeamManageCore({
-      team: access.team,
-      teamOid: access.teamOid,
-      viewerUserId: gate.session.user!.id!,
-      viewerMembership: access.viewerMembership
-    })
+    const medals = await loadTeamManageMedals(access.teamOid)
 
-    return NextResponse.json(payload)
+    return NextResponse.json({ medals })
   } catch (e) {
-    console.error('GET /api/teams/[slug]/manage:', e)
+    console.error('GET /api/teams/[slug]/manage/medals:', e)
     return NextResponse.json(
-      { error: 'No se pudo cargar la gestión del equipo' },
+      { error: 'No se pudieron cargar las medallas' },
       { status: 500 }
     )
   }

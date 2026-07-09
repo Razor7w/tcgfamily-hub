@@ -1,7 +1,10 @@
 import mongoose from 'mongoose'
 import connectDB from '@/lib/mongodb'
 import { ownerPublicDisplay } from '@/lib/public-decklist-owner'
-import { TEAM_POSTS_PAGE_SIZE } from '@/lib/teams/post-constants'
+import {
+  TEAM_POSTS_PAGE_SIZE,
+  TEAM_POST_NOT_DELETED_FILTER
+} from '@/lib/teams/post-constants'
 import type { TeamPostVisibility } from '@/lib/teams/post-constants'
 import SavedDecklist from '@/models/SavedDecklist'
 import TeamPost from '@/models/TeamPost'
@@ -218,7 +221,7 @@ export async function listTeamPosts(
   const limit = Math.min(options.limit ?? TEAM_POSTS_PAGE_SIZE, 50)
   const filter: Record<string, unknown> = {
     teamId,
-    deletedAt: { $exists: false }
+    ...TEAM_POST_NOT_DELETED_FILTER
   }
 
   const membersFeed =
@@ -277,7 +280,7 @@ export async function listTeamPostComments(postId: mongoose.Types.ObjectId) {
   await connectDB()
   const comments = await TeamPostComment.find({
     postId,
-    deletedAt: { $exists: false }
+    ...TEAM_POST_NOT_DELETED_FILTER
   })
     .sort({ createdAt: 1 })
     .limit(200)

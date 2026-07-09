@@ -68,6 +68,8 @@ const TeamSchema = new Schema<ITeam>(
 
 TeamSchema.index({ slug: 1 }, { unique: true })
 TeamSchema.index({ approvalStatus: 1, createdAt: -1 })
+TeamSchema.index({ approvalStatus: 1, isActive: 1, createdAt: -1 })
+TeamSchema.index({ isActive: 1, updatedAt: -1 })
 TeamSchema.index(
   { captainUserId: 1, approvalStatus: 1 },
   { partialFilterExpression: { approvalStatus: 'pending' } }

@@ -53,6 +53,7 @@ TeamMembershipSchema.index(
   }
 )
 TeamMembershipSchema.index({ teamId: 1, status: 1 })
+TeamMembershipSchema.index({ teamId: 1, status: 1, role: 1 })
 
 if (mongoose.models.TeamMembership) {
   delete mongoose.models.TeamMembership

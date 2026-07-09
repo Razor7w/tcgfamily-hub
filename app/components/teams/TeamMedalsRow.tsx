@@ -4,6 +4,7 @@ import { useState } from 'react'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import CircularProgress from '@mui/material/CircularProgress'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import TeamMedalChip from '@/components/teams/TeamMedalChip'
@@ -15,11 +16,13 @@ const DEFAULT_VISIBLE = 5
 type Props = {
   medals?: TeamMedalDTO[]
   title?: string
+  loading?: boolean
 }
 
 export default function TeamMedalsRow({
   medals = [],
-  title = 'Medallas'
+  title = 'Medallas',
+  loading = false
 }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [guideOpen, setGuideOpen] = useState(false)
@@ -67,7 +70,11 @@ export default function TeamMedalsRow({
           </Button>
         </Stack>
 
-        {medals.length > 0 ? (
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start', py: 0.5 }}>
+            <CircularProgress size={20} />
+          </Box>
+        ) : medals.length > 0 ? (
           <Stack direction="row" flexWrap="wrap" gap={0.75} useFlexGap>
             {visible.map(medal => (
               <TeamMedalChip key={medal.instanceKey} medal={medal} />

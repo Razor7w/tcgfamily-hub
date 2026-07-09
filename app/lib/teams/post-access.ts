@@ -2,6 +2,7 @@ import mongoose from 'mongoose'
 import connectDB from '@/lib/mongodb'
 import { getMembershipForUserOnTeam } from '@/lib/teams/access'
 import type { TeamPostVisibility } from '@/lib/teams/post-constants'
+import { TEAM_POST_NOT_DELETED_FILTER } from '@/lib/teams/post-constants'
 import TeamPost from '@/models/TeamPost'
 
 type PostAccessLean = {
@@ -19,7 +20,7 @@ export async function getTeamPostForInteraction(
   return TeamPost.findOne({
     _id: new mongoose.Types.ObjectId(postId),
     teamId,
-    deletedAt: { $exists: false }
+    ...TEAM_POST_NOT_DELETED_FILTER
   })
     .select('_id teamId visibility')
     .lean<PostAccessLean | null>()

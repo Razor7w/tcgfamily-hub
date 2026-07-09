@@ -146,17 +146,17 @@ async function buildFriendlyMatchNotifications(
   if (!mongoose.Types.ObjectId.isValid(userId)) return []
 
   const uid = new mongoose.Types.ObjectId(userId)
-  const memberships = await TeamMembership.find({
+  const memberships = await TeamMembership.findOne({
     userId: uid,
     status: 'active',
     role: { $in: ['captain', 'co_captain'] }
   })
     .select('teamId')
-    .lean<{ teamId: mongoose.Types.ObjectId }[]>()
+    .lean<{ teamId: mongoose.Types.ObjectId } | null>()
 
-  if (memberships.length === 0) return []
+  if (!memberships) return []
 
-  const teamIds = memberships.map(m => m.teamId)
+  const teamIds = [memberships.teamId]
   const pending = await TeamFriendlyMatch.find({
     opponentTeamId: { $in: teamIds },
     status: 'pending',

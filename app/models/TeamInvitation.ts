@@ -106,6 +106,7 @@ TeamInvitationSchema.index(
 )
 TeamInvitationSchema.index({ inviteeUserId: 1, status: 1, expiresAt: -1 })
 TeamInvitationSchema.index({ inviteeRutKey: 1, status: 1, expiresAt: -1 })
+TeamInvitationSchema.index({ inviteeUserId: 1, status: 1, createdAt: -1 })
 
 if (mongoose.models.TeamInvitation) {
   delete mongoose.models.TeamInvitation

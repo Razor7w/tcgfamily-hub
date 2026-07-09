@@ -41,6 +41,8 @@ import {
   useLeaveTeam,
   useRemoveTeamMember,
   useTeamManage,
+  useTeamManageInvitations,
+  useTeamManageMedals,
   useTeamsMe,
   useUpdateTeam,
   useUpdateTeamMemberRole
@@ -146,6 +148,16 @@ export default function EquipoDashboardClient() {
     error: manageErr
   } = useTeamManage(teamSlug, Boolean(teamSlug))
 
+  const [teamTab, setTeamTab] = useState(0)
+
+  const { data: manageMedals, isPending: manageMedalsPending } =
+    useTeamManageMedals(teamSlug, Boolean(teamSlug) && teamTab === 0)
+
+  const { data: manageInvitations, isPending: manageInvitationsPending } =
+    useTeamManageInvitations(
+      teamSlug,
+      Boolean(teamSlug) && teamTab === 2 && Boolean(manage?.viewer.canManage)
+    )
   const [createName, setCreateName] = useState('')
   const [createSlug, setCreateSlug] = useState('')
   const [slugTouched, setSlugTouched] = useState(false)
@@ -162,7 +174,6 @@ export default function EquipoDashboardClient() {
   const disbandTeam = useDisbandTeam(teamSlug)
   const [disbandOpen, setDisbandOpen] = useState(false)
   const [disbandErr, setDisbandErr] = useState<string | null>(null)
-  const [teamTab, setTeamTab] = useState(0)
   const [showApplyForm, setShowApplyForm] = useState(false)
   const cancelInvitation = useCancelTeamInvitation(teamSlug)
   const updateMemberRole = useUpdateTeamMemberRole(teamSlug)
@@ -471,7 +482,10 @@ export default function EquipoDashboardClient() {
                           variant="outlined"
                           sx={{ p: 2.5, borderRadius: 3 }}
                         >
-                          <TeamMedalsRow medals={manage.medals ?? []} />
+                          <TeamMedalsRow
+                            medals={manageMedals?.medals ?? []}
+                            loading={manageMedalsPending}
+                          />
                         </Paper>
 
                         {manage.viewer.isCaptain ? (
@@ -683,7 +697,8 @@ export default function EquipoDashboardClient() {
                         ) : null}
 
                         {manage.viewer.canManage &&
-                        manage.invitations.length > 0 ? (
+                        (manageInvitationsPending ||
+                          (manageInvitations?.invitations.length ?? 0) > 0) ? (
                           <Paper
                             variant="outlined"
                             sx={{ p: 2.5, borderRadius: 3 }}
@@ -695,62 +710,78 @@ export default function EquipoDashboardClient() {
                             >
                               Solicitudes enviadas
                             </Typography>
-                            <Stack spacing={1}>
-                              {manage.invitations.map(inv => (
-                                <Stack
-                                  key={inv.id}
-                                  direction="row"
-                                  justifyContent="space-between"
-                                  alignItems="center"
-                                >
-                                  <Stack
-                                    direction="row"
-                                    spacing={1.25}
-                                    alignItems="center"
-                                  >
-                                    {inv.linkStatus === 'linked' &&
-                                    inv.inviteeImage ? (
-                                      <Avatar src={inv.inviteeImage}>
-                                        {inv.inviteeName
-                                          .slice(0, 1)
-                                          .toUpperCase()}
-                                      </Avatar>
-                                    ) : null}
-                                    <Box>
-                                      <Typography
-                                        variant="body2"
-                                        fontWeight={600}
+                            {manageInvitationsPending ? (
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  justifyContent: 'center',
+                                  py: 2
+                                }}
+                              >
+                                <CircularProgress size={22} />
+                              </Box>
+                            ) : (
+                              <Stack spacing={1}>
+                                {(manageInvitations?.invitations ?? []).map(
+                                  inv => (
+                                    <Stack
+                                      key={inv.id}
+                                      direction="row"
+                                      justifyContent="space-between"
+                                      alignItems="center"
+                                    >
+                                      <Stack
+                                        direction="row"
+                                        spacing={1.25}
+                                        alignItems="center"
                                       >
-                                        {inv.linkStatus === 'awaiting_user'
-                                          ? inv.inviteeRut
-                                          : inv.inviteeName}
-                                      </Typography>
-                                      <Typography
-                                        variant="caption"
-                                        color="text.secondary"
+                                        {inv.linkStatus === 'linked' &&
+                                        inv.inviteeImage ? (
+                                          <Avatar src={inv.inviteeImage}>
+                                            {inv.inviteeName
+                                              .slice(0, 1)
+                                              .toUpperCase()}
+                                          </Avatar>
+                                        ) : null}
+                                        <Box>
+                                          <Typography
+                                            variant="body2"
+                                            fontWeight={600}
+                                          >
+                                            {inv.linkStatus === 'awaiting_user'
+                                              ? inv.inviteeRut
+                                              : inv.inviteeName}
+                                          </Typography>
+                                          <Typography
+                                            variant="caption"
+                                            color="text.secondary"
+                                          >
+                                            {inv.linkStatus === 'awaiting_user'
+                                              ? 'Esperando registro · '
+                                              : inv.inviteeRut
+                                                ? `${inv.inviteeRut} · `
+                                                : inv.inviteePopid
+                                                  ? `POP ${inv.inviteePopid} · `
+                                                  : ''}
+                                            expira {formatDate(inv.expiresAt)}
+                                          </Typography>
+                                        </Box>
+                                      </Stack>
+                                      <Button
+                                        size="small"
+                                        onClick={() =>
+                                          void cancelInvitation.mutateAsync(
+                                            inv.id
+                                          )
+                                        }
                                       >
-                                        {inv.linkStatus === 'awaiting_user'
-                                          ? 'Esperando registro · '
-                                          : inv.inviteeRut
-                                            ? `${inv.inviteeRut} · `
-                                            : inv.inviteePopid
-                                              ? `POP ${inv.inviteePopid} · `
-                                              : ''}
-                                        expira {formatDate(inv.expiresAt)}
-                                      </Typography>
-                                    </Box>
-                                  </Stack>
-                                  <Button
-                                    size="small"
-                                    onClick={() =>
-                                      void cancelInvitation.mutateAsync(inv.id)
-                                    }
-                                  >
-                                    Cancelar
-                                  </Button>
-                                </Stack>
-                              ))}
-                            </Stack>
+                                        Cancelar
+                                      </Button>
+                                    </Stack>
+                                  )
+                                )}
+                              </Stack>
+                            )}
                           </Paper>
                         ) : null}
                       </Stack>

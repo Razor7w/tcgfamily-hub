@@ -74,6 +74,18 @@ export type TeamManageMember = {
   roleLabel: string
 }
 
+export type TeamManageInvitation = {
+  id: string
+  inviteeUserId: string | null
+  inviteeName: string
+  inviteeImage: string | null
+  inviteePopid: string
+  inviteeRut: string
+  linkStatus: 'linked' | 'awaiting_user'
+  expiresAt: string
+  createdAt: string
+}
+
 export type TeamManageResponse = {
   team: {
     id: string
@@ -94,19 +106,15 @@ export type TeamManageResponse = {
     featuredDecklistId: string | null
   }
   members: TeamManageMember[]
-  invitations: {
-    id: string
-    inviteeUserId: string | null
-    inviteeName: string
-    inviteeImage: string | null
-    inviteePopid: string
-    inviteeRut: string
-    linkStatus: 'linked' | 'awaiting_user'
-    expiresAt: string
-    createdAt: string
-  }[]
   memberCount: number
+}
+
+export type TeamManageMedalsResponse = {
   medals: TeamMedalDTO[]
+}
+
+export type TeamManageInvitationsResponse = {
+  invitations: TeamManageInvitation[]
 }
 
 export const teamsMeQueryKey = ['teams', 'me'] as const
@@ -114,6 +122,10 @@ export const teamPublicQueryKey = (slug: string) =>
   ['teams', 'public', 'v3', slug] as const
 export const teamManageQueryKey = (slug: string) =>
   ['teams', 'manage', slug] as const
+export const teamManageMedalsQueryKey = (slug: string) =>
+  ['teams', 'manage', slug, 'medals'] as const
+export const teamManageInvitationsQueryKey = (slug: string) =>
+  ['teams', 'manage', slug, 'invitations'] as const
 
 async function parseError(res: Response, fallback: string): Promise<never> {
   const j = await res.json().catch(() => ({}))
@@ -157,6 +169,37 @@ export function useTeamManage(slug: string, enabled = true) {
     queryFn: async (): Promise<TeamManageResponse> => {
       const res = await fetch(`/api/teams/${encodeURIComponent(slug)}/manage`)
       if (!res.ok) await parseError(res, 'No se pudo cargar la gestión')
+      return res.json()
+    },
+    enabled: Boolean(slug?.trim()) && enabled,
+    staleTime: 30_000
+  })
+}
+
+export function useTeamManageMedals(slug: string, enabled = true) {
+  return useQuery({
+    queryKey: teamManageMedalsQueryKey(slug),
+    queryFn: async (): Promise<TeamManageMedalsResponse> => {
+      const res = await fetch(
+        `/api/teams/${encodeURIComponent(slug)}/manage/medals`
+      )
+      if (!res.ok) await parseError(res, 'No se pudieron cargar las medallas')
+      return res.json()
+    },
+    enabled: Boolean(slug?.trim()) && enabled,
+    staleTime: 120_000
+  })
+}
+
+export function useTeamManageInvitations(slug: string, enabled = true) {
+  return useQuery({
+    queryKey: teamManageInvitationsQueryKey(slug),
+    queryFn: async (): Promise<TeamManageInvitationsResponse> => {
+      const res = await fetch(
+        `/api/teams/${encodeURIComponent(slug)}/manage/invitations`
+      )
+      if (!res.ok)
+        await parseError(res, 'No se pudieron cargar las invitaciones')
       return res.json()
     },
     enabled: Boolean(slug?.trim()) && enabled,

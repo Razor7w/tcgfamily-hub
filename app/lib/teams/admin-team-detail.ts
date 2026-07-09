@@ -3,6 +3,7 @@ import 'server-only'
 import mongoose from 'mongoose'
 import connectDB from '@/lib/mongodb'
 import { ownerPublicDisplay } from '@/lib/public-decklist-owner'
+import { TEAM_POST_NOT_DELETED_FILTER } from '@/lib/teams/post-constants'
 import {
   TEAM_ROLE_LABELS,
   type TeamApprovalStatus
@@ -105,7 +106,7 @@ export async function buildAdminTeamDetail(
 
   const postRows = await TeamPost.find({
     teamId,
-    deletedAt: { $exists: false }
+    ...TEAM_POST_NOT_DELETED_FILTER
   })
     .sort({ _id: -1 })
     .limit(50)
@@ -130,7 +131,7 @@ export async function buildAdminTeamDetail(
 
   const postCount = await TeamPost.countDocuments({
     teamId,
-    deletedAt: { $exists: false }
+    ...TEAM_POST_NOT_DELETED_FILTER
   })
 
   const posts = await buildTeamPostDTOs(postRows, null, true)

@@ -59,6 +59,14 @@ const TeamPostSchema = new Schema<ITeamPost>(
 TeamPostSchema.index({ teamId: 1, deletedAt: 1, createdAt: -1 })
 TeamPostSchema.index({ teamId: 1, visibility: 1, deletedAt: 1, createdAt: -1 })
 TeamPostSchema.index({ authorUserId: 1, createdAt: -1 })
+TeamPostSchema.index(
+  { teamId: 1, deletedAt: 1, _id: -1 },
+  { partialFilterExpression: { deletedAt: null } }
+)
+TeamPostSchema.index(
+  { teamId: 1, visibility: 1, deletedAt: 1, _id: -1 },
+  { partialFilterExpression: { deletedAt: null } }
+)
 
 if (mongoose.models.TeamPost) {
   delete mongoose.models.TeamPost

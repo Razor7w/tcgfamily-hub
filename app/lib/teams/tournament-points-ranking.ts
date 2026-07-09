@@ -3,7 +3,8 @@ import 'server-only'
 import connectDB from '@/lib/mongodb'
 import { getChileCalendarMonthRangeUtc } from '@/lib/contribution-points/chile-month-range'
 import {
-  aggregateLeagueStandings,
+  leagueMergeSource,
+  pointsFromWLRecord,
   type LeanEventForLeague
 } from '@/lib/league-aggregate'
 import { loadApprovedTeamRosterIndex } from '@/lib/teams/league-ranking'
@@ -37,10 +38,11 @@ export type TeamTournamentPointsRankingResult = {
 }
 
 const TOP_MEMBERS_PER_TEAM = 3
+const OFFICIAL_TOURNAMENT_CURSOR_BATCH = 20
 
-async function loadOfficialClosedTournamentEvents(
+function officialClosedTournamentFilter(
   period: TeamTournamentPointsRankingPeriod
-): Promise<LeanEventForLeague[]> {
+): Record<string, unknown> {
   const monthRange = period === 'month' ? getChileCalendarMonthRangeUtc() : null
 
   const filter: Record<string, unknown> = {
@@ -56,10 +58,31 @@ async function loadOfficialClosedTournamentEvents(
     }
   }
 
-  return WeeklyEvent.find(filter)
+  return filter
+}
+
+/** Suma puntos por POP en streaming (cursor) sin cargar todos los torneos en RAM. */
+async function aggregateOfficialTournamentPointsByPopId(
+  period: TeamTournamentPointsRankingPeriod
+): Promise<Map<string, number>> {
+  const totals = new Map<string, number>()
+  const cursor = WeeklyEvent.find(officialClosedTournamentFilter(period))
     .select(weeklyEventLeagueAggregateProjection)
-    .sort({ startsAt: -1 })
-    .lean() as Promise<LeanEventForLeague[]>
+    .lean()
+    .cursor({ batchSize: OFFICIAL_TOURNAMENT_CURSOR_BATCH })
+
+  for await (const raw of cursor) {
+    const ev = raw as LeanEventForLeague
+    const { byPop } = leagueMergeSource(ev)
+    for (const [popId, rec] of byPop) {
+      if (rec.w + rec.l + rec.t === 0) continue
+      const pts = pointsFromWLRecord(rec.w, rec.l, rec.t)
+      if (pts <= 0) continue
+      totals.set(popId, (totals.get(popId) ?? 0) + pts)
+    }
+  }
+
+  return totals
 }
 
 export async function buildTeamTournamentPointsRanking(input?: {
@@ -71,21 +94,22 @@ export async function buildTeamTournamentPointsRanking(input?: {
 
   await connectDB()
 
-  const events = await loadOfficialClosedTournamentEvents(period)
-  const playerStandings = aggregateLeagueStandings(events, null)
-  const roster = await loadApprovedTeamRosterIndex()
+  const [pointsByPopId, roster] = await Promise.all([
+    aggregateOfficialTournamentPointsByPopId(period),
+    loadApprovedTeamRosterIndex()
+  ])
 
   const pointsByUserId = new Map<
     string,
     { displayName: string; points: number }
   >()
 
-  for (const row of playerStandings) {
-    const member = roster.byPopId.get(row.popId)
+  for (const [popId, points] of pointsByPopId) {
+    const member = roster.byPopId.get(popId)
     if (!member) continue
     pointsByUserId.set(member.userId, {
       displayName: member.displayName,
-      points: row.totalPoints
+      points
     })
   }
 

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSessionUser } from '@/lib/api-auth'
+import { canManageTeam } from '@/lib/teams/access'
 import {
-  buildTeamManageCore,
+  loadTeamManageInvitations,
   requireTeamManageAccess
 } from '@/lib/teams/manage-payload'
 
@@ -23,18 +24,17 @@ export async function GET(
       )
     }
 
-    const payload = await buildTeamManageCore({
-      team: access.team,
-      teamOid: access.teamOid,
-      viewerUserId: gate.session.user!.id!,
-      viewerMembership: access.viewerMembership
-    })
+    if (!canManageTeam(access.viewerMembership.role)) {
+      return NextResponse.json({ invitations: [] })
+    }
 
-    return NextResponse.json(payload)
+    const invitations = await loadTeamManageInvitations(access.teamOid)
+
+    return NextResponse.json({ invitations })
   } catch (e) {
-    console.error('GET /api/teams/[slug]/manage:', e)
+    console.error('GET /api/teams/[slug]/manage/invitations:', e)
     return NextResponse.json(
-      { error: 'No se pudo cargar la gestión del equipo' },
+      { error: 'No se pudieron cargar las invitaciones' },
       { status: 500 }
     )
   }
