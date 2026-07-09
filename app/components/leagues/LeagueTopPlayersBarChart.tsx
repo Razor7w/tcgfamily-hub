@@ -22,10 +22,12 @@ export type LeagueChartRow = {
 
 export default function LeagueTopPlayersBarChart({
   chartData,
-  barColor
+  barColor,
+  title = 'Top jugadores (puntos de liga)'
 }: {
   chartData: LeagueChartRow[]
   barColor: string
+  title?: string
 }) {
   return (
     <Paper
@@ -38,7 +40,7 @@ export default function LeagueTopPlayersBarChart({
       }}
     >
       <Typography variant="h6" sx={{ fontWeight: 800, mb: 2 }}>
-        Top jugadores (puntos de liga)
+        {title}
       </Typography>
       <Box sx={{ width: '100%', height: 320 }}>
         <ResponsiveContainer width="100%" height="100%">

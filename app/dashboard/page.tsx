@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Insights from '@mui/icons-material/Insights'
 import Storefront from '@mui/icons-material/Storefront'
@@ -9,38 +8,27 @@ import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
 import CardActionArea from '@mui/material/CardActionArea'
 import CardContent from '@mui/material/CardContent'
-import Container from '@mui/material/Container'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import { useSession } from 'next-auth/react'
-import ReportCustomTournamentDialog from '@/components/events/ReportCustomTournamentDialog'
 import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
-import DashboardSuggestionRail from '@/components/dashboard/DashboardSuggestionRail'
+import DashboardHomeDiscoverCard from '@/components/dashboard/DashboardHomeDiscoverCard'
 import DashboardHomeTournamentsCard from '@/components/dashboard/DashboardHomeTournamentsCard'
 import DashboardInStoreMailsCard from '@/components/dashboard/DashboardInStoreMailsCard'
-import DashboardQuickActions from '@/components/dashboard/DashboardQuickActions'
+import DashboardRegisterMailShortcut from '@/components/dashboard/DashboardRegisterMailShortcut'
 import RecentPublicDecklistsHomeCard from '@/components/dashboard/RecentPublicDecklistsHomeCard'
-import DashboardPageWithRightRail from '@/components/layouts/DashboardPageWithRightRail'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
 import { useStoreHubHref } from '@/hooks/useStoreHubHref'
 import DashboardPlayerTour from '@/components/tour/DashboardPlayerTour'
 
 export default function DashboardPage() {
-  const router = useRouter()
   const { data: session } = useSession()
   const storeHubHref = useStoreHubHref()
   const name = session?.user?.name?.trim() || 'jugador'
   const { shortcuts } = useDashboardModulesFromLayout()
 
   const [registerMailOpen, setRegisterMailOpen] = useState(false)
-  const [customTournamentOpen, setCustomTournamentOpen] = useState(false)
-  const [weekAnchor] = useState(() => new Date())
-
-  const showQuickActions =
-    shortcuts.createMail ||
-    shortcuts.createTournament ||
-    shortcuts.playPokemonDecklistPdf
 
   return (
     <>
@@ -52,145 +40,134 @@ export default function DashboardPage() {
           py: 4
         })}
       >
-        <DashboardPageWithRightRail
-          rail={<DashboardSuggestionRail />}
-          mobileDrawerLabel="Sugerencias"
+        <Box
+          sx={{
+            width: '100%',
+            maxWidth: 1040,
+            mx: 'auto',
+            px: { xs: 2, sm: 3 }
+          }}
         >
-          <Container
-            maxWidth={false}
+          <Box
             sx={{
-              px: { xs: 2, sm: 3 },
-              width: '100%',
-              maxWidth: { lg: 920 }
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: 'minmax(0, 1fr) auto'
+              },
+              gap: { xs: 2, sm: 2.5 },
+              alignItems: { sm: 'center' },
+              mb: 3
             }}
           >
-            <Typography variant="h4" component="h1" gutterBottom>
-              Inicio
-            </Typography>
-            <Typography
-              variant="subtitle1"
-              color="text.secondary"
-              sx={{ mb: 2 }}
-            >
-              Hola, {name}.
-            </Typography>
-
-            <Stack spacing={3}>
-              <Box sx={{ maxWidth: { xs: '100%', sm: 960 } }}>
-                <DashboardInStoreMailsCard />
-              </Box>
-
-              <Box sx={{ maxWidth: { xs: '100%', sm: 960 } }}>
-                <DashboardHomeTournamentsCard />
-              </Box>
-
-              {showQuickActions ? (
-                <Box
-                  data-tour="dashboard-quick-actions"
-                  sx={{ maxWidth: { xs: '100%', sm: 960 } }}
-                >
-                  <DashboardQuickActions
-                    shortcuts={shortcuts}
-                    subtitle="Toman la tienda seleccionada en la barra superior. Los bloques están en Tiendas."
-                    onRegisterMail={() => setRegisterMailOpen(true)}
-                    onCreateCustomTournament={() =>
-                      setCustomTournamentOpen(true)
-                    }
-                    onPlayPokemonDecklistPdf={() =>
-                      router.push('/dashboard/decklist-pdf-torneo')
-                    }
-                  />
-                </Box>
-              ) : null}
-
-              <Box sx={{ maxWidth: { xs: '100%', sm: 960 } }}>
-                <RecentPublicDecklistsHomeCard />
-              </Box>
-
+            <Box>
               <Typography
-                variant="overline"
-                color="text.secondary"
+                variant="h4"
+                component="h1"
+                gutterBottom
                 sx={{
-                  fontWeight: 700,
-                  letterSpacing: '0.08em',
-                  display: 'block',
-                  maxWidth: { xs: '100%', sm: 960 },
-                  pt: 0.5
+                  fontWeight: 900,
+                  letterSpacing: '-0.03em',
+                  textWrap: 'balance'
                 }}
               >
-                Continuar en el panel
+                Inicio
               </Typography>
+              <Typography
+                variant="subtitle1"
+                color="text.secondary"
+                sx={{ textWrap: 'pretty', maxWidth: '42ch' }}
+              >
+                Hola, {name}.
+              </Typography>
+            </Box>
 
-              <Stack spacing={2} sx={{ maxWidth: { xs: '100%', sm: 960 } }}>
-                <Card
-                  variant="outlined"
-                  sx={{ borderRadius: 3 }}
-                  data-tour="dashboard-card-tiendas"
-                >
-                  <CardActionArea component={Link} href={storeHubHref}>
-                    <CardContent
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 2,
-                        py: 2.5
-                      }}
-                    >
-                      <Storefront color="primary" sx={{ fontSize: 40 }} />
-                      <Box>
-                        <Typography variant="subtitle1" fontWeight={700}>
-                          Tiendas
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Eventos de la tienda activa, correo y puntos.
-                        </Typography>
-                      </Box>
-                    </CardContent>
-                  </CardActionArea>
-                </Card>
-                <Card variant="outlined" sx={{ borderRadius: 3 }}>
-                  <CardActionArea
-                    component={Link}
-                    href="/dashboard/tu-actividad"
-                  >
-                    <CardContent
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 2,
-                        py: 2.5
-                      }}
-                    >
-                      <Insights color="primary" sx={{ fontSize: 40 }} />
-                      <Box>
-                        <Typography variant="subtitle1" fontWeight={700}>
-                          Tu actividad
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Torneos, estadísticas y mazos enlazados a tu perfil.
-                        </Typography>
-                      </Box>
-                    </CardContent>
-                  </CardActionArea>
-                </Card>
-              </Stack>
-            </Stack>
+            {shortcuts.createMail ? (
+              <DashboardRegisterMailShortcut
+                onRegisterMail={() => setRegisterMailOpen(true)}
+              />
+            ) : null}
+          </Box>
 
-            <RegisterMailDialog
-              open={registerMailOpen}
-              onClose={() => setRegisterMailOpen(false)}
-            />
-            <ReportCustomTournamentDialog
-              open={customTournamentOpen}
-              onClose={() => setCustomTournamentOpen(false)}
-              weekAnchor={weekAnchor}
-              onCreated={eventId => {
-                setCustomTournamentOpen(false)
-                router.push(`/dashboard/torneos-semana/${eventId}`)
+          <Stack spacing={3}>
+            <DashboardInStoreMailsCard />
+
+            <DashboardHomeTournamentsCard />
+
+            <DashboardHomeDiscoverCard />
+
+            <RecentPublicDecklistsHomeCard />
+
+            <Typography
+              variant="overline"
+              color="text.secondary"
+              sx={{
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                display: 'block',
+                pt: 0.5
               }}
-            />
-          </Container>
-        </DashboardPageWithRightRail>
+            >
+              Continuar en el panel
+            </Typography>
+
+            <Stack spacing={2}>
+              <Card
+                variant="outlined"
+                sx={{ borderRadius: 3 }}
+                data-tour="dashboard-card-tiendas"
+              >
+                <CardActionArea component={Link} href={storeHubHref}>
+                  <CardContent
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2,
+                      py: 2.5
+                    }}
+                  >
+                    <Storefront color="primary" sx={{ fontSize: 40 }} />
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight={700}>
+                        Tiendas
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Eventos de la tienda activa, correo y puntos.
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </CardActionArea>
+              </Card>
+              <Card variant="outlined" sx={{ borderRadius: 3 }}>
+                <CardActionArea component={Link} href="/dashboard/tu-actividad">
+                  <CardContent
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2,
+                      py: 2.5
+                    }}
+                  >
+                    <Insights color="primary" sx={{ fontSize: 40 }} />
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight={700}>
+                        Tu actividad
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Torneos, estadísticas y mazos enlazados a tu perfil.
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </CardActionArea>
+              </Card>
+            </Stack>
+          </Stack>
+
+          <RegisterMailDialog
+            open={registerMailOpen}
+            onClose={() => setRegisterMailOpen(false)}
+          />
+        </Box>
       </Box>
     </>
   )

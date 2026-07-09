@@ -11,6 +11,7 @@ import {
   validatePopidOptional
 } from '@/lib/rut-chile'
 import { getRutFieldError } from '@/lib/rut-input'
+import { linkAwaitingTeamInvitationsForUser } from '@/lib/teams/invite-by-rut'
 import { resolveValidSignupStoreObjectId } from '@/lib/signup-default-store.server'
 
 /**
@@ -89,6 +90,12 @@ export async function POST(request: NextRequest) {
     user.popid = popNorm
     user.defaultStoreId = storeResolved.objectId
     await user.save()
+
+    try {
+      await linkAwaitingTeamInvitationsForUser(String(user._id), rutStored)
+    } catch (e) {
+      console.error('linkAwaitingTeamInvitationsForUser (oauth-onboarding):', e)
+    }
 
     if (popNorm) {
       try {

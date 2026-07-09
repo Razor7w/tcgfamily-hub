@@ -248,6 +248,20 @@ export async function resolveMailRegisterStoreOid(
   return { ok: true, activeStoreOid: oid }
 }
 
+/** Usuario autenticado (sin exigir tienda activa). */
+export async function requireSessionUser(): Promise<
+  { ok: true; session: Session } | { ok: false; response: NextResponse }
+> {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+  }
+  return { ok: true, session }
+}
+
 /**
  * ¿El usuario tiene fila explícita de staff sobre la tienda? (Útil antes de crear membresías automáticas).
  */

@@ -10,13 +10,12 @@ import {
 
 /** Pasos que en móvil requieren abrir el drawer del panel lateral. */
 const MOBILE_RAIL_DRAWER_TARGETS: ReadonlySet<ProductTourTarget> = new Set([
-  PRODUCT_TOUR_TARGETS.storeHubRightRail,
-  PRODUCT_TOUR_TARGETS.dashboardSuggestionRail
+  PRODUCT_TOUR_TARGETS.storeHubRightRail
 ])
 
 /** Antes de estos pasos, volver arriba en la página. */
 const MOBILE_SCROLL_TOP_TARGETS: ReadonlySet<ProductTourTarget> = new Set([
-  PRODUCT_TOUR_TARGETS.dashboardSuggestionRail
+  PRODUCT_TOUR_TARGETS.dashboardDiscoverCard
 ])
 
 let drawerWasOpenByTour = false

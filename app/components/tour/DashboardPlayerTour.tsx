@@ -24,10 +24,7 @@ export default function DashboardPlayerTour() {
   const { shortcuts } = useDashboardModulesFromLayout()
   const viewport = useProductTourViewport()
 
-  const showQuickActions =
-    shortcuts.createMail ||
-    shortcuts.createTournament ||
-    shortcuts.playPokemonDecklistPdf
+  const showRegisterMail = shortcuts.createMail
 
   const showStoreSwitcher =
     (meStores?.stores?.filter(s => Boolean(s.id)).length ?? 0) >= 1
@@ -41,13 +38,13 @@ export default function DashboardPlayerTour() {
     () =>
       filterDashboardPlayerTourSteps(DASHBOARD_PLAYER_TOUR_STEPS, {
         showStoreSwitcher,
-        showQuickActions,
+        showRegisterMail,
         showDesktopNav: viewport.showDesktopNav,
         showMobileNav: viewport.showMobileNav
       }),
     [
       showStoreSwitcher,
-      showQuickActions,
+      showRegisterMail,
       viewport.showDesktopNav,
       viewport.showMobileNav
     ]

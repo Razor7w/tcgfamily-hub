@@ -381,6 +381,20 @@ WeeklyEventSchema.index({
   'participants.userId': 1,
   startsAt: -1
 })
+/** Ranking equipos: torneos oficiales cerrados (`GET /api/teams/ranking`). */
+WeeklyEventSchema.index({
+  kind: 1,
+  tournamentOrigin: 1,
+  state: 1,
+  startsAt: -1
+})
+/** Actividad mensual del equipo (`buildTeamMonthlyActivity`). */
+WeeklyEventSchema.index({
+  kind: 1,
+  state: 1,
+  'participants.userId': 1,
+  startsAt: -1
+})
 
 if (mongoose.models.WeeklyEvent) {
   delete mongoose.models.WeeklyEvent

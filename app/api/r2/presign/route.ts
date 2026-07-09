@@ -5,7 +5,9 @@ import mongoose from 'mongoose'
 import { auth } from '@/auth'
 import { createSlidingWindowLimiter } from '@/lib/auth-rate-limit'
 import { assertCanManageStoreMutation } from '@/lib/store-admin-access'
-import { requireStoreOwnerSession } from '@/lib/api-auth'
+import { requireStoreOwnerSession, requireSessionUser } from '@/lib/api-auth'
+import { getMembershipForUserOnTeam, isCaptain } from '@/lib/teams/access'
+import Team from '@/models/Team'
 import { r2BucketName, r2Client, r2PublicBaseUrl } from '@/lib/r2'
 
 const presignLimiter = createSlidingWindowLimiter({
@@ -31,11 +33,15 @@ function safeExtFromContentType(contentType: string): string {
   return ''
 }
 
-function safeFolder(folder: unknown): 'uploads' | 'Avatar' | 'store-branding' {
+function safeFolder(
+  folder: unknown
+): 'uploads' | 'Avatar' | 'store-branding' | 'team-branding' | 'team-posts' {
   if (typeof folder !== 'string') return 'uploads'
   const f = folder.trim()
   if (f === 'Avatar') return 'Avatar'
   if (f === 'store-branding') return 'store-branding'
+  if (f === 'team-branding') return 'team-branding'
+  if (f === 'team-posts') return 'team-posts'
   return 'uploads'
 }
 
@@ -64,7 +70,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
     }
 
-    const { filename, contentType, folder, storeId } = body as Record<
+    const { filename, contentType, folder, storeId, teamId } = body as Record<
       string,
       unknown
     >
@@ -110,6 +116,58 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
       }
       key = `store-branding/${storeIdStr}/${crypto.randomUUID()}.${ext}`
+    } else if (baseFolder === 'team-branding') {
+      const teamIdStr = typeof teamId === 'string' ? teamId.trim() : ''
+      if (!mongoose.Types.ObjectId.isValid(teamIdStr)) {
+        return NextResponse.json(
+          { error: 'Falta teamId válido para logo de equipo.' },
+          { status: 400 }
+        )
+      }
+      const gate = await requireSessionUser()
+      if (!gate.ok) return gate.response
+      const teamOid = new mongoose.Types.ObjectId(teamIdStr)
+      const membership = await getMembershipForUserOnTeam(
+        gate.session.user!.id!,
+        teamOid
+      )
+      if (!membership || !isCaptain(membership.role)) {
+        return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+      }
+      const teamExists = await Team.exists({ _id: teamOid, isActive: true })
+      if (!teamExists) {
+        return NextResponse.json(
+          { error: 'Equipo no encontrado' },
+          { status: 404 }
+        )
+      }
+      key = `team-branding/${teamIdStr}/${crypto.randomUUID()}.${ext}`
+    } else if (baseFolder === 'team-posts') {
+      const teamIdStr = typeof teamId === 'string' ? teamId.trim() : ''
+      if (!mongoose.Types.ObjectId.isValid(teamIdStr)) {
+        return NextResponse.json(
+          { error: 'Falta teamId válido para portada de publicación.' },
+          { status: 400 }
+        )
+      }
+      const gate = await requireSessionUser()
+      if (!gate.ok) return gate.response
+      const teamOid = new mongoose.Types.ObjectId(teamIdStr)
+      const membership = await getMembershipForUserOnTeam(
+        gate.session.user!.id!,
+        teamOid
+      )
+      if (!membership) {
+        return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+      }
+      const teamExists = await Team.exists({ _id: teamOid, isActive: true })
+      if (!teamExists) {
+        return NextResponse.json(
+          { error: 'Equipo no encontrado' },
+          { status: 404 }
+        )
+      }
+      key = `team-posts/${teamIdStr}/${crypto.randomUUID()}.${ext}`
     } else {
       key = `uploads/${session.user.id}/${crypto.randomUUID()}.${ext}`
     }

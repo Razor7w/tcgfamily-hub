@@ -13,6 +13,8 @@ import {
 } from '@/lib/contribution-points/settings'
 import ContributionPointEntry from '@/models/ContributionPointEntry'
 import User from '@/models/User'
+import { buildPublicPlayPokemonRankFromUser } from '@/lib/play-pokemon-leaderboard/build-public-play-pokemon-rank'
+import type { PublicPlayPokemonRankBadge } from '@/lib/play-pokemon-leaderboard/build-public-play-pokemon-rank'
 
 export type ContributionLeaderboardPeriod = 'month' | 'all'
 
@@ -23,6 +25,7 @@ export type ContributionLeaderboardRow = {
   totalPoints: number
   tierLabel: string
   hideBadge: boolean
+  playPokemonRank?: PublicPlayPokemonRankBadge | null
 }
 
 export type ContributionLeaderboardResult = {
@@ -113,12 +116,22 @@ export async function buildContributionLeaderboard(input: {
 
   const userIds = totals.map(t => t._id)
   const users = await User.find({ _id: { $in: userIds } })
-    .select('name contributionHideBadge')
+    .select(
+      'name contributionHideBadge playPokemonChampionshipPoints playPokemonChampionshipRank playPokemonPlayPoints playPokemonDivision playPokemonLinkedDisplayName playPokemonLeaderboardUpdatedAt playPokemonSeasonLabel playPokemonRankPublic'
+    )
     .lean<
       {
         _id: mongoose.Types.ObjectId
         name?: string
         contributionHideBadge?: boolean
+        playPokemonChampionshipPoints?: number | null
+        playPokemonChampionshipRank?: number | null
+        playPokemonPlayPoints?: number | null
+        playPokemonDivision?: 'masters' | 'seniors' | 'juniors' | null
+        playPokemonLinkedDisplayName?: string | null
+        playPokemonLeaderboardUpdatedAt?: Date | null
+        playPokemonSeasonLabel?: string | null
+        playPokemonRankPublic?: boolean
       }[]
     >()
 
@@ -147,7 +160,8 @@ export async function buildContributionLeaderboard(input: {
       displayName,
       totalPoints,
       tierLabel: tierLabelForPoints(tierPoints, settings),
-      hideBadge
+      hideBadge,
+      playPokemonRank: user ? buildPublicPlayPokemonRankFromUser(user) : null
     }
   })
 

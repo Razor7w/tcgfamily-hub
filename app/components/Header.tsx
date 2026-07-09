@@ -8,6 +8,7 @@ import AppBar from '@mui/material/AppBar'
 import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
 import BrandLogo from '@/components/brand/BrandLogo'
+import HeaderNotificationsButton from '@/components/notifications/HeaderNotificationsButton'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import IconButton from '@mui/material/IconButton'
@@ -515,32 +516,65 @@ export default function Header() {
   )
 
   return (
-    <AppBar position="static">
-      <Toolbar>
-        {!isDesktop && (
-          <Tooltip title="Menú">
-            <IconButton
-              color="inherit"
-              aria-label="abrir menú"
-              onClick={toggleSidebar}
-              sx={{ mr: 1 }}
-            >
-              <MenuIcon />
-            </IconButton>
-          </Tooltip>
-        )}
-        <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
-          <BrandLogo variant="wordmark" size="sm" surface="dark" href="/" />
-        </Box>
+    <AppBar position="static" elevation={0}>
+      <Toolbar
+        disableGutters
+        sx={{
+          minHeight: { xs: 56, sm: 64 },
+          px: { xs: 1, sm: 1.5, md: 2 },
+          gap: 0.5,
+          overflow: 'hidden'
+        }}
+      >
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={{ xs: 0.25, sm: 0.5 }}
+          sx={{ minWidth: 0, flex: 1 }}
+        >
+          {!isDesktop ? (
+            <Tooltip title="Menú">
+              <IconButton
+                color="inherit"
+                size="small"
+                aria-label="abrir menú"
+                onClick={toggleSidebar}
+                sx={{ flexShrink: 0, ml: -0.25 }}
+              >
+                <MenuIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          ) : null}
+          <Box
+            sx={{
+              minWidth: 0,
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center'
+            }}
+          >
+            <BrandLogo
+              variant={isDesktop ? 'wordmark' : 'mark'}
+              size="sm"
+              surface="dark"
+              href="/"
+            />
+          </Box>
+        </Stack>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={{ xs: 0, sm: 0.25 }}
+          sx={{ flexShrink: 0 }}
+        >
           {showStoreSwitcher ? (
             <>
               <Stack
                 direction="row"
                 alignItems="center"
-                spacing={1}
-                sx={{ minWidth: 0, mr: 0.25 }}
+                spacing={0.25}
+                sx={{ minWidth: 0 }}
               >
                 {activeStoreName ? (
                   <Typography
@@ -567,13 +601,14 @@ export default function Header() {
                 >
                   <IconButton
                     color="inherit"
+                    size="small"
                     aria-haspopup="dialog"
                     aria-expanded={storePickerOpen}
                     aria-label="Cambiar tienda de contexto"
                     data-tour="store-switcher"
                     disabled={storeSwitchBusy}
                     onClick={() => openStorePicker()}
-                    sx={{ p: activeStoreLogo ? 0.5 : 1 }}
+                    sx={{ p: activeStoreLogo ? 0.375 : 0.75, flexShrink: 0 }}
                   >
                     {activeStoreLogo ? (
                       <Avatar
@@ -581,8 +616,8 @@ export default function Header() {
                         src={activeStoreLogo}
                         alt=""
                         sx={{
-                          width: 28,
-                          height: 28,
+                          width: { xs: 26, sm: 28 },
+                          height: { xs: 26, sm: 28 },
                           bgcolor: 'rgba(255,255,255,0.22)',
                           border: '1px solid rgba(255,255,255,0.35)',
                           '& .MuiAvatar-img': {
@@ -824,43 +859,46 @@ export default function Header() {
               ) : null}
             </>
           ) : null}
-          <Tooltip
-            title={appThemeMode === 'dark' ? 'Modo claro' : 'Modo oscuro'}
-          >
-            <IconButton
-              color="inherit"
-              onClick={() => toggleTheme()}
-              aria-label={
-                appThemeMode === 'dark'
-                  ? 'Activar modo claro'
-                  : 'Activar modo oscuro'
-              }
+          <HeaderNotificationsButton />
+          {isDesktop ? (
+            <Tooltip
+              title={appThemeMode === 'dark' ? 'Modo claro' : 'Modo oscuro'}
             >
-              {appThemeMode === 'dark' ? (
-                <LightModeOutlinedIcon />
-              ) : (
-                <DarkModeOutlinedIcon />
-              )}
-            </IconButton>
-          </Tooltip>
+              <IconButton
+                color="inherit"
+                onClick={() => toggleTheme()}
+                aria-label={
+                  appThemeMode === 'dark'
+                    ? 'Activar modo claro'
+                    : 'Activar modo oscuro'
+                }
+              >
+                {appThemeMode === 'dark' ? (
+                  <LightModeOutlinedIcon />
+                ) : (
+                  <DarkModeOutlinedIcon />
+                )}
+              </IconButton>
+            </Tooltip>
+          ) : null}
           {/* User Menu */}
           {session?.user && (
             <>
               <Tooltip title="Configuración de cuenta">
                 <IconButton
-                  size="large"
+                  size="small"
                   onClick={handleAccountClick}
                   color="inherit"
-                  sx={{ ml: 1 }}
+                  sx={{ p: 0.25, flexShrink: 0 }}
                 >
                   {session.user.image ? (
                     <Avatar
                       src={session.user.image}
                       alt={session.user.name || 'Usuario'}
-                      sx={{ width: 32, height: 32 }}
+                      sx={{ width: 28, height: 28 }}
                     />
                   ) : (
-                    <AccountCircleIcon />
+                    <AccountCircleIcon sx={{ fontSize: 28 }} />
                   )}
                 </IconButton>
               </Tooltip>
@@ -951,6 +989,24 @@ export default function Header() {
                   </Box>
                   <Divider />
                   <Box sx={{ py: 1 }}>
+                    <ListItemButton
+                      onClick={() => {
+                        toggleTheme()
+                      }}
+                    >
+                      <ListItemIcon>
+                        {appThemeMode === 'dark' ? (
+                          <LightModeOutlinedIcon />
+                        ) : (
+                          <DarkModeOutlinedIcon />
+                        )}
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={
+                          appThemeMode === 'dark' ? 'Modo claro' : 'Modo oscuro'
+                        }
+                      />
+                    </ListItemButton>
                     <ListItemButton onClick={goToPerfil}>
                       <ListItemIcon>
                         <PersonIcon />
@@ -968,7 +1024,7 @@ export default function Header() {
               )}
             </>
           )}
-        </Box>
+        </Stack>
       </Toolbar>
       <Snackbar
         open={Boolean(storeSwitchError)}
