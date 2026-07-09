@@ -29,28 +29,27 @@ import IconButton from '@mui/material/IconButton'
 import EmojiEventsOutlined from '@mui/icons-material/EmojiEventsOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import ClearIcon from '@mui/icons-material/Clear'
+import Chip from '@mui/material/Chip'
 import LeaderboardOutlined from '@mui/icons-material/LeaderboardOutlined'
+import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import { alpha, useTheme } from '@mui/material/styles'
 import Header from '@/components/Header'
 import PlayPokemonPointsLabel from '@/components/play-pokemon/PlayPokemonPointsLabel'
 import {
   PLAY_POKEMON_CHILE_LEADERBOARD_PATH,
-  PLAY_POKEMON_LEADERBOARD_DIVISIONS,
-  type PlayPokemonLeaderboardDivision
+  PLAY_POKEMON_COMMUNITY_RANKING_ALL_STORES_ID
 } from '@/lib/play-pokemon-leaderboard/constants'
 import type { PlayPokemonCommunityRankingRow } from '@/lib/play-pokemon-leaderboard/types'
-import { usePlayPokemonCommunityRanking } from '@/hooks/usePlayPokemonCommunityRanking'
+import {
+  usePlayPokemonCommunityRanking,
+  usePlayPokemonCommunityRankingStores
+} from '@/hooks/usePlayPokemonCommunityRanking'
+import { useMe } from '@/hooks/useMe'
 import { useMyChampionshipPoints } from '@/hooks/useMyChampionshipPoints'
 import {
   usePlayPokemonRankVisibility,
   useUpdatePlayPokemonRankVisibility
 } from '@/hooks/usePlayPokemonRankVisibility'
-
-const DIVISION_LABELS: Record<PlayPokemonLeaderboardDivision, string> = {
-  masters: 'Master',
-  seniors: 'Senior',
-  juniors: 'Junior'
-}
 
 function formatUpdated(iso: string | null | undefined): string | null {
   if (!iso) return null
@@ -138,11 +137,13 @@ function CommunityRankingStat({
 function CommunityRankingMobileCards({
   rows,
   page,
-  pageSize
+  pageSize,
+  showStore
 }: {
   rows: PlayPokemonCommunityRankingRow[]
   page: number
   pageSize: number
+  showStore?: boolean
 }) {
   return (
     <Stack
@@ -221,6 +222,26 @@ function CommunityRankingMobileCards({
                     Como {row.linkedDisplayName}
                   </Typography>
                 ) : null}
+                {row.divisionLabel ? (
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    display="block"
+                    sx={{ mt: 0.25 }}
+                  >
+                    {row.divisionLabel}
+                    {showStore && row.storeName ? ` · ${row.storeName}` : ''}
+                  </Typography>
+                ) : showStore && row.storeName ? (
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    display="block"
+                    sx={{ mt: 0.25 }}
+                  >
+                    {row.storeName}
+                  </Typography>
+                ) : null}
               </Box>
             </Stack>
 
@@ -261,11 +282,37 @@ export default function PlayPokemonCommunityRankingClient() {
   const queryClient = useQueryClient()
   const { status: sessionStatus } = useSession()
   const isAuthenticated = sessionStatus === 'authenticated'
-  const [division, setDivision] =
-    useState<PlayPokemonLeaderboardDivision>('masters')
+  const [storeId, setStoreId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [nameInput, setNameInput] = useState('')
   const [search, setSearch] = useState('')
+
+  const { data: storesMeta, isPending: storesPending } =
+    usePlayPokemonCommunityRankingStores()
+  const { data: me } = useMe()
+  const stores = useMemo(() => storesMeta?.stores ?? [], [storesMeta?.stores])
+  const storeTabs = useMemo(
+    () => [
+      {
+        id: PLAY_POKEMON_COMMUNITY_RANKING_ALL_STORES_ID,
+        name: 'Todos',
+        playerCount:
+          storesMeta?.totalPlayerCount ??
+          stores.reduce((sum, store) => sum + store.playerCount, 0)
+      },
+      ...stores
+    ],
+    [stores, storesMeta?.totalPlayerCount]
+  )
+  const defaultStoreId =
+    me?.defaultStoreId && stores.some(s => s.id === me.defaultStoreId)
+      ? me.defaultStoreId
+      : (storesMeta?.defaultStoreId ?? null)
+  const resolvedStoreId =
+    storeId ??
+    (defaultStoreId && stores.some(s => s.id === defaultStoreId)
+      ? defaultStoreId
+      : (stores[0]?.id ?? null))
 
   const { data: myCp, isPending: myCpPending } = useMyChampionshipPoints({
     enabled: isAuthenticated
@@ -287,10 +334,19 @@ export default function PlayPokemonCommunityRankingClient() {
   }, [nameInput])
 
   const { data, isPending, isError, error, isFetching } =
-    usePlayPokemonCommunityRanking(division, page, search)
+    usePlayPokemonCommunityRanking(resolvedStoreId, page, search)
 
   const searchActive = search.trim().length >= 2
-  const tabIndex = PLAY_POKEMON_LEADERBOARD_DIVISIONS.indexOf(division)
+  const isAllStoresTab =
+    resolvedStoreId === PLAY_POKEMON_COMMUNITY_RANKING_ALL_STORES_ID
+  const tabIndex = storeTabs.findIndex(tab => tab.id === resolvedStoreId)
+  const selectedTab = storeTabs.find(tab => tab.id === resolvedStoreId) ?? null
+  const isDefaultStoreTab = Boolean(
+    !isAllStoresTab &&
+    defaultStoreId &&
+    resolvedStoreId &&
+    defaultStoreId === resolvedStoreId
+  )
 
   const latestUpdate = useMemo(() => {
     const dates = (data?.rows ?? [])
@@ -328,8 +384,7 @@ export default function PlayPokemonCommunityRankingClient() {
               sx={{ maxWidth: '72ch' }}
             >
               Jugadores de Nexo que eligieron compartir su clasificación de
-              Championship Points. Los datos provienen del vínculo con Ranking
-              Chile.
+              Championship Points, agrupados por tienda de preferencia.
             </Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
               <Button
@@ -431,201 +486,335 @@ export default function PlayPokemonCommunityRankingClient() {
             }}
           >
             <Tabs
-              value={tabIndex >= 0 ? tabIndex : 0}
+              value={tabIndex >= 0 ? tabIndex : false}
               onChange={(_, idx) => {
-                const next = PLAY_POKEMON_LEADERBOARD_DIVISIONS[idx]
+                const next = storeTabs[idx]
                 if (next) {
-                  setDivision(next)
+                  setStoreId(next.id)
                   setNameInput('')
                   setSearch('')
                   setPage(1)
                 }
               }}
-              variant="fullWidth"
+              variant="scrollable"
+              scrollButtons="auto"
+              allowScrollButtonsMobile
               sx={{
                 borderBottom: '1px solid',
                 borderColor: 'divider',
-                bgcolor: alpha(theme.palette.primary.main, 0.04)
+                bgcolor: alpha(theme.palette.primary.main, 0.04),
+                px: { xs: 0.5, sm: 1 }
               }}
             >
-              {PLAY_POKEMON_LEADERBOARD_DIVISIONS.map(d => (
+              {storeTabs.map(tab => (
                 <Tab
-                  key={d}
-                  label={DIVISION_LABELS[d]}
-                  sx={{ fontWeight: 800, textTransform: 'none' }}
+                  key={tab.id}
+                  label={
+                    <Stack direction="row" spacing={0.75} alignItems="center">
+                      <span>{tab.name}</span>
+                      {defaultStoreId === tab.id ? (
+                        <Chip
+                          label="Tu tienda"
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                          sx={{
+                            height: 20,
+                            fontSize: '0.625rem',
+                            fontWeight: 700,
+                            '& .MuiChip-label': { px: 0.6 }
+                          }}
+                        />
+                      ) : null}
+                    </Stack>
+                  }
+                  sx={{ fontWeight: 800, textTransform: 'none', minHeight: 48 }}
                 />
               ))}
             </Tabs>
 
             <Box sx={{ p: { xs: 1.5, sm: 2.5 } }}>
-              <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                spacing={1.5}
-                alignItems={{ sm: 'center' }}
-                justifyContent="space-between"
-                sx={{ mb: 2 }}
-              >
-                <TextField
-                  size="small"
-                  value={nameInput}
-                  onChange={e => setNameInput(e.target.value)}
-                  placeholder="Buscar por nombre"
-                  sx={{ width: { xs: '100%', sm: 320 } }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon fontSize="small" color="action" />
-                      </InputAdornment>
-                    ),
-                    endAdornment: nameInput ? (
-                      <InputAdornment position="end">
-                        <IconButton
-                          size="small"
-                          aria-label="Limpiar búsqueda"
-                          onClick={() => {
-                            setNameInput('')
-                            setSearch('')
-                            setPage(1)
-                          }}
-                        >
-                          <ClearIcon fontSize="small" />
-                        </IconButton>
-                      </InputAdornment>
-                    ) : null
-                  }}
-                />
-                <Typography variant="caption" color="text.secondary">
-                  Temporada {data?.seasonLabel ?? '—'}
-                  {latestUpdate ? ` · actualizado ${latestUpdate}` : ''}
-                </Typography>
-              </Stack>
-
-              {isPending ? (
+              {storesPending ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-                  <CircularProgress aria-label="Cargando ranking" />
+                  <CircularProgress aria-label="Cargando tiendas" />
                 </Box>
-              ) : isError ? (
-                <Alert severity="error">
-                  {error instanceof Error
-                    ? error.message
-                    : 'No se pudo cargar el ranking.'}
-                </Alert>
-              ) : !data?.enabled ? (
-                <Alert severity="warning">
-                  El leaderboard de Play! Pokémon no está habilitado en este
-                  entorno.
-                </Alert>
-              ) : data.rows.length === 0 ? (
+              ) : stores.length === 0 ? (
                 <Alert severity="info">
-                  {searchActive
-                    ? 'No hay jugadores públicos que coincidan con tu búsqueda.'
-                    : 'Aún no hay jugadores que compartan su ranking en esta categoría.'}
+                  Aún no hay jugadores públicos con tienda de preferencia en el
+                  ranking.
                 </Alert>
               ) : (
                 <>
-                  <CommunityRankingMobileCards
-                    rows={data.rows}
-                    page={data.page}
-                    pageSize={data.pageSize}
-                  />
-
-                  <TableContainer sx={{ display: { xs: 'none', sm: 'block' } }}>
-                    <Table size="small" aria-label="Ranking de jugadores">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell sx={{ fontWeight: 800 }}>#</TableCell>
-                          <TableCell sx={{ fontWeight: 800 }}>
-                            Jugador
-                          </TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 800 }}>
-                            <PlayPokemonPointsLabel
-                              kind="championship"
-                              label="CP"
-                              align="right"
-                            />
-                          </TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 800 }}>
-                            Clasif.
-                          </TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 800 }}>
-                            <PlayPokemonPointsLabel
-                              kind="play"
-                              label="Play! Pts"
-                              align="right"
-                            />
-                          </TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {data.rows.map((row, index) => (
-                          <TableRow key={row.userId} hover>
-                            <TableCell
-                              sx={{
-                                fontWeight: 800,
-                                fontVariantNumeric: 'tabular-nums',
-                                color: 'text.secondary'
-                              }}
-                            >
-                              {(data.page - 1) * data.pageSize + index + 1}
-                            </TableCell>
-                            <TableCell>
-                              <Typography
-                                variant="body2"
-                                sx={{ fontWeight: 700 }}
-                              >
-                                {row.displayName}
-                              </Typography>
-                              {row.linkedDisplayName &&
-                              row.linkedDisplayName !== row.displayName ? (
-                                <Typography
-                                  variant="caption"
-                                  color="text.secondary"
-                                  display="block"
-                                >
-                                  Como {row.linkedDisplayName}
-                                </Typography>
-                              ) : null}
-                            </TableCell>
-                            <TableCell
-                              align="right"
-                              sx={{
-                                fontWeight: 800,
-                                fontVariantNumeric: 'tabular-nums'
-                              }}
-                            >
-                              {row.championshipPoints.toLocaleString('es-CL')}
-                            </TableCell>
-                            <TableCell
-                              align="right"
-                              sx={{ fontVariantNumeric: 'tabular-nums' }}
-                            >
-                              #{row.championshipRank.toLocaleString('es-CL')}
-                            </TableCell>
-                            <TableCell
-                              align="right"
-                              sx={{ fontVariantNumeric: 'tabular-nums' }}
-                            >
-                              {typeof row.playPoints === 'number'
-                                ? row.playPoints.toLocaleString('es-CL')
-                                : '—'}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-
-                  {data.totalPages > 1 ? (
-                    <Stack alignItems="center" sx={{ mt: 2.5 }}>
-                      <Pagination
-                        count={data.totalPages}
-                        page={data.page}
-                        onChange={(_, next) => setPage(next)}
-                        color="primary"
-                        disabled={isFetching}
+                  {selectedTab ? (
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      sx={{ mb: 1.5 }}
+                    >
+                      <StorefrontOutlined
+                        fontSize="small"
+                        color={
+                          isAllStoresTab || isDefaultStoreTab
+                            ? 'primary'
+                            : 'action'
+                        }
                       />
+                      <Typography variant="body2" color="text.secondary">
+                        {isAllStoresTab ? (
+                          <>
+                            Mostrando todos los jugadores públicos de la
+                            comunidad
+                          </>
+                        ) : isDefaultStoreTab ? (
+                          <>
+                            Tu tienda predeterminada:{' '}
+                            <Box
+                              component="span"
+                              sx={{ fontWeight: 800, color: 'text.primary' }}
+                            >
+                              {selectedTab.name}
+                            </Box>
+                          </>
+                        ) : (
+                          <>
+                            Mostrando jugadores de{' '}
+                            <Box
+                              component="span"
+                              sx={{ fontWeight: 800, color: 'text.primary' }}
+                            >
+                              {selectedTab.name}
+                            </Box>
+                          </>
+                        )}
+                        {' · '}
+                        {selectedTab.playerCount} jugador
+                        {selectedTab.playerCount === 1 ? '' : 'es'}
+                      </Typography>
                     </Stack>
                   ) : null}
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={1.5}
+                    alignItems={{ sm: 'center' }}
+                    justifyContent="space-between"
+                    sx={{ mb: 2 }}
+                  >
+                    <TextField
+                      size="small"
+                      value={nameInput}
+                      onChange={e => setNameInput(e.target.value)}
+                      placeholder="Buscar por nombre"
+                      sx={{ width: { xs: '100%', sm: 320 } }}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <SearchIcon fontSize="small" color="action" />
+                          </InputAdornment>
+                        ),
+                        endAdornment: nameInput ? (
+                          <InputAdornment position="end">
+                            <IconButton
+                              size="small"
+                              aria-label="Limpiar búsqueda"
+                              onClick={() => {
+                                setNameInput('')
+                                setSearch('')
+                                setPage(1)
+                              }}
+                            >
+                              <ClearIcon fontSize="small" />
+                            </IconButton>
+                          </InputAdornment>
+                        ) : null
+                      }}
+                    />
+                    <Typography variant="caption" color="text.secondary">
+                      Temporada {data?.seasonLabel ?? '—'}
+                      {latestUpdate ? ` · actualizado ${latestUpdate}` : ''}
+                    </Typography>
+                  </Stack>
+
+                  {isPending ? (
+                    <Box
+                      sx={{ display: 'flex', justifyContent: 'center', py: 6 }}
+                    >
+                      <CircularProgress aria-label="Cargando ranking" />
+                    </Box>
+                  ) : isError ? (
+                    <Alert severity="error">
+                      {error instanceof Error
+                        ? error.message
+                        : 'No se pudo cargar el ranking.'}
+                    </Alert>
+                  ) : !data?.enabled ? (
+                    <Alert severity="warning">
+                      El leaderboard de Play! Pokémon no está habilitado en este
+                      entorno.
+                    </Alert>
+                  ) : data.rows.length === 0 ? (
+                    <Alert severity="info">
+                      {searchActive
+                        ? 'No hay jugadores públicos que coincidan con tu búsqueda.'
+                        : isAllStoresTab
+                          ? 'Aún no hay jugadores que compartan su ranking en la comunidad.'
+                          : 'Aún no hay jugadores que compartan su ranking en esta tienda.'}
+                    </Alert>
+                  ) : (
+                    <>
+                      <CommunityRankingMobileCards
+                        rows={data.rows}
+                        page={data.page}
+                        pageSize={data.pageSize}
+                        showStore={isAllStoresTab}
+                      />
+
+                      <TableContainer
+                        sx={{ display: { xs: 'none', sm: 'block' } }}
+                      >
+                        <Table size="small" aria-label="Ranking de jugadores">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell sx={{ fontWeight: 800 }}>#</TableCell>
+                              <TableCell sx={{ fontWeight: 800 }}>
+                                Jugador
+                              </TableCell>
+                              {isAllStoresTab ? (
+                                <TableCell sx={{ fontWeight: 800 }}>
+                                  Tienda
+                                </TableCell>
+                              ) : null}
+                              <TableCell sx={{ fontWeight: 800 }}>
+                                Cat.
+                              </TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 800 }}>
+                                <PlayPokemonPointsLabel
+                                  kind="championship"
+                                  label="CP"
+                                  align="right"
+                                />
+                              </TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 800 }}>
+                                Clasif.
+                              </TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 800 }}>
+                                <PlayPokemonPointsLabel
+                                  kind="play"
+                                  label="Play! Pts"
+                                  align="right"
+                                />
+                              </TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {data.rows.map((row, index) => (
+                              <TableRow key={row.userId} hover>
+                                <TableCell
+                                  sx={{
+                                    fontWeight: 800,
+                                    fontVariantNumeric: 'tabular-nums',
+                                    color: 'text.secondary'
+                                  }}
+                                >
+                                  {(data.page - 1) * data.pageSize + index + 1}
+                                </TableCell>
+                                <TableCell>
+                                  <Typography
+                                    variant="body2"
+                                    sx={{ fontWeight: 700 }}
+                                  >
+                                    {row.displayName}
+                                  </Typography>
+                                  {row.linkedDisplayName &&
+                                  row.linkedDisplayName !== row.displayName ? (
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                      display="block"
+                                    >
+                                      Como {row.linkedDisplayName}
+                                    </Typography>
+                                  ) : null}
+                                </TableCell>
+                                {isAllStoresTab ? (
+                                  <TableCell>
+                                    {row.storeSlug ? (
+                                      <Typography
+                                        component={Link}
+                                        href={`/${encodeURIComponent(row.storeSlug)}`}
+                                        variant="body2"
+                                        sx={{
+                                          fontWeight: 600,
+                                          color: 'text.secondary',
+                                          textDecoration: 'none',
+                                          '&:hover': {
+                                            color: 'primary.main',
+                                            textDecoration: 'underline'
+                                          }
+                                        }}
+                                      >
+                                        {row.storeName ?? '—'}
+                                      </Typography>
+                                    ) : (
+                                      <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                      >
+                                        {row.storeName ?? '—'}
+                                      </Typography>
+                                    )}
+                                  </TableCell>
+                                ) : null}
+                                <TableCell
+                                  sx={{ fontVariantNumeric: 'tabular-nums' }}
+                                >
+                                  {row.divisionLabel ?? '—'}
+                                </TableCell>
+                                <TableCell
+                                  align="right"
+                                  sx={{
+                                    fontWeight: 800,
+                                    fontVariantNumeric: 'tabular-nums'
+                                  }}
+                                >
+                                  {row.championshipPoints.toLocaleString(
+                                    'es-CL'
+                                  )}
+                                </TableCell>
+                                <TableCell
+                                  align="right"
+                                  sx={{ fontVariantNumeric: 'tabular-nums' }}
+                                >
+                                  #
+                                  {row.championshipRank.toLocaleString('es-CL')}
+                                </TableCell>
+                                <TableCell
+                                  align="right"
+                                  sx={{ fontVariantNumeric: 'tabular-nums' }}
+                                >
+                                  {typeof row.playPoints === 'number'
+                                    ? row.playPoints.toLocaleString('es-CL')
+                                    : '—'}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+
+                      {data.totalPages > 1 ? (
+                        <Stack alignItems="center" sx={{ mt: 2.5 }}>
+                          <Pagination
+                            count={data.totalPages}
+                            page={data.page}
+                            onChange={(_, next) => setPage(next)}
+                            color="primary"
+                            disabled={isFetching}
+                          />
+                        </Stack>
+                      ) : null}
+                    </>
+                  )}
                 </>
               )}
             </Box>

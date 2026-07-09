@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import mongoose from 'mongoose'
 import {
-  PLAY_POKEMON_LEADERBOARD_DIVISIONS,
-  playPokemonLeaderboardEnabled,
-  type PlayPokemonLeaderboardDivision
+  PLAY_POKEMON_COMMUNITY_RANKING_ALL_STORES_ID,
+  playPokemonLeaderboardEnabled
 } from '@/lib/play-pokemon-leaderboard/constants'
 import { buildPlayPokemonCommunityRanking } from '@/lib/play-pokemon-leaderboard/build-community-ranking'
 import type { PlayPokemonCommunityRankingResponse } from '@/lib/play-pokemon-leaderboard/types'
@@ -10,16 +10,6 @@ import type { PlayPokemonCommunityRankingResponse } from '@/lib/play-pokemon-lea
 export const dynamic = 'force-dynamic'
 
 const MIN_SEARCH_LENGTH = 2
-
-function parseDivision(
-  raw: string | null
-): PlayPokemonLeaderboardDivision | null {
-  const v = raw?.trim().toLowerCase()
-  if (!v) return 'masters'
-  return (PLAY_POKEMON_LEADERBOARD_DIVISIONS as readonly string[]).includes(v)
-    ? (v as PlayPokemonLeaderboardDivision)
-    : null
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,12 +20,10 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const division = parseDivision(request.nextUrl.searchParams.get('division'))
-    if (!division) {
-      return NextResponse.json(
-        { error: 'División inválida. Usa masters, seniors o juniors.' },
-        { status: 400 }
-      )
+    const storeId = request.nextUrl.searchParams.get('storeId')?.trim() ?? ''
+    const isAllStores = storeId === PLAY_POKEMON_COMMUNITY_RANKING_ALL_STORES_ID
+    if (!isAllStores && !mongoose.Types.ObjectId.isValid(storeId)) {
+      return NextResponse.json({ error: 'Tienda inválida' }, { status: 400 })
     }
 
     const pageRaw = Number(request.nextUrl.searchParams.get('page') ?? '1')
@@ -50,7 +38,7 @@ export async function GET(request: NextRequest) {
       searchRaw.trim().length >= MIN_SEARCH_LENGTH ? searchRaw.trim() : ''
 
     const result = await buildPlayPokemonCommunityRanking({
-      division,
+      storeId,
       page,
       search
     })
@@ -58,7 +46,9 @@ export async function GET(request: NextRequest) {
     const payload: PlayPokemonCommunityRankingResponse = {
       enabled: result.enabled,
       seasonLabel: result.seasonLabel,
-      division: result.division,
+      storeId: result.storeId,
+      storeName: result.storeName,
+      storeSlug: result.storeSlug,
       page: result.page,
       pageSize: result.pageSize,
       count: result.count,

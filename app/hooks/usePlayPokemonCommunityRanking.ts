@@ -1,27 +1,48 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import type { PlayPokemonCommunityRankingResponse } from '@/lib/play-pokemon-leaderboard/types'
-import type { PlayPokemonLeaderboardDivision } from '@/lib/play-pokemon-leaderboard/constants'
+import type {
+  PlayPokemonCommunityRankingResponse,
+  PlayPokemonCommunityRankingStoresResponse
+} from '@/lib/play-pokemon-leaderboard/types'
+
+export function playPokemonCommunityRankingStoresQueryKey() {
+  return ['play-pokemon', 'community-ranking', 'stores'] as const
+}
 
 export function playPokemonCommunityRankingQueryKey(
-  division: PlayPokemonLeaderboardDivision,
+  storeId: string,
   page: number,
   search: string
 ) {
-  return ['play-pokemon', 'community-ranking', division, page, search] as const
+  return ['play-pokemon', 'community-ranking', storeId, page, search] as const
+}
+
+export function usePlayPokemonCommunityRankingStores() {
+  return useQuery<PlayPokemonCommunityRankingStoresResponse>({
+    queryKey: playPokemonCommunityRankingStoresQueryKey(),
+    queryFn: async () => {
+      const res = await fetch('/api/play-pokemon-leaderboard/community/stores')
+      if (!res.ok) {
+        throw new Error('No se pudieron cargar las tiendas')
+      }
+      return res.json() as Promise<PlayPokemonCommunityRankingStoresResponse>
+    },
+    staleTime: 120_000
+  })
 }
 
 export function usePlayPokemonCommunityRanking(
-  division: PlayPokemonLeaderboardDivision,
+  storeId: string | null,
   page: number,
   search: string
 ) {
   return useQuery<PlayPokemonCommunityRankingResponse>({
-    queryKey: playPokemonCommunityRankingQueryKey(division, page, search),
+    queryKey: playPokemonCommunityRankingQueryKey(storeId ?? '', page, search),
     queryFn: async () => {
+      if (!storeId) throw new Error('Tienda requerida')
       const params = new URLSearchParams({
-        division,
+        storeId,
         page: String(page)
       })
       if (search.trim().length >= 2) {
@@ -35,6 +56,7 @@ export function usePlayPokemonCommunityRanking(
       }
       return res.json() as Promise<PlayPokemonCommunityRankingResponse>
     },
+    enabled: Boolean(storeId),
     staleTime: 60_000
   })
 }
