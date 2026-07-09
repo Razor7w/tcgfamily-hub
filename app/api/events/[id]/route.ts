@@ -18,7 +18,10 @@ import {
   categoryLabelEs,
   PUBLIC_STANDINGS_FULL_MAX
 } from '@/lib/weekly-event-public'
-import { weeklyEventRoundSnapshotsWltProjection } from '@/lib/weekly-event-query-projections'
+import {
+  weeklyEventDetailBaseProjection,
+  weeklyEventRoundSnapshotsWltProjection
+} from '@/lib/weekly-event-query-projections'
 import {
   matchRecordFromRounds,
   type ParticipantMatchRoundDTO
@@ -43,7 +46,8 @@ import {
   officialUserPlayedClosedTournament,
   participantPlayedTournament
 } from '@/lib/tournament-participant-played'
-import { weeklyEventDetailBaseProjection } from '@/lib/weekly-event-query-projections'
+import { buildCurrentOnlineRoundTimer } from '@/lib/online-round-timer'
+import { normalizeTournamentMode } from '@/lib/tournament-mode'
 
 type LeanEvent = {
   _id: unknown
@@ -53,6 +57,8 @@ type LeanEvent = {
   game: string
   tournamentOrigin?: string
   pokemonSubtype?: string
+  tournamentMode?: string
+  onlineRoundTimeMinutes?: number
   state?: string
   priceClp: number
   maxParticipants: number
@@ -358,6 +364,18 @@ export async function GET(
       game: doc.game,
       tournamentOrigin,
       pokemonSubtype: doc.pokemonSubtype ?? null,
+      tournamentMode: normalizeTournamentMode(doc.tournamentMode),
+      onlineRoundTimeMinutes: Math.max(
+        0,
+        Math.round(Number(doc.onlineRoundTimeMinutes) || 0)
+      ),
+      currentRoundTimer: buildCurrentOnlineRoundTimer({
+        tournamentMode: doc.tournamentMode,
+        state: eventState,
+        onlineRoundTimeMinutes: doc.onlineRoundTimeMinutes,
+        roundSnapshots: doc.roundSnapshots,
+        roundNum
+      }),
       state: eventState,
       priceClp: doc.priceClp,
       maxParticipants: doc.maxParticipants,

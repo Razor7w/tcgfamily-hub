@@ -10,6 +10,11 @@ import WeeklyEvent, {
   type PokemonTournamentSubtype,
   type WeeklyEventState
 } from '@/models/WeeklyEvent'
+import {
+  clampOnlineRoundTimeMinutes,
+  ONLINE_ROUND_TIME_DEFAULT
+} from '@/lib/online-round-timer'
+import { readTournamentMode } from '@/lib/tournament-mode'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { serializeAdminWeeklyEventFromLean } from '@/lib/admin-weekly-event-api'
 import { weeklyEventAdminListProjection } from '@/lib/weekly-event-query-projections'
@@ -240,6 +245,40 @@ export async function POST(request: NextRequest) {
       state = s
     }
 
+    const tournamentModeRaw = readTournamentMode(body.tournamentMode)
+    if (tournamentModeRaw === null) {
+      return NextResponse.json(
+        { error: 'Modalidad de torneo inválida (in_person u online)' },
+        { status: 400 }
+      )
+    }
+    const tournamentMode =
+      kind === 'tournament' ? (tournamentModeRaw ?? 'in_person') : 'in_person'
+
+    let onlineRoundTimeMinutes = 0
+    if (kind === 'tournament' && tournamentMode === 'online') {
+      if (body.onlineRoundTimeMinutes === undefined) {
+        onlineRoundTimeMinutes = ONLINE_ROUND_TIME_DEFAULT
+      } else {
+        onlineRoundTimeMinutes = clampOnlineRoundTimeMinutes(
+          body.onlineRoundTimeMinutes
+        )
+        if (
+          body.onlineRoundTimeMinutes !== null &&
+          body.onlineRoundTimeMinutes !== '' &&
+          body.onlineRoundTimeMinutes !== 0 &&
+          onlineRoundTimeMinutes <= 0
+        ) {
+          return NextResponse.json(
+            {
+              error: `Tiempo por ronda: entre ${5} y ${180} minutos (o 0 para desactivar)`
+            },
+            { status: 400 }
+          )
+        }
+      }
+    }
+
     await connectDB()
 
     const storeScope = mongoFilterByStore(
@@ -287,6 +326,8 @@ export async function POST(request: NextRequest) {
       location,
       state,
       roundNum,
+      tournamentMode,
+      onlineRoundTimeMinutes,
       participants: [],
       ...(leagueOid ? { leagueId: leagueOid } : {})
     })
