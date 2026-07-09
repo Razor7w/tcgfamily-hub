@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSession } from 'next-auth/react'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -39,6 +39,7 @@ import {
   type PlayPokemonLeaderboardDivision
 } from '@/lib/play-pokemon-leaderboard/constants'
 import { usePlayPokemonChileLeaderboard } from '@/hooks/usePlayPokemonChileLeaderboard'
+import type { PlayPokemonChileLeaderboardRow } from '@/lib/play-pokemon-leaderboard/types'
 
 const DIVISION_LABELS: Record<PlayPokemonLeaderboardDivision, string> = {
   masters: 'Master',
@@ -55,6 +56,203 @@ function formatUpdated(iso: string | undefined): string | null {
     month: 'long',
     year: 'numeric'
   })
+}
+
+function ChileRankingStat({
+  label,
+  value,
+  pointsKind
+}: {
+  label: ReactNode
+  value: string
+  pointsKind?: 'championship' | 'play'
+}) {
+  return (
+    <Box
+      sx={t => ({
+        flex: 1,
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        minHeight: 68,
+        px: 1,
+        py: 1,
+        borderRadius: 1.5,
+        bgcolor: alpha(t.palette.text.primary, 0.04),
+        border: '1px solid',
+        borderColor: alpha(t.palette.divider, 0.9)
+      })}
+    >
+      <Box
+        sx={{
+          minHeight: 28,
+          display: 'flex',
+          alignItems: 'flex-end',
+          mb: 0.5
+        }}
+      >
+        {typeof label === 'string' && pointsKind ? (
+          <PlayPokemonPointsLabel
+            kind={pointsKind}
+            label={label}
+            iconSize={12}
+            compact
+          />
+        ) : (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{
+              fontWeight: 700,
+              letterSpacing: '0.02em',
+              fontSize: '0.6875rem',
+              lineHeight: 1.2,
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {label}
+          </Typography>
+        )}
+      </Box>
+      <Typography
+        variant="body2"
+        sx={{
+          fontWeight: 800,
+          fontVariantNumeric: 'tabular-nums',
+          lineHeight: 1,
+          mt: 'auto'
+        }}
+      >
+        {value}
+      </Typography>
+    </Box>
+  )
+}
+
+function ChileLeaderboardMobileCards({
+  rows,
+  searchActive,
+  isAuthenticated,
+  linkingKey,
+  onAssignRow
+}: {
+  rows: PlayPokemonChileLeaderboardRow[]
+  searchActive: boolean
+  isAuthenticated: boolean
+  linkingKey: string | null
+  onAssignRow: (row: PlayPokemonChileLeaderboardRow) => void
+}) {
+  const canAssign = searchActive && isAuthenticated
+
+  return (
+    <Stack
+      spacing={1.25}
+      role="list"
+      aria-label="Ranking Chile"
+      sx={{ display: { xs: 'flex', sm: 'none' } }}
+    >
+      {rows.map(row => {
+        const rowKey = `${row.rank}-${row.displayName}`
+        const isTopThree = row.rank <= 3
+
+        return (
+          <Paper
+            key={rowKey}
+            component="article"
+            role="listitem"
+            variant="outlined"
+            sx={t => ({
+              p: 1.5,
+              borderRadius: 2.5,
+              borderColor: isTopThree
+                ? alpha(t.palette.primary.main, 0.28)
+                : alpha(t.palette.divider, 0.95),
+              bgcolor: isTopThree
+                ? alpha(t.palette.primary.main, 0.04)
+                : 'background.paper',
+              transition:
+                'transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
+              '&:active': {
+                transform: 'scale(0.995)'
+              }
+            })}
+          >
+            <Stack direction="row" spacing={1.25} alignItems="flex-start">
+              <Box
+                sx={t => ({
+                  width: 36,
+                  height: 36,
+                  mt: 0.15,
+                  borderRadius: 1.5,
+                  flexShrink: 0,
+                  display: 'grid',
+                  placeItems: 'center',
+                  fontWeight: 900,
+                  fontSize: '0.9rem',
+                  fontVariantNumeric: 'tabular-nums',
+                  color: isTopThree ? 'primary.main' : 'text.secondary',
+                  bgcolor: isTopThree
+                    ? alpha(t.palette.primary.main, 0.12)
+                    : alpha(t.palette.text.primary, 0.06)
+                })}
+              >
+                {row.rank.toLocaleString('es-CL')}
+              </Box>
+              <Box sx={{ minWidth: 0, flex: 1, minHeight: 40 }}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    fontWeight: 800,
+                    letterSpacing: '-0.01em',
+                    lineHeight: 1.25,
+                    textWrap: 'balance'
+                  }}
+                >
+                  {row.displayName}
+                </Typography>
+              </Box>
+            </Stack>
+
+            <Stack
+              direction="row"
+              spacing={0.75}
+              alignItems="stretch"
+              sx={{ mt: 1.25 }}
+            >
+              <ChileRankingStat
+                pointsKind="championship"
+                label="CP"
+                value={row.championshipPoints.toLocaleString('es-CL')}
+              />
+              <ChileRankingStat
+                pointsKind="play"
+                label="Play! Pts"
+                value={row.playPoints.toLocaleString('es-CL')}
+              />
+            </Stack>
+
+            {canAssign ? (
+              <Button
+                fullWidth
+                size="small"
+                variant="contained"
+                disabled={linkingKey === rowKey}
+                onClick={() => onAssignRow(row)}
+                sx={{
+                  mt: 1.25,
+                  textTransform: 'none',
+                  fontWeight: 700
+                }}
+              >
+                {linkingKey === rowKey ? 'Guardando…' : 'Asignar valores'}
+              </Button>
+            ) : null}
+          </Paper>
+        )
+      })}
+    </Stack>
+  )
 }
 
 export default function PlayPokemonChileRankingPage() {
@@ -235,7 +433,7 @@ export default function PlayPokemonChileRankingPage() {
                         ? 'Escribe al menos 2 caracteres para filtrar.'
                         : searchActive
                           ? `Mostrando coincidencias para “${data.search}”. Si te encuentras, usa Asignar valores.`
-                          : 'Coincidencia parcial, sin distinguir tildes.'
+                          : 'Busca tu nombre para vincular tus Championship Points a tu cuenta. Coincidencia parcial, sin distinguir tildes.'
                     }
                   />
 
@@ -277,93 +475,98 @@ export default function PlayPokemonChileRankingPage() {
                     ) : null}
                   </Stack>
 
-                  <TableContainer>
-                    <Table size="small" aria-label="Ranking Chile">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell sx={{ fontWeight: 800, width: 72 }}>
-                            #
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: 800 }}>
-                            Jugador
-                          </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{ fontWeight: 800, width: 120 }}
-                          >
-                            <PlayPokemonPointsLabel
-                              kind="championship"
-                              label="CP"
-                              align="right"
-                            />
-                          </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{ fontWeight: 800, width: 120 }}
-                          >
-                            <PlayPokemonPointsLabel
-                              kind="play"
-                              label="Play! Pts"
-                              align="right"
-                            />
-                          </TableCell>
-                          {searchActive && isAuthenticated ? (
-                            <TableCell sx={{ fontWeight: 800, width: 148 }} />
-                          ) : null}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {data.rows.length === 0 ? (
-                          <TableRow>
-                            <TableCell
-                              colSpan={searchActive && isAuthenticated ? 5 : 4}
-                            >
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                                sx={{ py: 2, textAlign: 'center' }}
+                  {data.rows.length === 0 ? (
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ py: 2, textAlign: 'center' }}
+                    >
+                      {searchActive
+                        ? `Ningún jugador coincide con “${data.search}”.`
+                        : 'Sin resultados.'}
+                    </Typography>
+                  ) : (
+                    <>
+                      <ChileLeaderboardMobileCards
+                        rows={data.rows}
+                        searchActive={searchActive}
+                        isAuthenticated={isAuthenticated}
+                        linkingKey={linkingKey}
+                        onAssignRow={handleAssignRow}
+                      />
+
+                      <TableContainer
+                        sx={{ display: { xs: 'none', sm: 'block' } }}
+                      >
+                        <Table size="small" aria-label="Ranking Chile">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell sx={{ fontWeight: 800, width: 72 }}>
+                                #
+                              </TableCell>
+                              <TableCell sx={{ fontWeight: 800 }}>
+                                Jugador
+                              </TableCell>
+                              <TableCell
+                                align="right"
+                                sx={{ fontWeight: 800, width: 120 }}
                               >
-                                {searchActive
-                                  ? `Ningún jugador coincide con “${data.search}”.`
-                                  : 'Sin resultados.'}
-                              </Typography>
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          data.rows.map(row => {
-                            const canAssign = searchActive && isAuthenticated
-                            const rowKey = `${row.rank}-${row.displayName}`
-                            return (
-                              <TableRow key={rowKey} hover>
-                                <TableCell
-                                  sx={{
-                                    fontVariantNumeric: 'tabular-nums',
-                                    fontWeight: 700
-                                  }}
-                                >
-                                  {row.rank.toLocaleString('es-CL')}
-                                </TableCell>
-                                <TableCell>{row.displayName}</TableCell>
-                                <TableCell
+                                <PlayPokemonPointsLabel
+                                  kind="championship"
+                                  label="CP"
                                   align="right"
-                                  sx={{
-                                    fontVariantNumeric: 'tabular-nums',
-                                    fontWeight: 800
-                                  }}
-                                >
-                                  {row.championshipPoints.toLocaleString(
-                                    'es-CL'
-                                  )}
-                                </TableCell>
-                                <TableCell
+                                />
+                              </TableCell>
+                              <TableCell
+                                align="right"
+                                sx={{ fontWeight: 800, width: 120 }}
+                              >
+                                <PlayPokemonPointsLabel
+                                  kind="play"
+                                  label="Play! Pts"
                                   align="right"
-                                  sx={{ fontVariantNumeric: 'tabular-nums' }}
-                                >
-                                  {row.playPoints.toLocaleString('es-CL')}
-                                </TableCell>
-                                {searchActive && isAuthenticated ? (
-                                  <TableCell align="right">
-                                    {canAssign ? (
+                                />
+                              </TableCell>
+                              {searchActive && isAuthenticated ? (
+                                <TableCell
+                                  sx={{ fontWeight: 800, width: 148 }}
+                                />
+                              ) : null}
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {data.rows.map(row => {
+                              const rowKey = `${row.rank}-${row.displayName}`
+                              return (
+                                <TableRow key={rowKey} hover>
+                                  <TableCell
+                                    sx={{
+                                      fontVariantNumeric: 'tabular-nums',
+                                      fontWeight: 700
+                                    }}
+                                  >
+                                    {row.rank.toLocaleString('es-CL')}
+                                  </TableCell>
+                                  <TableCell>{row.displayName}</TableCell>
+                                  <TableCell
+                                    align="right"
+                                    sx={{
+                                      fontVariantNumeric: 'tabular-nums',
+                                      fontWeight: 800
+                                    }}
+                                  >
+                                    {row.championshipPoints.toLocaleString(
+                                      'es-CL'
+                                    )}
+                                  </TableCell>
+                                  <TableCell
+                                    align="right"
+                                    sx={{ fontVariantNumeric: 'tabular-nums' }}
+                                  >
+                                    {row.playPoints.toLocaleString('es-CL')}
+                                  </TableCell>
+                                  {searchActive && isAuthenticated ? (
+                                    <TableCell align="right">
                                       <Button
                                         size="small"
                                         variant="contained"
@@ -379,16 +582,16 @@ export default function PlayPokemonChileRankingPage() {
                                           ? 'Guardando…'
                                           : 'Asignar valores'}
                                       </Button>
-                                    ) : null}
-                                  </TableCell>
-                                ) : null}
-                              </TableRow>
-                            )
-                          })
-                        )}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                                    </TableCell>
+                                  ) : null}
+                                </TableRow>
+                              )
+                            })}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </>
+                  )}
 
                   {data.totalPages > 1 ? (
                     <Box
