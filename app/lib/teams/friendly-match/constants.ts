@@ -1,4 +1,6 @@
 export const TEAM_FRIENDLY_LINEUP_SIZE = 3
+/** Mínimo de miembros activos para armar dos escuadras de 3 en un versus interno. */
+export const TEAM_FRIENDLY_INTRAMURAL_MIN_MEMBERS = 6
 export const TEAM_FRIENDLY_POINTS_PER_WIN = 3
 export const TEAM_FRIENDLY_POINTS_PER_TIE = 1
 export const TEAM_FRIENDLY_CHALLENGE_EXPIRY_DAYS = 14
@@ -73,4 +75,18 @@ export const TEAM_FRIENDLY_MATCH_STATUS_LABELS: Record<
   in_progress: 'En juego',
   completed: 'Finalizado',
   disputed: 'En disputa'
+}
+
+export const TEAM_FRIENDLY_INTRAMURAL_SIDE_LABELS = {
+  challenger: 'Escuadra A',
+  opponent: 'Escuadra B'
+} as const
+
+export function isFriendlyMatchIntramural(match: {
+  isIntramural?: boolean
+  challengerTeamId: unknown
+  opponentTeamId: unknown
+}): boolean {
+  if (match.isIntramural === true) return true
+  return String(match.challengerTeamId) === String(match.opponentTeamId)
 }

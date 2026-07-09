@@ -51,6 +51,7 @@ import type {
 import {
   TEAM_FRIENDLY_DUEL_REPORT_LABELS,
   TEAM_FRIENDLY_DUEL_STATUS_LABELS,
+  TEAM_FRIENDLY_INTRAMURAL_MIN_MEMBERS,
   TEAM_FRIENDLY_LINEUP_SIZE,
   TEAM_FRIENDLY_POINTS_PER_TIE,
   TEAM_FRIENDLY_POINTS_PER_WIN,
@@ -101,14 +102,18 @@ function statusChipColor(status: string) {
   }
 }
 
+type RequestVersusMode = 'external' | 'intramural'
+
 function LineupPicker({
   members,
   slots,
-  onChange
+  onChange,
+  excludeUserIds = []
 }: {
   members: TeamManageMember[]
   slots: (string | '')[]
   onChange: (slots: (string | '')[]) => void
+  excludeUserIds?: string[]
 }) {
   return (
     <Stack spacing={1.5}>
@@ -132,9 +137,10 @@ function LineupPicker({
               <MenuItem
                 key={member.userId}
                 value={member.userId}
-                disabled={slots.some(
-                  (id, idx) => idx !== slot && id === member.userId
-                )}
+                disabled={
+                  excludeUserIds.includes(member.userId) ||
+                  slots.some((id, idx) => idx !== slot && id === member.userId)
+                }
               >
                 {member.displayName} · {member.roleLabel}
               </MenuItem>
@@ -400,7 +406,19 @@ function FriendlyMatchDetailPanel({
         </Stack>
       </Stack>
 
-      {match.status === 'completed' && match.winnerTeamId ? (
+      {match.status === 'completed' && match.isIntramural ? (
+        <Alert severity="success">
+          {match.challenger.points > match.opponent.points
+            ? `Ganador: ${match.challenger.name}`
+            : match.opponent.points > match.challenger.points
+              ? `Ganador: ${match.opponent.name}`
+              : 'Empate entre escuadras'}
+        </Alert>
+      ) : null}
+
+      {match.status === 'completed' &&
+      !match.isIntramural &&
+      match.winnerTeamId ? (
         <Alert severity="success">
           Ganador:{' '}
           {match.winnerTeamId === match.challenger.teamId
@@ -604,9 +622,13 @@ export default function TeamFriendlyMatchesSection({
   const [moderation, setModeration] = useState<ModerationTarget | null>(null)
   const [moderationErr, setModerationErr] = useState<string | null>(null)
   const [requestOpen, setRequestOpen] = useState(false)
+  const [requestMode, setRequestMode] = useState<RequestVersusMode>('external')
   const [acceptMatchId, setAcceptMatchId] = useState<string | null>(null)
   const [opponentSlug, setOpponentSlug] = useState('')
   const [lineupSlots, setLineupSlots] = useState<(string | '')[]>(['', '', ''])
+  const [intramuralOpponentSlots, setIntramuralOpponentSlots] = useState<
+    (string | '')[]
+  >(['', '', ''])
   const [formErr, setFormErr] = useState<string | null>(null)
 
   const opponentOptions = useMemo(
@@ -639,14 +661,57 @@ export default function TeamFriendlyMatchesSection({
 
   const matches = data?.matches ?? []
   const canFieldLineup = members.length >= TEAM_FRIENDLY_LINEUP_SIZE
-  const canRequestMatch =
+  const canIntramural = members.length >= TEAM_FRIENDLY_INTRAMURAL_MIN_MEMBERS
+  const challengerLineupIds = lineupSlots.filter(Boolean) as string[]
+  const canRequestExternal =
     canFieldLineup &&
     !directoryPending &&
     opponentOptions.length > 0 &&
     Boolean(opponentSlug)
+  const canRequestIntramural =
+    canIntramural &&
+    Boolean(slotsToLineup(lineupSlots)) &&
+    Boolean(slotsToLineup(intramuralOpponentSlots))
+
+  function resetRequestForm() {
+    setOpponentSlug('')
+    setLineupSlots(['', '', ''])
+    setIntramuralOpponentSlots(['', '', ''])
+    setFormErr(null)
+  }
+
+  function openRequestDialog(mode: RequestVersusMode) {
+    setRequestMode(mode)
+    resetRequestForm()
+    setRequestOpen(true)
+  }
 
   async function handleRequest() {
     setFormErr(null)
+    if (requestMode === 'intramural') {
+      const lineup = slotsToLineup(lineupSlots)
+      const opponentLineup = slotsToLineup(intramuralOpponentSlots)
+      if (!lineup || !opponentLineup) {
+        setFormErr('Debes elegir 3 jugadores distintos en cada escuadra')
+        return
+      }
+      try {
+        const result = await requestMatch.mutateAsync({
+          intramural: true,
+          lineup,
+          opponentLineup
+        })
+        setRequestOpen(false)
+        resetRequestForm()
+        setSelectedMatchId(result.match.id)
+      } catch (e) {
+        setFormErr(
+          e instanceof Error ? e.message : 'Error al crear versus interno'
+        )
+      }
+      return
+    }
+
     const lineup = slotsToLineup(lineupSlots)
     if (!opponentSlug) {
       setFormErr('Elige un equipo rival')
@@ -662,8 +727,7 @@ export default function TeamFriendlyMatchesSection({
         lineup
       })
       setRequestOpen(false)
-      setOpponentSlug('')
-      setLineupSlots(['', '', ''])
+      resetRequestForm()
       setSelectedMatchId(result.match.id)
     } catch (e) {
       setFormErr(e instanceof Error ? e.message : 'Error al solicitar')
@@ -895,17 +959,22 @@ export default function TeamFriendlyMatchesSection({
           </Typography>
         </Box>
         {canManage && canFieldLineup ? (
-          <Button
-            variant="contained"
-            onClick={() => {
-              setRequestOpen(true)
-              setFormErr(null)
-              setOpponentSlug('')
-              setLineupSlots(['', '', ''])
-            }}
-          >
-            Solicitar match
-          </Button>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Button
+              variant="contained"
+              onClick={() => openRequestDialog('external')}
+            >
+              Solicitar match
+            </Button>
+            {canIntramural ? (
+              <Button
+                variant="outlined"
+                onClick={() => openRequestDialog('intramural')}
+              >
+                Versus interno
+              </Button>
+            ) : null}
+          </Stack>
         ) : null}
       </Stack>
 
@@ -913,6 +982,13 @@ export default function TeamFriendlyMatchesSection({
         <Alert severity="info">
           Necesitas al menos {TEAM_FRIENDLY_LINEUP_SIZE} miembros activos para
           jugar un versus amistoso.
+        </Alert>
+      ) : null}
+
+      {canFieldLineup && !canIntramural ? (
+        <Alert severity="info">
+          Con {TEAM_FRIENDLY_INTRAMURAL_MIN_MEMBERS} o más miembros puedes armar
+          un versus interno (dos escuadras de 3 del mismo equipo).
         </Alert>
       ) : null}
 
@@ -966,11 +1042,26 @@ export default function TeamFriendlyMatchesSection({
                         {displayRight.name}
                       </Typography>
                     </Stack>
-                    <Chip
-                      size="small"
-                      label={match.statusLabel}
-                      color={statusChipColor(match.status)}
-                    />
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      flexWrap="wrap"
+                    >
+                      <Chip
+                        size="small"
+                        label={match.statusLabel}
+                        color={statusChipColor(match.status)}
+                      />
+                      {match.isIntramural ? (
+                        <Chip
+                          size="small"
+                          label="Interno"
+                          variant="outlined"
+                          color="secondary"
+                        />
+                      ) : null}
+                    </Stack>
                   </Stack>
                   <Typography variant="caption" color="text.secondary">
                     {formatWhen(match.createdAt)}
@@ -994,10 +1085,41 @@ export default function TeamFriendlyMatchesSection({
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Solicitar versus amistoso</DialogTitle>
+        <DialogTitle>
+          {requestMode === 'intramural'
+            ? 'Versus interno'
+            : 'Solicitar versus amistoso'}
+        </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
-            {directoryPending ? (
+            {requestMode === 'intramural' ? (
+              <>
+                <Typography variant="body2" color="text.secondary">
+                  Elige dos escuadras de 3 jugadores distintos. El match inicia
+                  de inmediato con 9 duelos cruzados.
+                </Typography>
+                <Typography variant="subtitle2" fontWeight={700}>
+                  Escuadra A
+                </Typography>
+                <LineupPicker
+                  members={members}
+                  slots={lineupSlots}
+                  onChange={setLineupSlots}
+                  excludeUserIds={
+                    intramuralOpponentSlots.filter(Boolean) as string[]
+                  }
+                />
+                <Typography variant="subtitle2" fontWeight={700}>
+                  Escuadra B
+                </Typography>
+                <LineupPicker
+                  members={members}
+                  slots={intramuralOpponentSlots}
+                  onChange={setIntramuralOpponentSlots}
+                  excludeUserIds={challengerLineupIds}
+                />
+              </>
+            ) : directoryPending ? (
               <Paper
                 variant="outlined"
                 sx={{
@@ -1135,10 +1257,17 @@ export default function TeamFriendlyMatchesSection({
           <Button onClick={() => setRequestOpen(false)}>Cancelar</Button>
           <Button
             variant="contained"
-            disabled={requestMatch.isPending || !canRequestMatch}
+            disabled={
+              requestMatch.isPending ||
+              (requestMode === 'intramural'
+                ? !canRequestIntramural
+                : !canRequestExternal)
+            }
             onClick={() => void handleRequest()}
           >
-            Enviar solicitud
+            {requestMode === 'intramural'
+              ? 'Iniciar versus interno'
+              : 'Enviar solicitud'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -14,6 +14,7 @@ export interface ITeamFriendlyMatch extends Document {
   respondedByUserId?: Types.ObjectId
   status: TeamFriendlyMatchStatus
   tier: 'social'
+  isIntramural: boolean
   pointsPerWin: number
   challengerLineup: ITeamFriendlyLineupSlot[]
   opponentLineup: ITeamFriendlyLineupSlot[]
@@ -82,6 +83,12 @@ const TeamFriendlyMatchSchema = new Schema<ITeamFriendlyMatch>(
       enum: ['social'],
       default: 'social',
       required: true
+    },
+    isIntramural: {
+      type: Boolean,
+      default: false,
+      required: true,
+      index: true
     },
     pointsPerWin: {
       type: Number,

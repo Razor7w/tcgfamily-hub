@@ -81,6 +81,39 @@ export async function assertLineupBelongsToTeam(
   return { ok: true }
 }
 
+export function assertDisjointLineups(
+  lineupA: FriendlyLineupSlot[],
+  lineupB: FriendlyLineupSlot[]
+): { ok: true } | { ok: false; error: string } {
+  const idsA = new Set(lineupA.map(slot => slot.userId))
+  for (const slot of lineupB) {
+    if (idsA.has(slot.userId)) {
+      return {
+        ok: false,
+        error: 'Cada jugador solo puede estar en una escuadra'
+      }
+    }
+  }
+  return { ok: true }
+}
+
+export async function assertIntramuralLineups(
+  teamId: mongoose.Types.ObjectId,
+  challengerLineup: FriendlyLineupSlot[],
+  opponentLineup: FriendlyLineupSlot[]
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const challengerCheck = await assertLineupBelongsToTeam(
+    teamId,
+    challengerLineup
+  )
+  if (!challengerCheck.ok) return challengerCheck
+
+  const opponentCheck = await assertLineupBelongsToTeam(teamId, opponentLineup)
+  if (!opponentCheck.ok) return opponentCheck
+
+  return assertDisjointLineups(challengerLineup, opponentLineup)
+}
+
 export function parseDuelReport(
   raw: unknown
 ): { ok: true; report: TeamFriendlyDuelReport } | { ok: false; error: string } {

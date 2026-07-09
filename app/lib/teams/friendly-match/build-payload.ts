@@ -5,7 +5,9 @@ import connectDB from '@/lib/mongodb'
 import { ownerPublicDisplay } from '@/lib/public-decklist-owner'
 import {
   TEAM_FRIENDLY_DUEL_COUNT,
+  TEAM_FRIENDLY_INTRAMURAL_SIDE_LABELS,
   TEAM_FRIENDLY_MATCH_STATUS_LABELS,
+  isFriendlyMatchIntramural,
   type TeamFriendlyMatchStatus
 } from '@/lib/teams/friendly-match/constants'
 import { friendlyMatchAllowsCaptainModeration } from '@/lib/teams/friendly-match/lifecycle'
@@ -56,11 +58,14 @@ function lineupToDto(
 function teamSummary(
   team: LeanTeam,
   lineup: FriendlyLineupPlayerDTO[],
-  points: number
+  points: number,
+  options?: { intramuralSide?: 'challenger' | 'opponent' }
 ): FriendlyMatchTeamSummaryDTO {
   return {
     teamId: String(team._id),
-    name: team.name,
+    name: options?.intramuralSide
+      ? TEAM_FRIENDLY_INTRAMURAL_SIDE_LABELS[options.intramuralSide]
+      : team.name,
     slug: team.slug,
     logoUrl: typeof team.logoUrl === 'string' ? team.logoUrl : '',
     points,
@@ -72,9 +77,25 @@ function viewerSideForMatch(
   match: {
     challengerTeamId: mongoose.Types.ObjectId
     opponentTeamId: mongoose.Types.ObjectId
+    challengerLineup?: { userId: mongoose.Types.ObjectId }[]
+    opponentLineup?: { userId: mongoose.Types.ObjectId }[]
+    isIntramural?: boolean
   },
-  viewerTeamId: string | null
+  viewerTeamId: string | null,
+  viewerUserId?: string
 ): 'challenger' | 'opponent' | null {
+  if (isFriendlyMatchIntramural(match) && viewerUserId) {
+    const inChallenger = (match.challengerLineup ?? []).some(
+      slot => String(slot.userId) === viewerUserId
+    )
+    const inOpponent = (match.opponentLineup ?? []).some(
+      slot => String(slot.userId) === viewerUserId
+    )
+    if (inChallenger && !inOpponent) return 'challenger'
+    if (inOpponent && !inChallenger) return 'opponent'
+    return null
+  }
+
   if (!viewerTeamId) return null
   if (String(match.challengerTeamId) === viewerTeamId) return 'challenger'
   if (String(match.opponentTeamId) === viewerTeamId) return 'opponent'
@@ -209,7 +230,8 @@ async function buildFriendlyMatchListFromRows(
         userById
       )
       const opponentLineup = lineupToDto(match.opponentLineup ?? [], userById)
-      const viewerSide = viewerSideForMatch(match, viewerTeamId)
+      const intramural = isFriendlyMatchIntramural(match)
+      const viewerSide = viewerSideForMatch(match, viewerTeamId, viewerUserId)
 
       const row: TeamFriendlyMatchListItemDTO = {
         id: String(match._id),
@@ -226,17 +248,20 @@ async function buildFriendlyMatchListFromRows(
         challenger: teamSummary(
           challengerTeam,
           challengerLineup,
-          match.challengerPoints ?? 0
+          match.challengerPoints ?? 0,
+          intramural ? { intramuralSide: 'challenger' } : undefined
         ),
         opponent: teamSummary(
           opponentTeam,
           opponentLineup,
-          match.opponentPoints ?? 0
+          match.opponentPoints ?? 0,
+          intramural ? { intramuralSide: 'opponent' } : undefined
         ),
         winnerTeamId: match.winnerTeamId ? String(match.winnerTeamId) : null,
         viewerSide,
         viewerCanManage: canManage,
         tier: 'social',
+        isIntramural: intramural,
         confirmedDuels: confirmedByMatch.get(String(match._id)) ?? 0,
         totalDuels: status === 'pending' ? 0 : TEAM_FRIENDLY_DUEL_COUNT,
         captainCanModerate: friendlyMatchAllowsCaptainModeration({
@@ -347,8 +372,9 @@ export async function buildTeamFriendlyMatchDetail(
     lineupByUserId.set(p.userId, p)
   }
 
-  const viewerSide = viewerSideForMatch(match, viewerTeamId)
+  const viewerSide = viewerSideForMatch(match, viewerTeamId, viewerUserId)
   const confirmedDuels = duels.filter(d => d.status === 'confirmed').length
+  const intramural = isFriendlyMatchIntramural(match)
 
   const duelDtos: FriendlyDuelDTO[] = duels.map(duel => {
     const challengerPlayer = lineupByUserId.get(String(duel.challengerUserId))
@@ -414,17 +440,20 @@ export async function buildTeamFriendlyMatchDetail(
     challenger: teamSummary(
       challengerTeam,
       challengerLineup,
-      match.challengerPoints ?? 0
+      match.challengerPoints ?? 0,
+      intramural ? { intramuralSide: 'challenger' } : undefined
     ),
     opponent: teamSummary(
       opponentTeam,
       opponentLineup,
-      match.opponentPoints ?? 0
+      match.opponentPoints ?? 0,
+      intramural ? { intramuralSide: 'opponent' } : undefined
     ),
     winnerTeamId: match.winnerTeamId ? String(match.winnerTeamId) : null,
     viewerSide,
     viewerCanManage: canManage,
     tier: 'social',
+    isIntramural: intramural,
     confirmedDuels,
     totalDuels: match.status === 'pending' ? 0 : TEAM_FRIENDLY_DUEL_COUNT,
     captainCanModerate: friendlyMatchAllowsCaptainModeration({

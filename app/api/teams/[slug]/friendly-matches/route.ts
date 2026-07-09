@@ -4,12 +4,18 @@ import { requireSessionUser } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import {
   canManageTeam,
+  countActiveMembers,
   getApprovedTeamBySlug,
   getMembershipForUserOnTeam
 } from '@/lib/teams/access'
 import { buildTeamFriendlyMatchList } from '@/lib/teams/friendly-match/build-payload'
-import { TEAM_FRIENDLY_CHALLENGE_EXPIRY_DAYS } from '@/lib/teams/friendly-match/constants'
 import {
+  TEAM_FRIENDLY_CHALLENGE_EXPIRY_DAYS,
+  TEAM_FRIENDLY_INTRAMURAL_MIN_MEMBERS
+} from '@/lib/teams/friendly-match/constants'
+import { createFriendlyMatchDuels } from '@/lib/teams/friendly-match/lifecycle'
+import {
+  assertIntramuralLineups,
   assertLineupBelongsToTeam,
   parseFriendlyLineupInput
 } from '@/lib/teams/friendly-match/validation'
@@ -86,6 +92,95 @@ export async function POST(
     }
 
     const body = await request.json().catch(() => null)
+    const isIntramural = body?.intramural === true
+
+    if (isIntramural) {
+      const memberCount = await countActiveMembers(challengerOid)
+      if (memberCount < TEAM_FRIENDLY_INTRAMURAL_MIN_MEMBERS) {
+        return NextResponse.json(
+          {
+            error: `Se necesitan al menos ${TEAM_FRIENDLY_INTRAMURAL_MIN_MEMBERS} miembros activos para un versus interno`
+          },
+          { status: 400 }
+        )
+      }
+
+      const parsedChallengerLineup = parseFriendlyLineupInput(body?.lineup)
+      if (!parsedChallengerLineup.ok) {
+        return NextResponse.json(
+          { error: parsedChallengerLineup.error },
+          { status: 400 }
+        )
+      }
+
+      const parsedOpponentLineup = parseFriendlyLineupInput(
+        body?.opponentLineup
+      )
+      if (!parsedOpponentLineup.ok) {
+        return NextResponse.json(
+          { error: parsedOpponentLineup.error },
+          { status: 400 }
+        )
+      }
+
+      const intramuralCheck = await assertIntramuralLineups(
+        challengerOid,
+        parsedChallengerLineup.lineup,
+        parsedOpponentLineup.lineup
+      )
+      if (!intramuralCheck.ok) {
+        return NextResponse.json(
+          { error: intramuralCheck.error },
+          { status: 400 }
+        )
+      }
+
+      await connectDB()
+
+      const existingIntramural = await TeamFriendlyMatch.findOne({
+        challengerTeamId: challengerOid,
+        opponentTeamId: challengerOid,
+        isIntramural: true,
+        status: { $in: ['in_progress', 'disputed'] }
+      }).lean()
+
+      if (existingIntramural) {
+        return NextResponse.json(
+          { error: 'Ya hay un versus interno en curso en este equipo' },
+          { status: 409 }
+        )
+      }
+
+      const match = await TeamFriendlyMatch.create({
+        challengerTeamId: challengerOid,
+        opponentTeamId: challengerOid,
+        requestedByUserId: new mongoose.Types.ObjectId(gate.session.user!.id!),
+        respondedByUserId: new mongoose.Types.ObjectId(gate.session.user!.id!),
+        status: 'in_progress',
+        tier: 'social',
+        isIntramural: true,
+        challengerLineup: parsedChallengerLineup.lineup.map(slot => ({
+          userId: new mongoose.Types.ObjectId(slot.userId),
+          slot: slot.slot
+        })),
+        opponentLineup: parsedOpponentLineup.lineup.map(slot => ({
+          userId: new mongoose.Types.ObjectId(slot.userId),
+          slot: slot.slot
+        })),
+        acceptedAt: new Date()
+      })
+
+      await createFriendlyMatchDuels(
+        match._id as mongoose.Types.ObjectId,
+        parsedChallengerLineup.lineup,
+        parsedOpponentLineup.lineup
+      )
+
+      return NextResponse.json({
+        match: { id: String(match._id), status: 'in_progress' }
+      })
+    }
+
     const opponentSlug =
       typeof body?.opponentTeamSlug === 'string'
         ? body.opponentTeamSlug.trim().toLowerCase()
@@ -153,6 +248,7 @@ export async function POST(
       requestedByUserId: new mongoose.Types.ObjectId(gate.session.user!.id!),
       status: 'pending',
       tier: 'social',
+      isIntramural: false,
       challengerLineup: parsedLineup.lineup.map(slot => ({
         userId: new mongoose.Types.ObjectId(slot.userId),
         slot: slot.slot

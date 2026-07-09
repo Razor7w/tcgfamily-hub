@@ -188,6 +188,37 @@ function ActiveMatchCard({
   const hostTeam = hostIsChallenger ? match.challenger : match.opponent
   const rivalTeam = hostIsChallenger ? match.opponent : match.challenger
 
+  const versusLabel = match.isIntramural ? (
+    <Stack
+      direction="row"
+      spacing={1}
+      alignItems="center"
+      flexWrap="wrap"
+      useFlexGap
+    >
+      <Typography fontWeight={800}>{match.challenger.name}</Typography>
+      <Typography color="text.secondary" fontWeight={700}>
+        vs
+      </Typography>
+      <Typography fontWeight={800}>{match.opponent.name}</Typography>
+      <Chip size="small" label="Interno" variant="outlined" color="secondary" />
+    </Stack>
+  ) : (
+    <Stack
+      direction="row"
+      spacing={1}
+      alignItems="center"
+      flexWrap="wrap"
+      useFlexGap
+    >
+      <TeamVersusLink team={hostTeam} isHost />
+      <Typography color="text.secondary" fontWeight={700}>
+        vs
+      </Typography>
+      <TeamVersusLink team={rivalTeam} isHost={false} />
+    </Stack>
+  )
+
   return (
     <Paper
       variant="outlined"
@@ -204,19 +235,7 @@ function ActiveMatchCard({
           alignItems={{ sm: 'center' }}
           justifyContent="space-between"
         >
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            flexWrap="wrap"
-            useFlexGap
-          >
-            <TeamVersusLink team={hostTeam} isHost />
-            <Typography color="text.secondary" fontWeight={700}>
-              vs
-            </Typography>
-            <TeamVersusLink team={rivalTeam} isHost={false} />
-          </Stack>
+          {versusLabel}
           <Chip
             size="small"
             label={match.statusLabel}
@@ -227,7 +246,9 @@ function ActiveMatchCard({
         <Typography variant="caption" color="text.secondary">
           {formatWhen(match.createdAt)}
           {match.status !== 'pending'
-            ? ` · Marcador ${hostTeam.points}–${rivalTeam.points} · ${match.confirmedDuels}/${match.totalDuels} duelos confirmados`
+            ? match.isIntramural
+              ? ` · Marcador ${match.challenger.points}–${match.opponent.points} · ${match.confirmedDuels}/${match.totalDuels} duelos confirmados`
+              : ` · Marcador ${hostTeam.points}–${rivalTeam.points} · ${match.confirmedDuels}/${match.totalDuels} duelos confirmados`
             : match.expiresAt
               ? ` · expira ${formatWhen(match.expiresAt)}`
               : ''}

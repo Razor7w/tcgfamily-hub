@@ -52,6 +52,11 @@ export function buildFriendlyMatchDuels(
       if (!opponentUserId) {
         throw new Error('Lineup del rival incompleto')
       }
+      if (challengerUserId === opponentUserId) {
+        throw new Error(
+          'Un jugador no puede enfrentarse a sí mismo en un duelo'
+        )
+      }
 
       duels.push({
         duelIndex,

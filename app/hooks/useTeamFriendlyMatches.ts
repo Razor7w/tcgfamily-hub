@@ -114,13 +114,25 @@ export function useTeamFriendlyMatchDetail(
 
 export type FriendlyLineupInput = { userId: string; slot: number }
 
+export type CreateIntramuralFriendlyMatchInput = {
+  intramural: true
+  lineup: FriendlyLineupInput[]
+  opponentLineup: FriendlyLineupInput[]
+}
+
+export type CreateExternalFriendlyMatchInput = {
+  opponentTeamSlug: string
+  lineup: FriendlyLineupInput[]
+}
+
 export function useRequestTeamFriendlyMatch(slug: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (input: {
-      opponentTeamSlug: string
-      lineup: FriendlyLineupInput[]
-    }) => {
+    mutationFn: async (
+      input:
+        | CreateExternalFriendlyMatchInput
+        | CreateIntramuralFriendlyMatchInput
+    ) => {
       const res = await fetch(
         `/api/teams/${encodeURIComponent(slug)}/friendly-matches`,
         {
