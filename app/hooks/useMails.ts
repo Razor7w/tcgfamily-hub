@@ -77,16 +77,220 @@ export interface UpdateMailData {
   observations?: string
 }
 
-// Hook para obtener todos los mails (admin)
-export function useMails() {
+export type MailListStageFilter = 'all' | 'pending' | 'inStore' | 'retired'
+export type MailListElapsedFilter =
+  | 'all'
+  | 'green'
+  | 'yellow'
+  | 'orange'
+  | 'red'
+
+export type UseMailsParams = {
+  page?: number
+  limit?: number
+  stage?: MailListStageFilter
+  elapsed?: MailListElapsedFilter
+  fromUserId?: string | null
+  /** IDs resueltos en cliente (texto libre). `[]` = sin matches. */
+  fromUserIds?: string[] | null
+  toUserId?: string | null
+  toUserIds?: string[] | null
+  toRut?: string | null
+  toRuts?: string[] | null
+  q?: string
+  fromQ?: string
+  toQ?: string
+  enabled?: boolean
+}
+
+export type MailsListResponse = {
+  mails: Mail[]
+  page: number
+  limit: number
+  total: number
+  pageCount: number
+  hasMore: boolean
+  codeSearchExpansion?:
+    | {
+        kind: 'senderNotInStore'
+        fromUserId: string
+      }
+    | {
+        kind: 'recipientInStore'
+        toUserId?: string
+        toRut?: string
+      }
+    | null
+}
+
+function appendIdList(
+  sp: URLSearchParams,
+  key: string,
+  ids: string[] | null | undefined
+) {
+  if (ids == null) return
+  if (ids.length === 0) {
+    // Señal explícita "filtrar pero sin matches" → server devuelve vacío
+    sp.set(key, '')
+    return
+  }
+  sp.set(key, ids.join(','))
+}
+
+function buildMailsQueryString(params: UseMailsParams = {}): string {
+  const sp = new URLSearchParams()
+  if (params.page != null) sp.set('page', String(params.page))
+  if (params.limit != null) sp.set('limit', String(params.limit))
+  if (params.stage && params.stage !== 'all') sp.set('stage', params.stage)
+  if (params.elapsed && params.elapsed !== 'all') {
+    sp.set('elapsed', params.elapsed)
+  }
+  if (params.fromUserId) sp.set('fromUserId', params.fromUserId)
+  appendIdList(sp, 'fromUserIds', params.fromUserIds)
+  if (params.toUserId) sp.set('toUserId', params.toUserId)
+  appendIdList(sp, 'toUserIds', params.toUserIds)
+  if (params.toRut) sp.set('toRut', params.toRut)
+  appendIdList(sp, 'toRuts', params.toRuts)
+  if (params.q?.trim()) sp.set('q', params.q.trim())
+  if (params.fromQ?.trim()) sp.set('fromQ', params.fromQ.trim())
+  if (params.toQ?.trim()) sp.set('toQ', params.toQ.trim())
+  return sp.toString()
+}
+
+// Hook para obtener mails paginados (admin)
+export function useMails(params: UseMailsParams = {}) {
   const storeKey = useDashboardStoreQueryKey()
-  return useQuery<{ mails: Mail[] }>({
-    queryKey: ['mails', storeKey],
+  const {
+    page = 1,
+    limit = 10,
+    stage = 'all',
+    elapsed = 'all',
+    fromUserId = null,
+    fromUserIds = null,
+    toUserId = null,
+    toUserIds = null,
+    toRut = null,
+    toRuts = null,
+    q = '',
+    fromQ = '',
+    toQ = '',
+    enabled = true
+  } = params
+
+  return useQuery<MailsListResponse>({
+    queryKey: [
+      'mails',
+      storeKey,
+      {
+        page,
+        limit,
+        stage,
+        elapsed,
+        fromUserId,
+        fromUserIds,
+        toUserId,
+        toUserIds,
+        toRut,
+        toRuts,
+        q,
+        fromQ,
+        toQ
+      }
+    ],
+    enabled,
     staleTime: 2 * 60 * 1000,
+    placeholderData: previousData => previousData,
     queryFn: async () => {
-      const response = await fetch('/api/mail?limit=2000')
+      const qs = buildMailsQueryString({
+        page,
+        limit,
+        stage,
+        elapsed,
+        fromUserId,
+        fromUserIds,
+        toUserId,
+        toUserIds,
+        toRut,
+        toRuts,
+        q,
+        fromQ,
+        toQ
+      })
+      const response = await fetch(`/api/mail?${qs}`)
       if (!response.ok) {
         throw new Error('Error al cargar mails')
+      }
+      return response.json()
+    }
+  })
+}
+
+export type MailFilterOptionsResponse = {
+  fromUsers: Array<{ id: string; name: string; rut: string }>
+  toRecipients: Array<
+    | { kind: 'user'; id: string; name: string; rut: string }
+    | { kind: 'toRut'; id: string; rutDisplay: string; rutKey: string }
+  >
+}
+
+/** Opciones ligeras para autocompletes del admin de correos. */
+export function useMailFilterOptions(enabled = true) {
+  const storeKey = useDashboardStoreQueryKey()
+  return useQuery<MailFilterOptionsResponse>({
+    queryKey: ['mails', 'filter-options', storeKey],
+    enabled,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const response = await fetch('/api/mail/filter-options')
+      if (!response.ok) {
+        throw new Error('Error al cargar opciones de filtro')
+      }
+      return response.json()
+    }
+  })
+}
+
+export type MailBulkTargetIdsParams = {
+  stage?: MailListStageFilter
+  fromUserId?: string | null
+  toUserId?: string | null
+  toRut?: string | null
+  q?: string
+  enabled?: boolean
+}
+
+/** IDs lean para acciones masivas (sin populate). */
+export function useMailBulkTargetIds(params: MailBulkTargetIdsParams) {
+  const storeKey = useDashboardStoreQueryKey()
+  const {
+    stage = 'all',
+    fromUserId = null,
+    toUserId = null,
+    toRut = null,
+    q = '',
+    enabled = false
+  } = params
+
+  return useQuery<{ ids: string[]; total: number }>({
+    queryKey: [
+      'mails',
+      'bulk-ids',
+      storeKey,
+      { stage, fromUserId, toUserId, toRut, q }
+    ],
+    enabled,
+    staleTime: 30 * 1000,
+    queryFn: async () => {
+      const sp = new URLSearchParams()
+      sp.set('idsOnly', '1')
+      if (stage !== 'all') sp.set('stage', stage)
+      if (fromUserId) sp.set('fromUserId', fromUserId)
+      if (toUserId) sp.set('toUserId', toUserId)
+      if (toRut) sp.set('toRut', toRut)
+      if (q.trim()) sp.set('q', q.trim())
+      const response = await fetch(`/api/mail?${sp.toString()}`)
+      if (!response.ok) {
+        throw new Error('Error al cargar IDs de correos')
       }
       return response.json()
     }
@@ -258,10 +462,9 @@ export function useUpdateMail() {
     },
     onMutate: async ({ mailId, data }) => {
       await queryClient.cancelQueries({ queryKey: ['mails', storeKey] })
-      const previous = queryClient.getQueryData<{ mails: Mail[] }>([
-        'mails',
-        storeKey
-      ])
+      const previousEntries = queryClient.getQueriesData<{ mails: Mail[] }>({
+        queryKey: ['mails', storeKey]
+      })
 
       const patchMail = (mail: Mail): Mail => {
         const next: Mail = { ...mail }
@@ -290,29 +493,39 @@ export function useUpdateMail() {
         return next
       }
 
-      queryClient.setQueryData<{ mails: Mail[] }>(['mails', storeKey], old => {
-        if (!old?.mails) return old
-        return {
-          mails: old.mails.map(m => (m._id === mailId ? patchMail(m) : m))
+      queryClient.setQueriesData<{ mails: Mail[] }>(
+        { queryKey: ['mails', storeKey] },
+        old => {
+          if (!old?.mails) return old
+          return {
+            ...old,
+            mails: old.mails.map(m => (m._id === mailId ? patchMail(m) : m))
+          }
         }
-      })
+      )
 
-      return { previous }
+      return { previousEntries }
     },
     onError: (_err, _vars, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(['mails', storeKey], context.previous)
+      if (context?.previousEntries) {
+        for (const [key, data] of context.previousEntries) {
+          queryClient.setQueryData(key, data)
+        }
       }
     },
     onSuccess: (updatedMail, variables) => {
-      queryClient.setQueryData<{ mails: Mail[] }>(['mails', storeKey], old => {
-        if (!old?.mails) return old
-        return {
-          mails: old.mails.map(m =>
-            m._id === updatedMail._id ? updatedMail : m
-          )
+      queryClient.setQueriesData<{ mails: Mail[] }>(
+        { queryKey: ['mails', storeKey] },
+        old => {
+          if (!old?.mails) return old
+          return {
+            ...old,
+            mails: old.mails.map(m =>
+              m._id === updatedMail._id ? updatedMail : m
+            )
+          }
         }
-      })
+      )
       queryClient.setQueryData(['mails', variables.mailId], updatedMail)
 
       queryClient.setQueriesData(
@@ -336,6 +549,9 @@ export function useUpdateMail() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['mails', storeKey] })
       queryClient.invalidateQueries({ queryKey: ['mails', 'me'] })
+      queryClient.invalidateQueries({
+        queryKey: ['mails', 'filter-options', storeKey]
+      })
     }
   })
 }
@@ -372,35 +588,44 @@ export function useBulkWithdrawMails() {
     onMutate: async mailIds => {
       const idSet = new Set(mailIds)
       await queryClient.cancelQueries({ queryKey: ['mails', storeKey] })
-      const previous = queryClient.getQueryData<{ mails: Mail[] }>([
-        'mails',
-        storeKey
-      ])
-      queryClient.setQueryData<{ mails: Mail[] }>(['mails', storeKey], old => {
-        if (!old?.mails) return old
-        return {
-          mails: old.mails.map(m =>
-            idSet.has(m._id) ? { ...m, isRecived: true } : m
-          )
-        }
+      const previousEntries = queryClient.getQueriesData<{ mails: Mail[] }>({
+        queryKey: ['mails', storeKey]
       })
-      return { previous }
+      queryClient.setQueriesData<{ mails: Mail[] }>(
+        { queryKey: ['mails', storeKey] },
+        old => {
+          if (!old?.mails) return old
+          return {
+            ...old,
+            mails: old.mails.map(m =>
+              idSet.has(m._id) ? { ...m, isRecived: true } : m
+            )
+          }
+        }
+      )
+      return { previousEntries }
     },
     onError: (_err, _vars, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(['mails', storeKey], context.previous)
+      if (context?.previousEntries) {
+        for (const [key, data] of context.previousEntries) {
+          queryClient.setQueryData(key, data)
+        }
       }
     },
     onSuccess: (_, mailIds) => {
       const idSet = new Set(mailIds)
-      queryClient.setQueryData<{ mails: Mail[] }>(['mails', storeKey], old => {
-        if (!old?.mails) return old
-        return {
-          mails: old.mails.map(m =>
-            idSet.has(m._id) ? { ...m, isRecived: true } : m
-          )
+      queryClient.setQueriesData<{ mails: Mail[] }>(
+        { queryKey: ['mails', storeKey] },
+        old => {
+          if (!old?.mails) return old
+          return {
+            ...old,
+            mails: old.mails.map(m =>
+              idSet.has(m._id) ? { ...m, isRecived: true } : m
+            )
+          }
         }
-      })
+      )
       queryClient.invalidateQueries({ queryKey: ['mails', 'me'] })
     },
     onSettled: () => {
@@ -435,47 +660,56 @@ export function useBulkReceiveInStoreMails() {
       const idSet = new Set(mailIds)
       const receivedInStoreAt = new Date().toISOString()
       await queryClient.cancelQueries({ queryKey: ['mails', storeKey] })
-      const previous = queryClient.getQueryData<{ mails: Mail[] }>([
-        'mails',
-        storeKey
-      ])
-      queryClient.setQueryData<{ mails: Mail[] }>(['mails', storeKey], old => {
-        if (!old?.mails) return old
-        return {
-          mails: old.mails.map(m =>
-            idSet.has(m._id)
-              ? {
-                  ...m,
-                  isRecivedInStore: true,
-                  receivedInStoreAt
-                }
-              : m
-          )
-        }
+      const previousEntries = queryClient.getQueriesData<{ mails: Mail[] }>({
+        queryKey: ['mails', storeKey]
       })
-      return { previous, receivedInStoreAt }
+      queryClient.setQueriesData<{ mails: Mail[] }>(
+        { queryKey: ['mails', storeKey] },
+        old => {
+          if (!old?.mails) return old
+          return {
+            ...old,
+            mails: old.mails.map(m =>
+              idSet.has(m._id)
+                ? {
+                    ...m,
+                    isRecivedInStore: true,
+                    receivedInStoreAt
+                  }
+                : m
+            )
+          }
+        }
+      )
+      return { previousEntries, receivedInStoreAt }
     },
     onError: (_err, _vars, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(['mails', storeKey], context.previous)
+      if (context?.previousEntries) {
+        for (const [key, data] of context.previousEntries) {
+          queryClient.setQueryData(key, data)
+        }
       }
     },
     onSuccess: (result, mailIds) => {
       const idSet = new Set(mailIds)
-      queryClient.setQueryData<{ mails: Mail[] }>(['mails', storeKey], old => {
-        if (!old?.mails) return old
-        return {
-          mails: old.mails.map(m =>
-            idSet.has(m._id)
-              ? {
-                  ...m,
-                  isRecivedInStore: true,
-                  receivedInStoreAt: result.receivedInStoreAt
-                }
-              : m
-          )
+      queryClient.setQueriesData<{ mails: Mail[] }>(
+        { queryKey: ['mails', storeKey] },
+        old => {
+          if (!old?.mails) return old
+          return {
+            ...old,
+            mails: old.mails.map(m =>
+              idSet.has(m._id)
+                ? {
+                    ...m,
+                    isRecivedInStore: true,
+                    receivedInStoreAt: result.receivedInStoreAt
+                  }
+                : m
+            )
+          }
         }
-      })
+      )
       queryClient.invalidateQueries({ queryKey: ['mails', 'me'] })
     },
     onSettled: () => {

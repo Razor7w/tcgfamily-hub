@@ -93,16 +93,6 @@ export async function PATCH(
     const updates: Record<string, unknown> = {}
     const teamId = teamOid.toString()
 
-    const touchesBranding =
-      typeof body?.logoUrl === 'string' || typeof body?.coverUrl === 'string'
-
-    if (touchesBranding && !isCaptain(membership.role)) {
-      return NextResponse.json(
-        { error: 'Solo el capitán puede cambiar logo o portada' },
-        { status: 403 }
-      )
-    }
-
     if (typeof body?.name === 'string') {
       const name = body.name.trim().slice(0, TEAM_NAME_MAX)
       if (name.length < 2) {

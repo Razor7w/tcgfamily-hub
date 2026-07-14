@@ -189,6 +189,7 @@ export default function DashboardInStoreMailsCard() {
         component="section"
         aria-label="Cargando correos"
         sx={{
+          height: '100%',
           borderRadius: 2.5,
           py: 2.5,
           px: 2,
@@ -196,7 +197,8 @@ export default function DashboardInStoreMailsCard() {
           borderColor: t => alpha(t.palette.text.primary, 0.08),
           bgcolor: 'background.paper',
           display: 'flex',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          alignItems: 'center'
         }}
       >
         <CircularProgress size={24} />
@@ -209,6 +211,7 @@ export default function DashboardInStoreMailsCard() {
       <Box
         component="section"
         sx={{
+          height: '100%',
           borderRadius: 2.5,
           p: 2,
           border: '1px solid',
@@ -246,6 +249,9 @@ export default function DashboardInStoreMailsCard() {
       aria-labelledby="dashboard-in-store-mails-heading"
       data-tour="dashboard-in-store-mails"
       sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
         borderRadius: 2.5,
         overflow: 'hidden',
         border: '1px solid',
@@ -414,7 +420,7 @@ export default function DashboardInStoreMailsCard() {
         <Typography
           variant="body2"
           color="text.secondary"
-          sx={{ px: 2, py: 2.5, lineHeight: 1.55 }}
+          sx={{ px: 2, py: 2.5, lineHeight: 1.55, flex: 1 }}
         >
           {effectiveTab === 'pickup'
             ? 'No tienes correos listos para retirar.'
@@ -427,6 +433,7 @@ export default function DashboardInStoreMailsCard() {
             m: 0,
             p: 0,
             listStyle: 'none',
+            flex: 1,
             '& > li:not(:last-child)': {
               borderBottom: '1px solid',
               borderColor: t => alpha(t.palette.divider, 0.85)
@@ -544,6 +551,7 @@ export default function DashboardInStoreMailsCard() {
         alignItems="center"
         justifyContent="space-between"
         sx={{
+          mt: 'auto',
           px: { xs: 1.5, sm: 2 },
           py: 1,
           borderTop: '1px solid',

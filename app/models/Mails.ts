@@ -77,6 +77,22 @@ MailSchema.index({ fromUserId: 1, createdAt: 1 })
 /** GET /api/mail (staff): listado por tienda + sort reciente */
 MailSchema.index({ storeId: 1, createdAt: -1 })
 
+/** Staff listado filtrado por etapa + sort reciente */
+MailSchema.index({
+  storeId: 1,
+  isRecived: 1,
+  isRecivedInStore: 1,
+  createdAt: -1
+})
+
+/** Antigüedad en tienda (pending retiro) */
+MailSchema.index({
+  storeId: 1,
+  isRecived: 1,
+  isRecivedInStore: 1,
+  receivedInStoreAt: 1
+})
+
 /** GET /api/mail/me — bandeja por usuario (to / from / RUT) + pending + sort reciente */
 MailSchema.index({ toUserId: 1, isRecived: 1, createdAt: -1 })
 MailSchema.index({ fromUserId: 1, isRecived: 1, createdAt: -1 })

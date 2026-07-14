@@ -10,7 +10,6 @@ import {
   Home,
   Insights,
   Layers,
-  NotificationsNone,
   Storefront,
   Person,
   Public,
@@ -19,7 +18,6 @@ import {
 } from '@mui/icons-material'
 import {
   Box,
-  Badge,
   Collapse,
   Divider,
   List,
@@ -29,7 +27,6 @@ import {
   ListItemText,
   Stack
 } from '@mui/material'
-import { useNotifications } from '@/hooks/useNotifications'
 import AppVersion from '@/components/AppVersion'
 import { isStoreContextHubPath } from '@/lib/store-context-hub-path'
 import { useStoreHubHref } from '@/hooks/useStoreHubHref'
@@ -53,8 +50,6 @@ export default function DashboardUserNav({
 }) {
   const pathname = usePathname() ?? ''
   const storeHubHref = useStoreHubHref()
-  const { data: notifications } = useNotifications()
-  const notificationCount = notifications?.unreadCount ?? 0
   const [decklistOpen, setDecklistOpen] = useState(() =>
     isUnderDecklistNav(pathname)
   )
@@ -110,28 +105,6 @@ export default function DashboardUserNav({
                 <Insights />
               </ListItemIcon>
               <ListItemText primary="Tu actividad" />
-            </ListItemButton>
-          </ListItem>
-          <ListItem disablePadding>
-            <ListItemButton
-              component={Link}
-              href="/dashboard/notificaciones"
-              selected={
-                pathname === '/dashboard/notificaciones' ||
-                pathname.startsWith('/dashboard/notificaciones/')
-              }
-            >
-              <ListItemIcon>
-                <Badge
-                  color="error"
-                  badgeContent={notificationCount}
-                  max={9}
-                  invisible={notificationCount === 0}
-                >
-                  <NotificationsNone />
-                </Badge>
-              </ListItemIcon>
-              <ListItemText primary="Notificaciones" />
             </ListItemButton>
           </ListItem>
           <ListItem disablePadding>

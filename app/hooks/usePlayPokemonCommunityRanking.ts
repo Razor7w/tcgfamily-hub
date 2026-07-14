@@ -35,8 +35,11 @@ export function usePlayPokemonCommunityRankingStores() {
 export function usePlayPokemonCommunityRanking(
   storeId: string | null,
   page: number,
-  search: string
+  search: string,
+  options?: { enabled?: boolean }
 ) {
+  const enabled = (options?.enabled ?? true) && Boolean(storeId)
+
   return useQuery<PlayPokemonCommunityRankingResponse>({
     queryKey: playPokemonCommunityRankingQueryKey(storeId ?? '', page, search),
     queryFn: async () => {
@@ -56,7 +59,7 @@ export function usePlayPokemonCommunityRanking(
       }
       return res.json() as Promise<PlayPokemonCommunityRankingResponse>
     },
-    enabled: Boolean(storeId),
+    enabled,
     staleTime: 60_000
   })
 }
