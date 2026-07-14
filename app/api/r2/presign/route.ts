@@ -6,7 +6,7 @@ import { auth } from '@/auth'
 import { createSlidingWindowLimiter } from '@/lib/auth-rate-limit'
 import { assertCanManageStoreMutation } from '@/lib/store-admin-access'
 import { requireStoreOwnerSession, requireSessionUser } from '@/lib/api-auth'
-import { getMembershipForUserOnTeam, isCaptain } from '@/lib/teams/access'
+import { getMembershipForUserOnTeam, canManageTeam } from '@/lib/teams/access'
 import Team from '@/models/Team'
 import { r2BucketName, r2Client, r2PublicBaseUrl } from '@/lib/r2'
 
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
         gate.session.user!.id!,
         teamOid
       )
-      if (!membership || !isCaptain(membership.role)) {
+      if (!membership || !canManageTeam(membership.role)) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
       }
       const teamExists = await Team.exists({ _id: teamOid, isActive: true })

@@ -35,6 +35,8 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import {
   useMails,
+  useMailFilterOptions,
+  useMailBulkTargetIds,
   useCreateMail,
   useUpdateMail,
   useBulkWithdrawMails,
@@ -53,25 +55,15 @@ import {
   validateMailStatusTransition
 } from '@/lib/mail-status-transitions'
 import {
-  filterMailsByCodeSearch,
-  resolveMailCodeSearchExpansion
-} from '@/lib/mail-code-search'
-import {
   type ElapsedBucketFilter,
   getMailStoreWaitDays,
-  matchesStoreWaitBucket,
   storeWaitChipProps
 } from '@/lib/mail-store-days'
 import { alpha, useTheme, type Theme } from '@mui/material/styles'
 import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
 import {
-  buildDistinctMailUsersForFilters,
-  buildToRecipientOptions,
   filterFromUserLabel,
   filterToRecipientLabel,
-  mailMatchesFromUserQuery,
-  mailMatchesToRecipientFilter,
-  mailMatchesToRecipientQuery,
   participantSearchMatches,
   toRecipientSearchMatches,
   type FilterFromUser,
@@ -89,6 +81,8 @@ function mailUserId(ref: { _id: string } | string | null | undefined): string {
 }
 
 const PAGE_SIZE = 10
+/** Texto libre en autocomplete: no filtrar con 1 carácter (evita spam de requests). */
+const FREE_TEXT_MIN_CHARS = 2
 
 function mailStatusAccentColor(
   mail: Pick<Mail, 'isRecived' | 'isRecivedInStore'>,
@@ -140,8 +134,30 @@ export default function MailsPage() {
   const [mailToDelete, setMailToDelete] = useState<Mail | null>(null)
   const [bulkWithdrawOpen, setBulkWithdrawOpen] = useState(false)
   const [bulkReceiveInStoreOpen, setBulkReceiveInStoreOpen] = useState(false)
+  const [debouncedSearchId, setDebouncedSearchId] = useState('')
+  const [debouncedFromInput, setDebouncedFromInput] = useState('')
+  const [debouncedToInput, setDebouncedToInput] = useState('')
 
-  const { data: mailsRes, isLoading, error } = useMails()
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearchId(searchId.trim()), 320)
+    return () => clearTimeout(t)
+  }, [searchId])
+
+  useEffect(() => {
+    const t = setTimeout(
+      () => setDebouncedFromInput(filterFromInput.trim()),
+      320
+    )
+    return () => clearTimeout(t)
+  }, [filterFromInput])
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedToInput(filterToInput.trim()), 320)
+    return () => clearTimeout(t)
+  }, [filterToInput])
+
+  const { data: filterOptions } = useMailFilterOptions()
+
   const createMail = useCreateMail()
   const updateMail = useUpdateMail()
   const bulkWithdraw = useBulkWithdrawMails()
@@ -149,119 +165,170 @@ export default function MailsPage() {
   const deleteMail = useDeleteMail()
   const createUser = useCreateUser()
 
-  const allMails = useMemo(() => mailsRes?.mails ?? [], [mailsRes?.mails])
+  const usersFromMails = filterOptions?.fromUsers ?? []
+  const toRecipientOptions = filterOptions?.toRecipients ?? []
 
-  const usersFromMails = useMemo(
-    () => buildDistinctMailUsersForFilters(allMails),
-    [allMails]
-  )
+  /** IDs de remitente: selección exacta o texto libre contra opciones cargadas. */
+  const resolvedFromUserIds = useMemo((): string[] | null => {
+    if (filterFromUser) return [filterFromUser.id]
+    if (debouncedFromInput.length < FREE_TEXT_MIN_CHARS) return null
+    // Esperar opciones: no vaciar lista antes de cargar participantes
+    if (!filterOptions) return null
+    return usersFromMails
+      .filter(u => participantSearchMatches(debouncedFromInput, u))
+      .map(u => u.id)
+  }, [filterFromUser, debouncedFromInput, usersFromMails, filterOptions])
 
-  const toRecipientOptions = useMemo(
-    () => buildToRecipientOptions(allMails),
-    [allMails]
-  )
-
-  const codeSearchExpansion = useMemo(
-    () => resolveMailCodeSearchExpansion(allMails, searchId),
-    [allMails, searchId]
-  )
-
-  const mails = useMemo(() => {
-    let list = filterMailsByCodeSearch(allMails, searchId)
-    if (filterStage === 'retired') {
-      list = list.filter(m => m.isRecived)
-    } else if (filterStage === 'inStore') {
-      list = list.filter(m => !m.isRecived && Boolean(m.isRecivedInStore))
-    } else if (filterStage === 'pending') {
-      list = list.filter(m => !m.isRecived && !m.isRecivedInStore)
+  const resolvedToParticipants = useMemo((): {
+    toUserIds: string[] | null
+    toRuts: string[] | null
+  } => {
+    if (filterToRecipient?.kind === 'user') {
+      return { toUserIds: [filterToRecipient.id], toRuts: null }
     }
-    if (filterElapsed !== 'all') {
-      list = list.filter(m => {
-        const d = getMailStoreWaitDays(m)
-        if (d == null) return false
-        return matchesStoreWaitBucket(d, filterElapsed)
-      })
+    if (filterToRecipient?.kind === 'toRut') {
+      return { toUserIds: null, toRuts: [filterToRecipient.rutDisplay] }
     }
-    if (filterFromUser) {
-      list = list.filter(m => mailUserId(m.fromUserId) === filterFromUser.id)
-    } else if (filterFromInput.trim()) {
-      list = list.filter(m => mailMatchesFromUserQuery(m, filterFromInput))
+    if (debouncedToInput.length < FREE_TEXT_MIN_CHARS) {
+      return { toUserIds: null, toRuts: null }
     }
-    if (filterToRecipient) {
-      list = list.filter(m =>
-        mailMatchesToRecipientFilter(m, filterToRecipient)
+    if (!filterOptions) return { toUserIds: null, toRuts: null }
+
+    const userIds = toRecipientOptions
+      .filter(
+        (o): o is Extract<FilterToRecipient, { kind: 'user' }> =>
+          o.kind === 'user' && toRecipientSearchMatches(debouncedToInput, o)
       )
-    } else if (filterToInput.trim()) {
-      list = list.filter(m => mailMatchesToRecipientQuery(m, filterToInput))
+      .map(o => o.id)
+    const ruts = toRecipientOptions
+      .filter(
+        (o): o is Extract<FilterToRecipient, { kind: 'toRut' }> =>
+          o.kind === 'toRut' && toRecipientSearchMatches(debouncedToInput, o)
+      )
+      .map(o => o.rutDisplay)
+
+    if (userIds.length === 0 && ruts.length === 0) {
+      return { toUserIds: [], toRuts: [] }
     }
-    return list
-  }, [
-    allMails,
-    searchId,
-    filterStage,
-    filterElapsed,
-    filterFromUser,
-    filterFromInput,
-    filterToRecipient,
-    filterToInput
-  ])
+    return {
+      toUserIds: userIds.length > 0 ? userIds : null,
+      toRuts: ruts.length > 0 ? ruts : null
+    }
+  }, [filterToRecipient, debouncedToInput, toRecipientOptions, filterOptions])
+
+  const {
+    data: mailsRes,
+    isLoading,
+    isFetching,
+    error
+  } = useMails({
+    page,
+    limit: PAGE_SIZE,
+    stage: filterStage,
+    elapsed: filterElapsed,
+    fromUserIds: resolvedFromUserIds,
+    toUserIds: resolvedToParticipants.toUserIds,
+    toRuts: resolvedToParticipants.toRuts,
+    q: debouncedSearchId
+  })
+
+  const mails = mailsRes?.mails ?? []
+  const total = mailsRes?.total ?? 0
+  const pageCount = Math.max(1, mailsRes?.pageCount ?? 1)
+  const codeSearchExpansion = mailsRes?.codeSearchExpansion ?? null
 
   useEffect(() => {
     setPage(1)
   }, [
-    searchId,
+    debouncedSearchId,
     filterStage,
     filterElapsed,
     filterFromUser,
-    filterFromInput,
+    debouncedFromInput,
     filterToRecipient,
-    filterToInput
+    debouncedToInput
   ])
-
-  const pageCount = Math.max(1, Math.ceil(mails.length / PAGE_SIZE))
 
   useEffect(() => {
     setPage(p => (p > pageCount ? pageCount : p))
-  }, [pageCount, mails.length])
+  }, [pageCount])
 
-  const paginatedMails = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE
-    return mails.slice(start, start + PAGE_SIZE)
-  }, [mails, page])
+  const expansionSenderNotInStore =
+    codeSearchExpansion?.kind === 'senderNotInStore'
+  const expansionRecipientInStore =
+    codeSearchExpansion?.kind === 'recipientInStore'
 
-  /** En tienda y pendientes de retiro (excluye «No recibido en tienda»). */
-  const bulkWithdrawTargets = useMemo(() => {
-    const enabled =
-      Boolean(filterToRecipient) ||
-      codeSearchExpansion?.kind === 'recipientInStore'
-    if (!enabled) return []
-    return mails.filter(m => !m.isRecived && Boolean(m.isRecivedInStore))
-  }, [mails, filterToRecipient, codeSearchExpansion])
+  const bulkReceiveEnabled =
+    Boolean(filterFromUser) || expansionSenderNotInStore
+  const bulkWithdrawEnabled =
+    Boolean(filterToRecipient) || expansionRecipientInStore
 
-  /** Sin ingresar en tienda, filtrados por remitente o búsqueda por código expandida. */
-  const bulkReceiveInStoreTargets = useMemo(() => {
-    const enabled =
-      Boolean(filterFromUser) ||
-      codeSearchExpansion?.kind === 'senderNotInStore'
-    if (!enabled) return []
-    return mails.filter(m => !m.isRecived && !m.isRecivedInStore)
-  }, [mails, filterFromUser, codeSearchExpansion])
+  const { data: bulkReceiveIdsRes } = useMailBulkTargetIds({
+    enabled: bulkReceiveEnabled,
+    stage: 'pending',
+    fromUserId: filterFromUser?.id ?? null,
+    q: filterFromUser ? '' : debouncedSearchId
+  })
+
+  const { data: bulkWithdrawIdsRes } = useMailBulkTargetIds({
+    enabled: bulkWithdrawEnabled,
+    stage: 'inStore',
+    toUserId: filterToRecipient?.kind === 'user' ? filterToRecipient.id : null,
+    toRut:
+      filterToRecipient?.kind === 'toRut' ? filterToRecipient.rutDisplay : null,
+    q: filterToRecipient ? '' : debouncedSearchId
+  })
+
+  const bulkReceiveInStoreTargets = bulkReceiveIdsRes?.ids ?? []
+  const bulkWithdrawTargets = bulkWithdrawIdsRes?.ids ?? []
 
   const bulkReceiveContextLabel = useMemo(() => {
     if (filterFromUser) return filterFromUserLabel(filterFromUser)
-    if (codeSearchExpansion?.kind === 'senderNotInStore') {
-      return filterFromUserLabel(codeSearchExpansion.sender)
+    if (expansionSenderNotInStore && filterFromUser == null) {
+      const id =
+        codeSearchExpansion?.kind === 'senderNotInStore'
+          ? codeSearchExpansion.fromUserId
+          : null
+      const u = id ? usersFromMails.find(x => x.id === id) : null
+      return u ? filterFromUserLabel(u) : id
     }
     return null
-  }, [filterFromUser, codeSearchExpansion])
+  }, [
+    filterFromUser,
+    expansionSenderNotInStore,
+    codeSearchExpansion,
+    usersFromMails
+  ])
 
   const bulkWithdrawContextLabel = useMemo(() => {
     if (filterToRecipient) return filterToRecipientLabel(filterToRecipient)
-    if (codeSearchExpansion?.kind === 'recipientInStore') {
-      return filterToRecipientLabel(codeSearchExpansion.recipient)
+    if (
+      expansionRecipientInStore &&
+      codeSearchExpansion?.kind === 'recipientInStore'
+    ) {
+      if (codeSearchExpansion.toUserId) {
+        const u = usersFromMails.find(
+          x => x.id === codeSearchExpansion.toUserId
+        )
+        if (u) {
+          return filterToRecipientLabel({
+            kind: 'user',
+            id: u.id,
+            name: u.name,
+            rut: u.rut
+          })
+        }
+        return codeSearchExpansion.toUserId
+      }
+      if (codeSearchExpansion.toRut) return codeSearchExpansion.toRut
     }
     return null
-  }, [filterToRecipient, codeSearchExpansion])
+  }, [
+    filterToRecipient,
+    expansionRecipientInStore,
+    codeSearchExpansion,
+    usersFromMails
+  ])
 
   const showBulkReceiveInStore =
     bulkReceiveContextLabel != null && bulkReceiveInStoreTargets.length > 1
@@ -525,7 +592,7 @@ export default function MailsPage() {
   }
 
   const handleConfirmBulkWithdraw = async () => {
-    const ids = bulkWithdrawTargets.map(m => m._id)
+    const ids = bulkWithdrawTargets
     if (ids.length === 0) return
     try {
       const result = await bulkWithdraw.mutateAsync(ids)
@@ -546,7 +613,7 @@ export default function MailsPage() {
   }
 
   const handleConfirmBulkReceiveInStore = async () => {
-    const ids = bulkReceiveInStoreTargets.map(m => m._id)
+    const ids = bulkReceiveInStoreTargets
     if (ids.length === 0) return
     try {
       const result = await bulkReceiveInStore.mutateAsync(ids)
@@ -568,7 +635,7 @@ export default function MailsPage() {
     }
   }
 
-  if (isLoading) {
+  if (isLoading && !mailsRes) {
     return (
       <Box
         sx={{
@@ -658,6 +725,7 @@ export default function MailsPage() {
                 options={usersFromMails}
                 value={filterFromUser}
                 inputValue={filterFromInput}
+                clearOnBlur={false}
                 onChange={(_, v) => setFilterFromUser(v)}
                 onInputChange={(_, value, reason) => {
                   if (reason === 'input') {
@@ -676,7 +744,12 @@ export default function MailsPage() {
                     return
                   }
                   if (reason === 'reset') {
-                    setFilterFromInput(value)
+                    // Blur sin selección no debe borrar texto libre del filtro
+                    if (filterFromUser) {
+                      setFilterFromInput(
+                        value || filterFromUserLabel(filterFromUser)
+                      )
+                    }
                   }
                 }}
                 getOptionLabel={filterFromUserLabel}
@@ -701,6 +774,7 @@ export default function MailsPage() {
                 options={toRecipientOptions}
                 value={filterToRecipient}
                 inputValue={filterToInput}
+                clearOnBlur={false}
                 onChange={(_, v) => setFilterToRecipient(v)}
                 onInputChange={(_, value, reason) => {
                   if (reason === 'input') {
@@ -719,7 +793,11 @@ export default function MailsPage() {
                     return
                   }
                   if (reason === 'reset') {
-                    setFilterToInput(value)
+                    if (filterToRecipient) {
+                      setFilterToInput(
+                        value || filterToRecipientLabel(filterToRecipient)
+                      )
+                    }
                   }
                 }}
                 getOptionLabel={filterToRecipientLabel}
@@ -906,7 +984,7 @@ export default function MailsPage() {
           </Alert>
         ) : null}
 
-        {mails.length === 0 ? (
+        {mails.length === 0 && !isFetching ? (
           <Paper
             variant="outlined"
             sx={{ py: 6, px: 2, textAlign: 'center', borderRadius: 2 }}
@@ -932,16 +1010,28 @@ export default function MailsPage() {
               Restablecer filtros
             </Button>
           </Paper>
+        ) : mails.length === 0 && isFetching ? (
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              py: 6
+            }}
+          >
+            <CircularProgress size={32} />
+          </Box>
         ) : (
           <>
             <Box
               sx={{
                 display: 'grid',
                 gap: 2,
-                gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }
+                gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
+                opacity: isFetching ? 0.72 : 1,
+                transition: 'opacity 0.15s ease'
               }}
             >
-              {paginatedMails.map(mail => {
+              {mails.map(mail => {
                 const from =
                   typeof mail.fromUserId === 'object' ? mail.fromUserId : null
                 const to =
@@ -1284,9 +1374,9 @@ export default function MailsPage() {
                 size="small"
               />
               <Typography variant="caption" color="text.secondary">
-                {mails.length === 0
+                {total === 0
                   ? ''
-                  : `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, mails.length)} de ${mails.length}`}
+                  : `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)} de ${total}`}
               </Typography>
             </Box>
           </>

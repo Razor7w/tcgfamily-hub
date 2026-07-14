@@ -43,7 +43,7 @@ export default function DashboardPage() {
         <Box
           sx={{
             width: '100%',
-            maxWidth: 1040,
+            maxWidth: 1120,
             mx: 'auto',
             px: { xs: 2, sm: 3 }
           }}
@@ -90,9 +90,23 @@ export default function DashboardPage() {
           </Box>
 
           <Stack spacing={3}>
-            <DashboardInStoreMailsCard />
-
-            <DashboardHomeTournamentsCard />
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: '1fr',
+                  md: 'repeat(2, minmax(0, 1fr))'
+                },
+                gap: { xs: 2, md: 2.5 },
+                alignItems: 'stretch',
+                '& > :only-child': {
+                  gridColumn: { md: '1 / -1' }
+                }
+              }}
+            >
+              <DashboardInStoreMailsCard />
+              <DashboardHomeTournamentsCard />
+            </Box>
 
             <DashboardHomeDiscoverCard />
 

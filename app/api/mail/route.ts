@@ -20,6 +20,16 @@ import {
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
 import { validateMailStatusTransition } from '@/lib/mail-status-transitions'
+import {
+  listMailIdsForAdmin,
+  listMailsForAdmin,
+  MAIL_LIST_DEFAULT_LIMIT,
+  MAIL_LIST_IDS_MAX_LIMIT,
+  MAIL_LIST_MAX_LIMIT,
+  type MailAdminListFilters,
+  type MailListStageFilter
+} from '@/lib/mail-admin-list'
+import type { ElapsedBucketFilter } from '@/lib/mail-store-days'
 
 function pad3(n: number) {
   return String(n).padStart(3, '0')
@@ -94,10 +104,60 @@ async function findUserByRut(input: string) {
   return byDots ?? byNoDots ?? byCleaned
 }
 
-const MAIL_LIST_DEFAULT_LIMIT = 500
-const MAIL_LIST_MAX_LIMIT = 2000
+function parsePositiveInt(
+  raw: string | null,
+  fallback: number,
+  max: number
+): number {
+  if (raw === null || raw.trim() === '') return fallback
+  const n = Number.parseInt(raw, 10)
+  if (!Number.isFinite(n) || n <= 0) return fallback
+  return Math.min(n, max)
+}
 
-// GET - listar mails (staff)
+function parseStage(raw: string | null): MailListStageFilter | undefined {
+  if (
+    raw === 'all' ||
+    raw === 'pending' ||
+    raw === 'inStore' ||
+    raw === 'retired'
+  ) {
+    return raw
+  }
+  return undefined
+}
+
+function parseElapsed(raw: string | null): ElapsedBucketFilter | undefined {
+  if (
+    raw === 'all' ||
+    raw === 'green' ||
+    raw === 'yellow' ||
+    raw === 'orange' ||
+    raw === 'red'
+  ) {
+    return raw
+  }
+  return undefined
+}
+
+/** `fromUserIds=a,b` o repetidos `fromUserIds=a&fromUserIds=b`. `=` vacío → []. */
+function parseIdListParam(
+  searchParams: URLSearchParams,
+  key: string
+): string[] | null {
+  if (!searchParams.has(key)) return null
+  const values = searchParams.getAll(key)
+  const out: string[] = []
+  for (const raw of values) {
+    for (const part of raw.split(',')) {
+      const t = part.trim()
+      if (t) out.push(t)
+    }
+  }
+  return out
+}
+
+// GET - listar mails (staff) con paginación y filtros
 export async function GET(request: NextRequest) {
   try {
     const gate = await requireStoreStaffSession()
@@ -110,30 +170,57 @@ export async function GET(request: NextRequest) {
     ) as Record<string, unknown>
 
     const { searchParams } = new URL(request.url)
-    const limitRaw = searchParams.get('limit')
-    let limit = MAIL_LIST_DEFAULT_LIMIT
-    if (limitRaw !== null && limitRaw.trim() !== '') {
-      const n = Number.parseInt(limitRaw, 10)
-      if (Number.isFinite(n) && n > 0) {
-        limit = Math.min(n, MAIL_LIST_MAX_LIMIT)
-      }
+    const idsOnly =
+      searchParams.get('idsOnly') === '1' ||
+      searchParams.get('idsOnly') === 'true'
+
+    const filters: MailAdminListFilters = {
+      stage: parseStage(searchParams.get('stage')),
+      elapsed: parseElapsed(searchParams.get('elapsed')),
+      fromUserId: searchParams.get('fromUserId'),
+      fromUserIds: parseIdListParam(searchParams, 'fromUserIds'),
+      toUserId: searchParams.get('toUserId'),
+      toUserIds: parseIdListParam(searchParams, 'toUserIds'),
+      toRut: searchParams.get('toRut'),
+      toRuts: parseIdListParam(searchParams, 'toRuts'),
+      q: searchParams.get('q'),
+      fromQ: searchParams.get('fromQ'),
+      toQ: searchParams.get('toQ')
     }
 
-    const mails = await Mail.find({ ...scope })
-      .select(
-        'code storeId fromUserId toUserId toRut isRecived isRecivedInStore receivedInStoreAt observations createdAt updatedAt'
+    if (idsOnly) {
+      const limit = parsePositiveInt(
+        searchParams.get('limit'),
+        MAIL_LIST_IDS_MAX_LIMIT,
+        MAIL_LIST_IDS_MAX_LIMIT
       )
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .populate('fromUserId', 'name rut')
-      .populate('toUserId', 'name rut')
-      .lean()
+      const result = await listMailIdsForAdmin({
+        storeScope: scope,
+        filters,
+        limit
+      })
+      return NextResponse.json(result, { status: 200 })
+    }
 
-    return NextResponse.json({ mails, limit }, { status: 200 })
+    const limit = parsePositiveInt(
+      searchParams.get('limit'),
+      MAIL_LIST_DEFAULT_LIMIT,
+      MAIL_LIST_MAX_LIMIT
+    )
+    const page = parsePositiveInt(searchParams.get('page'), 1, 10_000)
+
+    const result = await listMailsForAdmin({
+      storeScope: scope,
+      filters,
+      page,
+      limit
+    })
+
+    return NextResponse.json(result, { status: 200 })
   } catch (error) {
-    console.error('Error al obtener productos:', error)
+    console.error('Error al obtener mails:', error)
     return NextResponse.json(
-      { error: 'Error al obtener productos' },
+      { error: 'Error al obtener mails' },
       { status: 500 }
     )
   }

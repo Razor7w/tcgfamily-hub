@@ -14,7 +14,11 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
-import { useTeamTournamentPointsRanking } from '@/hooks/useTeamTournamentPointsRanking'
+import PlayPokemonPointsLabel from '@/components/play-pokemon/PlayPokemonPointsLabel'
+import {
+  useTeamTournamentPointsRanking,
+  type TeamRankingMetric
+} from '@/hooks/useTeamTournamentPointsRanking'
 import type { TeamTournamentPointsRankingPeriod } from '@/lib/teams/tournament-points-ranking'
 
 type TeamTournamentPointsRankingSectionProps = {
@@ -33,12 +37,23 @@ export default function TeamTournamentPointsRankingSection({
   highlightTeamSlug,
   showIntro = true
 }: TeamTournamentPointsRankingSectionProps) {
+  const [metric, setMetric] = useState<TeamRankingMetric>('tournament')
   const [period, setPeriod] =
     useState<TeamTournamentPointsRankingPeriod>('month')
   const { data, isPending, isError, error, refetch } =
-    useTeamTournamentPointsRanking({ period })
+    useTeamTournamentPointsRanking({ period, metric })
 
-  const periodLabel = data?.periodLabel ?? (period === 'all' ? 'Histórico' : '')
+  const isChampionship = metric === 'championship'
+  const periodLabel =
+    data?.periodLabel ??
+    (isChampionship ? '' : period === 'all' ? 'Histórico' : '')
+
+  const title = isChampionship
+    ? 'Ranking de equipos · Championship Points'
+    : 'Ranking de equipos'
+  const description = isChampionship
+    ? 'Cada equipo suma el Championship Points del mejor miembro vinculado a Ranking Chile. Independiente de la tienda activa.'
+    : 'Suma de los 3 mejores jugadores por puntos en torneos oficiales (3 por victoria, 1 por empate). Independiente de la tienda activa.'
 
   return (
     <Stack spacing={2}>
@@ -46,44 +61,86 @@ export default function TeamTournamentPointsRankingSection({
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={1.5}
-          alignItems={{ sm: 'center' }}
+          alignItems={{ sm: 'flex-start' }}
           justifyContent="space-between"
         >
-          <Box>
+          <Box sx={{ minWidth: 0 }}>
             <Typography variant="h6" fontWeight={800} letterSpacing="-0.02em">
-              Ranking de equipos
+              {title}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Suma de los 3 mejores jugadores por puntos en torneos oficiales (3
-              por victoria, 1 por empate). Independiente de la tienda activa.
+              {description}
             </Typography>
           </Box>
-          <ToggleButtonGroup
-            exclusive
-            size="small"
-            value={period}
-            onChange={(_, value: TeamTournamentPointsRankingPeriod | null) => {
-              if (value) setPeriod(value)
-            }}
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1}
+            alignItems={{ xs: 'stretch', sm: 'center' }}
             sx={{ flexShrink: 0 }}
           >
-            <ToggleButton value="month">Este mes</ToggleButton>
-            <ToggleButton value="all">Histórico</ToggleButton>
-          </ToggleButtonGroup>
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              value={metric}
+              onChange={(_, value: TeamRankingMetric | null) => {
+                if (value) setMetric(value)
+              }}
+            >
+              <ToggleButton value="tournament">Torneos</ToggleButton>
+              <ToggleButton value="championship">CP</ToggleButton>
+            </ToggleButtonGroup>
+            {!isChampionship ? (
+              <ToggleButtonGroup
+                exclusive
+                size="small"
+                value={period}
+                onChange={(
+                  _,
+                  value: TeamTournamentPointsRankingPeriod | null
+                ) => {
+                  if (value) setPeriod(value)
+                }}
+              >
+                <ToggleButton value="month">Este mes</ToggleButton>
+                <ToggleButton value="all">Histórico</ToggleButton>
+              </ToggleButtonGroup>
+            ) : null}
+          </Stack>
         </Stack>
       ) : (
-        <Stack direction="row" justifyContent="flex-end">
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1}
+          justifyContent="flex-end"
+          alignItems={{ xs: 'stretch', sm: 'center' }}
+        >
           <ToggleButtonGroup
             exclusive
             size="small"
-            value={period}
-            onChange={(_, value: TeamTournamentPointsRankingPeriod | null) => {
-              if (value) setPeriod(value)
+            value={metric}
+            onChange={(_, value: TeamRankingMetric | null) => {
+              if (value) setMetric(value)
             }}
           >
-            <ToggleButton value="month">Este mes</ToggleButton>
-            <ToggleButton value="all">Histórico</ToggleButton>
+            <ToggleButton value="tournament">Torneos</ToggleButton>
+            <ToggleButton value="championship">CP</ToggleButton>
           </ToggleButtonGroup>
+          {!isChampionship ? (
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              value={period}
+              onChange={(
+                _,
+                value: TeamTournamentPointsRankingPeriod | null
+              ) => {
+                if (value) setPeriod(value)
+              }}
+            >
+              <ToggleButton value="month">Este mes</ToggleButton>
+              <ToggleButton value="all">Histórico</ToggleButton>
+            </ToggleButtonGroup>
+          ) : null}
         </Stack>
       )}
 
@@ -104,18 +161,27 @@ export default function TeamTournamentPointsRankingSection({
             Reintentar
           </Button>
         </Paper>
+      ) : data && !data.enabled && isChampionship ? (
+        <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3 }}>
+          <Typography variant="body2" color="text.secondary">
+            El ranking por Championship Points no está disponible por ahora.
+          </Typography>
+        </Paper>
       ) : data && data.rows.length === 0 ? (
         <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3 }}>
           <Typography variant="body2" color="text.secondary">
-            Aún no hay resultados en torneos oficiales
-            {period === 'month' && periodLabel ? ` en ${periodLabel}` : ''}.
+            {isChampionship
+              ? 'Aún no hay equipos con miembros que tengan Championship Points vinculados.'
+              : `Aún no hay resultados en torneos oficiales${
+                  period === 'month' && periodLabel ? ` en ${periodLabel}` : ''
+                }.`}
           </Typography>
         </Paper>
       ) : data ? (
         <Stack spacing={1.25}>
           {periodLabel ? (
             <Typography variant="caption" color="text.secondary">
-              Período: {periodLabel}
+              {isChampionship ? 'Temporada' : 'Período'}: {periodLabel}
             </Typography>
           ) : null}
           {data.rows.map(row => {
@@ -206,9 +272,18 @@ export default function TeamTournamentPointsRankingSection({
                       >
                         {row.totalPoints.toLocaleString('es-CL')}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        pts top 3
-                      </Typography>
+                      {isChampionship ? (
+                        <PlayPokemonPointsLabel
+                          kind="championship"
+                          label="CP mejor"
+                          iconSize={12}
+                          compact
+                        />
+                      ) : (
+                        <Typography variant="caption" color="text.secondary">
+                          pts top 3
+                        </Typography>
+                      )}
                     </Stack>
                   </Stack>
 
@@ -227,13 +302,15 @@ export default function TeamTournamentPointsRankingSection({
                             noWrap
                           >
                             {index + 1}. {member.displayName}
+                            {isChampionship && index === 0 ? ' · mejor' : ''}
                           </Typography>
                           <Typography
                             variant="body2"
                             fontWeight={600}
                             sx={{ fontVariantNumeric: 'tabular-nums' }}
                           >
-                            {member.points.toLocaleString('es-CL')} pts
+                            {member.points.toLocaleString('es-CL')}{' '}
+                            {isChampionship ? 'CP' : 'pts'}
                           </Typography>
                         </Stack>
                       ))}

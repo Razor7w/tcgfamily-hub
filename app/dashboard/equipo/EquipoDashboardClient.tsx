@@ -504,7 +504,7 @@ export default function EquipoDashboardClient() {
                           />
                         </Paper>
 
-                        {manage.viewer.isCaptain ? (
+                        {manage.viewer.canManage ? (
                           <TeamBrandingEditor
                             teamId={manage.team.id}
                             teamSlug={teamSlug}
