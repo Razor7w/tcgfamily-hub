@@ -83,6 +83,8 @@ function mailUserId(ref: { _id: string } | string | null | undefined): string {
 const PAGE_SIZE = 10
 /** Texto libre en autocomplete: no filtrar con 1 carácter (evita spam de requests). */
 const FREE_TEXT_MIN_CHARS = 2
+const EMPTY_FROM_USERS: FilterFromUser[] = []
+const EMPTY_TO_RECIPIENTS: FilterToRecipient[] = []
 
 function mailStatusAccentColor(
   mail: Pick<Mail, 'isRecived' | 'isRecivedInStore'>,
@@ -165,8 +167,8 @@ export default function MailsPage() {
   const deleteMail = useDeleteMail()
   const createUser = useCreateUser()
 
-  const usersFromMails = filterOptions?.fromUsers ?? []
-  const toRecipientOptions = filterOptions?.toRecipients ?? []
+  const usersFromMails = filterOptions?.fromUsers ?? EMPTY_FROM_USERS
+  const toRecipientOptions = filterOptions?.toRecipients ?? EMPTY_TO_RECIPIENTS
 
   /** IDs de remitente: selección exacta o texto libre contra opciones cargadas. */
   const resolvedFromUserIds = useMemo((): string[] | null => {
