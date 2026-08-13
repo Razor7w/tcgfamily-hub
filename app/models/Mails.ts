@@ -13,6 +13,8 @@ export interface IMail extends Document {
   /** Momento en que la tienda marcó como recibido en tienda (ancla para días esperando retiro). */
   receivedInStoreAt?: Date | null
   observations?: string
+  /** Teléfono de contacto del envío (opcional). */
+  contactPhone?: string
 }
 
 const MailSchema = new Schema<IMail>(
@@ -39,7 +41,8 @@ const MailSchema = new Schema<IMail>(
     isRecived: { type: Boolean, default: false, required: true },
     isRecivedInStore: { type: Boolean, default: false, required: true },
     receivedInStoreAt: { type: Date, default: undefined },
-    observations: { type: String, default: '' }
+    observations: { type: String, default: '' },
+    contactPhone: { type: String, default: '' }
   },
   {
     timestamps: true,

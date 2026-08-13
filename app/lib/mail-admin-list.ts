@@ -37,11 +37,76 @@ export type MailAdminListFilters = {
 export const MAIL_LIST_DEFAULT_LIMIT = 20
 export const MAIL_LIST_MAX_LIMIT = 100
 export const MAIL_LIST_IDS_MAX_LIMIT = 2000
+/** Tope de filas en GET /api/mail/export (más recientes primero). */
+export const MAIL_EXPORT_MAX_LIMIT = 10_000
+
+const MAIL_EXPORT_USER_SELECT = 'name rut email phone'
 
 const MAIL_LIST_SELECT =
-  'code storeId fromUserId toUserId toRut isRecived isRecivedInStore receivedInStoreAt observations createdAt updatedAt'
+  'code storeId fromUserId toUserId toRut isRecived isRecivedInStore receivedInStoreAt observations contactPhone createdAt updatedAt'
 
 const DAY_MS = 24 * 60 * 60 * 1000
+
+function parseStage(raw: string | null): MailListStageFilter | undefined {
+  if (
+    raw === 'all' ||
+    raw === 'pending' ||
+    raw === 'inStore' ||
+    raw === 'retired'
+  ) {
+    return raw
+  }
+  return undefined
+}
+
+function parseElapsed(raw: string | null): ElapsedBucketFilter | undefined {
+  if (
+    raw === 'all' ||
+    raw === 'green' ||
+    raw === 'yellow' ||
+    raw === 'orange' ||
+    raw === 'red'
+  ) {
+    return raw
+  }
+  return undefined
+}
+
+/** `fromUserIds=a,b` o repetidos. `=` vacío → []. Ausente → null. */
+function parseIdListParam(
+  searchParams: URLSearchParams,
+  key: string
+): string[] | null {
+  if (!searchParams.has(key)) return null
+  const values = searchParams.getAll(key)
+  const out: string[] = []
+  for (const raw of values) {
+    for (const part of raw.split(',')) {
+      const t = part.trim()
+      if (t) out.push(t)
+    }
+  }
+  return out
+}
+
+/** Filtros del listado staff desde query string (listado, IDs e export CSV). */
+export function parseMailAdminListFiltersFromSearchParams(
+  searchParams: URLSearchParams
+): MailAdminListFilters {
+  return {
+    stage: parseStage(searchParams.get('stage')),
+    elapsed: parseElapsed(searchParams.get('elapsed')),
+    fromUserId: searchParams.get('fromUserId'),
+    fromUserIds: parseIdListParam(searchParams, 'fromUserIds'),
+    toUserId: searchParams.get('toUserId'),
+    toUserIds: parseIdListParam(searchParams, 'toUserIds'),
+    toRut: searchParams.get('toRut'),
+    toRuts: parseIdListParam(searchParams, 'toRuts'),
+    q: searchParams.get('q'),
+    fromQ: searchParams.get('fromQ'),
+    toQ: searchParams.get('toQ')
+  }
+}
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -505,6 +570,46 @@ export async function listMailIdsForAdmin(options: {
   return {
     ids: rows.map(r => String(r._id)),
     total
+  }
+}
+
+export type MailAdminExportResult = {
+  mails: unknown[]
+  total: number
+  truncated: boolean
+}
+
+/** Listado completo (tope MAIL_EXPORT_MAX_LIMIT) con datos de usuario para CSV. */
+export async function listMailsForAdminExport(options: {
+  storeScope: Record<string, unknown>
+  filters: MailAdminListFilters
+  limit?: number
+}): Promise<MailAdminExportResult> {
+  const limit = Math.min(
+    MAIL_EXPORT_MAX_LIMIT,
+    Math.max(1, options.limit ?? MAIL_EXPORT_MAX_LIMIT)
+  )
+  const { filter: mongoFilter } = await buildMailAdminListMongoFilter(
+    options.storeScope,
+    options.filters
+  )
+  if (!mongoFilter) return { mails: [], total: 0, truncated: false }
+
+  const [total, mails] = await Promise.all([
+    Mail.countDocuments(mongoFilter),
+    Mail.find(mongoFilter)
+      .select(MAIL_LIST_SELECT)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate('fromUserId', MAIL_EXPORT_USER_SELECT)
+      .populate('toUserId', MAIL_EXPORT_USER_SELECT)
+      .lean()
+  ])
+
+  return {
+    mails,
+    total,
+    truncated: total > mails.length
   }
 }
 

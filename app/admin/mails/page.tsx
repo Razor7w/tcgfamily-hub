@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import Container from '@mui/material/Container'
@@ -28,6 +28,7 @@ import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead'
 import MarkEmailUnreadIcon from '@mui/icons-material/MarkEmailUnread'
 import StorefrontIcon from '@mui/icons-material/Storefront'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
+import FileDownloadIcon from '@mui/icons-material/FileDownload'
 import Tooltip from '@mui/material/Tooltip'
 import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
@@ -42,12 +43,15 @@ import {
   useBulkWithdrawMails,
   useBulkReceiveInStoreMails,
   useDeleteMail,
+  buildMailsQueryString,
   type Mail,
   type CreateMailData,
   type UpdateMailData
 } from '@/hooks/useMails'
+import { parseContentDispositionFilename } from '@/lib/mail-csv-export'
 import { useCreateUser, type CreateUserData } from '@/hooks/useUsers'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
+import { MAIL_CONTACT_PHONE_MAX } from '@/lib/mail-contact-phone'
 import { getMailStatusChip } from '@/lib/mail-status'
 import {
   canMarkMailWithdrawn,
@@ -104,12 +108,13 @@ export default function MailsPage() {
     toUserId: '',
     isRecived: false,
     isRecivedInStore: false,
-    observations: ''
+    observations: '',
+    contactPhone: ''
   })
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
-    severity: 'success' as 'success' | 'error'
+    severity: 'success' as 'success' | 'error' | 'warning'
   })
   const [addUserFor, setAddUserFor] = useState<'from' | 'to' | null>(null)
   const [newUserForm, setNewUserForm] = useState<{
@@ -139,6 +144,7 @@ export default function MailsPage() {
   const [debouncedSearchId, setDebouncedSearchId] = useState('')
   const [debouncedFromInput, setDebouncedFromInput] = useState('')
   const [debouncedToInput, setDebouncedToInput] = useState('')
+  const [exportingCsv, setExportingCsv] = useState(false)
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearchId(searchId.trim()), 320)
@@ -343,6 +349,63 @@ export default function MailsPage() {
     bulkWithdraw.isPending ||
     bulkReceiveInStore.isPending
 
+  const handleExportCsv = useCallback(async () => {
+    if (exportingCsv || total === 0) return
+    setExportingCsv(true)
+    try {
+      const qs = buildMailsQueryString({
+        stage: filterStage,
+        elapsed: filterElapsed,
+        fromUserIds: resolvedFromUserIds,
+        toUserIds: resolvedToParticipants.toUserIds,
+        toRuts: resolvedToParticipants.toRuts,
+        q: debouncedSearchId
+      })
+      const response = await fetch(`/api/mail/export?${qs}`)
+      if (!response.ok) {
+        throw new Error('Error al exportar correos')
+      }
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download =
+        parseContentDispositionFilename(
+          response.headers.get('Content-Disposition')
+        ) ?? 'correos.csv'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      const exported = response.headers.get('X-Mail-Export-Count') ?? ''
+      const truncated = response.headers.get('X-Mail-Export-Truncated') === '1'
+      setSnackbar({
+        open: true,
+        message: truncated
+          ? `CSV con los ${exported} correos más recientes (límite de exportación).`
+          : `CSV descargado (${exported || total} correos).`,
+        severity: truncated ? 'warning' : 'success'
+      })
+    } catch {
+      setSnackbar({
+        open: true,
+        message: 'No se pudo exportar el CSV',
+        severity: 'error'
+      })
+    } finally {
+      setExportingCsv(false)
+    }
+  }, [
+    exportingCsv,
+    total,
+    filterStage,
+    filterElapsed,
+    resolvedFromUserIds,
+    resolvedToParticipants.toUserIds,
+    resolvedToParticipants.toRuts,
+    debouncedSearchId
+  ])
+
   const fromIdTrim = formData.fromUserId.trim()
   const toIdTrim = formData.toUserId.trim()
   const fromIdInvalid =
@@ -359,7 +422,8 @@ export default function MailsPage() {
         toUserId: toId,
         isRecived: mail.isRecived,
         isRecivedInStore: mail.isRecivedInStore ?? false,
-        observations: mail.observations ?? ''
+        observations: mail.observations ?? '',
+        contactPhone: mail.contactPhone ?? ''
       })
     } else {
       setEditingMail(null)
@@ -368,7 +432,8 @@ export default function MailsPage() {
         toUserId: '',
         isRecived: false,
         isRecivedInStore: false,
-        observations: ''
+        observations: '',
+        contactPhone: ''
       })
     }
     setOpenDialog(true)
@@ -382,7 +447,8 @@ export default function MailsPage() {
       toUserId: '',
       isRecived: false,
       isRecivedInStore: false,
-      observations: ''
+      observations: '',
+      contactPhone: ''
     })
     setAddUserFor(null)
     setNewUserForm({ name: '', email: '', phone: '', rut: '' })
@@ -495,7 +561,8 @@ export default function MailsPage() {
           toUserId: formData.toUserId.trim(),
           isRecived: formData.isRecived,
           isRecivedInStore: formData.isRecivedInStore,
-          observations: formData.observations
+          observations: formData.observations,
+          contactPhone: formData.contactPhone
         }
         await updateMail.mutateAsync({
           mailId: editingMail._id,
@@ -512,7 +579,8 @@ export default function MailsPage() {
           toUserId: formData.toUserId.trim(),
           isRecived: formData.isRecived,
           isRecivedInStore: formData.isRecivedInStore,
-          observations: formData.observations
+          observations: formData.observations,
+          contactPhone: formData.contactPhone
         })
         setSnackbar({
           open: true,
@@ -692,6 +760,39 @@ export default function MailsPage() {
               </Typography>
             </Box>
           </AdminStorePageHeading>
+          <Tooltip
+            title={
+              total === 0
+                ? 'No hay correos para exportar con estos filtros'
+                : 'Descarga nombre, RUT, fechas, estado y observaciones (filtros actuales)'
+            }
+          >
+            <span>
+              <Button
+                variant="outlined"
+                startIcon={
+                  exportingCsv ? (
+                    <CircularProgress color="inherit" size={16} />
+                  ) : (
+                    <FileDownloadIcon />
+                  )
+                }
+                onClick={() => void handleExportCsv()}
+                disabled={exportingCsv || total === 0 || isLoading}
+                sx={{
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap',
+                  '&:active': { transform: 'scale(0.98)' }
+                }}
+              >
+                {exportingCsv
+                  ? 'Exportando…'
+                  : total > 0
+                    ? `Exportar CSV (${total})`
+                    : 'Exportar CSV'}
+              </Button>
+            </span>
+          </Tooltip>
         </Stack>
 
         <Paper
@@ -1177,6 +1278,21 @@ export default function MailsPage() {
                             ? `${to.name ?? '-'} (${to.rut ?? '-'})`
                             : `${mail.toRut} (No registrado en sistema)`}
                         </Typography>
+                        {mail.contactPhone?.trim() ? (
+                          <Typography variant="body2">
+                            <Box
+                              component="span"
+                              sx={{
+                                fontWeight: 700,
+                                color: 'text.secondary',
+                                mr: 0.5
+                              }}
+                            >
+                              Contacto:
+                            </Box>
+                            {mail.contactPhone.trim()}
+                          </Typography>
+                        ) : null}
                       </Stack>
                       <Typography
                         variant="overline"
@@ -1848,6 +1964,28 @@ export default function MailsPage() {
                   />
                 }
                 label="Recibido en tienda (envía un email al receptor con cuenta)"
+              />
+              <TextField
+                label="Número de contacto"
+                placeholder="+56 9 1234 5678"
+                fullWidth
+                size="small"
+                value={formData.contactPhone ?? ''}
+                onChange={e =>
+                  setFormData(prev => ({
+                    ...prev,
+                    contactPhone: e.target.value.slice(
+                      0,
+                      MAIL_CONTACT_PHONE_MAX
+                    )
+                  }))
+                }
+                helperText="Opcional. Teléfono para coordinar el envío."
+                inputProps={{
+                  maxLength: MAIL_CONTACT_PHONE_MAX,
+                  inputMode: 'tel',
+                  autoComplete: 'tel'
+                }}
               />
               <TextField
                 label="Observaciones"
