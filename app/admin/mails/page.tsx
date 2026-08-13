@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import Container from '@mui/material/Container'
@@ -28,6 +28,7 @@ import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead'
 import MarkEmailUnreadIcon from '@mui/icons-material/MarkEmailUnread'
 import StorefrontIcon from '@mui/icons-material/Storefront'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
+import FileDownloadIcon from '@mui/icons-material/FileDownload'
 import Tooltip from '@mui/material/Tooltip'
 import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
@@ -42,10 +43,12 @@ import {
   useBulkWithdrawMails,
   useBulkReceiveInStoreMails,
   useDeleteMail,
+  buildMailsQueryString,
   type Mail,
   type CreateMailData,
   type UpdateMailData
 } from '@/hooks/useMails'
+import { parseContentDispositionFilename } from '@/lib/mail-csv-export'
 import { useCreateUser, type CreateUserData } from '@/hooks/useUsers'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
 import { getMailStatusChip } from '@/lib/mail-status'
@@ -109,7 +112,7 @@ export default function MailsPage() {
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
-    severity: 'success' as 'success' | 'error'
+    severity: 'success' as 'success' | 'error' | 'warning'
   })
   const [addUserFor, setAddUserFor] = useState<'from' | 'to' | null>(null)
   const [newUserForm, setNewUserForm] = useState<{
@@ -139,6 +142,7 @@ export default function MailsPage() {
   const [debouncedSearchId, setDebouncedSearchId] = useState('')
   const [debouncedFromInput, setDebouncedFromInput] = useState('')
   const [debouncedToInput, setDebouncedToInput] = useState('')
+  const [exportingCsv, setExportingCsv] = useState(false)
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearchId(searchId.trim()), 320)
@@ -342,6 +346,63 @@ export default function MailsPage() {
     updateMail.isPending ||
     bulkWithdraw.isPending ||
     bulkReceiveInStore.isPending
+
+  const handleExportCsv = useCallback(async () => {
+    if (exportingCsv || total === 0) return
+    setExportingCsv(true)
+    try {
+      const qs = buildMailsQueryString({
+        stage: filterStage,
+        elapsed: filterElapsed,
+        fromUserIds: resolvedFromUserIds,
+        toUserIds: resolvedToParticipants.toUserIds,
+        toRuts: resolvedToParticipants.toRuts,
+        q: debouncedSearchId
+      })
+      const response = await fetch(`/api/mail/export?${qs}`)
+      if (!response.ok) {
+        throw new Error('Error al exportar correos')
+      }
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download =
+        parseContentDispositionFilename(
+          response.headers.get('Content-Disposition')
+        ) ?? 'correos.csv'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      const exported = response.headers.get('X-Mail-Export-Count') ?? ''
+      const truncated = response.headers.get('X-Mail-Export-Truncated') === '1'
+      setSnackbar({
+        open: true,
+        message: truncated
+          ? `CSV con los ${exported} correos más recientes (límite de exportación).`
+          : `CSV descargado (${exported || total} correos).`,
+        severity: truncated ? 'warning' : 'success'
+      })
+    } catch {
+      setSnackbar({
+        open: true,
+        message: 'No se pudo exportar el CSV',
+        severity: 'error'
+      })
+    } finally {
+      setExportingCsv(false)
+    }
+  }, [
+    exportingCsv,
+    total,
+    filterStage,
+    filterElapsed,
+    resolvedFromUserIds,
+    resolvedToParticipants.toUserIds,
+    resolvedToParticipants.toRuts,
+    debouncedSearchId
+  ])
 
   const fromIdTrim = formData.fromUserId.trim()
   const toIdTrim = formData.toUserId.trim()
@@ -692,6 +753,39 @@ export default function MailsPage() {
               </Typography>
             </Box>
           </AdminStorePageHeading>
+          <Tooltip
+            title={
+              total === 0
+                ? 'No hay correos para exportar con estos filtros'
+                : 'Descarga nombre, RUT, fechas, estado y observaciones (filtros actuales)'
+            }
+          >
+            <span>
+              <Button
+                variant="outlined"
+                startIcon={
+                  exportingCsv ? (
+                    <CircularProgress color="inherit" size={16} />
+                  ) : (
+                    <FileDownloadIcon />
+                  )
+                }
+                onClick={() => void handleExportCsv()}
+                disabled={exportingCsv || total === 0 || isLoading}
+                sx={{
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap',
+                  '&:active': { transform: 'scale(0.98)' }
+                }}
+              >
+                {exportingCsv
+                  ? 'Exportando…'
+                  : total > 0
+                    ? `Exportar CSV (${total})`
+                    : 'Exportar CSV'}
+              </Button>
+            </span>
+          </Tooltip>
         </Stack>
 
         <Paper

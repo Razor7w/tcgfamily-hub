@@ -26,10 +26,8 @@ import {
   MAIL_LIST_DEFAULT_LIMIT,
   MAIL_LIST_IDS_MAX_LIMIT,
   MAIL_LIST_MAX_LIMIT,
-  type MailAdminListFilters,
-  type MailListStageFilter
+  parseMailAdminListFiltersFromSearchParams
 } from '@/lib/mail-admin-list'
-import type { ElapsedBucketFilter } from '@/lib/mail-store-days'
 
 function pad3(n: number) {
   return String(n).padStart(3, '0')
@@ -115,48 +113,6 @@ function parsePositiveInt(
   return Math.min(n, max)
 }
 
-function parseStage(raw: string | null): MailListStageFilter | undefined {
-  if (
-    raw === 'all' ||
-    raw === 'pending' ||
-    raw === 'inStore' ||
-    raw === 'retired'
-  ) {
-    return raw
-  }
-  return undefined
-}
-
-function parseElapsed(raw: string | null): ElapsedBucketFilter | undefined {
-  if (
-    raw === 'all' ||
-    raw === 'green' ||
-    raw === 'yellow' ||
-    raw === 'orange' ||
-    raw === 'red'
-  ) {
-    return raw
-  }
-  return undefined
-}
-
-/** `fromUserIds=a,b` o repetidos `fromUserIds=a&fromUserIds=b`. `=` vacío → []. */
-function parseIdListParam(
-  searchParams: URLSearchParams,
-  key: string
-): string[] | null {
-  if (!searchParams.has(key)) return null
-  const values = searchParams.getAll(key)
-  const out: string[] = []
-  for (const raw of values) {
-    for (const part of raw.split(',')) {
-      const t = part.trim()
-      if (t) out.push(t)
-    }
-  }
-  return out
-}
-
 // GET - listar mails (staff) con paginación y filtros
 export async function GET(request: NextRequest) {
   try {
@@ -174,19 +130,7 @@ export async function GET(request: NextRequest) {
       searchParams.get('idsOnly') === '1' ||
       searchParams.get('idsOnly') === 'true'
 
-    const filters: MailAdminListFilters = {
-      stage: parseStage(searchParams.get('stage')),
-      elapsed: parseElapsed(searchParams.get('elapsed')),
-      fromUserId: searchParams.get('fromUserId'),
-      fromUserIds: parseIdListParam(searchParams, 'fromUserIds'),
-      toUserId: searchParams.get('toUserId'),
-      toUserIds: parseIdListParam(searchParams, 'toUserIds'),
-      toRut: searchParams.get('toRut'),
-      toRuts: parseIdListParam(searchParams, 'toRuts'),
-      q: searchParams.get('q'),
-      fromQ: searchParams.get('fromQ'),
-      toQ: searchParams.get('toQ')
-    }
+    const filters = parseMailAdminListFiltersFromSearchParams(searchParams)
 
     if (idsOnly) {
       const limit = parsePositiveInt(

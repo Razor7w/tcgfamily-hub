@@ -137,7 +137,7 @@ function appendIdList(
   sp.set(key, ids.join(','))
 }
 
-function buildMailsQueryString(params: UseMailsParams = {}): string {
+export function buildMailsQueryString(params: UseMailsParams = {}): string {
   const sp = new URLSearchParams()
   if (params.page != null) sp.set('page', String(params.page))
   if (params.limit != null) sp.set('limit', String(params.limit))
