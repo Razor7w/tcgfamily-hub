@@ -43,7 +43,7 @@ export const MAIL_EXPORT_MAX_LIMIT = 10_000
 const MAIL_EXPORT_USER_SELECT = 'name rut email phone'
 
 const MAIL_LIST_SELECT =
-  'code storeId fromUserId toUserId toRut isRecived isRecivedInStore receivedInStoreAt observations createdAt updatedAt'
+  'code storeId fromUserId toUserId toRut isRecived isRecivedInStore receivedInStoreAt observations contactPhone createdAt updatedAt'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 

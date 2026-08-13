@@ -26,6 +26,7 @@ import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
 import { useMeStores, type MeStoreRow } from '@/hooks/useMeStores'
 import { useMailRegisterQuota, useRegisterMail } from '@/hooks/useMails'
 import { MAIL_REGISTER_DAILY_LIMIT } from '@/lib/mail-register-constants'
+import { MAIL_CONTACT_PHONE_MAX } from '@/lib/mail-contact-phone'
 
 const OBS_MAX = 2000
 
@@ -114,6 +115,7 @@ export default function RegisterMailDialog({
 
   const [rut, setRut] = useState('')
   const [observations, setObservations] = useState('')
+  const [contactPhone, setContactPhone] = useState('')
   const [submitAttempted, setSubmitAttempted] = useState(false)
 
   const [helpAnchor, setHelpAnchor] = useState<HTMLElement | null>(null)
@@ -122,6 +124,7 @@ export default function RegisterMailDialog({
     setHelpAnchor(null)
     setRut('')
     setObservations('')
+    setContactPhone('')
     setSubmitAttempted(false)
     setUserStore(null)
     registerMail.reset()
@@ -143,6 +146,7 @@ export default function RegisterMailDialog({
     await registerMail.mutateAsync({
       toRut: normalizeRutForApi(rut),
       observations: observations.trim() || undefined,
+      contactPhone: contactPhone.trim() || undefined,
       mode: 'onlyReceptor',
       storeId: selectedStoreId
     })
@@ -252,6 +256,23 @@ export default function RegisterMailDialog({
         autoComplete="off"
         disabled={fieldsDisabled}
         inputProps={{ maxLength: 20, inputMode: 'text' }}
+      />
+
+      <TextField
+        label="Número de contacto (opcional)"
+        placeholder="+56 9 1234 5678"
+        value={contactPhone}
+        onChange={e =>
+          setContactPhone(e.target.value.slice(0, MAIL_CONTACT_PHONE_MAX))
+        }
+        helperText="Teléfono para coordinar el envío."
+        size="small"
+        autoComplete="tel"
+        disabled={fieldsDisabled}
+        inputProps={{
+          maxLength: MAIL_CONTACT_PHONE_MAX,
+          inputMode: 'tel'
+        }}
       />
 
       <TextField

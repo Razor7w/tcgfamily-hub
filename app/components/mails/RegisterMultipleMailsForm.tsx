@@ -18,6 +18,7 @@ import { clean } from 'rut.js'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
 import { useMailRegisterQuota, type MailRegisterQuota } from '@/hooks/useMails'
 import { useDashboardStoreQueryKey } from '@/hooks/use-dashboard-store-key'
+import { MAIL_CONTACT_PHONE_MAX } from '@/lib/mail-contact-phone'
 
 const OBS_MAX = 2000
 /** Máximo de filas en el formulario (la cuota diaria puede ser menor). */
@@ -38,6 +39,7 @@ export type MailRow = {
   id: string
   rut: string
   observations: string
+  contactPhone: string
 }
 
 function normalizeRutForApi(input: string) {
@@ -96,7 +98,7 @@ export default function RegisterMultipleMailsForm() {
   }, [quotaLoading, remaining])
 
   const [rows, setRows] = useState<MailRow[]>([
-    { id: crypto.randomUUID(), rut: '', observations: '' }
+    { id: crypto.randomUUID(), rut: '', observations: '', contactPhone: '' }
   ])
   const [submitSummary, setSubmitSummary] = useState<{
     ok: number
@@ -132,7 +134,12 @@ export default function RegisterMultipleMailsForm() {
         if (canGrow) {
           return [
             ...updated,
-            { id: crypto.randomUUID(), rut: '', observations: '' }
+            {
+              id: crypto.randomUUID(),
+              rut: '',
+              observations: '',
+              contactPhone: ''
+            }
           ]
         }
         return updated
@@ -213,6 +220,7 @@ export default function RegisterMultipleMailsForm() {
           body: JSON.stringify({
             toRut: normalizeRutForApi(row.rut),
             observations: row.observations.trim() || undefined,
+            contactPhone: row.contactPhone.trim() || undefined,
             mode: 'onlyReceptor'
           })
         })
@@ -385,6 +393,36 @@ export default function RegisterMultipleMailsForm() {
                   autoComplete="off"
                   disabled={quotaBlocked || quotaLoading || submittingBatch}
                   inputProps={{ maxLength: 20, inputMode: 'text' }}
+                />
+
+                <TextField
+                  label="Número de contacto (opcional)"
+                  placeholder="+56 9 1234 5678"
+                  value={row.contactPhone}
+                  onChange={e =>
+                    setRows(prev =>
+                      prev.map(r =>
+                        r.id === row.id
+                          ? {
+                              ...r,
+                              contactPhone: e.target.value.slice(
+                                0,
+                                MAIL_CONTACT_PHONE_MAX
+                              )
+                            }
+                          : r
+                      )
+                    )
+                  }
+                  size="small"
+                  fullWidth
+                  autoComplete="tel"
+                  disabled={quotaBlocked || quotaLoading || submittingBatch}
+                  helperText="Teléfono para coordinar el envío."
+                  inputProps={{
+                    maxLength: MAIL_CONTACT_PHONE_MAX,
+                    inputMode: 'tel'
+                  }}
                 />
 
                 <TextField

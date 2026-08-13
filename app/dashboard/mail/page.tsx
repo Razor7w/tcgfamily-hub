@@ -437,6 +437,12 @@ function MailDashboardCard({
           >
             <MailDashboardDataRow label="De" value={deText} />
             <MailDashboardDataRow label="Para" value={paraText} />
+            {mail.contactPhone?.trim() ? (
+              <MailDashboardDataRow
+                label="Contacto"
+                value={mail.contactPhone.trim()}
+              />
+            ) : null}
           </Stack>
 
           <Paper

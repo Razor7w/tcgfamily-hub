@@ -15,6 +15,7 @@ import {
   validateMailStatusTransition
 } from '@/lib/mail-status-transitions'
 import mongoose from 'mongoose'
+import { normalizeMailContactPhone } from '@/lib/mail-contact-phone'
 
 function parseMailId(id: string) {
   try {
@@ -138,8 +139,14 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { fromUserId, toUserId, isRecived, isRecivedInStore, observations } =
-      body
+    const {
+      fromUserId,
+      toUserId,
+      isRecived,
+      isRecivedInStore,
+      observations,
+      contactPhone
+    } = body
 
     const nextFrom = fromUserId ?? existing.fromUserId?.toString()
     const nextTo = toUserId ?? existing.toUserId?.toString()
@@ -198,6 +205,9 @@ export async function PUT(
       existing.receivedInStoreAt = null
     }
     if (observations !== undefined) existing.observations = observations ?? ''
+    if (contactPhone !== undefined) {
+      existing.contactPhone = normalizeMailContactPhone(contactPhone)
+    }
 
     const becameReadyInStore =
       nextStatus.isRecivedInStore && !wasReceivedInStore

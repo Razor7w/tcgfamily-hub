@@ -51,6 +51,7 @@ import {
 import { parseContentDispositionFilename } from '@/lib/mail-csv-export'
 import { useCreateUser, type CreateUserData } from '@/hooks/useUsers'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
+import { MAIL_CONTACT_PHONE_MAX } from '@/lib/mail-contact-phone'
 import { getMailStatusChip } from '@/lib/mail-status'
 import {
   canMarkMailWithdrawn,
@@ -107,7 +108,8 @@ export default function MailsPage() {
     toUserId: '',
     isRecived: false,
     isRecivedInStore: false,
-    observations: ''
+    observations: '',
+    contactPhone: ''
   })
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -420,7 +422,8 @@ export default function MailsPage() {
         toUserId: toId,
         isRecived: mail.isRecived,
         isRecivedInStore: mail.isRecivedInStore ?? false,
-        observations: mail.observations ?? ''
+        observations: mail.observations ?? '',
+        contactPhone: mail.contactPhone ?? ''
       })
     } else {
       setEditingMail(null)
@@ -429,7 +432,8 @@ export default function MailsPage() {
         toUserId: '',
         isRecived: false,
         isRecivedInStore: false,
-        observations: ''
+        observations: '',
+        contactPhone: ''
       })
     }
     setOpenDialog(true)
@@ -443,7 +447,8 @@ export default function MailsPage() {
       toUserId: '',
       isRecived: false,
       isRecivedInStore: false,
-      observations: ''
+      observations: '',
+      contactPhone: ''
     })
     setAddUserFor(null)
     setNewUserForm({ name: '', email: '', phone: '', rut: '' })
@@ -556,7 +561,8 @@ export default function MailsPage() {
           toUserId: formData.toUserId.trim(),
           isRecived: formData.isRecived,
           isRecivedInStore: formData.isRecivedInStore,
-          observations: formData.observations
+          observations: formData.observations,
+          contactPhone: formData.contactPhone
         }
         await updateMail.mutateAsync({
           mailId: editingMail._id,
@@ -573,7 +579,8 @@ export default function MailsPage() {
           toUserId: formData.toUserId.trim(),
           isRecived: formData.isRecived,
           isRecivedInStore: formData.isRecivedInStore,
-          observations: formData.observations
+          observations: formData.observations,
+          contactPhone: formData.contactPhone
         })
         setSnackbar({
           open: true,
@@ -1271,6 +1278,21 @@ export default function MailsPage() {
                             ? `${to.name ?? '-'} (${to.rut ?? '-'})`
                             : `${mail.toRut} (No registrado en sistema)`}
                         </Typography>
+                        {mail.contactPhone?.trim() ? (
+                          <Typography variant="body2">
+                            <Box
+                              component="span"
+                              sx={{
+                                fontWeight: 700,
+                                color: 'text.secondary',
+                                mr: 0.5
+                              }}
+                            >
+                              Contacto:
+                            </Box>
+                            {mail.contactPhone.trim()}
+                          </Typography>
+                        ) : null}
                       </Stack>
                       <Typography
                         variant="overline"
@@ -1942,6 +1964,28 @@ export default function MailsPage() {
                   />
                 }
                 label="Recibido en tienda (envía un email al receptor con cuenta)"
+              />
+              <TextField
+                label="Número de contacto"
+                placeholder="+56 9 1234 5678"
+                fullWidth
+                size="small"
+                value={formData.contactPhone ?? ''}
+                onChange={e =>
+                  setFormData(prev => ({
+                    ...prev,
+                    contactPhone: e.target.value.slice(
+                      0,
+                      MAIL_CONTACT_PHONE_MAX
+                    )
+                  }))
+                }
+                helperText="Opcional. Teléfono para coordinar el envío."
+                inputProps={{
+                  maxLength: MAIL_CONTACT_PHONE_MAX,
+                  inputMode: 'tel',
+                  autoComplete: 'tel'
+                }}
               />
               <TextField
                 label="Observaciones"

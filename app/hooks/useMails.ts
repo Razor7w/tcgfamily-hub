@@ -34,6 +34,8 @@ export interface Mail {
   /** ISO cuando la tienda confirmó ingreso en tienda. */
   receivedInStoreAt?: string | null
   observations?: string
+  /** Teléfono de contacto del envío (opcional). */
+  contactPhone?: string
   createdAt: string
   updatedAt: string
 }
@@ -45,12 +47,15 @@ export interface CreateMailData {
   isRecived?: boolean
   isRecivedInStore?: boolean
   observations?: string
+  contactPhone?: string
 }
 
 export interface RegisterMailData {
   toRut: string
   /** Comentario u observación (opcional). */
   observations?: string
+  /** Teléfono de contacto del envío (opcional). */
+  contactPhone?: string
   /** Tienda donde se registra el envío; si falta, usa la activa en sesión. */
   storeId?: string
   /**
@@ -75,6 +80,7 @@ export interface UpdateMailData {
   isRecived?: boolean
   isRecivedInStore?: boolean
   observations?: string
+  contactPhone?: string
 }
 
 export type MailListStageFilter = 'all' | 'pending' | 'inStore' | 'retired'
@@ -488,6 +494,9 @@ export function useUpdateMail() {
         }
         if (data.observations !== undefined) {
           next.observations = data.observations ?? ''
+        }
+        if (data.contactPhone !== undefined) {
+          next.contactPhone = data.contactPhone ?? ''
         }
         if (data.toRut !== undefined) next.toRut = data.toRut
         return next

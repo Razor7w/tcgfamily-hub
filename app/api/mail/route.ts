@@ -28,6 +28,7 @@ import {
   MAIL_LIST_MAX_LIMIT,
   parseMailAdminListFiltersFromSearchParams
 } from '@/lib/mail-admin-list'
+import { normalizeMailContactPhone } from '@/lib/mail-contact-phone'
 
 function pad3(n: number) {
   return String(n).padStart(3, '0')
@@ -186,6 +187,7 @@ export async function POST(request: NextRequest) {
       isRecived,
       isRecivedInStore,
       observations,
+      contactPhone,
       mode: rawMode,
       storeId: rawStoreId
     } = body
@@ -365,7 +367,8 @@ export async function POST(request: NextRequest) {
           ...(adminInStore ? { receivedInStoreAt: new Date() } : {}),
           observations: adminFullCreate
             ? normalizeObs(observations ?? '')
-            : normalizeObs(observations)
+            : normalizeObs(observations),
+          contactPhone: normalizeMailContactPhone(contactPhone)
         })
         savedMail = (await newMail.save()) as unknown as { _id: unknown }
         lastError = null
