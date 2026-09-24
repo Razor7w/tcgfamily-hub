@@ -32,7 +32,10 @@ export interface Mail {
     _id: string
     name?: string
     rut?: string
-  }
+  } | null
+  /** RUT emisor (invitado o respaldo). */
+  fromRut?: string
+  isGuest?: boolean
   toUserId: {
     _id: string
     name?: string

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import mongoose from 'mongoose'
-import { auth } from '@/auth'
 import connectDB from '@/lib/mongodb'
 import Store from '@/models/Store'
 import { listActiveBranchesForStore } from '@/lib/store-branch'
@@ -9,15 +8,10 @@ export const runtime = 'nodejs'
 
 /**
  * GET /api/mail/branches?storeId=
- * Sucursales activas de una tienda (para el selector al registrar correo).
+ * Sucursales activas de una tienda (registro autenticado o invitado).
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
-
     const storeId = request.nextUrl.searchParams.get('storeId')?.trim() ?? ''
     if (!storeId || !mongoose.Types.ObjectId.isValid(storeId)) {
       return NextResponse.json({ error: 'storeId inválido' }, { status: 400 })

@@ -8,11 +8,7 @@ import {
 import connectDB from '@/lib/mongodb'
 import Mail from '@/models/Mails'
 import User from '@/models/User'
-import {
-  clean as cleanRut,
-  format as formatRut,
-  validate as validateRut
-} from 'rut.js'
+import { validate as validateRut } from 'rut.js'
 import {
   countMailsRegisteredTodayBySenderForStore,
   getMailRegisterDailyLimitForStore
@@ -30,79 +26,12 @@ import {
 } from '@/lib/mail-admin-list'
 import { normalizeMailContactPhone } from '@/lib/mail-contact-phone'
 import { resolveMailBranchIdForStore } from '@/lib/store-branch'
-
-function pad3(n: number) {
-  return String(n).padStart(3, '0')
-}
-
-function todayPrefix(date = new Date()) {
-  const dd = String(date.getDate()).padStart(2, '0')
-  const mm = String(date.getMonth() + 1).padStart(2, '0')
-  const yyyy = String(date.getFullYear())
-  return `${dd}-${mm}-${yyyy}-`
-}
-
-async function generateNextMailCode(
-  activeStoreOid: mongoose.Types.ObjectId,
-  primaryStoreOid: mongoose.Types.ObjectId | null
-) {
-  const prefix = todayPrefix()
-  const scope = mongoFilterByStore(activeStoreOid, primaryStoreOid) as Record<
-    string,
-    unknown
-  >
-  // Regex con prefijo fijo por día (no usar $gte/$lt sobre DD-MM-YYYY: el orden lexicográfico
-  // no coincide con el orden de fechas entre meses/años).
-  const last = await Mail.findOne({
-    code: { $regex: `^${prefix}` },
-    ...scope
-  })
-    .sort({ code: -1 })
-    .select({ code: 1 })
-    .lean<{ code?: string } | null>()
-
-  const lastCode = last?.code
-  const lastSeq =
-    typeof lastCode === 'string' && lastCode.startsWith(prefix)
-      ? Number(lastCode.slice(prefix.length))
-      : 0
-  const nextSeq = Number.isFinite(lastSeq) ? lastSeq + 1 : 1
-  return `${prefix}${pad3(nextSeq)}`
-}
-
-function isDuplicateKeyError(error: unknown) {
-  if (!error || typeof error !== 'object') return false
-  const err = error as Record<string, unknown>
-  return err.code === 11000
-}
-
-async function findUserByRut(input: string) {
-  const raw = String(input ?? '').trim()
-  if (!raw) return null
-  if (!validateRut(raw)) return null
-
-  const cleaned = cleanRut(raw) // e.g. '12345678K' or '189726317'
-  const formattedDots = formatRut(cleaned) // default dots true
-  const formattedNoDots = formatRut(cleaned, { dots: false })
-
-  // Índice { rut: 1 }: una sola búsqueda por variantes exactas (caso habitual)
-  const exact = await User.findOne({
-    rut: { $in: [formattedDots, formattedNoDots, cleaned] }
-  })
-  if (exact) return exact
-
-  // Fallbacks (formatos legacy): en paralelo para no encadenar 3 round-trips
-  const [byDots, byNoDots, byCleaned] = await Promise.all([
-    User.findOne({
-      rut: { $regex: `^${formattedDots}$`, $options: 'i' }
-    }),
-    User.findOne({
-      rut: { $regex: `^${formattedNoDots}$`, $options: 'i' }
-    }),
-    User.findOne({ rut: { $regex: `^${cleaned}$`, $options: 'i' } })
-  ])
-  return byDots ?? byNoDots ?? byCleaned
-}
+import {
+  findUserByRut,
+  formatMailRut,
+  generateNextMailCode,
+  isMailDuplicateKeyError
+} from '@/lib/mail-create'
 
 function parsePositiveInt(
   raw: string | null,
@@ -265,7 +194,7 @@ export async function POST(request: NextRequest) {
       }
       cachedFromUser = fromUser
       resolvedFromUserId = String(fromUser._id)
-      resolvedToRut = formatRut(cleanRut(toRut))
+      resolvedToRut = formatMailRut(toRut)
       const maybeUser = await findUserByRut(toRut)
       cachedToUserFromRut = maybeUser
       resolvedToUserId = maybeUser ? String(maybeUser._id) : null
@@ -390,7 +319,7 @@ export async function POST(request: NextRequest) {
       } catch (e: unknown) {
         lastError = e
         // Carrera entre requests o índices viejos: reintentar
-        if (isDuplicateKeyError(e)) continue
+        if (isMailDuplicateKeyError(e)) continue
         throw e
       }
     }

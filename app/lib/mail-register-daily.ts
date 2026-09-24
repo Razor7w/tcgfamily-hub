@@ -285,3 +285,35 @@ export async function findSenderMailsToRutTodayForStore(options: {
         : undefined
   }
 }
+
+/**
+ * Cupo diario de registros invitados (mismo RUT emisor, misma tienda, día Chile).
+ */
+export async function countGuestMailsRegisteredTodayByFromRutForStore(
+  fromRut: string,
+  activeStoreOid: mongoose.Types.ObjectId,
+  primaryStoreOid: mongoose.Types.ObjectId | null
+): Promise<number> {
+  const toRutMatch = toRutMatchFilter(fromRut)
+  if (!toRutMatch) return 0
+
+  const { start, endExclusive } = getChileCalendarDayRangeUtc()
+  const scope = mongoFilterByStore(activeStoreOid, primaryStoreOid) as Record<
+    string,
+    unknown
+  >
+
+  // Reutilizar el match de dígitos sobre el campo fromRut
+  const fromRutFilter =
+    'toRut' in toRutMatch
+      ? { fromRut: (toRutMatch as { toRut: unknown }).toRut }
+      : null
+  if (!fromRutFilter) return 0
+
+  return Mail.countDocuments({
+    ...scope,
+    isGuest: true,
+    ...fromRutFilter,
+    createdAt: { $gte: start, $lt: endExclusive }
+  })
+}

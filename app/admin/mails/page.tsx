@@ -1525,7 +1525,9 @@ export default function MailsPage() {
                           </Box>
                           {from
                             ? `${from.name ?? '-'} (${from.rut ?? '-'})`
-                            : '-'}
+                            : mail.fromRut
+                              ? `${mail.fromRut}${mail.isGuest ? ' (Invitado)' : ''}`
+                              : '-'}
                         </Typography>
                         <Typography variant="body2">
                           <Box

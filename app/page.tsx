@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { resolveAuthCallbackUrl } from '@/lib/auth-callback-url'
 import { useEffect, Suspense } from 'react'
 import Box from '@mui/material/Box'
@@ -136,6 +137,15 @@ function LoginPageContent() {
             sx={{ py: 1.5, textTransform: 'none', fontSize: '1rem' }}
           >
             Iniciar sesión con Google
+          </Button>
+          <Button
+            component={Link}
+            href="/correo/invitado"
+            variant="text"
+            fullWidth
+            sx={{ textTransform: 'none' }}
+          >
+            Registrar correo como invitado (sin cuenta)
           </Button>
         </Paper>
       </Box>
