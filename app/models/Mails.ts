@@ -3,6 +3,8 @@ import mongoose, { Schema, Document, ObjectId } from 'mongoose'
 export interface IMail extends Document {
   /** Alcance por tienda; legacy sin campo ⇒ tratado como tienda TCGFamily en runtime. */
   storeId?: ObjectId
+  /** Sucursal / punto de retiro dentro de la tienda (opcional si la tienda no define sucursales). */
+  branchId?: ObjectId
   code: string
   fromUserId: ObjectId
   toUserId?: ObjectId
@@ -22,6 +24,12 @@ const MailSchema = new Schema<IMail>(
     storeId: {
       type: Schema.Types.ObjectId,
       ref: 'Store',
+      required: false,
+      index: true
+    },
+    branchId: {
+      type: Schema.Types.ObjectId,
+      ref: 'StoreBranch',
       required: false,
       index: true
     },
@@ -79,6 +87,9 @@ MailSchema.index({ fromUserId: 1, createdAt: 1 })
 
 /** GET /api/mail (staff): listado por tienda + sort reciente */
 MailSchema.index({ storeId: 1, createdAt: -1 })
+
+/** Staff: filtro por sucursal + sort reciente */
+MailSchema.index({ storeId: 1, branchId: 1, createdAt: -1 })
 
 /** Staff listado filtrado por etapa + sort reciente */
 MailSchema.index({

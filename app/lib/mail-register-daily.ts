@@ -8,6 +8,7 @@ import {
   MAIL_REGISTER_DAILY_LIMIT,
   MAIL_REGISTER_DAILY_LIMIT_ADMIN_MAX
 } from '@/lib/mail-register-constants'
+import { rutCompareKey } from '@/lib/mail-recipient-filter'
 
 export { MAIL_REGISTER_DAILY_LIMIT } from '@/lib/mail-register-constants'
 
@@ -208,4 +209,79 @@ export async function countMailsRegisteredTodayBySenderForStore(
     fromUserId: oid,
     createdAt: { $gte: start, $lt: endExclusive }
   })
+}
+
+/** Match de `toRut` tolerante a puntos/guiones (mismo RUT). */
+function toRutMatchFilter(raw: string): Record<string, unknown> | null {
+  const key = rutCompareKey(raw)
+  const digits = key.replace(/\D/g, '')
+  if (!digits) {
+    const t = raw.trim()
+    return t ? { toRut: t } : null
+  }
+  return {
+    toRut: {
+      $regex: digits.split('').join('[.\\-\\s]?'),
+      $options: 'i'
+    }
+  }
+}
+
+export type SenderToRutTodayDuplicate = {
+  count: number
+  latestCode?: string
+  latestCreatedAt?: string
+}
+
+/**
+ * Correos del emisor al mismo RUT en la tienda, hoy (calendario Chile).
+ * Para avisar antes de registrar un posible duplicado.
+ */
+export async function findSenderMailsToRutTodayForStore(options: {
+  fromUserId: string | mongoose.Types.ObjectId
+  toRut: string
+  activeStoreOid: mongoose.Types.ObjectId
+  primaryStoreOid: mongoose.Types.ObjectId | null
+}): Promise<SenderToRutTodayDuplicate> {
+  const toRutMatch = toRutMatchFilter(options.toRut)
+  if (!toRutMatch) {
+    return { count: 0 }
+  }
+
+  const { start, endExclusive } = getChileCalendarDayRangeUtc()
+  const oid =
+    typeof options.fromUserId === 'string'
+      ? new mongoose.Types.ObjectId(options.fromUserId)
+      : options.fromUserId
+  const scope = mongoFilterByStore(
+    options.activeStoreOid,
+    options.primaryStoreOid
+  ) as Record<string, unknown>
+
+  const filter = {
+    ...scope,
+    fromUserId: oid,
+    createdAt: { $gte: start, $lt: endExclusive },
+    ...toRutMatch
+  }
+
+  const [count, latest] = await Promise.all([
+    Mail.countDocuments(filter),
+    Mail.findOne(filter)
+      .sort({ createdAt: -1 })
+      .select('code createdAt')
+      .lean<{ code?: string; createdAt?: Date } | null>()
+  ])
+
+  return {
+    count,
+    latestCode:
+      typeof latest?.code === 'string' && latest.code.trim()
+        ? latest.code.trim()
+        : undefined,
+    latestCreatedAt:
+      latest?.createdAt instanceof Date
+        ? latest.createdAt.toISOString()
+        : undefined
+  }
 }

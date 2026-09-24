@@ -9,6 +9,10 @@ import {
   Button,
   Collapse,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   InputLabel,
   Link,
@@ -118,6 +122,18 @@ export default function AdminTiendasPage() {
     instagramUrl: ''
   })
   const [savingProfile, setSavingProfile] = useState<string | null>(null)
+  const [togglingActive, setTogglingActive] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<StoreRow | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  const invalidateMeStores = useCallback(() => {
+    const uid = session?.user?.id ? String(session.user.id) : ''
+    if (uid) {
+      void queryClient.invalidateQueries({
+        queryKey: meStoresQueryKey(uid)
+      })
+    }
+  }, [queryClient, session?.user?.id])
 
   const load = useCallback(async () => {
     setMessage(null)
@@ -207,12 +223,7 @@ export default function AdminTiendasPage() {
           )
         }
       })
-      const uid = session?.user?.id ? String(session.user.id) : ''
-      if (uid) {
-        void queryClient.invalidateQueries({
-          queryKey: meStoresQueryKey(uid)
-        })
-      }
+      invalidateMeStores()
       setToast({
         sev: 'success',
         msg: 'Datos públicos guardados (visibles en el hub de la tienda)'
@@ -221,6 +232,71 @@ export default function AdminTiendasPage() {
       setMessage(e instanceof Error ? e.message : 'Error')
     } finally {
       setSavingProfile(null)
+    }
+  }
+
+  const onToggleActive = async (store: StoreRow) => {
+    setTogglingActive(store.id)
+    setMessage(null)
+    try {
+      const row = await patchStore(store.id, { isActive: !store.isActive })
+      setPayload(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          stores: prev.stores.map(x =>
+            x.id === store.id ? { ...x, isActive: row.isActive } : x
+          )
+        }
+      })
+      invalidateMeStores()
+      setToast({
+        sev: 'success',
+        msg: row.isActive ? 'Tienda activada' : 'Tienda desactivada'
+      })
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Error')
+    } finally {
+      setTogglingActive(null)
+    }
+  }
+
+  const onDeleteStore = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    setMessage(null)
+    try {
+      const res = await fetch(`/api/admin/stores/${deleteTarget.id}`, {
+        method: 'DELETE'
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(
+          typeof data?.error === 'string' ? data.error : 'No se pudo eliminar'
+        )
+      }
+      const removedId = deleteTarget.id
+      setPayload(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          stores: prev.stores.filter(x => x.id !== removedId)
+        }
+      })
+      setMembershipsByStore(prev => {
+        const next = { ...prev }
+        delete next[removedId]
+        return next
+      })
+      if (expanded === removedId) setExpanded(null)
+      setDeleteTarget(null)
+      invalidateMeStores()
+      setToast({ sev: 'success', msg: 'Tienda eliminada' })
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Error')
+      setDeleteTarget(null)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -395,8 +471,9 @@ export default function AdminTiendasPage() {
                   p: 2,
                   borderRadius: 2,
                   border: 1,
-                  borderColor: 'divider',
-                  bgcolor: 'background.paper'
+                  borderColor: s.isActive ? 'divider' : 'warning.main',
+                  bgcolor: 'background.paper',
+                  opacity: s.isActive ? 1 : 0.85
                 }}
               >
                 <Stack spacing={2}>
@@ -634,6 +711,48 @@ export default function AdminTiendasPage() {
                       >
                         Guardar acceso
                       </Button>
+                      {payload.canCreateStores ? (
+                        <>
+                          <Divider />
+                          <Typography
+                            variant="subtitle2"
+                            sx={{ fontWeight: 700 }}
+                          >
+                            Estado y eliminación
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Desactivar oculta la tienda del hub y del selector
+                            de jugadores. Eliminar borra la tienda y su equipo
+                            (no se puede si aún tiene eventos).
+                          </Typography>
+                          <Stack
+                            direction={{ xs: 'column', sm: 'row' }}
+                            spacing={1}
+                          >
+                            <Button
+                              variant="outlined"
+                              color={s.isActive ? 'warning' : 'success'}
+                              size="small"
+                              disabled={togglingActive === s.id}
+                              onClick={() => void onToggleActive(s)}
+                            >
+                              {togglingActive === s.id
+                                ? 'Guardando…'
+                                : s.isActive
+                                  ? 'Desactivar tienda'
+                                  : 'Activar tienda'}
+                            </Button>
+                            <Button
+                              variant="outlined"
+                              color="error"
+                              size="small"
+                              onClick={() => setDeleteTarget(s)}
+                            >
+                              Eliminar tienda
+                            </Button>
+                          </Stack>
+                        </>
+                      ) : null}
                     </Stack>
                   </Collapse>
                 </Stack>
@@ -642,6 +761,36 @@ export default function AdminTiendasPage() {
           )}
         </Stack>
       </Container>
+      <Dialog
+        open={deleteTarget !== null}
+        onClose={() => (deleting ? null : setDeleteTarget(null))}
+        aria-labelledby="delete-store-title"
+      >
+        <DialogTitle id="delete-store-title">Eliminar tienda</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            ¿Eliminar &quot;{deleteTarget?.name}&quot; ({deleteTarget?.slug})?
+            Se borrarán el equipo y la configuración del panel. Esta acción no
+            se puede deshacer.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setDeleteTarget(null)}
+            disabled={deleting}
+          >
+            Cancelar
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={deleting}
+            onClick={() => void onDeleteStore()}
+          >
+            {deleting ? 'Eliminando…' : 'Eliminar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Snackbar
         open={toast !== null}
         autoHideDuration={4200}

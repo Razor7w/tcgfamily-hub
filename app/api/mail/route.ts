@@ -29,6 +29,7 @@ import {
   parseMailAdminListFiltersFromSearchParams
 } from '@/lib/mail-admin-list'
 import { normalizeMailContactPhone } from '@/lib/mail-contact-phone'
+import { resolveMailBranchIdForStore } from '@/lib/store-branch'
 
 function pad3(n: number) {
   return String(n).padStart(3, '0')
@@ -189,7 +190,8 @@ export async function POST(request: NextRequest) {
       observations,
       contactPhone,
       mode: rawMode,
-      storeId: rawStoreId
+      storeId: rawStoreId,
+      branchId: rawBranchId
     } = body
 
     /** Admin: `all` = emisor/destinatario por ID (panel). `onlyReceptor` = como usuario (solo toRut). */
@@ -350,6 +352,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: createStatusError }, { status: 400 })
     }
 
+    const branchGate = await resolveMailBranchIdForStore({
+      storeOid: activeStoreOid,
+      branchIdRaw: rawBranchId
+    })
+    if (!branchGate.ok) {
+      return NextResponse.json(
+        { error: branchGate.error },
+        { status: branchGate.status }
+      )
+    }
+
     let savedMail: { _id: unknown } | null = null
     let lastError: unknown = null
     for (let attempt = 0; attempt < 5; attempt++) {
@@ -358,6 +371,7 @@ export async function POST(request: NextRequest) {
         const adminInStore = adminCreateInStore
         const newMail = new Mail({
           storeId: activeStoreOid,
+          ...(branchGate.branchOid ? { branchId: branchGate.branchOid } : {}),
           code,
           fromUserId: resolvedFromUserId,
           ...(resolvedToUserId ? { toUserId: resolvedToUserId } : {}),

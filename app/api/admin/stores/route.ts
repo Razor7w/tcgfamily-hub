@@ -28,11 +28,12 @@ export async function GET() {
     const uid = gate.session.user!.id
     const adminCtx = await loadStoreAdminAuthContext(uid)
 
+    // Incluir inactivas para poder reactivar / gestionar desde HQ (y dueños de las suyas).
     const filter = adminCtx.isGlobalManager
-      ? { isActive: true }
-      : { _id: { $in: adminCtx.ownedStoreIds }, isActive: true }
+      ? {}
+      : { _id: { $in: adminCtx.ownedStoreIds } }
 
-    const rows = await Store.find(filter).sort({ name: 1 }).lean()
+    const rows = await Store.find(filter).sort({ isActive: -1, name: 1 }).lean()
 
     return NextResponse.json({
       canCreateStores: adminCtx.isGlobalManager,

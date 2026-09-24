@@ -16,6 +16,10 @@ import {
 } from '@/lib/mail-status-transitions'
 import mongoose from 'mongoose'
 import { normalizeMailContactPhone } from '@/lib/mail-contact-phone'
+import { resolveAssignableBranchId } from '@/lib/store-branch'
+import StoreBranch from '@/models/StoreBranch'
+
+void StoreBranch
 
 function parseMailId(id: string) {
   try {
@@ -29,6 +33,7 @@ async function getMailOr404(mailId: mongoose.Types.ObjectId) {
   const mail = await Mails.findById(mailId)
     .populate('fromUserId', 'name rut')
     .populate('toUserId', 'name rut')
+    .populate('branchId', 'name address isActive')
     .lean()
   if (!mail || Array.isArray(mail)) return null
   return mail
@@ -145,7 +150,8 @@ export async function PUT(
       isRecived,
       isRecivedInStore,
       observations,
-      contactPhone
+      contactPhone,
+      branchId: rawBranchId
     } = body
 
     const nextFrom = fromUserId ?? existing.fromUserId?.toString()
@@ -207,6 +213,37 @@ export async function PUT(
     if (observations !== undefined) existing.observations = observations ?? ''
     if (contactPhone !== undefined) {
       existing.contactPhone = normalizeMailContactPhone(contactPhone)
+    }
+
+    if (rawBranchId !== undefined) {
+      if (existing.isRecived) {
+        return NextResponse.json(
+          {
+            error:
+              'No se puede cambiar la sucursal de un correo ya retirado'
+          },
+          { status: 409 }
+        )
+      }
+      const storeOidForBranch =
+        (existing.storeId as mongoose.Types.ObjectId | undefined) ??
+        gate.activeStoreOid
+      const branchGate = await resolveAssignableBranchId({
+        storeOid: storeOidForBranch,
+        branchIdRaw: rawBranchId
+      })
+      if (!branchGate.ok) {
+        return NextResponse.json(
+          { error: branchGate.error },
+          { status: branchGate.status }
+        )
+      }
+      if (branchGate.branchOid) {
+        existing.branchId = branchGate.branchOid
+      } else {
+        existing.set('branchId', undefined)
+        existing.markModified('branchId')
+      }
     }
 
     const becameReadyInStore =
