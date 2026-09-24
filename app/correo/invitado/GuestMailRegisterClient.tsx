@@ -16,6 +16,7 @@ import {
 import { alpha } from '@mui/material/styles'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
+import Barcode from 'react-barcode'
 import BrandLogo from '@/components/brand/BrandLogo'
 import Header from '@/components/Header'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
@@ -411,6 +412,36 @@ export default function GuestMailRegisterPage() {
                 >
                   {success.code}
                 </Typography>
+                <Box
+                  sx={{
+                    mt: 1.5,
+                    width: '100%',
+                    maxWidth: 360,
+                    mx: 'auto',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    bgcolor: 'common.white',
+                    borderRadius: 1,
+                    py: 1,
+                    px: 1,
+                    '& svg': {
+                      width: '100%',
+                      height: 'auto',
+                      maxHeight: 100
+                    }
+                  }}
+                >
+                  <Barcode
+                    value={success.code}
+                    format="CODE128"
+                    displayValue={false}
+                    width={2}
+                    height={56}
+                    margin={0}
+                    renderer="svg"
+                  />
+                </Box>
               </Box>
 
               <Alert severity="info" sx={{ width: '100%' }}>

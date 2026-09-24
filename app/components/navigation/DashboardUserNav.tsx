@@ -10,6 +10,7 @@ import {
   Home,
   Insights,
   Layers,
+  MarkunreadMailboxOutlined,
   Storefront,
   Person,
   Public,
@@ -90,6 +91,21 @@ export default function DashboardUserNav({
                 <Storefront />
               </ListItemIcon>
               <ListItemText primary="Tiendas" />
+            </ListItemButton>
+          </ListItem>
+          <ListItem disablePadding>
+            <ListItemButton
+              component={Link}
+              href="/dashboard/mail"
+              selected={
+                pathname === '/dashboard/mail' ||
+                pathname.startsWith('/dashboard/mail/')
+              }
+            >
+              <ListItemIcon>
+                <MarkunreadMailboxOutlined />
+              </ListItemIcon>
+              <ListItemText primary="Correos" />
             </ListItemButton>
           </ListItem>
           <ListItem disablePadding>
