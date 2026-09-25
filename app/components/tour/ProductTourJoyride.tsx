@@ -11,7 +11,10 @@ import {
 } from 'react-joyride'
 import { useTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
-import type { ProductTourOutcome } from '@/lib/product-tour-storage'
+import {
+  PRODUCT_TOURS_ENABLED,
+  type ProductTourOutcome
+} from '@/lib/product-tour-storage'
 import { cleanupProductTourUi } from '@/lib/product-tour-cleanup'
 import {
   enrichTourStepsWithMobileRailScroll,
@@ -48,6 +51,7 @@ export default function ProductTourJoyride({
   )
 
   useEffect(() => {
+    if (!PRODUCT_TOURS_ENABLED) return
     if (!run) {
       void resetTourScrollPosition()
       cleanupProductTourUi()
@@ -61,7 +65,8 @@ export default function ProductTourJoyride({
     }
   }, [])
 
-  if (!mounted || tourSteps.length === 0 || !run) return null
+  if (!PRODUCT_TOURS_ENABLED || !mounted || tourSteps.length === 0 || !run)
+    return null
 
   const primary = theme.palette.primary.main
   const paper = theme.palette.background.paper

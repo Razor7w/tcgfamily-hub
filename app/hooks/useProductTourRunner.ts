@@ -10,6 +10,7 @@ import {
 import {
   isProductTourCompleted,
   markProductTourCompleted,
+  PRODUCT_TOURS_ENABLED,
   type ProductTourKey,
   type ProductTourOutcome
 } from '@/lib/product-tour-storage'
@@ -34,15 +35,16 @@ export function useProductTourRunner({
 }: UseProductTourRunnerOptions) {
   const [run, setRun] = useState(false)
   const cancelledRef = useRef(false)
+  const active = PRODUCT_TOURS_ENABLED && enabled
 
   useEffect(() => {
-    if (enabled) return
+    if (active) return
     cleanupOverlayBlockers()
     scheduleRunFalse(setRun)
-  }, [enabled])
+  }, [active])
 
   useEffect(() => {
-    if (!enabled) return
+    if (!active) return
 
     cancelledRef.current = false
 
@@ -86,7 +88,7 @@ export function useProductTourRunner({
       cleanupOverlayBlockers()
       scheduleRunFalse(setRun)
     }
-  }, [tourKey, enabled, delayMs, steps])
+  }, [tourKey, active, delayMs, steps])
 
   const finish = useCallback(
     (outcome: ProductTourOutcome) => {
@@ -97,7 +99,7 @@ export function useProductTourRunner({
     [tourKey]
   )
 
-  return { run: run && enabled, finish }
+  return { run: run && active, finish }
 }
 
 /** md = 900px (sidebar visible), lg = 1200px (rail en columna). */

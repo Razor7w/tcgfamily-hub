@@ -1,3 +1,6 @@
+/** Kill switch: desactiva todos los Joyride / product tours. */
+export const PRODUCT_TOURS_ENABLED = false
+
 export const PRODUCT_TOUR_KEYS = {
   dashboard: 'tcg-tour-dashboard-v1',
   storeHub: 'tcg-tour-store-hub-v1'
