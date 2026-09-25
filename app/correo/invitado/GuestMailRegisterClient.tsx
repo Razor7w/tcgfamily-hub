@@ -90,8 +90,7 @@ export default function GuestMailRegisterPage() {
         if (cancelled || !res.ok) return
         setSessionQuota({
           sessionUsed: data.sessionUsed ?? 0,
-          sessionRemaining:
-            data.sessionRemaining ?? GUEST_MAIL_SESSION_LIMIT,
+          sessionRemaining: data.sessionRemaining ?? GUEST_MAIL_SESSION_LIMIT,
           sessionLimit: data.sessionLimit ?? GUEST_MAIL_SESSION_LIMIT
         })
       } catch {
@@ -474,7 +473,12 @@ export default function GuestMailRegisterPage() {
                 >
                   {copied ? 'Copiado' : 'Copiar código'}
                 </Button>
-                <Button fullWidth variant="outlined" onClick={handleReset} disabled={sessionBlocked}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={handleReset}
+                  disabled={sessionBlocked}
+                >
                   Registrar otro
                 </Button>
               </Stack>
@@ -509,12 +513,7 @@ export default function GuestMailRegisterPage() {
                 getOptionLabel={o => o.name}
                 isOptionEqualToValue={(a, b) => a.id === b.id}
                 renderInput={params => (
-                  <TextField
-                    {...params}
-                    label="Tienda"
-                    required
-                    size="small"
-                  />
+                  <TextField {...params} label="Tienda" required size="small" />
                 )}
               />
 
@@ -534,9 +533,7 @@ export default function GuestMailRegisterPage() {
                       label="Sucursal"
                       required={branchRequired}
                       size="small"
-                      error={
-                        submitAttempted && branchRequired && !branch?.id
-                      }
+                      error={submitAttempted && branchRequired && !branch?.id}
                     />
                   )}
                 />
@@ -572,7 +569,9 @@ export default function GuestMailRegisterPage() {
                 onChange={e => setToRut(e.target.value)}
                 onBlur={() => setToRut(prev => formatRutOnBlur(prev))}
                 error={!!toRutError}
-                helperText={toRutError ?? 'Quién retirará el paquete en tienda.'}
+                helperText={
+                  toRutError ?? 'Quién retirará el paquete en tienda.'
+                }
                 size="small"
                 required
                 disabled={submitting || formBlocked}

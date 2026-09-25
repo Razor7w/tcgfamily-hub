@@ -69,6 +69,7 @@ import {
   getMailStoreWaitDays,
   storeWaitChipProps
 } from '@/lib/mail-store-days'
+import type { StoreBranchRow } from '@/lib/store-branch'
 import { alpha, useTheme, type Theme } from '@mui/material/styles'
 import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
 import { AdminMailBranchesDialog } from '@/components/admin/AdminMailBranchesDialog'
@@ -104,6 +105,7 @@ const PAGE_SIZE = 10
 const FREE_TEXT_MIN_CHARS = 2
 const EMPTY_FROM_USERS: FilterFromUser[] = []
 const EMPTY_TO_RECIPIENTS: FilterToRecipient[] = []
+const EMPTY_STORE_BRANCHES: StoreBranchRow[] = []
 
 function mailStatusAccentColor(
   mail: Pick<Mail, 'isRecived' | 'isRecivedInStore'>,
@@ -189,7 +191,7 @@ export default function MailsPage() {
 
   const { data: filterOptions } = useMailFilterOptions()
   const { data: adminBranchesRes } = useAdminMailBranches()
-  const storeBranches = adminBranchesRes?.branches ?? []
+  const storeBranches = adminBranchesRes?.branches ?? EMPTY_STORE_BRANCHES
 
   const createMail = useCreateMail()
   const updateMail = useUpdateMail()
@@ -789,12 +791,15 @@ export default function MailsPage() {
               : filterBranchId
         } as const
 
-        const fetchIds = async (stage: 'pending' | 'inStore' | typeof filterStage) => {
+        const fetchIds = async (
+          stage: 'pending' | 'inStore' | typeof filterStage
+        ) => {
           const qs = buildMailsQueryString({ ...base, stage })
           const sp = new URLSearchParams(qs)
           sp.set('idsOnly', '1')
           const res = await fetch(`/api/mail?${sp.toString()}`)
-          if (!res.ok) throw new Error('No se pudieron cargar los correos objetivo')
+          if (!res.ok)
+            throw new Error('No se pudieron cargar los correos objetivo')
           const data = (await res.json()) as { ids?: string[] }
           return data.ids ?? []
         }
@@ -985,38 +990,38 @@ export default function MailsPage() {
               </Button>
             ) : null}
             <Tooltip
-            title={
-              total === 0
-                ? 'No hay correos para exportar con estos filtros'
-                : 'Descarga nombre, RUT, fechas, estado y observaciones (filtros actuales)'
-            }
-          >
-            <span>
-              <Button
-                variant="outlined"
-                startIcon={
-                  exportingCsv ? (
-                    <CircularProgress color="inherit" size={16} />
-                  ) : (
-                    <FileDownloadIcon />
-                  )
-                }
-                onClick={() => void handleExportCsv()}
-                disabled={exportingCsv || total === 0 || isLoading}
-                sx={{
-                  flexShrink: 0,
-                  whiteSpace: 'nowrap',
-                  '&:active': { transform: 'scale(0.98)' }
-                }}
-              >
-                {exportingCsv
-                  ? 'Exportando…'
-                  : total > 0
-                    ? `Exportar CSV (${total})`
-                    : 'Exportar CSV'}
-              </Button>
-            </span>
-          </Tooltip>
+              title={
+                total === 0
+                  ? 'No hay correos para exportar con estos filtros'
+                  : 'Descarga nombre, RUT, fechas, estado y observaciones (filtros actuales)'
+              }
+            >
+              <span>
+                <Button
+                  variant="outlined"
+                  startIcon={
+                    exportingCsv ? (
+                      <CircularProgress color="inherit" size={16} />
+                    ) : (
+                      <FileDownloadIcon />
+                    )
+                  }
+                  onClick={() => void handleExportCsv()}
+                  disabled={exportingCsv || total === 0 || isLoading}
+                  sx={{
+                    flexShrink: 0,
+                    whiteSpace: 'nowrap',
+                    '&:active': { transform: 'scale(0.98)' }
+                  }}
+                >
+                  {exportingCsv
+                    ? 'Exportando…'
+                    : total > 0
+                      ? `Exportar CSV (${total})`
+                      : 'Exportar CSV'}
+                </Button>
+              </span>
+            </Tooltip>
           </Stack>
         </Stack>
 
@@ -1180,7 +1185,10 @@ export default function MailsPage() {
               </ToggleButtonGroup>
             </Box>
             {storeBranches.length > 0 ? (
-              <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 220 } }}>
+              <FormControl
+                size="small"
+                sx={{ minWidth: { xs: '100%', sm: 220 } }}
+              >
                 <InputLabel id="mail-filter-branch-label">Sucursal</InputLabel>
                 <Select
                   labelId="mail-filter-branch-label"

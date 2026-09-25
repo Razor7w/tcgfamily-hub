@@ -27,7 +27,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (!fromRutRaw || !validateRut(fromRutRaw)) {
-      return NextResponse.json({ error: 'RUT inválido', ...session }, { status: 400 })
+      return NextResponse.json(
+        { error: 'RUT inválido', ...session },
+        { status: 400 }
+      )
     }
     if (!storeId || !mongoose.Types.ObjectId.isValid(storeId)) {
       return NextResponse.json(

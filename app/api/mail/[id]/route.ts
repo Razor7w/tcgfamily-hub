@@ -219,8 +219,7 @@ export async function PUT(
       if (existing.isRecived) {
         return NextResponse.json(
           {
-            error:
-              'No se puede cambiar la sucursal de un correo ya retirado'
+            error: 'No se puede cambiar la sucursal de un correo ya retirado'
           },
           { status: 409 }
         )

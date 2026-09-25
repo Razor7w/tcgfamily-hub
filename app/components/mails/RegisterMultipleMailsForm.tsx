@@ -32,6 +32,7 @@ import { MAIL_CONTACT_PHONE_MAX } from '@/lib/mail-contact-phone'
 import type { StoreBranchRow } from '@/lib/store-branch'
 
 const OBS_MAX = 2000
+const EMPTY_BRANCH_OPTIONS: StoreBranchRow[] = []
 /** Máximo de filas en el formulario (la cuota diaria puede ser menor). */
 const MAX_ROWS = 25
 
@@ -101,16 +102,13 @@ export default function RegisterMultipleMailsForm() {
   const storeIdForBranches = storeKey && storeKey !== 'none' ? storeKey : null
   const { data: branchesRes, isLoading: branchesLoading } =
     useMailBranchesForStore(storeIdForBranches)
-  const branchOptions = branchesRes?.branches ?? []
+  const branchOptions = branchesRes?.branches ?? EMPTY_BRANCH_OPTIONS
   const branchRequired = Boolean(branchesRes?.required)
   const [selectedBranch, setSelectedBranch] = useState<StoreBranchRow | null>(
     null
   )
   const effectiveBranch = useMemo(() => {
-    if (
-      selectedBranch &&
-      branchOptions.some(b => b.id === selectedBranch.id)
-    ) {
+    if (selectedBranch && branchOptions.some(b => b.id === selectedBranch.id)) {
       return selectedBranch
     }
     return branchOptions.length === 1 ? branchOptions[0]! : null
@@ -243,9 +241,7 @@ export default function RegisterMultipleMailsForm() {
             observations: row.observations.trim() || undefined,
             contactPhone: row.contactPhone.trim() || undefined,
             mode: 'onlyReceptor',
-            ...(effectiveBranch?.id
-              ? { branchId: effectiveBranch.id }
-              : {})
+            ...(effectiveBranch?.id ? { branchId: effectiveBranch.id } : {})
           })
         })
         const data = (await res.json().catch(() => ({}))) as {
@@ -305,8 +301,7 @@ export default function RegisterMultipleMailsForm() {
     }
 
     const skipped = validRowsToSubmit.length - toRun.length
-    const storeId =
-      storeIdForBranches || (storeKey !== 'none' ? storeKey : '')
+    const storeId = storeIdForBranches || (storeKey !== 'none' ? storeKey : '')
 
     if (storeId) {
       const uniqueRuts = [

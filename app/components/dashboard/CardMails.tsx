@@ -20,7 +20,8 @@ import { format } from 'rut.js'
 
 const PENDING_MAILS_LIMIT = 4
 
-function mailUserId(ref: { _id: string } | string): string {
+function mailUserId(ref: { _id: string } | string | null | undefined): string {
+  if (ref == null) return ''
   return typeof ref === 'object' ? ref._id : String(ref)
 }
 

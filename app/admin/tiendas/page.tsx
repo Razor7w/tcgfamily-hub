@@ -775,10 +775,7 @@ export default function AdminTiendasPage() {
           </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button
-            onClick={() => setDeleteTarget(null)}
-            disabled={deleting}
-          >
+          <Button onClick={() => setDeleteTarget(null)} disabled={deleting}>
             Cancelar
           </Button>
           <Button

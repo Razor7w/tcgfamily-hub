@@ -3,9 +3,7 @@ import mongoose from 'mongoose'
 import connectDB from '@/lib/mongodb'
 import Mail from '@/models/Mails'
 import Store from '@/models/Store'
-import {
-  validate as validateRut
-} from 'rut.js'
+import { validate as validateRut } from 'rut.js'
 import { createSlidingWindowLimiter } from '@/lib/auth-rate-limit'
 import {
   generateNextMailCode,
@@ -59,7 +57,10 @@ export async function POST(request: NextRequest) {
     const ip = getClientIp(request)
     if (guestIpLimiter(`guest-mail:${ip}`)) {
       return NextResponse.json(
-        { error: 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.' },
+        {
+          error:
+            'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.'
+        },
         { status: 429 }
       )
     }

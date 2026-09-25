@@ -102,11 +102,11 @@ function GuestMailTicketCard() {
       }}
     >
       <Box
-        sx={t => ({
+        sx={{
           mx: '10px',
           borderRadius: 2,
           overflow: 'hidden'
-        })}
+        }}
       >
         <Box sx={{ px: { xs: 2, sm: 2.5 }, pt: 2, pb: 1.15 }}>
           <Stack

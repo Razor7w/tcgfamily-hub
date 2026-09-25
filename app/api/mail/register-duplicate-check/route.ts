@@ -4,10 +4,7 @@ import { resolveMailRegisterStoreOid } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import { findSenderMailsToRutTodayForStore } from '@/lib/mail-register-daily'
 import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
-import {
-  clean as cleanRut,
-  validate as validateRut
-} from 'rut.js'
+import { clean as cleanRut, validate as validateRut } from 'rut.js'
 
 export const runtime = 'nodejs'
 

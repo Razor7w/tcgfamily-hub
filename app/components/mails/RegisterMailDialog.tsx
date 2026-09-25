@@ -36,6 +36,7 @@ import { MAIL_CONTACT_PHONE_MAX } from '@/lib/mail-contact-phone'
 import type { StoreBranchRow } from '@/lib/store-branch'
 
 const OBS_MAX = 2000
+const EMPTY_BRANCH_OPTIONS: StoreBranchRow[] = []
 
 const REGISTER_MAIL_HELP_TEXT =
   'Ingresa el RUT del receptor. El correo quedará como pendiente de ingreso en tienda hasta que la tienda lo confirme. Se generará un código único: úsalo para identificar el envío en tienda y, una vez ingresado el paquete, para solicitar o retirar con el mismo código.'
@@ -115,11 +116,9 @@ export default function RegisterMailDialog({
     isLoading: quotaLoading,
     isError: quotaError
   } = useMailRegisterQuota(selectedStoreId || null)
-  const {
-    data: branchesRes,
-    isLoading: branchesLoading
-  } = useMailBranchesForStore(selectedStoreId || null)
-  const branchOptions = branchesRes?.branches ?? []
+  const { data: branchesRes, isLoading: branchesLoading } =
+    useMailBranchesForStore(selectedStoreId || null)
+  const branchOptions = branchesRes?.branches ?? EMPTY_BRANCH_OPTIONS
   const branchRequired = Boolean(branchesRes?.required)
 
   const [userBranch, setUserBranch] = useState<StoreBranchRow | null>(null)
@@ -333,9 +332,7 @@ export default function RegisterMailDialog({
               {...params}
               label="Sucursal"
               required={branchRequired}
-              error={
-                submitAttempted && branchRequired && !selectedBranch?.id
-              }
+              error={submitAttempted && branchRequired && !selectedBranch?.id}
               helperText={
                 submitAttempted && branchRequired && !selectedBranch?.id
                   ? 'Elige la sucursal de retiro.'

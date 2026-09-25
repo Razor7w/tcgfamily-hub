@@ -78,7 +78,12 @@ function Example1BasicQuery() {
             {data.mails.slice(0, 3).map(mail => (
               <Box key={mail._id} sx={{ mb: 1, p: 1, bgcolor: '#f5f5f5' }}>
                 <Typography variant="body2">
-                  De: {mail.fromUserId.name} ({mail.fromUserId.rut})
+                  De:{' '}
+                  {mail.fromUserId
+                    ? `${mail.fromUserId.name ?? '—'} (${mail.fromUserId.rut ?? '—'})`
+                    : mail.fromRut
+                      ? `${mail.fromRut}${mail.isGuest ? ' (Invitado)' : ''}`
+                      : '—'}
                 </Typography>
                 <Typography variant="body2">
                   Para:{' '}

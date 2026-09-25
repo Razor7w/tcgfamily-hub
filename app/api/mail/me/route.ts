@@ -70,10 +70,7 @@ export async function GET(request: Request) {
         { toUserId: uid },
         { fromUserId: uid },
         ...(rutVariants.length
-          ? [
-              { toRut: { $in: rutVariants } },
-              { fromRut: { $in: rutVariants } }
-            ]
+          ? [{ toRut: { $in: rutVariants } }, { fromRut: { $in: rutVariants } }]
           : [])
       ],
       ...(pendingOnly ? { isRecived: false } : {}),

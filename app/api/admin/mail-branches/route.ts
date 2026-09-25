@@ -56,7 +56,10 @@ export async function POST(request: NextRequest) {
     await connectDB()
     const dup = await StoreBranch.findOne({
       storeId: gate.activeStoreOid,
-      name: { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' }
+      name: {
+        $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+        $options: 'i'
+      }
     })
       .select('_id')
       .lean()

@@ -34,9 +34,8 @@ export function AdminMailBranchesDialog({
 }: AdminMailBranchesDialogProps) {
   const queryClient = useQueryClient()
   const storeKey = useDashboardStoreQueryKey()
-  const { data, isLoading, isError, error, refetch } = useAdminMailBranches(
-    open
-  )
+  const { data, isLoading, isError, error, refetch } =
+    useAdminMailBranches(open)
   const branches = data?.branches ?? []
 
   const [name, setName] = useState('')
@@ -150,7 +149,11 @@ export function AdminMailBranchesDialog({
         </Typography>
 
         {localError ? (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setLocalError(null)}>
+          <Alert
+            severity="error"
+            sx={{ mb: 2 }}
+            onClose={() => setLocalError(null)}
+          >
             {localError}
           </Alert>
         ) : null}

@@ -85,7 +85,10 @@ export async function PATCH(
     if (body?.isActive !== undefined) {
       patch.isActive = Boolean(body.isActive)
     }
-    if (typeof body?.sortOrder === 'number' && Number.isFinite(body.sortOrder)) {
+    if (
+      typeof body?.sortOrder === 'number' &&
+      Number.isFinite(body.sortOrder)
+    ) {
       patch.sortOrder = Math.max(0, Math.min(9999, Math.round(body.sortOrder)))
     }
 
@@ -109,7 +112,9 @@ export async function PATCH(
       )
     }
 
-    return NextResponse.json(serializeStoreBranch(updated) satisfies StoreBranchRow)
+    return NextResponse.json(
+      serializeStoreBranch(updated) satisfies StoreBranchRow
+    )
   } catch (e) {
     console.error('PATCH /api/admin/mail-branches/[branchId]:', e)
     return NextResponse.json(

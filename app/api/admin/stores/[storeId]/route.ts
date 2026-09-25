@@ -223,7 +223,8 @@ export async function DELETE(
     await DashboardModuleSettings.deleteMany({ storeId: oid })
     await Store.deleteOne({ _id: oid })
 
-    const logoKey = typeof store.logoKey === 'string' ? store.logoKey.trim() : ''
+    const logoKey =
+      typeof store.logoKey === 'string' ? store.logoKey.trim() : ''
     if (logoKey && isR2StoreBrandingKeyForStore(storeId, logoKey)) {
       try {
         const s3 = r2Client()
