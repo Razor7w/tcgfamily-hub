@@ -27,6 +27,7 @@ import {
   LocalOfferOutlined
 } from '@mui/icons-material'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
+import { useMe, meProfileQueryKey, type MeProfile } from '@/hooks/useMe'
 import { useMeStores } from '@/hooks/useMeStores'
 import { useMyTournamentPoints } from '@/hooks/useMyTournamentPoints'
 import {
@@ -41,6 +42,8 @@ import {
   isTournamentPointsRedeemStep,
   normalizeStorePointsAmount
 } from '@/lib/store-points-amount'
+import { validatePopidOptional } from '@/lib/rut-chile'
+import { onlyDigits } from '@/lib/rut-input'
 import { TOURNAMENT_POINTS_COUPON_REASON_MAX } from '@/lib/tournament-points-coupon-constants'
 
 type StoreHubTournamentPointsCardProps = {
@@ -86,7 +89,8 @@ export default function StoreHubTournamentPointsCard({
 }: StoreHubTournamentPointsCardProps) {
   const isPage = variant === 'page'
   const queryClient = useQueryClient()
-  const { data: session } = useSession()
+  const { data: session, update: updateSession } = useSession()
+  const { data: meProfile } = useMe()
   const { data: meStoresData } = useMeStores()
   const { storeCredit } = useDashboardModulesFromLayout()
   const tournamentPointsLabel = storeCredit.tournamentPointsLabel
@@ -101,6 +105,15 @@ export default function StoreHubTournamentPointsCard({
   const [redeeming, setRedeeming] = useState(false)
   const [redeemError, setRedeemError] = useState<string | null>(null)
   const [coupon, setCoupon] = useState<CouponResult | null>(null)
+  const [popidDraft, setPopidDraft] = useState('')
+  const [savingPopid, setSavingPopid] = useState(false)
+  const [popidError, setPopidError] = useState<string | null>(null)
+  const [popidSavedMsg, setPopidSavedMsg] = useState<string | null>(null)
+
+  const hasPopid = Boolean(
+    meProfile?.popid?.trim() || session?.user?.popid?.trim()
+  )
+  const needsPopid = !hasPopid
 
   const activeStoreSlug = useMemo(() => {
     const activeStoreId = session?.user?.activeStoreId?.trim() ?? ''
@@ -132,11 +145,76 @@ export default function StoreHubTournamentPointsCard({
     isTournamentPointsRedeemStep(redeemAmount) && redeemAmount <= balance
   const canSubmit = amountOk && reasonOk && !redeeming && balance >= 0.5
 
+  const popidLiveError = useMemo(() => {
+    const t = popidDraft.trim()
+    if (!t) return null
+    return validatePopidOptional(popidDraft)
+  }, [popidDraft])
+
+  const canSavePopid =
+    !savingPopid &&
+    popidDraft.trim().length > 0 &&
+    validatePopidOptional(popidDraft) === null
+
   const openRedeem = () => {
     setRedeemError(null)
     setRedeemPoints('')
     setRedeemReason('')
     setRedeemOpen(true)
+  }
+
+  const handleSavePopid = async () => {
+    setPopidError(null)
+    setPopidSavedMsg(null)
+    const trimmed = popidDraft.trim()
+    if (!trimmed) {
+      setPopidError('El Pop ID es obligatorio para ver tus puntos.')
+      return
+    }
+    const err = validatePopidOptional(trimmed)
+    if (err) {
+      setPopidError(err)
+      return
+    }
+    setSavingPopid(true)
+    try {
+      const res = await fetch('/api/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ popid: trimmed })
+      })
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string
+        popid?: string
+      }
+      if (!res.ok) {
+        throw new Error(
+          typeof json.error === 'string'
+            ? json.error
+            : 'No se pudo guardar el Pop ID'
+        )
+      }
+      const saved = (json.popid ?? trimmed).trim()
+      const uid = session?.user?.id ? String(session.user.id) : ''
+      if (uid) {
+        queryClient.setQueryData<MeProfile>(meProfileQueryKey(uid), prev =>
+          prev ? { ...prev, popid: saved } : prev
+        )
+      }
+      await updateSession({ popid: saved })
+      await queryClient.invalidateQueries({
+        queryKey: ['me', 'tournament-points']
+      })
+      void refetch()
+      setPopidDraft('')
+      setPopidSavedMsg('Pop ID guardado. Ya puedes ver tus puntos vinculados.')
+    } catch (e) {
+      setPopidError(
+        e instanceof Error ? e.message : 'No se pudo guardar el Pop ID'
+      )
+    } finally {
+      setSavingPopid(false)
+    }
   }
 
   const handleCreateCoupon = async () => {
@@ -225,6 +303,72 @@ export default function StoreHubTournamentPointsCard({
             </Stack>
           ) : data ? (
             <Stack spacing={2}>
+              {needsPopid ? (
+                <Box>
+                  <Alert severity="warning" sx={{ mb: 1.5 }}>
+                    Sin Pop ID en tu cuenta no podrás ver tus{' '}
+                    {tournamentPointsLabel}. Los puntos de torneo se vinculan
+                    por Pop ID: si no lo asignas, nunca aparecerán aquí aunque
+                    hayas jugado.
+                  </Alert>
+                  {popidSavedMsg ? (
+                    <Alert
+                      severity="success"
+                      sx={{ mb: 1.5 }}
+                      onClose={() => setPopidSavedMsg(null)}
+                    >
+                      {popidSavedMsg}
+                    </Alert>
+                  ) : null}
+                  <Stack
+                    component="form"
+                    spacing={1.25}
+                    onSubmit={e => {
+                      e.preventDefault()
+                      void handleSavePopid()
+                    }}
+                  >
+                    <TextField
+                      label="Tu Pop ID"
+                      name="popid"
+                      value={popidDraft}
+                      onChange={e => {
+                        setPopidDraft(onlyDigits(e.target.value, 64))
+                        setPopidError(null)
+                      }}
+                      size="small"
+                      fullWidth
+                      required
+                      disabled={savingPopid}
+                      error={Boolean(popidError) || Boolean(popidLiveError)}
+                      helperText={
+                        popidError ??
+                        popidLiveError ??
+                        'Solo números. Es el ID de jugador de Play! Pokémon.'
+                      }
+                      inputProps={{
+                        maxLength: 64,
+                        inputMode: 'numeric',
+                        pattern: '[0-9]*'
+                      }}
+                    />
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      size="small"
+                      disabled={!canSavePopid}
+                      sx={{
+                        alignSelf: 'flex-start',
+                        textTransform: 'none',
+                        fontWeight: 700
+                      }}
+                    >
+                      {savingPopid ? 'Guardando…' : 'Guardar Pop ID'}
+                    </Button>
+                  </Stack>
+                </Box>
+              ) : null}
+
               <Box
                 sx={{
                   p: 2.5,
@@ -470,7 +614,8 @@ export default function StoreHubTournamentPointsCard({
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
             La tienda puede repartir puntos tras un torneo cerrado según la
-            mitad superior de la clasificación.
+            mitad superior de la clasificación. Para verlos en tu cuenta debes
+            tener tu Pop ID asignado (es el identificador de Play! Pokémon).
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Puedes generar un cupón de canje (múltiplos de 0.5). El saldo se

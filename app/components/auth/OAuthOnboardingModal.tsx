@@ -97,7 +97,7 @@ export default function OAuthOnboardingModal({
     e.preventDefault()
     setError(null)
 
-    const rutErr = getRutFieldError(rut, true)
+    const rutErr = getRutFieldError(rut, false)
     if (rutErr) {
       setError(rutErr)
       return
@@ -120,7 +120,7 @@ export default function OAuthOnboardingModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          rut: formatRutOnBlur(rut),
+          rut: rut.trim() ? formatRutOnBlur(rut) : '',
           popid,
           defaultStoreId: sid
         })
@@ -146,7 +146,7 @@ export default function OAuthOnboardingModal({
     }
   }
 
-  const rutOk = getRutFieldError(rut, true) === null
+  const rutOk = getRutFieldError(rut, false) === null
   const popOk = validatePopidOptional(popid) === null
   const canSubmit =
     !loading && rutOk && popOk && storeOk && !storesLoading && stores.length > 0
@@ -163,9 +163,9 @@ export default function OAuthOnboardingModal({
         <DialogTitle>Completa tu perfil</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Iniciaste sesión con Google. Para continuar necesitamos tu RUT
-            (obligatorio), una tienda de preferencia (obligatoria) y, si
-            quieres, tu Pop ID.
+            Iniciaste sesión con Google. Elige una tienda de preferencia. El RUT
+            es opcional ahora; si lo dejas vacío podrás asignarlo después en tu
+            perfil (una sola vez). Es obligatorio para registrar correos.
           </Typography>
           {error ? (
             <Alert
@@ -186,18 +186,17 @@ export default function OAuthOnboardingModal({
               value={rut}
               onChange={e => setRut(e.target.value)}
               onBlur={() => setRut(formatRutOnBlur(rut))}
-              disabled={loading}
-              required
+              disabled={loading || Boolean(initialRut?.trim())}
               fullWidth
               placeholder="12.345.678-9"
               error={
-                Boolean(rut.trim()) && getRutFieldError(rut, true) !== null
+                Boolean(rut.trim()) && getRutFieldError(rut, false) !== null
               }
               helperText={
-                getRutFieldError(rut, true) ??
-                (!rut.trim()
-                  ? 'Obligatorio. Formato chileno con dígito verificador.'
-                  : undefined)
+                getRutFieldError(rut, false) ??
+                (initialRut?.trim()
+                  ? 'Ya asignado; no se puede modificar.'
+                  : 'Opcional. Formato chileno con dígito verificador.')
               }
               inputProps={{ maxLength: 20 }}
             />

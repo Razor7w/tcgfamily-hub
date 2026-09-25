@@ -109,7 +109,7 @@ export default function RegisterPage() {
     if (!sid || !stores.some(s => s.id === sid)) return false
     if (validateRegisterName(name) !== null) return false
     if (validateEmailFormat(emailNormalized) !== null) return false
-    if (getRutFieldError(rut, true) !== null) return false
+    if (getRutFieldError(rut, false) !== null) return false
     if (validatePopidOptional(popid) !== null) return false
     if (!isPasswordStrengthSatisfied(password)) return false
     if (!passwordsMatch) return false
@@ -155,7 +155,7 @@ export default function RegisterPage() {
       return
     }
 
-    const rutErr = getRutFieldError(rut, true)
+    const rutErr = getRutFieldError(rut, false)
     if (rutErr) {
       setError(rutErr)
       return
@@ -181,7 +181,7 @@ export default function RegisterPage() {
         body: JSON.stringify({
           name: name.trim(),
           email: em,
-          rut: formatRutOnBlur(rut),
+          rut: rut.trim() ? formatRutOnBlur(rut) : '',
           popid,
           password,
           confirmPassword: confirm,
@@ -302,17 +302,14 @@ export default function RegisterPage() {
               onChange={e => setRut(e.target.value)}
               onBlur={() => setRut(formatRutOnBlur(rut))}
               disabled={loading}
-              required
               fullWidth
               placeholder="12.345.678-9"
               error={
-                Boolean(rut.trim()) && getRutFieldError(rut, true) !== null
+                Boolean(rut.trim()) && getRutFieldError(rut, false) !== null
               }
               helperText={
-                getRutFieldError(rut, true) ??
-                (!rut.trim()
-                  ? 'Obligatorio. Formato chileno con dígito verificador.'
-                  : undefined)
+                getRutFieldError(rut, false) ??
+                'Opcional al crear la cuenta. Si lo dejas vacío, podrás asignarlo después en tu perfil (una sola vez). Es obligatorio para registrar correos.'
               }
               inputProps={{ maxLength: 20 }}
             />

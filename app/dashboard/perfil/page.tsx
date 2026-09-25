@@ -33,7 +33,7 @@ import {
   validateRegisterName
 } from '@/lib/password-rules'
 import { validatePopidOptional } from '@/lib/rut-chile'
-import { onlyDigits } from '@/lib/rut-input'
+import { formatRutOnBlur, getRutFieldError, onlyDigits } from '@/lib/rut-input'
 import CheckCircle from '@mui/icons-material/CheckCircle'
 import RadioButtonUnchecked from '@mui/icons-material/RadioButtonUnchecked'
 import R2UppyProfileImageUploader from '@/components/r2/R2UppyProfileImageUploader'
@@ -71,6 +71,7 @@ export default function PerfilPage() {
 
   const [name, setName] = useState('')
   const [popid, setPopid] = useState('')
+  const [rutDraft, setRutDraft] = useState('')
   const [defaultStoreId, setDefaultStoreId] = useState('')
   const {
     data: meStoresPayload,
@@ -100,6 +101,7 @@ export default function PerfilPage() {
     formHydratedForUser.current = me.id
     setName(me.name)
     setPopid(me.popid)
+    setRutDraft(me.rut?.trim() ?? '')
     setDefaultStoreId(me.defaultStoreId?.trim() ?? '')
   }, [me])
 
@@ -145,6 +147,10 @@ export default function PerfilPage() {
     if (!me || savingProfile) return false
     if (validateRegisterName(name) !== null) return false
     if (validatePopidOptional(popid) !== null) return false
+    const hasRutAlready = Boolean(me.rut?.trim())
+    if (!hasRutAlready && rutDraft.trim()) {
+      if (getRutFieldError(rutDraft, false) !== null) return false
+    }
     const sid = defaultStoreId.trim()
     if (
       storeOptions.length > 0 &&
@@ -154,12 +160,17 @@ export default function PerfilPage() {
     }
     const prevDefault = (me.defaultStoreId ?? '').trim()
     const nextDefault = sid
+    const rutChanged =
+      !hasRutAlready &&
+      rutDraft.trim().length > 0 &&
+      rutDraft.trim() !== (me.rut || '').trim()
     return (
       name.trim() !== me.name.trim() ||
       popid.trim() !== (me.popid || '').trim() ||
-      prevDefault !== nextDefault
+      prevDefault !== nextDefault ||
+      rutChanged
     )
-  }, [me, name, popid, defaultStoreId, savingProfile, storeOptions])
+  }, [me, name, popid, rutDraft, defaultStoreId, savingProfile, storeOptions])
 
   const canSavePassword = useMemo(() => {
     if (!me?.hasPassword || savingPw) return false
@@ -172,6 +183,7 @@ export default function PerfilPage() {
     e.preventDefault()
     setProfileErr(null)
     setProfileMsg(null)
+    if (!me) return
     const nameErr = validateRegisterName(name)
     if (nameErr) {
       setProfileErr(nameErr)
@@ -181,6 +193,14 @@ export default function PerfilPage() {
     if (popErr) {
       setProfileErr(popErr)
       return
+    }
+    const hasRutAlready = Boolean(me.rut?.trim())
+    if (!hasRutAlready && rutDraft.trim()) {
+      const rutErr = getRutFieldError(rutDraft, false)
+      if (rutErr) {
+        setProfileErr(rutErr)
+        return
+      }
     }
     const sid = defaultStoreId.trim()
     if (
@@ -198,13 +218,17 @@ export default function PerfilPage() {
         body: JSON.stringify({
           name: name.trim(),
           popid,
-          defaultStoreId: sid
+          defaultStoreId: sid,
+          ...(!hasRutAlready && rutDraft.trim()
+            ? { rut: formatRutOnBlur(rutDraft) }
+            : {})
         })
       })
       const data = (await res.json().catch(() => ({}))) as {
         error?: string
         name?: string
         popid?: string
+        rut?: string
         defaultStoreId?: string | null
       }
       if (!res.ok) {
@@ -218,6 +242,7 @@ export default function PerfilPage() {
                 ...prev,
                 name: data.name ?? prev.name,
                 popid: data.popid ?? prev.popid,
+                rut: data.rut ?? prev.rut,
                 defaultStoreId:
                   data.defaultStoreId !== undefined
                     ? data.defaultStoreId
@@ -229,6 +254,9 @@ export default function PerfilPage() {
       if (data.defaultStoreId !== undefined) {
         setDefaultStoreId((data.defaultStoreId ?? '').trim())
       }
+      if (typeof data.rut === 'string') {
+        setRutDraft(data.rut)
+      }
       setProfileMsg('Datos actualizados.')
       const savedDefault = (data.defaultStoreId ?? sid).trim()
       await update({
@@ -237,6 +265,7 @@ export default function PerfilPage() {
           data.popid !== undefined && data.popid !== null
             ? data.popid
             : popid.trim().slice(0, 64),
+        ...(typeof data.rut === 'string' ? { rut: data.rut } : {}),
         ...(savedDefault && /^[a-f0-9]{24}$/i.test(savedDefault)
           ? {
               defaultStoreId: savedDefault,
@@ -363,8 +392,9 @@ export default function PerfilPage() {
         sx={{ mb: { xs: 2, md: 3 }, maxWidth: '72ch', textWrap: 'pretty' }}
       >
         Modifica tu nombre, Pop ID y tienda predeterminada (si tenés tiendas
-        disponibles, tenés que elegir una). El correo y el RUT solo los puede
-        cambiar un administrador; aquí siguen visibles.
+        disponibles, tenés que elegir una). El correo solo lo puede cambiar un
+        administrador. El RUT se puede asignar una sola vez si aún no lo tenés;
+        después queda fijo.
       </Typography>
 
       <Box
@@ -502,10 +532,31 @@ export default function PerfilPage() {
               />
               <TextField
                 label="RUT"
-                value={me.rut}
-                disabled
+                name="rut"
+                value={me.rut?.trim() ? me.rut : rutDraft}
+                onChange={e => {
+                  if (me.rut?.trim()) return
+                  setRutDraft(e.target.value)
+                }}
+                onBlur={() => {
+                  if (me.rut?.trim()) return
+                  setRutDraft(formatRutOnBlur(rutDraft))
+                }}
+                disabled={savingProfile || Boolean(me.rut?.trim())}
                 fullWidth
-                helperText="Solo lectura. Contacta a un administrador para cambiarlo."
+                placeholder="12.345.678-9"
+                error={
+                  !me.rut?.trim() &&
+                  Boolean(rutDraft.trim()) &&
+                  getRutFieldError(rutDraft, false) !== null
+                }
+                helperText={
+                  me.rut?.trim()
+                    ? 'Ya asignado. No se puede modificar.'
+                    : (getRutFieldError(rutDraft, false) ??
+                      'Opcional aquí, pero obligatorio para registrar correos. Una vez guardado no se puede cambiar.')
+                }
+                inputProps={{ maxLength: 20 }}
               />
             </Box>
 
