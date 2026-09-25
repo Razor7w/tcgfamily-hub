@@ -33,6 +33,7 @@ import { isStoreContextHubPath } from '@/lib/store-context-hub-path'
 import { useStoreHubHref } from '@/hooks/useStoreHubHref'
 import SignOutList from '@/components/auth/SignOutList'
 import AdminSidebarClient from '@/components/navigation/AdminSidebarClient'
+import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
 
 function isUnderDecklistNav(path: string) {
   return (
@@ -51,6 +52,8 @@ export default function DashboardUserNav({
 }) {
   const pathname = usePathname() ?? ''
   const storeHubHref = useStoreHubHref()
+  const { visibility } = useDashboardModulesFromLayout()
+  const showMail = visibility.mail
   const [decklistOpen, setDecklistOpen] = useState(() =>
     isUnderDecklistNav(pathname)
   )
@@ -93,21 +96,23 @@ export default function DashboardUserNav({
               <ListItemText primary="Tiendas" />
             </ListItemButton>
           </ListItem>
-          <ListItem disablePadding>
-            <ListItemButton
-              component={Link}
-              href="/dashboard/mail"
-              selected={
-                pathname === '/dashboard/mail' ||
-                pathname.startsWith('/dashboard/mail/')
-              }
-            >
-              <ListItemIcon>
-                <MarkunreadMailboxOutlined />
-              </ListItemIcon>
-              <ListItemText primary="Correos" />
-            </ListItemButton>
-          </ListItem>
+          {showMail ? (
+            <ListItem disablePadding>
+              <ListItemButton
+                component={Link}
+                href="/dashboard/mail"
+                selected={
+                  pathname === '/dashboard/mail' ||
+                  pathname.startsWith('/dashboard/mail/')
+                }
+              >
+                <ListItemIcon>
+                  <MarkunreadMailboxOutlined />
+                </ListItemIcon>
+                <ListItemText primary="Correos" />
+              </ListItemButton>
+            </ListItem>
+          ) : null}
           <ListItem disablePadding>
             <ListItemButton
               component={Link}

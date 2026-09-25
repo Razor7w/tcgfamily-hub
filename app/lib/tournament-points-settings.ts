@@ -10,6 +10,17 @@ export async function isTournamentPointsEnabledForStore(
   return mergeStoreCreditAdmin(doc).tournamentPointsEnabled
 }
 
+export async function getTournamentPointsPublicConfig(
+  activeStoreMongoId: string
+): Promise<{ enabled: boolean; label: string }> {
+  const doc = await getDashboardDocForStore(activeStoreMongoId)
+  const settings = mergeStoreCreditAdmin(doc)
+  return {
+    enabled: settings.tournamentPointsEnabled,
+    label: settings.tournamentPointsLabel
+  }
+}
+
 export async function isStoreCreditCsvEnabledForStore(
   activeStoreMongoId: string
 ): Promise<boolean> {

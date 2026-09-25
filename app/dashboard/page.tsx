@@ -15,6 +15,7 @@ import { useSession } from 'next-auth/react'
 import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
 import DashboardHomeDiscoverCard from '@/components/dashboard/DashboardHomeDiscoverCard'
 import DashboardHomeTournamentsCard from '@/components/dashboard/DashboardHomeTournamentsCard'
+import DashboardHomeTournamentPointsCard from '@/components/dashboard/DashboardHomeTournamentPointsCard'
 import DashboardInStoreMailsCard from '@/components/dashboard/DashboardInStoreMailsCard'
 import DashboardRegisterMailShortcut from '@/components/dashboard/DashboardRegisterMailShortcut'
 import RecentPublicDecklistsHomeCard from '@/components/dashboard/RecentPublicDecklistsHomeCard'
@@ -26,7 +27,9 @@ export default function DashboardPage() {
   const { data: session } = useSession()
   const storeHubHref = useStoreHubHref()
   const name = session?.user?.name?.trim() || 'jugador'
-  const { shortcuts } = useDashboardModulesFromLayout()
+  const { shortcuts, visibility } = useDashboardModulesFromLayout()
+  const showMail = visibility.mail
+  const showRegisterMailShortcut = showMail && shortcuts.createMail
 
   const [registerMailOpen, setRegisterMailOpen] = useState(false)
 
@@ -53,7 +56,7 @@ export default function DashboardPage() {
               display: 'grid',
               gridTemplateColumns: {
                 xs: '1fr',
-                sm: 'minmax(0, 1fr) auto'
+                sm: showRegisterMailShortcut ? 'minmax(0, 1fr) auto' : '1fr'
               },
               gap: { xs: 2, sm: 2.5 },
               alignItems: { sm: 'center' },
@@ -82,7 +85,7 @@ export default function DashboardPage() {
               </Typography>
             </Box>
 
-            {shortcuts.createMail ? (
+            {showRegisterMailShortcut ? (
               <DashboardRegisterMailShortcut
                 onRegisterMail={() => setRegisterMailOpen(true)}
               />
@@ -90,6 +93,8 @@ export default function DashboardPage() {
           </Box>
 
           <Stack spacing={3}>
+            <DashboardHomeTournamentPointsCard />
+
             <Box
               sx={{
                 display: 'grid',
@@ -104,7 +109,7 @@ export default function DashboardPage() {
                 }
               }}
             >
-              <DashboardInStoreMailsCard />
+              {showMail ? <DashboardInStoreMailsCard /> : null}
               <DashboardHomeTournamentsCard />
             </Box>
 
@@ -177,10 +182,12 @@ export default function DashboardPage() {
             </Stack>
           </Stack>
 
-          <RegisterMailDialog
-            open={registerMailOpen}
-            onClose={() => setRegisterMailOpen(false)}
-          />
+          {showRegisterMailShortcut ? (
+            <RegisterMailDialog
+              open={registerMailOpen}
+              onClose={() => setRegisterMailOpen(false)}
+            />
+          ) : null}
         </Box>
       </Box>
     </>

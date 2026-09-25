@@ -23,6 +23,7 @@ import { useStoreHubHref } from '@/hooks/useStoreHubHref'
 import { cleanupOverlayBlockers } from '@/lib/overlay-blocker-cleanup'
 import { isMailWaitingForPickup } from '@/lib/mail-inbox'
 import { isStoreContextHubPath } from '@/lib/store-context-hub-path'
+import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
 
 const MAIL_PICKUP_BADGE_LIMIT = 48
 
@@ -76,6 +77,8 @@ export default function DashboardMobileBottomNav() {
   const { data: session, status } = useSession()
   const currentUserId = session?.user?.id ?? ''
   const storeHubHref = useStoreHubHref()
+  const { visibility } = useDashboardModulesFromLayout()
+  const showMail = visibility.mail
   const selected = mobileNavValue(pathname)
 
   const { data: pickupMailsData } = useMyMails({
@@ -83,15 +86,16 @@ export default function DashboardMobileBottomNav() {
     inStoreOnly: true,
     allStores: true,
     limit: MAIL_PICKUP_BADGE_LIMIT,
-    enabled: status === 'authenticated' && currentUserId.length > 0
+    enabled: showMail && status === 'authenticated' && currentUserId.length > 0
   })
 
   const hasMailToPickup = useMemo(
     () =>
+      showMail &&
       (pickupMailsData?.mails ?? []).some(m =>
         isMailWaitingForPickup(m, currentUserId)
       ),
-    [pickupMailsData?.mails, currentUserId]
+    [showMail, pickupMailsData?.mails, currentUserId]
   )
 
   const mailNavIcon = (
@@ -173,17 +177,19 @@ export default function DashboardMobileBottomNav() {
           onClick={() => go(storeHubHref)}
           sx={actionSx}
         />
-        <BottomNavigationAction
-          value="mail"
-          aria-label={
-            hasMailToPickup
-              ? 'Tus correos, tienes correos listos para retirar'
-              : 'Tus correos'
-          }
-          icon={mailNavIcon}
-          onClick={() => go('/dashboard/mail')}
-          sx={actionSx}
-        />
+        {showMail ? (
+          <BottomNavigationAction
+            value="mail"
+            aria-label={
+              hasMailToPickup
+                ? 'Tus correos, tienes correos listos para retirar'
+                : 'Tus correos'
+            }
+            icon={mailNavIcon}
+            onClick={() => go('/dashboard/mail')}
+            sx={actionSx}
+          />
+        ) : null}
         <BottomNavigationAction
           value="decks"
           aria-label="Mazos"
