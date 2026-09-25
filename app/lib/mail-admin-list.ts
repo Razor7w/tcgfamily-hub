@@ -15,6 +15,10 @@ import {
   type FilterToRecipient
 } from '@/lib/mail-recipient-filter'
 import type { ElapsedBucketFilter } from '@/lib/mail-store-days'
+import StoreBranch from '@/models/StoreBranch'
+
+// Asegura registro del modelo para `.populate('branchId')`.
+void StoreBranch
 
 export type MailListStageFilter = 'all' | 'pending' | 'inStore' | 'retired'
 
@@ -32,6 +36,8 @@ export type MailAdminListFilters = {
   q?: string | null
   fromQ?: string | null
   toQ?: string | null
+  /** Filtrar por sucursal (`branchId`). */
+  branchId?: string | null
 }
 
 export const MAIL_LIST_DEFAULT_LIMIT = 20
@@ -43,7 +49,7 @@ export const MAIL_EXPORT_MAX_LIMIT = 10_000
 const MAIL_EXPORT_USER_SELECT = 'name rut email phone'
 
 const MAIL_LIST_SELECT =
-  'code storeId fromUserId toUserId toRut isRecived isRecivedInStore receivedInStoreAt observations contactPhone createdAt updatedAt'
+  'code storeId branchId fromUserId fromRut isGuest toUserId toRut isRecived isRecivedInStore receivedInStoreAt observations contactPhone createdAt updatedAt'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -104,7 +110,8 @@ export function parseMailAdminListFiltersFromSearchParams(
     toRuts: parseIdListParam(searchParams, 'toRuts'),
     q: searchParams.get('q'),
     fromQ: searchParams.get('fromQ'),
-    toQ: searchParams.get('toQ')
+    toQ: searchParams.get('toQ'),
+    branchId: searchParams.get('branchId')
   }
 }
 
@@ -375,6 +382,19 @@ export async function buildMailAdminListMongoFilter(
   const elapsed = elapsedMongoFilter(filters.elapsed)
   if (elapsed) parts.push(elapsed)
 
+  const branchRaw =
+    typeof filters.branchId === 'string' ? filters.branchId.trim() : ''
+  if (branchRaw === 'none' || branchRaw === 'unassigned') {
+    parts.push({
+      $or: [{ branchId: { $exists: false } }, { branchId: null }]
+    })
+  } else {
+    const branchOid = parseObjectId(branchRaw)
+    if (branchOid) {
+      parts.push({ branchId: branchOid })
+    }
+  }
+
   const fromIdsExplicit =
     filters.fromUserIds != null ? parseObjectIds(filters.fromUserIds) : null
   const fromOid = parseObjectId(filters.fromUserId)
@@ -528,6 +548,7 @@ export async function listMailsForAdmin(options: {
       .limit(limit)
       .populate('fromUserId', 'name rut')
       .populate('toUserId', 'name rut')
+      .populate('branchId', 'name address isActive')
       .lean()
   ])
 
@@ -603,6 +624,7 @@ export async function listMailsForAdminExport(options: {
       .limit(limit)
       .populate('fromUserId', MAIL_EXPORT_USER_SELECT)
       .populate('toUserId', MAIL_EXPORT_USER_SELECT)
+      .populate('branchId', 'name address')
       .lean()
   ])
 

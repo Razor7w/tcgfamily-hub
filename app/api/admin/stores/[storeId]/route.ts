@@ -7,9 +7,13 @@ import {
   loadStoreAdminAuthContext
 } from '@/lib/store-admin-access'
 import connectDB from '@/lib/mongodb'
+import { DEFAULT_PRIMARY_STORE_SLUG } from '@/lib/multitenancy/constants'
 import { isR2StoreBrandingKeyForStore } from '@/lib/r2-store-branding-key'
 import { r2BucketName, r2Client } from '@/lib/r2'
+import DashboardModuleSettings from '@/models/DashboardModuleSettings'
 import Store from '@/models/Store'
+import StoreMembership from '@/models/StoreMembership'
+import WeeklyEvent from '@/models/WeeklyEvent'
 import { serializeStoreAdminRow } from '@/lib/store-api-serialize'
 import {
   normalizeStoreAddress,
@@ -43,6 +47,25 @@ export async function PATCH(
       }
       const v = Boolean(body.isActive)
       await connectDB()
+      if (!v) {
+        const current = await Store.findById(oid).select('slug').lean<{
+          slug?: string
+        } | null>()
+        if (!current) {
+          return NextResponse.json(
+            { error: 'Tienda no encontrada' },
+            { status: 404 }
+          )
+        }
+        if (current.slug === DEFAULT_PRIMARY_STORE_SLUG) {
+          return NextResponse.json(
+            {
+              error: `No se puede desactivar la tienda principal (${DEFAULT_PRIMARY_STORE_SLUG})`
+            },
+            { status: 409 }
+          )
+        }
+      }
       const s = await Store.findOneAndUpdate(
         { _id: oid },
         { $set: { isActive: v } },
@@ -141,6 +164,86 @@ export async function PATCH(
     console.error('PATCH /api/admin/stores/[storeId]:', e)
     return NextResponse.json(
       { error: 'No se pudo actualizar la tienda' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ storeId: string }> }
+) {
+  try {
+    const gate = await requireStoreOwnerSession()
+    if (!gate.ok) return gate.response
+
+    const { storeId } = await params
+    if (!mongoose.Types.ObjectId.isValid(storeId)) {
+      return NextResponse.json({ error: 'storeId inválido' }, { status: 400 })
+    }
+    const oid = new mongoose.Types.ObjectId(storeId)
+
+    const uid = gate.session.user!.id
+    const adminCtx = await loadStoreAdminAuthContext(uid)
+    if (!adminCtx.isGlobalManager) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
+    await connectDB()
+    const store = await Store.findById(oid)
+      .select('slug logoKey')
+      .lean<{ slug?: string; logoKey?: string } | null>()
+    if (!store) {
+      return NextResponse.json(
+        { error: 'Tienda no encontrada' },
+        { status: 404 }
+      )
+    }
+    if (store.slug === DEFAULT_PRIMARY_STORE_SLUG) {
+      return NextResponse.json(
+        {
+          error: `No se puede eliminar la tienda principal (${DEFAULT_PRIMARY_STORE_SLUG})`
+        },
+        { status: 409 }
+      )
+    }
+
+    const hasEvents = await WeeklyEvent.exists({ storeId: oid })
+    if (hasEvents) {
+      return NextResponse.json(
+        {
+          error:
+            'No se puede eliminar: hay eventos asociados. Desactívala o elimina esos eventos primero.'
+        },
+        { status: 409 }
+      )
+    }
+
+    await StoreMembership.deleteMany({ storeId: oid })
+    await DashboardModuleSettings.deleteMany({ storeId: oid })
+    await Store.deleteOne({ _id: oid })
+
+    const logoKey =
+      typeof store.logoKey === 'string' ? store.logoKey.trim() : ''
+    if (logoKey && isR2StoreBrandingKeyForStore(storeId, logoKey)) {
+      try {
+        const s3 = r2Client()
+        await s3.send(
+          new DeleteObjectCommand({
+            Bucket: r2BucketName(),
+            Key: logoKey
+          })
+        )
+      } catch (e) {
+        console.error('R2 delete store branding on store delete failed:', e)
+      }
+    }
+
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error('DELETE /api/admin/stores/[storeId]:', e)
+    return NextResponse.json(
+      { error: 'No se pudo eliminar la tienda' },
       { status: 500 }
     )
   }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import {
   Alert,
@@ -8,16 +8,17 @@ import {
   Box,
   Button,
   Container,
-  Divider,
   Link,
   Stack,
+  Tab,
+  Tabs,
   Typography
 } from '@mui/material'
 import { ArrowBack, CloudUpload } from '@mui/icons-material'
 import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
 import TournamentPointsAwardPanel from '@/components/admin/TournamentPointsAwardPanel'
+import TournamentPointsCouponsPanel from '@/components/admin/TournamentPointsCouponsPanel'
 import TournamentPointsManagePanel from '@/components/admin/TournamentPointsManagePanel'
-import TournamentPointsCsvImport from '@/components/admin/TournamentPointsCsvImport'
 import TournamentPointsDisplayNameEditor from '@/components/admin/TournamentPointsDisplayNameEditor'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
 
@@ -31,6 +32,8 @@ type ImportResult = {
   errors: string[]
 }
 
+type PuntosTab = 'canjes' | 'asignaciones' | 'configuraciones'
+
 export default function AdminPuntosPage() {
   const { data: session } = useSession()
   const isOwner = session?.user?.storeRole === 'owner'
@@ -40,10 +43,30 @@ export default function AdminPuntosPage() {
   const [sectionTitle, setSectionTitle] = useState(
     storeCredit.tournamentPointsLabel
   )
+  const [tab, setTab] = useState<PuntosTab>('canjes')
 
   useEffect(() => {
     setSectionTitle(storeCredit.tournamentPointsLabel)
   }, [storeCredit.tournamentPointsLabel])
+
+  const availableTabs = useMemo(() => {
+    const tabs: { value: PuntosTab; label: string }[] = []
+    if (tournamentEnabled) {
+      tabs.push({ value: 'canjes', label: 'Canjes' })
+      tabs.push({ value: 'asignaciones', label: 'Asignaciones' })
+      tabs.push({ value: 'configuraciones', label: 'Configuraciones' })
+    } else if (csvEnabled) {
+      tabs.push({ value: 'configuraciones', label: 'Configuraciones' })
+    }
+    return tabs
+  }, [tournamentEnabled, csvEnabled])
+
+  useEffect(() => {
+    if (availableTabs.length === 0) return
+    if (!availableTabs.some(t => t.value === tab)) {
+      setTab(availableTabs[0].value)
+    }
+  }, [availableTabs, tab])
 
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
@@ -87,6 +110,12 @@ export default function AdminPuntosPage() {
     }
   }
 
+  const subtitle = tournamentEnabled
+    ? `Reparto, canjes y gestión de ${sectionTitle.toLowerCase()}.`
+    : csvEnabled
+      ? 'Importación CSV del reporte de saldo.'
+      : ''
+
   return (
     <Box
       sx={t => ({
@@ -112,17 +141,28 @@ export default function AdminPuntosPage() {
               <Typography variant="h4" component="h1">
                 Puntos de tienda
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {csvEnabled && tournamentEnabled
-                  ? 'Importación CSV de saldo y reparto por torneo.'
-                  : csvEnabled
-                    ? 'Importación CSV del reporte de saldo.'
-                    : `Reparto y gestión de ${sectionTitle.toLowerCase()}.`}
-              </Typography>
+              {subtitle ? (
+                <Typography variant="body2" color="text.secondary">
+                  {subtitle}
+                </Typography>
+              ) : null}
             </Stack>
           </AdminStorePageHeading>
 
-          {tournamentEnabled ? (
+          {availableTabs.length > 0 ? (
+            <Tabs
+              value={tab}
+              onChange={(_e, v: PuntosTab) => setTab(v)}
+              variant="scrollable"
+              scrollButtons="auto"
+            >
+              {availableTabs.map(t => (
+                <Tab key={t.value} value={t.value} label={t.label} />
+              ))}
+            </Tabs>
+          ) : null}
+
+          {tournamentEnabled && tab === 'canjes' ? (
             <Box
               sx={{
                 p: 2,
@@ -132,102 +172,141 @@ export default function AdminPuntosPage() {
                 bgcolor: 'background.paper'
               }}
             >
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-                {sectionTitle}
-              </Typography>
-              <TournamentPointsDisplayNameEditor
-                initialCustomName={storeCredit.tournamentPointsCustomName}
-                onLabelChange={setSectionTitle}
-              />
-              {isOwner ? <TournamentPointsCsvImport /> : null}
-              <Divider sx={{ my: 3 }} />
-              <TournamentPointsAwardPanel />
-              <Divider sx={{ my: 3 }} />
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-                Gestión y auditoría
-              </Typography>
-              <TournamentPointsManagePanel />
+              <TournamentPointsCouponsPanel />
             </Box>
           ) : null}
 
-          {csvEnabled ? (
-            <>
-              {tournamentEnabled ? <Divider /> : null}
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                Importar saldo (CSV tienda)
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Sube el reporte (CSV con punto y coma). Se busca al usuario por
-                RUT o correo y se sincroniza saldo y vencimientos.
-              </Typography>
-              <Box
-                component="form"
-                onSubmit={onSubmit}
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 2,
-                  p: 2,
-                  border: 1,
-                  borderColor: 'divider',
-                  borderRadius: 1
-                }}
-              >
-                <Button
-                  component="label"
-                  variant="outlined"
-                  startIcon={<CloudUpload />}
-                >
-                  Elegir archivo .csv
-                  <input
-                    type="file"
-                    name="file"
-                    accept=".csv,text/csv"
-                    hidden
-                    onChange={ev => {
-                      const f = ev.target.files?.[0]
-                      setFile(f ?? null)
-                    }}
-                  />
-                </Button>
-                {file ? (
+          {tournamentEnabled && tab === 'asignaciones' ? (
+            <Box
+              sx={{
+                p: 2,
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 2,
+                bgcolor: 'background.paper'
+              }}
+            >
+              <Stack spacing={3}>
+                <TournamentPointsAwardPanel />
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                  Gestión y auditoría
+                </Typography>
+                <TournamentPointsManagePanel />
+              </Stack>
+            </Box>
+          ) : null}
+
+          {tab === 'configuraciones' && (tournamentEnabled || csvEnabled) ? (
+            <Box
+              sx={{
+                p: 2,
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 2,
+                bgcolor: 'background.paper'
+              }}
+            >
+              <Stack spacing={3}>
+                {tournamentEnabled ? (
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                      {sectionTitle}
+                    </Typography>
+                    <TournamentPointsDisplayNameEditor
+                      initialCustomName={storeCredit.tournamentPointsCustomName}
+                      onLabelChange={setSectionTitle}
+                    />
+                  </Box>
+                ) : null}
+
+                {csvEnabled ? (
+                  <Stack spacing={2}>
+                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                      Importar saldo (CSV tienda)
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Sube el reporte (CSV con punto y coma). Se busca al
+                      usuario por RUT o correo y se sincroniza saldo y
+                      vencimientos.
+                    </Typography>
+                    <Box
+                      component="form"
+                      onSubmit={onSubmit}
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 2
+                      }}
+                    >
+                      <Button
+                        component="label"
+                        variant="outlined"
+                        startIcon={<CloudUpload />}
+                      >
+                        Elegir archivo .csv
+                        <input
+                          type="file"
+                          name="file"
+                          accept=".csv,text/csv"
+                          hidden
+                          onChange={ev => {
+                            const f = ev.target.files?.[0]
+                            setFile(f ?? null)
+                          }}
+                        />
+                      </Button>
+                      {file ? (
+                        <Typography variant="body2" color="text.secondary">
+                          {file.name}
+                        </Typography>
+                      ) : null}
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        disabled={loading || !file}
+                        sx={{ alignSelf: 'flex-start' }}
+                      >
+                        {loading ? 'Procesando…' : 'Importar'}
+                      </Button>
+                    </Box>
+                    {message ? (
+                      <Alert
+                        severity={severity}
+                        onClose={() => setMessage(null)}
+                      >
+                        {message}
+                      </Alert>
+                    ) : null}
+                    {result && result.errors.length > 0 ? (
+                      <Alert severity="warning">
+                        <Typography variant="subtitle2" gutterBottom>
+                          Avisos / errores parciales
+                        </Typography>
+                        <Box
+                          component="ul"
+                          sx={{ m: 0, pl: 2, maxHeight: 240, overflow: 'auto' }}
+                        >
+                          {result.errors.map((err, i) => (
+                            <li key={i}>
+                              <Typography variant="caption" component="span">
+                                {err}
+                              </Typography>
+                            </li>
+                          ))}
+                        </Box>
+                      </Alert>
+                    ) : null}
+                  </Stack>
+                ) : null}
+
+                {tournamentEnabled && isOwner ? (
                   <Typography variant="body2" color="text.secondary">
-                    {file.name}
+                    La importación CSV de asignaciones de {sectionTitle} está en
+                    la pestaña Asignaciones.
                   </Typography>
                 ) : null}
-                <Button
-                  type="submit"
-                  variant="contained"
-                  disabled={loading || !file}
-                >
-                  {loading ? 'Procesando…' : 'Importar'}
-                </Button>
-              </Box>
-              {message ? (
-                <Alert severity={severity} onClose={() => setMessage(null)}>
-                  {message}
-                </Alert>
-              ) : null}
-              {result && result.errors.length > 0 ? (
-                <Alert severity="warning">
-                  <Typography variant="subtitle2" gutterBottom>
-                    Avisos / errores parciales
-                  </Typography>
-                  <Box
-                    component="ul"
-                    sx={{ m: 0, pl: 2, maxHeight: 240, overflow: 'auto' }}
-                  >
-                    {result.errors.map((err, i) => (
-                      <li key={i}>
-                        <Typography variant="caption" component="span">
-                          {err}
-                        </Typography>
-                      </li>
-                    ))}
-                  </Box>
-                </Alert>
-              ) : null}
-            </>
+              </Stack>
+            </Box>
           ) : null}
 
           {!csvEnabled && !tournamentEnabled ? (

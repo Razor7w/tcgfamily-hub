@@ -3,8 +3,14 @@ import mongoose, { Schema, Document, ObjectId } from 'mongoose'
 export interface IMail extends Document {
   /** Alcance por tienda; legacy sin campo ⇒ tratado como tienda TCGFamily en runtime. */
   storeId?: ObjectId
+  /** Sucursal / punto de retiro dentro de la tienda (opcional si la tienda no define sucursales). */
+  branchId?: ObjectId
   code: string
-  fromUserId: ObjectId
+  fromUserId?: ObjectId
+  /** RUT del emisor (registro invitado; también se setea si hay cuenta vinculada). */
+  fromRut?: string
+  /** Registro sin sesión (página de invitado). */
+  isGuest?: boolean
   toUserId?: ObjectId
   /** RUT del receptor (válido), aunque no exista usuario. */
   toRut: string
@@ -25,12 +31,25 @@ const MailSchema = new Schema<IMail>(
       required: false,
       index: true
     },
+    branchId: {
+      type: Schema.Types.ObjectId,
+      ref: 'StoreBranch',
+      required: false,
+      index: true
+    },
     code: {
       type: String,
       required: true,
       unique: false
     },
-    fromUserId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    fromUserId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: false,
+      default: undefined
+    },
+    fromRut: { type: String, default: '', index: true },
+    isGuest: { type: Boolean, default: false, index: true },
     toUserId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
@@ -80,6 +99,9 @@ MailSchema.index({ fromUserId: 1, createdAt: 1 })
 /** GET /api/mail (staff): listado por tienda + sort reciente */
 MailSchema.index({ storeId: 1, createdAt: -1 })
 
+/** Staff: filtro por sucursal + sort reciente */
+MailSchema.index({ storeId: 1, branchId: 1, createdAt: -1 })
+
 /** Staff listado filtrado por etapa + sort reciente */
 MailSchema.index({
   storeId: 1,
@@ -100,5 +122,9 @@ MailSchema.index({
 MailSchema.index({ toUserId: 1, isRecived: 1, createdAt: -1 })
 MailSchema.index({ fromUserId: 1, isRecived: 1, createdAt: -1 })
 MailSchema.index({ toRut: 1, isRecived: 1, createdAt: -1 })
+MailSchema.index({ fromRut: 1, isRecived: 1, createdAt: -1 })
+
+/** Cupo diario invitado: tienda + isGuest + fromRut + rango createdAt */
+MailSchema.index({ storeId: 1, isGuest: 1, fromRut: 1, createdAt: -1 })
 
 export default mongoose.models.Mail || mongoose.model<IMail>('Mail', MailSchema)

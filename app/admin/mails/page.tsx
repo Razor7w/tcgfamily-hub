@@ -17,6 +17,10 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import TextField from '@mui/material/TextField'
 import Autocomplete from '@mui/material/Autocomplete'
+import FormControl from '@mui/material/FormControl'
+import InputLabel from '@mui/material/InputLabel'
+import Select from '@mui/material/Select'
+import MenuItem from '@mui/material/MenuItem'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Checkbox from '@mui/material/Checkbox'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -42,7 +46,9 @@ import {
   useUpdateMail,
   useBulkWithdrawMails,
   useBulkReceiveInStoreMails,
+  useBulkAssignMailBranch,
   useDeleteMail,
+  useAdminMailBranches,
   buildMailsQueryString,
   type Mail,
   type CreateMailData,
@@ -63,8 +69,10 @@ import {
   getMailStoreWaitDays,
   storeWaitChipProps
 } from '@/lib/mail-store-days'
+import type { StoreBranchRow } from '@/lib/store-branch'
 import { alpha, useTheme, type Theme } from '@mui/material/styles'
 import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
+import { AdminMailBranchesDialog } from '@/components/admin/AdminMailBranchesDialog'
 import {
   filterFromUserLabel,
   filterToRecipientLabel,
@@ -84,11 +92,20 @@ function mailUserId(ref: { _id: string } | string | null | undefined): string {
   return typeof ref === 'object' ? ref._id : String(ref)
 }
 
+function mailBranchId(mail: Mail): string {
+  if (typeof mail.branchId === 'object' && mail.branchId?._id) {
+    return String(mail.branchId._id)
+  }
+  if (typeof mail.branchId === 'string') return mail.branchId
+  return ''
+}
+
 const PAGE_SIZE = 10
 /** Texto libre en autocomplete: no filtrar con 1 carácter (evita spam de requests). */
 const FREE_TEXT_MIN_CHARS = 2
 const EMPTY_FROM_USERS: FilterFromUser[] = []
 const EMPTY_TO_RECIPIENTS: FilterToRecipient[] = []
+const EMPTY_STORE_BRANCHES: StoreBranchRow[] = []
 
 function mailStatusAccentColor(
   mail: Pick<Mail, 'isRecived' | 'isRecivedInStore'>,
@@ -109,7 +126,8 @@ export default function MailsPage() {
     isRecived: false,
     isRecivedInStore: false,
     observations: '',
-    contactPhone: ''
+    contactPhone: '',
+    branchId: ''
   })
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -130,6 +148,13 @@ export default function MailsPage() {
   >('all')
   /** Pendiente retiro en tienda: rangos por días desde ingreso a tienda. */
   const [filterElapsed, setFilterElapsed] = useState<ElapsedBucketFilter>('all')
+  const [filterBranchId, setFilterBranchId] = useState<string>('all')
+  const [branchesDialogOpen, setBranchesDialogOpen] = useState(false)
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false)
+  const [bulkAssignBranchId, setBulkAssignBranchId] = useState('')
+  const [bulkAssignOnlyWithout, setBulkAssignOnlyWithout] = useState(true)
+  const [bulkAssignLoadingIds, setBulkAssignLoadingIds] = useState(false)
+  const [bulkAssignTargetIds, setBulkAssignTargetIds] = useState<string[]>([])
   const [filterFromUser, setFilterFromUser] = useState<FilterFromUser | null>(
     null
   )
@@ -165,11 +190,14 @@ export default function MailsPage() {
   }, [filterToInput])
 
   const { data: filterOptions } = useMailFilterOptions()
+  const { data: adminBranchesRes } = useAdminMailBranches()
+  const storeBranches = adminBranchesRes?.branches ?? EMPTY_STORE_BRANCHES
 
   const createMail = useCreateMail()
   const updateMail = useUpdateMail()
   const bulkWithdraw = useBulkWithdrawMails()
   const bulkReceiveInStore = useBulkReceiveInStoreMails()
+  const bulkAssignBranch = useBulkAssignMailBranch()
   const deleteMail = useDeleteMail()
   const createUser = useCreateUser()
 
@@ -237,7 +265,8 @@ export default function MailsPage() {
     fromUserIds: resolvedFromUserIds,
     toUserIds: resolvedToParticipants.toUserIds,
     toRuts: resolvedToParticipants.toRuts,
-    q: debouncedSearchId
+    q: debouncedSearchId,
+    branchId: filterBranchId === 'all' ? null : filterBranchId
   })
 
   const mails = mailsRes?.mails ?? []
@@ -251,6 +280,7 @@ export default function MailsPage() {
     debouncedSearchId,
     filterStage,
     filterElapsed,
+    filterBranchId,
     filterFromUser,
     debouncedFromInput,
     filterToRecipient,
@@ -347,7 +377,8 @@ export default function MailsPage() {
   const mailActionsDisabled =
     updateMail.isPending ||
     bulkWithdraw.isPending ||
-    bulkReceiveInStore.isPending
+    bulkReceiveInStore.isPending ||
+    bulkAssignBranch.isPending
 
   const handleExportCsv = useCallback(async () => {
     if (exportingCsv || total === 0) return
@@ -359,7 +390,8 @@ export default function MailsPage() {
         fromUserIds: resolvedFromUserIds,
         toUserIds: resolvedToParticipants.toUserIds,
         toRuts: resolvedToParticipants.toRuts,
-        q: debouncedSearchId
+        q: debouncedSearchId,
+        branchId: filterBranchId === 'all' ? null : filterBranchId
       })
       const response = await fetch(`/api/mail/export?${qs}`)
       if (!response.ok) {
@@ -400,6 +432,7 @@ export default function MailsPage() {
     total,
     filterStage,
     filterElapsed,
+    filterBranchId,
     resolvedFromUserIds,
     resolvedToParticipants.toUserIds,
     resolvedToParticipants.toRuts,
@@ -417,13 +450,20 @@ export default function MailsPage() {
       setEditingMail(mail)
       const fromId = mailUserId(mail.fromUserId)
       const toId = mailUserId(mail.toUserId)
+      const branchId =
+        typeof mail.branchId === 'object' && mail.branchId?._id
+          ? mail.branchId._id
+          : typeof mail.branchId === 'string'
+            ? mail.branchId
+            : ''
       setFormData({
         fromUserId: fromId,
         toUserId: toId,
         isRecived: mail.isRecived,
         isRecivedInStore: mail.isRecivedInStore ?? false,
         observations: mail.observations ?? '',
-        contactPhone: mail.contactPhone ?? ''
+        contactPhone: mail.contactPhone ?? '',
+        branchId
       })
     } else {
       setEditingMail(null)
@@ -433,7 +473,8 @@ export default function MailsPage() {
         isRecived: false,
         isRecivedInStore: false,
         observations: '',
-        contactPhone: ''
+        contactPhone: '',
+        branchId: ''
       })
     }
     setOpenDialog(true)
@@ -448,7 +489,8 @@ export default function MailsPage() {
       isRecived: false,
       isRecivedInStore: false,
       observations: '',
-      contactPhone: ''
+      contactPhone: '',
+      branchId: ''
     })
     setAddUserFor(null)
     setNewUserForm({ name: '', email: '', phone: '', rut: '' })
@@ -545,6 +587,20 @@ export default function MailsPage() {
       return
     }
 
+    const activeBranches = storeBranches.filter(b => b.isActive)
+    if (
+      !editingMail &&
+      activeBranches.length > 0 &&
+      !formData.branchId?.trim()
+    ) {
+      setSnackbar({
+        open: true,
+        message: 'Selecciona una sucursal',
+        severity: 'error'
+      })
+      return
+    }
+
     const statusError = validateMailStatusTransition({
       nextIsRecived: formData.isRecived ?? false,
       nextIsRecivedInStore: formData.isRecivedInStore ?? false
@@ -564,6 +620,11 @@ export default function MailsPage() {
           observations: formData.observations,
           contactPhone: formData.contactPhone
         }
+        if (!editingMail.isRecived && storeBranches.some(b => b.isActive)) {
+          payload.branchId = formData.branchId?.trim()
+            ? formData.branchId.trim()
+            : null
+        }
         await updateMail.mutateAsync({
           mailId: editingMail._id,
           data: payload
@@ -580,7 +641,10 @@ export default function MailsPage() {
           isRecived: formData.isRecived,
           isRecivedInStore: formData.isRecivedInStore,
           observations: formData.observations,
-          contactPhone: formData.contactPhone
+          contactPhone: formData.contactPhone,
+          ...(formData.branchId?.trim()
+            ? { branchId: formData.branchId.trim() }
+            : {})
         })
         setSnackbar({
           open: true,
@@ -705,6 +769,155 @@ export default function MailsPage() {
     }
   }
 
+  const activeBranches = useMemo(
+    () => storeBranches.filter(b => b.isActive),
+    [storeBranches]
+  )
+
+  const loadBulkAssignTargetIds = useCallback(
+    async (onlyWithoutBranch: boolean) => {
+      setBulkAssignLoadingIds(true)
+      try {
+        const base = {
+          elapsed: filterElapsed,
+          fromUserIds: resolvedFromUserIds,
+          toUserIds: resolvedToParticipants.toUserIds,
+          toRuts: resolvedToParticipants.toRuts,
+          q: debouncedSearchId,
+          branchId: onlyWithoutBranch
+            ? 'none'
+            : filterBranchId === 'all'
+              ? null
+              : filterBranchId
+        } as const
+
+        const fetchIds = async (
+          stage: 'pending' | 'inStore' | typeof filterStage
+        ) => {
+          const qs = buildMailsQueryString({ ...base, stage })
+          const sp = new URLSearchParams(qs)
+          sp.set('idsOnly', '1')
+          const res = await fetch(`/api/mail?${sp.toString()}`)
+          if (!res.ok)
+            throw new Error('No se pudieron cargar los correos objetivo')
+          const data = (await res.json()) as { ids?: string[] }
+          return data.ids ?? []
+        }
+
+        if (filterStage === 'all') {
+          const [pending, inStore] = await Promise.all([
+            fetchIds('pending'),
+            fetchIds('inStore')
+          ])
+          setBulkAssignTargetIds([...new Set([...pending, ...inStore])])
+        } else if (filterStage === 'retired') {
+          setBulkAssignTargetIds([])
+        } else {
+          setBulkAssignTargetIds(await fetchIds(filterStage))
+        }
+      } catch (e) {
+        setBulkAssignTargetIds([])
+        throw e
+      } finally {
+        setBulkAssignLoadingIds(false)
+      }
+    },
+    [
+      filterElapsed,
+      resolvedFromUserIds,
+      resolvedToParticipants.toUserIds,
+      resolvedToParticipants.toRuts,
+      debouncedSearchId,
+      filterBranchId,
+      filterStage
+    ]
+  )
+
+  const openBulkAssignDialog = async () => {
+    if (filterStage === 'retired') {
+      setSnackbar({
+        open: true,
+        message:
+          'Cambia el filtro de etapa: no se puede vincular sucursal a correos retirados',
+        severity: 'warning'
+      })
+      return
+    }
+    if (activeBranches.length === 0) {
+      setSnackbar({
+        open: true,
+        message: 'Crea una sucursal activa antes de vincular',
+        severity: 'warning'
+      })
+      return
+    }
+    setBulkAssignBranchId(activeBranches[0]?.id ?? '')
+    setBulkAssignOpen(true)
+    try {
+      await loadBulkAssignTargetIds(bulkAssignOnlyWithout)
+    } catch (e) {
+      setBulkAssignOpen(false)
+      setSnackbar({
+        open: true,
+        message:
+          e instanceof Error ? e.message : 'Error al preparar la asignación',
+        severity: 'error'
+      })
+    }
+  }
+
+  const handleConfirmBulkAssignBranch = async () => {
+    if (!bulkAssignBranchId.trim() || bulkAssignTargetIds.length === 0) return
+    try {
+      const result = await bulkAssignBranch.mutateAsync({
+        mailIds: bulkAssignTargetIds,
+        branchId: bulkAssignBranchId.trim()
+      })
+      setBulkAssignOpen(false)
+      setSnackbar({
+        open: true,
+        message:
+          result.updatedCount === 0
+            ? 'Ningún correo actualizado (quizá ya estaban retirados o con esa sucursal)'
+            : result.updatedCount === 1
+              ? '1 correo vinculado a la sucursal'
+              : `${result.updatedCount} correos vinculados a la sucursal`,
+        severity: 'success'
+      })
+    } catch (e) {
+      setSnackbar({
+        open: true,
+        message: e instanceof Error ? e.message : 'Error al vincular',
+        severity: 'error'
+      })
+    }
+  }
+
+  const handleAssignBranchOnCard = async (mail: Mail, nextBranchId: string) => {
+    if (mail.isRecived) return
+    try {
+      await updateMail.mutateAsync({
+        mailId: mail._id,
+        data: {
+          branchId: nextBranchId.trim() ? nextBranchId.trim() : null
+        }
+      })
+      setSnackbar({
+        open: true,
+        message: nextBranchId.trim()
+          ? 'Sucursal actualizada'
+          : 'Sucursal quitada del correo',
+        severity: 'success'
+      })
+    } catch (e) {
+      setSnackbar({
+        open: true,
+        message: e instanceof Error ? e.message : 'Error al vincular sucursal',
+        severity: 'error'
+      })
+    }
+  }
+
   if (isLoading && !mailsRes) {
     return (
       <Box
@@ -755,44 +968,61 @@ export default function MailsPage() {
                 sx={{ mt: 0.5 }}
               >
                 Registro de envíos, ingreso en tienda y retiro; filtra por
-                código, remitente/receptor (usuario o solo RUT), etapa o
-                antigüedad en tienda.
+                código, remitente/receptor (usuario o solo RUT), sucursal, etapa
+                o antigüedad en tienda.
               </Typography>
             </Box>
           </AdminStorePageHeading>
-          <Tooltip
-            title={
-              total === 0
-                ? 'No hay correos para exportar con estos filtros'
-                : 'Descarga nombre, RUT, fechas, estado y observaciones (filtros actuales)'
-            }
-          >
-            <span>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Button
+              variant="outlined"
+              onClick={() => setBranchesDialogOpen(true)}
+            >
+              Sucursales
+            </Button>
+            {activeBranches.length > 0 ? (
               <Button
                 variant="outlined"
-                startIcon={
-                  exportingCsv ? (
-                    <CircularProgress color="inherit" size={16} />
-                  ) : (
-                    <FileDownloadIcon />
-                  )
-                }
-                onClick={() => void handleExportCsv()}
-                disabled={exportingCsv || total === 0 || isLoading}
-                sx={{
-                  flexShrink: 0,
-                  whiteSpace: 'nowrap',
-                  '&:active': { transform: 'scale(0.98)' }
-                }}
+                onClick={() => void openBulkAssignDialog()}
+                disabled={filterStage === 'retired' || mailActionsDisabled}
               >
-                {exportingCsv
-                  ? 'Exportando…'
-                  : total > 0
-                    ? `Exportar CSV (${total})`
-                    : 'Exportar CSV'}
+                Vincular a sucursal
               </Button>
-            </span>
-          </Tooltip>
+            ) : null}
+            <Tooltip
+              title={
+                total === 0
+                  ? 'No hay correos para exportar con estos filtros'
+                  : 'Descarga nombre, RUT, fechas, estado y observaciones (filtros actuales)'
+              }
+            >
+              <span>
+                <Button
+                  variant="outlined"
+                  startIcon={
+                    exportingCsv ? (
+                      <CircularProgress color="inherit" size={16} />
+                    ) : (
+                      <FileDownloadIcon />
+                    )
+                  }
+                  onClick={() => void handleExportCsv()}
+                  disabled={exportingCsv || total === 0 || isLoading}
+                  sx={{
+                    flexShrink: 0,
+                    whiteSpace: 'nowrap',
+                    '&:active': { transform: 'scale(0.98)' }
+                  }}
+                >
+                  {exportingCsv
+                    ? 'Exportando…'
+                    : total > 0
+                      ? `Exportar CSV (${total})`
+                      : 'Exportar CSV'}
+                </Button>
+              </span>
+            </Tooltip>
+          </Stack>
         </Stack>
 
         <Paper
@@ -954,6 +1184,29 @@ export default function MailsPage() {
                 </ToggleButton>
               </ToggleButtonGroup>
             </Box>
+            {storeBranches.length > 0 ? (
+              <FormControl
+                size="small"
+                sx={{ minWidth: { xs: '100%', sm: 220 } }}
+              >
+                <InputLabel id="mail-filter-branch-label">Sucursal</InputLabel>
+                <Select
+                  labelId="mail-filter-branch-label"
+                  label="Sucursal"
+                  value={filterBranchId}
+                  onChange={e => setFilterBranchId(String(e.target.value))}
+                >
+                  <MenuItem value="all">Todas</MenuItem>
+                  <MenuItem value="none">Sin sucursal</MenuItem>
+                  {storeBranches.map(b => (
+                    <MenuItem key={b.id} value={b.id}>
+                      {b.name}
+                      {!b.isActive ? ' (inactiva)' : ''}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : null}
             <Box>
               <Typography
                 variant="caption"
@@ -1104,6 +1357,7 @@ export default function MailsPage() {
                 setSearchId('')
                 setFilterStage('all')
                 setFilterElapsed('all')
+                setFilterBranchId('all')
                 setFilterFromUser(null)
                 setFilterFromInput('')
                 setFilterToRecipient(null)
@@ -1209,6 +1463,24 @@ export default function MailsPage() {
                           >
                             {mail.code ?? '—'}
                           </Typography>
+                          {typeof mail.branchId === 'object' &&
+                          mail.branchId?.name ? (
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ display: 'block', mt: 0.5 }}
+                            >
+                              Sucursal: {mail.branchId.name}
+                            </Typography>
+                          ) : !mail.isRecived && activeBranches.length > 0 ? (
+                            <Typography
+                              variant="caption"
+                              color="warning.main"
+                              sx={{ display: 'block', mt: 0.5 }}
+                            >
+                              Sin sucursal
+                            </Typography>
+                          ) : null}
                         </Box>
                         <Stack
                           direction="row"
@@ -1261,7 +1533,9 @@ export default function MailsPage() {
                           </Box>
                           {from
                             ? `${from.name ?? '-'} (${from.rut ?? '-'})`
-                            : '-'}
+                            : mail.fromRut
+                              ? `${mail.fromRut}${mail.isGuest ? ' (Invitado)' : ''}`
+                              : '-'}
                         </Typography>
                         <Typography variant="body2">
                           <Box
@@ -1427,9 +1701,44 @@ export default function MailsPage() {
                         gap: 1.25,
                         px: { xs: 2, sm: 2.5 },
                         py: 2,
-                        flexWrap: 'wrap'
+                        flexWrap: 'wrap',
+                        alignItems: 'center'
                       }}
                     >
+                      {!mail.isRecived && activeBranches.length > 0 ? (
+                        <FormControl
+                          size="small"
+                          sx={{
+                            minWidth: { xs: '100%', sm: 200 },
+                            flex: { sm: '1 1 180px' }
+                          }}
+                        >
+                          <InputLabel id={`mail-branch-${mail._id}`}>
+                            Sucursal
+                          </InputLabel>
+                          <Select
+                            labelId={`mail-branch-${mail._id}`}
+                            label="Sucursal"
+                            value={mailBranchId(mail)}
+                            disabled={mailActionsDisabled}
+                            onChange={e =>
+                              void handleAssignBranchOnCard(
+                                mail,
+                                String(e.target.value)
+                              )
+                            }
+                          >
+                            <MenuItem value="">
+                              <em>Sin sucursal</em>
+                            </MenuItem>
+                            {activeBranches.map(b => (
+                              <MenuItem key={b.id} value={b.id}>
+                                {b.name}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      ) : null}
                       <Button
                         variant="outlined"
                         color="primary"
@@ -1965,6 +2274,62 @@ export default function MailsPage() {
                 }
                 label="Recibido en tienda (envía un email al receptor con cuenta)"
               />
+              {!editingMail && storeBranches.some(b => b.isActive) ? (
+                <FormControl fullWidth size="small" required>
+                  <InputLabel id="mail-form-branch-label">Sucursal</InputLabel>
+                  <Select
+                    labelId="mail-form-branch-label"
+                    label="Sucursal"
+                    value={formData.branchId ?? ''}
+                    onChange={e =>
+                      setFormData(prev => ({
+                        ...prev,
+                        branchId: String(e.target.value)
+                      }))
+                    }
+                  >
+                    {storeBranches
+                      .filter(b => b.isActive)
+                      .map(b => (
+                        <MenuItem key={b.id} value={b.id}>
+                          {b.name}
+                        </MenuItem>
+                      ))}
+                  </Select>
+                </FormControl>
+              ) : null}
+              {editingMail &&
+              !editingMail.isRecived &&
+              activeBranches.length > 0 ? (
+                <FormControl fullWidth size="small">
+                  <InputLabel id="mail-edit-branch-label">Sucursal</InputLabel>
+                  <Select
+                    labelId="mail-edit-branch-label"
+                    label="Sucursal"
+                    value={formData.branchId ?? ''}
+                    onChange={e =>
+                      setFormData(prev => ({
+                        ...prev,
+                        branchId: String(e.target.value)
+                      }))
+                    }
+                  >
+                    <MenuItem value="">
+                      <em>Sin sucursal</em>
+                    </MenuItem>
+                    {activeBranches.map(b => (
+                      <MenuItem key={b.id} value={b.id}>
+                        {b.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              ) : null}
+              {editingMail?.isRecived ? (
+                <Alert severity="info">
+                  Este correo está retirado: no se puede cambiar la sucursal.
+                </Alert>
+              ) : null}
               <TextField
                 label="Número de contacto"
                 placeholder="+56 9 1234 5678"
@@ -2020,6 +2385,101 @@ export default function MailsPage() {
               {createMail.isPending || updateMail.isPending
                 ? 'Guardando…'
                 : 'Guardar'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <AdminMailBranchesDialog
+          open={branchesDialogOpen}
+          onClose={() => setBranchesDialogOpen(false)}
+        />
+
+        <Dialog
+          open={bulkAssignOpen}
+          onClose={() =>
+            !bulkAssignBranch.isPending &&
+            !bulkAssignLoadingIds &&
+            setBulkAssignOpen(false)
+          }
+          aria-labelledby="bulk-assign-branch-title"
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle id="bulk-assign-branch-title">
+            Vincular correos a sucursal
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Solo se actualizan correos que no estén en estado{' '}
+              <strong>Retirado</strong>. Usa los filtros actuales como alcance.
+            </Typography>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={bulkAssignOnlyWithout}
+                  disabled={bulkAssignLoadingIds || bulkAssignBranch.isPending}
+                  onChange={e => {
+                    const next = e.target.checked
+                    setBulkAssignOnlyWithout(next)
+                    void loadBulkAssignTargetIds(next).catch(() => {
+                      setSnackbar({
+                        open: true,
+                        message: 'No se pudo recalcular el listado',
+                        severity: 'error'
+                      })
+                    })
+                  }}
+                />
+              }
+              label="Solo correos sin sucursal"
+              sx={{ mb: 2, display: 'block' }}
+            />
+            <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+              <InputLabel id="bulk-assign-branch-select">Sucursal</InputLabel>
+              <Select
+                labelId="bulk-assign-branch-select"
+                label="Sucursal"
+                value={bulkAssignBranchId}
+                disabled={bulkAssignLoadingIds || bulkAssignBranch.isPending}
+                onChange={e => setBulkAssignBranchId(String(e.target.value))}
+              >
+                {activeBranches.map(b => (
+                  <MenuItem key={b.id} value={b.id}>
+                    {b.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            {bulkAssignLoadingIds ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                <CircularProgress size={28} />
+              </Box>
+            ) : (
+              <Alert severity={bulkAssignTargetIds.length ? 'info' : 'warning'}>
+                {bulkAssignTargetIds.length === 0
+                  ? 'No hay correos no retirados que coincidan con el alcance.'
+                  : `Se vincularán ${bulkAssignTargetIds.length} correo${bulkAssignTargetIds.length === 1 ? '' : 's'}.`}
+              </Alert>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button
+              onClick={() => setBulkAssignOpen(false)}
+              disabled={bulkAssignBranch.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              disabled={
+                bulkAssignLoadingIds ||
+                bulkAssignBranch.isPending ||
+                !bulkAssignBranchId ||
+                bulkAssignTargetIds.length === 0
+              }
+              onClick={() => void handleConfirmBulkAssignBranch()}
+            >
+              {bulkAssignBranch.isPending ? 'Vinculando…' : 'Vincular'}
             </Button>
           </DialogActions>
         </Dialog>

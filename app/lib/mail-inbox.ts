@@ -1,6 +1,9 @@
 import type { Mail } from '@/hooks/useMails'
 
-export function mailUserId(ref: { _id: string } | string): string {
+export function mailUserId(
+  ref: { _id: string } | string | null | undefined
+): string {
+  if (ref == null) return ''
   return typeof ref === 'object' ? ref._id : String(ref)
 }
 

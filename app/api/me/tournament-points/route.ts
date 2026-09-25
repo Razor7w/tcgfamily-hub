@@ -10,6 +10,7 @@ import TournamentPointsAward, {
 } from '@/models/TournamentPointsAward'
 import type { MyTournamentPointsEntry } from '@/lib/tournament-points-public'
 import mongoose from 'mongoose'
+import { normalizeStorePointsAmount } from '@/lib/store-points-amount'
 
 export async function GET() {
   try {
@@ -110,8 +111,8 @@ export async function GET() {
 
         if (!rowUser && (!userPop || rowPop !== userPop)) continue
 
-        const pts = Math.max(0, Math.round(Number(row.points) || 0))
-        totalPoints += pts
+        const pts = Math.max(0, normalizeStorePointsAmount(row.points))
+        totalPoints = normalizeStorePointsAmount(totalPoints + pts)
         const eventTitle = award.eventTitle || meta?.title || 'Torneo'
         const displayStartsAt = meta?.startsAt
           ? meta.startsAt.toISOString()

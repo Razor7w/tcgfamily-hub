@@ -24,11 +24,19 @@ import { useSession } from 'next-auth/react'
 import { clean } from 'rut.js'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
 import { useMeStores, type MeStoreRow } from '@/hooks/useMeStores'
-import { useMailRegisterQuota, useRegisterMail } from '@/hooks/useMails'
+import {
+  fetchMailRegisterDuplicateCheck,
+  useMailBranchesForStore,
+  useMailRegisterQuota,
+  useRegisterMail,
+  type MailRegisterDuplicateCheck
+} from '@/hooks/useMails'
 import { MAIL_REGISTER_DAILY_LIMIT } from '@/lib/mail-register-constants'
 import { MAIL_CONTACT_PHONE_MAX } from '@/lib/mail-contact-phone'
+import type { StoreBranchRow } from '@/lib/store-branch'
 
 const OBS_MAX = 2000
+const EMPTY_BRANCH_OPTIONS: StoreBranchRow[] = []
 
 const REGISTER_MAIL_HELP_TEXT =
   'Ingresa el RUT del receptor. El correo quedará como pendiente de ingreso en tienda hasta que la tienda lo confirme. Se generará un código único: úsalo para identificar el envío en tienda y, una vez ingresado el paquete, para solicitar o retirar con el mismo código.'
@@ -108,6 +116,20 @@ export default function RegisterMailDialog({
     isLoading: quotaLoading,
     isError: quotaError
   } = useMailRegisterQuota(selectedStoreId || null)
+  const { data: branchesRes, isLoading: branchesLoading } =
+    useMailBranchesForStore(selectedStoreId || null)
+  const branchOptions = branchesRes?.branches ?? EMPTY_BRANCH_OPTIONS
+  const branchRequired = Boolean(branchesRes?.required)
+
+  const [userBranch, setUserBranch] = useState<StoreBranchRow | null>(null)
+  const selectedBranch = useMemo(() => {
+    if (!open || !selectedStoreId) return null
+    if (userBranch && branchOptions.some(b => b.id === userBranch.id)) {
+      return userBranch
+    }
+    return branchOptions.length === 1 ? branchOptions[0]! : null
+  }, [open, selectedStoreId, userBranch, branchOptions])
+
   const remaining = quota?.remaining ?? 0
   const limit = quota?.limit ?? MAIL_REGISTER_DAILY_LIMIT
   const usedToday = quota?.usedToday ?? 0
@@ -117,6 +139,9 @@ export default function RegisterMailDialog({
   const [observations, setObservations] = useState('')
   const [contactPhone, setContactPhone] = useState('')
   const [submitAttempted, setSubmitAttempted] = useState(false)
+  const [checkingDuplicate, setCheckingDuplicate] = useState(false)
+  const [duplicateConfirm, setDuplicateConfirm] =
+    useState<MailRegisterDuplicateCheck | null>(null)
 
   const [helpAnchor, setHelpAnchor] = useState<HTMLElement | null>(null)
 
@@ -127,6 +152,9 @@ export default function RegisterMailDialog({
     setContactPhone('')
     setSubmitAttempted(false)
     setUserStore(null)
+    setUserBranch(null)
+    setDuplicateConfirm(null)
+    setCheckingDuplicate(false)
     registerMail.reset()
     onClose()
   }
@@ -139,18 +167,52 @@ export default function RegisterMailDialog({
     return getRutFieldError(rut, false)
   }, [rut, submitAttempted])
 
-  const handleSubmit = async () => {
-    setSubmitAttempted(true)
-    if (!selectedStoreId) return
-    if (getRutFieldError(rut, true)) return
+  const doRegister = async () => {
     await registerMail.mutateAsync({
       toRut: normalizeRutForApi(rut),
       observations: observations.trim() || undefined,
       contactPhone: contactPhone.trim() || undefined,
       mode: 'onlyReceptor',
-      storeId: selectedStoreId
+      storeId: selectedStoreId,
+      ...(selectedBranch?.id ? { branchId: selectedBranch.id } : {})
     })
     handleClose()
+  }
+
+  const handleSubmit = async () => {
+    setSubmitAttempted(true)
+    if (!selectedStoreId) return
+    if (branchRequired && !selectedBranch?.id) return
+    if (getRutFieldError(rut, true)) return
+
+    setCheckingDuplicate(true)
+    try {
+      const check = await fetchMailRegisterDuplicateCheck(
+        selectedStoreId,
+        normalizeRutForApi(rut)
+      )
+      if (check.duplicate) {
+        setDuplicateConfirm(check)
+        return
+      }
+      await doRegister()
+    } catch (e) {
+      // Si falla el chequeo, no bloqueamos el registro: el cupo sigue validándose en POST.
+      console.error('duplicate check failed:', e)
+      await doRegister()
+    } finally {
+      setCheckingDuplicate(false)
+    }
+  }
+
+  const handleConfirmDuplicate = async () => {
+    setDuplicateConfirm(null)
+    setCheckingDuplicate(true)
+    try {
+      await doRegister()
+    } finally {
+      setCheckingDuplicate(false)
+    }
   }
 
   const noStores = !storesLoading && storeOptions.length === 0
@@ -160,7 +222,16 @@ export default function RegisterMailDialog({
     storesLoading ||
     noStores ||
     !selectedStoreId ||
-    registerMail.isPending
+    registerMail.isPending ||
+    checkingDuplicate ||
+    (branchRequired && branchesLoading)
+  const submitDisabled =
+    fieldsDisabled ||
+    quotaError ||
+    !selectedStoreId ||
+    (branchRequired && !selectedBranch?.id) ||
+    registerMail.isPending ||
+    checkingDuplicate
 
   const titleRow = (
     <>
@@ -213,7 +284,10 @@ export default function RegisterMailDialog({
         size="small"
         options={storeOptions}
         value={selectedStore}
-        onChange={(_, value) => setUserStore(value)}
+        onChange={(_, value) => {
+          setUserStore(value)
+          setUserBranch(null)
+        }}
         getOptionLabel={o => o.name?.trim() || o.slug || 'Tienda'}
         isOptionEqualToValue={(a, b) => a.id === b.id}
         disabled={storesLoading || noStores || registerMail.isPending}
@@ -230,6 +304,44 @@ export default function RegisterMailDialog({
           />
         )}
       />
+
+      {branchRequired || branchOptions.length > 0 ? (
+        <Autocomplete<StoreBranchRow>
+          size="small"
+          options={branchOptions}
+          value={selectedBranch}
+          onChange={(_, value) => setUserBranch(value)}
+          getOptionLabel={o =>
+            o.address?.trim()
+              ? `${o.name}${o.address ? ` · ${o.address}` : ''}`
+              : o.name
+          }
+          isOptionEqualToValue={(a, b) => a.id === b.id}
+          disabled={
+            fieldsDisabled ||
+            branchesLoading ||
+            !selectedStoreId ||
+            branchOptions.length === 0
+          }
+          loading={branchesLoading}
+          noOptionsText={
+            branchesLoading ? 'Cargando sucursales…' : 'Sin sucursales'
+          }
+          renderInput={params => (
+            <TextField
+              {...params}
+              label="Sucursal"
+              required={branchRequired}
+              error={submitAttempted && branchRequired && !selectedBranch?.id}
+              helperText={
+                submitAttempted && branchRequired && !selectedBranch?.id
+                  ? 'Elige la sucursal de retiro.'
+                  : 'Local donde se recibirá el paquete.'
+              }
+            />
+          )}
+        />
+      ) : null}
 
       <TextField
         label="RUT receptor"
@@ -315,15 +427,14 @@ export default function RegisterMailDialog({
           fullWidth
           onClick={handleSubmit}
           variant="contained"
-          disabled={
-            registerMail.isPending ||
-            quotaError ||
-            fieldsDisabled ||
-            !selectedStoreId
-          }
+          disabled={submitDisabled}
           sx={{ py: 1, fontWeight: 700 }}
         >
-          {registerMail.isPending ? 'Registrando…' : 'Registrar'}
+          {registerMail.isPending || checkingDuplicate
+            ? checkingDuplicate && !registerMail.isPending
+              ? 'Verificando…'
+              : 'Registrando…'
+            : 'Registrar'}
         </Button>
       </Stack>
       <Button
@@ -333,7 +444,7 @@ export default function RegisterMailDialog({
         color="primary"
         fullWidth
         variant="text"
-        disabled={registerMail.isPending}
+        disabled={registerMail.isPending || checkingDuplicate}
         sx={{ fontWeight: 700 }}
       >
         Cargar múltiples
@@ -483,15 +594,14 @@ export default function RegisterMailDialog({
                 fullWidth
                 onClick={handleSubmit}
                 variant="contained"
-                disabled={
-                  registerMail.isPending ||
-                  quotaError ||
-                  fieldsDisabled ||
-                  !selectedStoreId
-                }
+                disabled={submitDisabled}
                 sx={{ py: 1, fontWeight: 700 }}
               >
-                {registerMail.isPending ? 'Registrando…' : 'Registrar'}
+                {registerMail.isPending || checkingDuplicate
+                  ? checkingDuplicate && !registerMail.isPending
+                    ? 'Verificando…'
+                    : 'Registrando…'
+                  : 'Registrar'}
               </Button>
             </Stack>
             <Button
@@ -532,16 +642,63 @@ export default function RegisterMailDialog({
             <Button
               onClick={handleSubmit}
               variant="contained"
-              disabled={
-                registerMail.isPending ||
-                quotaError ||
-                fieldsDisabled ||
-                !selectedStoreId
-              }
+              disabled={submitDisabled}
             >
-              {registerMail.isPending ? 'Registrando…' : 'Registrar'}
+              {registerMail.isPending || checkingDuplicate
+                ? checkingDuplicate && !registerMail.isPending
+                  ? 'Verificando…'
+                  : 'Registrando…'
+                : 'Registrar'}
             </Button>
           </Box>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={duplicateConfirm !== null}
+        onClose={() =>
+          !registerMail.isPending && !checkingDuplicate
+            ? setDuplicateConfirm(null)
+            : undefined
+        }
+        aria-labelledby="register-mail-duplicate-title"
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle id="register-mail-duplicate-title">
+          Posible correo duplicado
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 1.5 }}>
+            Ya registraste{' '}
+            {duplicateConfirm && duplicateConfirm.count === 1
+              ? 'un correo'
+              : `${duplicateConfirm?.count ?? 0} correos`}{' '}
+            hoy a este mismo RUT en esta tienda
+            {duplicateConfirm?.latestCode
+              ? ` (último código: ${duplicateConfirm.latestCode})`
+              : ''}
+            .
+          </Alert>
+          <Typography variant="body2" color="text.secondary">
+            ¿Seguro que deseas registrar otro correo a la misma persona?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setDuplicateConfirm(null)}
+            disabled={registerMail.isPending || checkingDuplicate}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            disabled={registerMail.isPending || checkingDuplicate}
+            onClick={() => void handleConfirmDuplicate()}
+          >
+            {registerMail.isPending ? 'Registrando…' : 'Sí, registrar igual'}
+          </Button>
         </DialogActions>
       </Dialog>
 

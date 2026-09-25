@@ -1,7 +1,10 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
+import { useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
+import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -15,20 +18,38 @@ import DialogTitle from '@mui/material/DialogTitle'
 import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
+import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
-import { EmojiEventsOutlined, InfoOutlined } from '@mui/icons-material'
+import {
+  EmojiEventsOutlined,
+  InfoOutlined,
+  LocalOfferOutlined
+} from '@mui/icons-material'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
 import { useMeStores } from '@/hooks/useMeStores'
 import { useMyTournamentPoints } from '@/hooks/useMyTournamentPoints'
 import {
+  useMyTournamentPointsCoupons,
+  type MyTournamentPointsCoupon
+} from '@/hooks/useMyTournamentPointsCoupons'
+import {
   formatStorePointsClpEquivalent,
   storePointClpEquivalenceLabel
 } from '@/lib/store-points-clp'
+import {
+  isTournamentPointsRedeemStep,
+  normalizeStorePointsAmount
+} from '@/lib/store-points-amount'
+import { TOURNAMENT_POINTS_COUPON_REASON_MAX } from '@/lib/tournament-points-coupon-constants'
 
 type StoreHubTournamentPointsCardProps = {
   enabled?: boolean
+  /** `hub`: resumen + enlace a canjear. `page`: flujo completo de canje. */
+  variant?: 'hub' | 'page'
 }
+
+type CouponResult = MyTournamentPointsCoupon
 
 function formatEventDate(iso: string | null): string {
   if (!iso) return '—'
@@ -41,16 +62,45 @@ function formatEventDate(iso: string | null): string {
   })
 }
 
+function formatCouponDate(iso: string): string {
+  const d = new Date(iso)
+  if (!Number.isFinite(d.getTime())) return '—'
+  return d.toLocaleDateString('es-CL', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  })
+}
+
+function formatPoints(n: number): string {
+  return normalizeStorePointsAmount(n).toLocaleString('es-CL', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1
+  })
+}
+
 export default function StoreHubTournamentPointsCard({
-  enabled: fetchEnabled = true
+  enabled: fetchEnabled = true,
+  variant = 'hub'
 }: StoreHubTournamentPointsCardProps) {
+  const isPage = variant === 'page'
+  const queryClient = useQueryClient()
   const { data: session } = useSession()
   const { data: meStoresData } = useMeStores()
   const { storeCredit } = useDashboardModulesFromLayout()
   const tournamentPointsLabel = storeCredit.tournamentPointsLabel
   const { data, isPending, isError, refetch, isFetching } =
     useMyTournamentPoints({ enabled: fetchEnabled })
+  const { data: couponsData, refetch: refetchCoupons } =
+    useMyTournamentPointsCoupons({ enabled: fetchEnabled && isPage })
   const [infoOpen, setInfoOpen] = useState(false)
+  const [redeemOpen, setRedeemOpen] = useState(false)
+  const [redeemPoints, setRedeemPoints] = useState('')
+  const [redeemReason, setRedeemReason] = useState('')
+  const [redeeming, setRedeeming] = useState(false)
+  const [redeemError, setRedeemError] = useState<string | null>(null)
+  const [coupon, setCoupon] = useState<CouponResult | null>(null)
 
   const activeStoreSlug = useMemo(() => {
     const activeStoreId = session?.user?.activeStoreId?.trim() ?? ''
@@ -70,6 +120,60 @@ export default function StoreHubTournamentPointsCard({
       formatStorePointsClpEquivalent(data?.totalPoints ?? 0, activeStoreSlug),
     [data?.totalPoints, activeStoreSlug]
   )
+
+  const redeemedCoupons = couponsData?.coupons ?? []
+
+  const balance = normalizeStorePointsAmount(data?.totalPoints ?? 0)
+  const redeemAmount = normalizeStorePointsAmount(redeemPoints)
+  const reasonOk =
+    redeemReason.trim().length >= 3 &&
+    redeemReason.trim().length <= TOURNAMENT_POINTS_COUPON_REASON_MAX
+  const amountOk =
+    isTournamentPointsRedeemStep(redeemAmount) && redeemAmount <= balance
+  const canSubmit = amountOk && reasonOk && !redeeming && balance >= 0.5
+
+  const openRedeem = () => {
+    setRedeemError(null)
+    setRedeemPoints('')
+    setRedeemReason('')
+    setRedeemOpen(true)
+  }
+
+  const handleCreateCoupon = async () => {
+    setRedeemError(null)
+    if (!canSubmit) return
+    setRedeeming(true)
+    try {
+      const res = await fetch('/api/me/tournament-points/coupons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          points: redeemAmount,
+          reason: redeemReason.trim()
+        })
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(
+          typeof json.error === 'string'
+            ? json.error
+            : 'No se pudo generar el cupón'
+        )
+      }
+      const created = json.coupon as CouponResult
+      setCoupon(created)
+      setRedeemOpen(false)
+      await queryClient.invalidateQueries({
+        queryKey: ['me', 'tournament-points']
+      })
+      void refetch()
+      void refetchCoupons()
+    } catch (e) {
+      setRedeemError(e instanceof Error ? e.message : 'Error al canjear')
+    } finally {
+      setRedeeming(false)
+    }
+  }
 
   if (!fetchEnabled) return null
   if (data && !data.enabled) return null
@@ -91,7 +195,7 @@ export default function StoreHubTournamentPointsCard({
           slotProps={{ title: { variant: 'h6' } }}
           action={
             <IconButton
-              aria-label="Información sobre puntos por torneo"
+              aria-label={`Información sobre ${tournamentPointsLabel}`}
               onClick={() => setInfoOpen(true)}
               size="small"
               color="primary"
@@ -151,7 +255,7 @@ export default function StoreHubTournamentPointsCard({
                     mb: 0.5
                   }}
                 >
-                  {data.totalPoints.toLocaleString('es-CL')}
+                  {formatPoints(data.totalPoints)}
                   <Typography
                     component="span"
                     variant="h5"
@@ -165,6 +269,73 @@ export default function StoreHubTournamentPointsCard({
                   Equivalente aproximado: {pointsCurrency} (
                   {pointsEquivalenceLabel}).
                 </Typography>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={1}
+                  sx={{ mt: 1.75 }}
+                >
+                  {isPage ? (
+                    <Button
+                      variant="contained"
+                      size="small"
+                      startIcon={<LocalOfferOutlined />}
+                      onClick={openRedeem}
+                      disabled={balance < 0.5}
+                      sx={{ textTransform: 'none', fontWeight: 700 }}
+                    >
+                      Generar cupón de canje
+                    </Button>
+                  ) : (
+                    <Button
+                      component={Link}
+                      href="/dashboard/canjear"
+                      variant="contained"
+                      size="small"
+                      startIcon={<LocalOfferOutlined />}
+                      sx={{ textTransform: 'none', fontWeight: 700 }}
+                    >
+                      Ver mis puntos
+                    </Button>
+                  )}
+                  {activeStoreSlug ? (
+                    <Button
+                      component={Link}
+                      href={`/tiendas/${encodeURIComponent(activeStoreSlug)}/puntos-torneo`}
+                      size="small"
+                      sx={{ textTransform: 'none' }}
+                    >
+                      Ver ranking público
+                    </Button>
+                  ) : null}
+                </Stack>
+                {isPage ? (
+                  balance < 0.5 ? (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: 'block', mt: 1 }}
+                    >
+                      Necesitas al menos 0.5 puntos para generar un cupón.
+                    </Typography>
+                  ) : (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: 'block', mt: 1 }}
+                    >
+                      Canje en múltiplos de 0.5. Al crear el cupón se descuenta
+                      el saldo de inmediato.
+                    </Typography>
+                  )
+                ) : (
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: 'block', mt: 1 }}
+                  >
+                    Genera un cupón y muéstralo en tienda dentro de 24 horas.
+                  </Typography>
+                )}
               </Box>
 
               {lastEntry ? (
@@ -180,10 +351,7 @@ export default function StoreHubTournamentPointsCard({
                       {lastEntry.place > 0
                         ? ` · ${lastEntry.place}º lugar`
                         : ''}{' '}
-                      ·{' '}
-                      <strong>
-                        {lastEntry.points.toLocaleString('es-CL')} pts
-                      </strong>
+                      · <strong>{formatPoints(lastEntry.points)} pts</strong>
                     </Typography>
                   </Box>
                 </>
@@ -193,7 +361,7 @@ export default function StoreHubTournamentPointsCard({
                 </Typography>
               )}
 
-              {recent.length > 1 ? (
+              {isPage && recent.length > 1 ? (
                 <Box>
                   <Typography
                     variant="caption"
@@ -211,12 +379,81 @@ export default function StoreHubTournamentPointsCard({
                         color="text.secondary"
                       >
                         {entry.eventTitle} · {formatEventDate(entry.startsAt)} ·{' '}
-                        {entry.points.toLocaleString('es-CL')} pts
+                        {formatPoints(entry.points)} pts
                         {entry.place > 0 ? ` (${entry.place}º)` : ''}
                       </Typography>
                     ))}
                   </Stack>
                 </Box>
+              ) : null}
+
+              {isPage && redeemedCoupons.length > 0 ? (
+                <>
+                  <Divider flexItem />
+                  <Box>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Cupones canjeados
+                    </Typography>
+                    <Stack spacing={0.75}>
+                      {redeemedCoupons.map(c => (
+                        <Box
+                          key={c.id}
+                          component="button"
+                          type="button"
+                          onClick={() => setCoupon(c)}
+                          sx={{
+                            all: 'unset',
+                            cursor: 'pointer',
+                            display: 'block',
+                            width: '100%',
+                            borderRadius: 1,
+                            px: 0.5,
+                            py: 0.25,
+                            '&:hover': {
+                              bgcolor: theme =>
+                                alpha(theme.palette.primary.main, 0.06)
+                            },
+                            '&:focus-visible': {
+                              outline: '2px solid',
+                              outlineColor: 'primary.main',
+                              outlineOffset: 2
+                            }
+                          }}
+                        >
+                          <Typography variant="body2" color="text.secondary">
+                            <Box
+                              component="span"
+                              sx={{
+                                fontWeight: 700,
+                                fontVariantNumeric: 'tabular-nums',
+                                color: 'text.primary'
+                              }}
+                            >
+                              {c.code}
+                            </Box>
+                            {' · '}
+                            {formatEventDate(c.createdAt)}
+                            {' · '}
+                            <strong>
+                              {formatStorePointsClpEquivalent(
+                                c.points,
+                                activeStoreSlug
+                              )}
+                            </strong>
+                            {c.reason.trim() ? ` · ${c.reason.trim()}` : ''}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Stack>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: 'block', mt: 0.75 }}
+                    >
+                      Toca un cupón para ver el detalle y mostrarlo en tienda.
+                    </Typography>
+                  </Box>
+                </>
               ) : null}
             </Stack>
           ) : null}
@@ -233,19 +470,215 @@ export default function StoreHubTournamentPointsCard({
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
             La tienda puede repartir puntos tras un torneo cerrado según la
-            mitad superior de la clasificación. Esos puntos se suman a tu
-            crédito de tienda (mismo valor: {pointsEquivalenceLabel}).
+            mitad superior de la clasificación.
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {storeCredit.csvEnabled
-              ? 'El detalle por evento aparece aquí; el saldo total canjeable sigue en la tarjeta de Crédito de tienda.'
-              : 'El detalle por evento aparece aquí. El total de arriba refleja los puntos ganados en torneos de esta tienda.'}
+            Puedes generar un cupón de canje (múltiplos de 0.5). El saldo se
+            descuenta al crear el cupón y tienes 24 horas para mostrarlo en
+            tienda.
           </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setInfoOpen(false)}>Cerrar</Button>
         </DialogActions>
       </Dialog>
+
+      {isPage ? (
+        <>
+          <Dialog
+            open={redeemOpen}
+            onClose={() => (!redeeming ? setRedeemOpen(false) : undefined)}
+            maxWidth="sm"
+            fullWidth
+          >
+            <DialogTitle>Generar cupón de canje</DialogTitle>
+            <DialogContent>
+              <Stack spacing={2} sx={{ pt: 0.5 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Saldo disponible:{' '}
+                  <strong>
+                    {formatPoints(balance)}{' '}
+                    {tournamentPointsLabel.toLowerCase()}
+                  </strong>
+                  . Solo múltiplos de 0.5.
+                </Typography>
+                <TextField
+                  label="Puntos a canjear"
+                  type="number"
+                  value={redeemPoints}
+                  onChange={e => setRedeemPoints(e.target.value)}
+                  inputProps={{ min: 0.5, max: balance, step: 0.5 }}
+                  helperText={
+                    redeemPoints && !isTournamentPointsRedeemStep(redeemAmount)
+                      ? 'Debe ser múltiplo de 0.5 (ej. 0.5, 1, 2.5).'
+                      : redeemAmount > balance
+                        ? 'Supera tu saldo disponible.'
+                        : 'Ejemplos: 0.5, 1, 1.5, 2.5…'
+                  }
+                  error={
+                    Boolean(redeemPoints) &&
+                    (!isTournamentPointsRedeemStep(redeemAmount) ||
+                      redeemAmount > balance)
+                  }
+                  size="small"
+                  fullWidth
+                  disabled={redeeming}
+                />
+                <TextField
+                  label="Razón del canje"
+                  placeholder="Ej. cartas (singles), bebida u otros"
+                  value={redeemReason}
+                  onChange={e =>
+                    setRedeemReason(
+                      e.target.value.slice(
+                        0,
+                        TOURNAMENT_POINTS_COUPON_REASON_MAX
+                      )
+                    )
+                  }
+                  multiline
+                  minRows={2}
+                  helperText={`${redeemReason.trim().length}/${TOURNAMENT_POINTS_COUPON_REASON_MAX}`}
+                  size="small"
+                  fullWidth
+                  disabled={redeeming}
+                  inputProps={{
+                    maxLength: TOURNAMENT_POINTS_COUPON_REASON_MAX
+                  }}
+                />
+                <Alert severity="warning">
+                  Al generar el cupón se descuenta el saldo de inmediato. Debes
+                  mostrarlo en la tienda dentro de las 24 horas siguientes.
+                </Alert>
+                {redeemError ? (
+                  <Alert severity="error">{redeemError}</Alert>
+                ) : null}
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setRedeemOpen(false)} disabled={redeeming}>
+                Cancelar
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => void handleCreateCoupon()}
+                disabled={!canSubmit}
+              >
+                {redeeming ? 'Generando…' : 'Crear cupón'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          <Dialog
+            open={Boolean(coupon)}
+            onClose={() => setCoupon(null)}
+            maxWidth="sm"
+            fullWidth
+          >
+            <DialogTitle>Cupón de canje</DialogTitle>
+            <DialogContent>
+              {coupon ? (
+                <Stack spacing={2.5} alignItems="center" sx={{ pt: 1 }}>
+                  <Typography
+                    variant="overline"
+                    sx={{
+                      fontWeight: 700,
+                      letterSpacing: '0.12em',
+                      color: 'primary.main'
+                    }}
+                  >
+                    Generado
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontWeight: 800,
+                      letterSpacing: '-0.03em',
+                      textAlign: 'center',
+                      fontSize: { xs: '1.45rem', sm: '1.85rem' },
+                      lineHeight: 1.2,
+                      textTransform: 'capitalize'
+                    }}
+                  >
+                    {formatCouponDate(coupon.createdAt)}
+                  </Typography>
+                  <Alert severity="error" sx={{ width: '100%' }}>
+                    El canje debe hacerse como máximo 24 horas después de esta
+                    fecha. Pasado ese plazo el cupón no debería aceptarse en
+                    tienda.
+                  </Alert>
+                  <Box
+                    sx={t => ({
+                      width: '100%',
+                      p: 2.5,
+                      borderRadius: 2,
+                      border: `1px dashed ${alpha(t.palette.primary.main, 0.45)}`,
+                      bgcolor: alpha(t.palette.primary.main, 0.06),
+                      textAlign: 'center'
+                    })}
+                  >
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ fontWeight: 700, letterSpacing: '0.08em' }}
+                    >
+                      CÓDIGO
+                    </Typography>
+                    <Typography
+                      variant="h4"
+                      sx={{
+                        fontWeight: 800,
+                        fontVariantNumeric: 'tabular-nums',
+                        letterSpacing: '0.04em',
+                        mt: 0.5,
+                        wordBreak: 'break-all'
+                      }}
+                    >
+                      {coupon.code}
+                    </Typography>
+                    <Typography
+                      sx={{ mt: 1.5, fontWeight: 800, fontSize: '1.25rem' }}
+                    >
+                      {formatStorePointsClpEquivalent(
+                        coupon.points,
+                        activeStoreSlug
+                      )}{' '}
+                      de descuento
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 0.5 }}
+                    >
+                      ({formatPoints(coupon.points)} pts)
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 1 }}
+                    >
+                      {coupon.reason}
+                    </Typography>
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ textAlign: 'center' }}
+                  >
+                    Sácale captura y muéstralo en la tienda a tiempo. El saldo
+                    ya fue descontado de tus{' '}
+                    {tournamentPointsLabel.toLowerCase()}.
+                  </Typography>
+                </Stack>
+              ) : null}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setCoupon(null)} variant="contained">
+                Listo
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </>
+      ) : null}
     </>
   )
 }

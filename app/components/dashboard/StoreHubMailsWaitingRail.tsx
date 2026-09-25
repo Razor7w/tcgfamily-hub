@@ -19,7 +19,8 @@ import { useMyMails, type Mail } from '@/hooks/useMails'
 
 const WAITING_MAILS_LIMIT = 5
 
-function mailUserId(ref: { _id: string } | string): string {
+function mailUserId(ref: { _id: string } | string | null | undefined): string {
+  if (ref == null) return ''
   return typeof ref === 'object' ? ref._id : String(ref)
 }
 

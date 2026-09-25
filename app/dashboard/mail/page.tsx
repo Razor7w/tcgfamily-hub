@@ -82,7 +82,8 @@ function getElapsedBadge(days: number): {
   return { label, color: 'error' }
 }
 
-function mailUserId(ref: { _id: string } | string): string {
+function mailUserId(ref: { _id: string } | string | null | undefined): string {
+  if (ref == null) return ''
   return typeof ref === 'object' ? ref._id : String(ref)
 }
 

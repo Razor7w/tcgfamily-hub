@@ -69,7 +69,9 @@ export async function GET(request: Request) {
       $or: [
         { toUserId: uid },
         { fromUserId: uid },
-        ...(rutVariants.length ? [{ toRut: { $in: rutVariants } }] : [])
+        ...(rutVariants.length
+          ? [{ toRut: { $in: rutVariants } }, { fromRut: { $in: rutVariants } }]
+          : [])
       ],
       ...(pendingOnly ? { isRecived: false } : {}),
       ...(inStoreOnly ? { isRecivedInStore: true } : {})

@@ -5,8 +5,13 @@ import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   LinearProgress,
   Paper,
   Stack,
@@ -16,11 +21,18 @@ import {
 import { alpha } from '@mui/material/styles'
 import { clean } from 'rut.js'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
-import { useMailRegisterQuota, type MailRegisterQuota } from '@/hooks/useMails'
+import {
+  fetchMailRegisterDuplicateCheck,
+  useMailBranchesForStore,
+  useMailRegisterQuota,
+  type MailRegisterQuota
+} from '@/hooks/useMails'
 import { useDashboardStoreQueryKey } from '@/hooks/use-dashboard-store-key'
 import { MAIL_CONTACT_PHONE_MAX } from '@/lib/mail-contact-phone'
+import type { StoreBranchRow } from '@/lib/store-branch'
 
 const OBS_MAX = 2000
+const EMPTY_BRANCH_OPTIONS: StoreBranchRow[] = []
 /** Máximo de filas en el formulario (la cuota diaria puede ser menor). */
 const MAX_ROWS = 25
 
@@ -87,6 +99,21 @@ export default function RegisterMultipleMailsForm() {
     isLoading: quotaLoading,
     isError: quotaError
   } = useMailRegisterQuota()
+  const storeIdForBranches = storeKey && storeKey !== 'none' ? storeKey : null
+  const { data: branchesRes, isLoading: branchesLoading } =
+    useMailBranchesForStore(storeIdForBranches)
+  const branchOptions = branchesRes?.branches ?? EMPTY_BRANCH_OPTIONS
+  const branchRequired = Boolean(branchesRes?.required)
+  const [selectedBranch, setSelectedBranch] = useState<StoreBranchRow | null>(
+    null
+  )
+  const effectiveBranch = useMemo(() => {
+    if (selectedBranch && branchOptions.some(b => b.id === selectedBranch.id)) {
+      return selectedBranch
+    }
+    return branchOptions.length === 1 ? branchOptions[0]! : null
+  }, [selectedBranch, branchOptions])
+
   const remaining = quota?.remaining ?? 0
   const limit = quota?.limit ?? 10
   const usedToday = quota?.usedToday ?? 0
@@ -103,6 +130,11 @@ export default function RegisterMultipleMailsForm() {
   const [submitSummary, setSubmitSummary] = useState<{
     ok: number
     errors: string[]
+  } | null>(null)
+  const [duplicateWarn, setDuplicateWarn] = useState<{
+    labels: string[]
+    pendingRows: MailRow[]
+    quota: MailRegisterQuota
   } | null>(null)
 
   /** Validación en vivo: solo muestra error si hay texto (no exige blur). */
@@ -181,24 +213,11 @@ export default function RegisterMultipleMailsForm() {
     })
   }, [rows, duplicateRutIds])
 
-  const handleSubmitAll = async () => {
-    setSubmitSummary(null)
-    let fresh: MailRegisterQuota
-    try {
-      fresh = await queryClient.fetchQuery({
-        queryKey: ['mail-register-quota', storeKey],
-        queryFn: fetchMailRegisterQuota
-      })
-    } catch {
-      return
-    }
-    const cap = Math.max(0, fresh.remaining)
-    const toRun = validRowsToSubmit.slice(0, cap)
-    if (toRun.length === 0) {
-      return
-    }
-
-    const skipped = validRowsToSubmit.length - toRun.length
+  const runBatchRegister = async (
+    toRun: MailRow[],
+    fresh: MailRegisterQuota,
+    skipped: number
+  ) => {
     const errors: string[] = []
     if (skipped > 0) {
       errors.push(
@@ -221,7 +240,8 @@ export default function RegisterMultipleMailsForm() {
             toRut: normalizeRutForApi(row.rut),
             observations: row.observations.trim() || undefined,
             contactPhone: row.contactPhone.trim() || undefined,
-            mode: 'onlyReceptor'
+            mode: 'onlyReceptor',
+            ...(effectiveBranch?.id ? { branchId: effectiveBranch.id } : {})
           })
         })
         const data = (await res.json().catch(() => ({}))) as {
@@ -256,6 +276,80 @@ export default function RegisterMultipleMailsForm() {
     setSubmitSummary({ ok, errors })
   }
 
+  const handleSubmitAll = async () => {
+    setSubmitSummary(null)
+    if (branchRequired && !effectiveBranch?.id) {
+      setSubmitSummary({
+        ok: 0,
+        errors: ['Selecciona una sucursal antes de registrar.']
+      })
+      return
+    }
+    let fresh: MailRegisterQuota
+    try {
+      fresh = await queryClient.fetchQuery({
+        queryKey: ['mail-register-quota', storeKey],
+        queryFn: fetchMailRegisterQuota
+      })
+    } catch {
+      return
+    }
+    const cap = Math.max(0, fresh.remaining)
+    const toRun = validRowsToSubmit.slice(0, cap)
+    if (toRun.length === 0) {
+      return
+    }
+
+    const skipped = validRowsToSubmit.length - toRun.length
+    const storeId = storeIdForBranches || (storeKey !== 'none' ? storeKey : '')
+
+    if (storeId) {
+      const uniqueRuts = [
+        ...new Set(toRun.map(r => normalizeRutForApi(r.rut)).filter(Boolean))
+      ]
+      const dupLabels: string[] = []
+      try {
+        const checks = await Promise.all(
+          uniqueRuts.map(async rutKey => {
+            const check = await fetchMailRegisterDuplicateCheck(storeId, rutKey)
+            return { rutKey, check }
+          })
+        )
+        for (const { rutKey, check } of checks) {
+          if (!check.duplicate) continue
+          const display =
+            toRun.find(r => normalizeRutForApi(r.rut) === rutKey)?.rut.trim() ||
+            rutKey
+          dupLabels.push(
+            check.latestCode
+              ? `${display} (código ${check.latestCode})`
+              : display
+          )
+        }
+      } catch {
+        // Si falla el chequeo, seguimos con el registro.
+      }
+      if (dupLabels.length > 0) {
+        setDuplicateWarn({
+          labels: dupLabels,
+          pendingRows: toRun,
+          quota: fresh
+        })
+        return
+      }
+    }
+
+    await runBatchRegister(toRun, fresh, skipped)
+  }
+
+  const handleConfirmDuplicateBatch = async () => {
+    if (!duplicateWarn) return
+    const { pendingRows, quota: fresh } = duplicateWarn
+    const skipped = Math.max(0, validRowsToSubmit.length - pendingRows.length)
+    setDuplicateWarn(null)
+    await runBatchRegister(pendingRows, fresh, skipped)
+  }
+
   const quotaBlocked = !quotaLoading && remaining <= 0
   const registerCount = Math.min(validRowsToSubmit.length, remaining)
 
@@ -284,6 +378,29 @@ export default function RegisterMultipleMailsForm() {
         <Alert severity="warning" variant="outlined" sx={{ borderRadius: 2 }}>
           Sin cupo: borra un envío pendiente o vuelve mañana (Chile).
         </Alert>
+      ) : null}
+
+      {branchRequired || branchOptions.length > 0 ? (
+        <Autocomplete<StoreBranchRow>
+          size="small"
+          options={branchOptions}
+          value={effectiveBranch}
+          onChange={(_, value) => setSelectedBranch(value)}
+          getOptionLabel={o =>
+            o.address?.trim() ? `${o.name} · ${o.address}` : o.name
+          }
+          isOptionEqualToValue={(a, b) => a.id === b.id}
+          disabled={quotaBlocked || branchesLoading || submittingBatch}
+          loading={branchesLoading}
+          renderInput={params => (
+            <TextField
+              {...params}
+              label="Sucursal"
+              required={branchRequired}
+              helperText="Se aplica a todos los envíos de este lote."
+            />
+          )}
+        />
       ) : null}
 
       {submittingBatch ? (
@@ -493,7 +610,8 @@ export default function RegisterMultipleMailsForm() {
             quotaBlocked ||
             validRowsToSubmit.length === 0 ||
             duplicateRutIds.size > 0 ||
-            registerCount === 0
+            registerCount === 0 ||
+            (branchRequired && !effectiveBranch?.id)
           }
         >
           {submittingBatch
@@ -501,6 +619,49 @@ export default function RegisterMultipleMailsForm() {
             : `Registrar todos (${registerCount})`}
         </Button>
       </Stack>
+
+      <Dialog
+        open={duplicateWarn !== null}
+        onClose={() => (!submittingBatch ? setDuplicateWarn(null) : undefined)}
+        aria-labelledby="multi-mail-duplicate-title"
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle id="multi-mail-duplicate-title">
+          Posibles correos duplicados
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 1.5 }}>
+            Hoy ya registraste correo(s) a estos RUT en esta tienda:
+          </Alert>
+          <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+            {(duplicateWarn?.labels ?? []).map(label => (
+              <Typography key={label} component="li" variant="body2">
+                {label}
+              </Typography>
+            ))}
+          </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            ¿Seguro que deseas registrar estos envíos de todas formas?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setDuplicateWarn(null)}
+            disabled={submittingBatch}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            disabled={submittingBatch}
+            onClick={() => void handleConfirmDuplicateBatch()}
+          >
+            Sí, registrar igual
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   )
 }

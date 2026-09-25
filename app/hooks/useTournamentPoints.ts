@@ -583,3 +583,40 @@ export function useAddTournamentPointsPlayer() {
     }
   })
 }
+
+export type TournamentPointsCouponAdminItem = {
+  id: string
+  code: string
+  points: number
+  reason: string
+  createdAt: string
+  expiresAt: string
+  expired: boolean
+  validForHours: number
+  userId: string
+  userName: string
+  popId: string
+  email: string
+}
+
+export function useTournamentPointsCoupons(enabled: boolean) {
+  const storeKey = useDashboardStoreQueryKey()
+  return useQuery({
+    queryKey: ['admin', 'tournament-points', 'coupons', storeKey],
+    enabled: enabled && storeKey !== 'none',
+    queryFn: async () => {
+      const res = await fetch('/api/admin/tournament-points/coupons')
+      const data = (await res.json()) as {
+        coupons?: TournamentPointsCouponAdminItem[]
+        error?: string
+      }
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === 'string' ? data.error : 'Error al listar canjes'
+        )
+      }
+      return data.coupons ?? []
+    },
+    staleTime: 15_000
+  })
+}

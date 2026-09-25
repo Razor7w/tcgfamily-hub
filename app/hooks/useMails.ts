@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useDashboardStoreQueryKey } from '@/hooks/use-dashboard-store-key'
 import { resolveMailStatusAfterUpdate } from '@/lib/mail-status-transitions'
+import type { StoreBranchRow } from '@/lib/store-branch'
 
 /**
  * Hooks para la API de mails (TanStack Query).
@@ -13,16 +14,28 @@ export type MailStoreRef = {
   slug: string
 }
 
+export type MailBranchRef = {
+  _id: string
+  name?: string
+  address?: string
+  isActive?: boolean
+}
+
 export interface Mail {
   _id: string
   code?: string
   /** Tienda del envío (presente en GET /api/mail/me con allStores). */
   store?: MailStoreRef | null
+  /** Sucursal poblada en listado staff. */
+  branchId?: MailBranchRef | string | null
   fromUserId: {
     _id: string
     name?: string
     rut?: string
-  }
+  } | null
+  /** RUT emisor (invitado o respaldo). */
+  fromRut?: string
+  isGuest?: boolean
   toUserId: {
     _id: string
     name?: string
@@ -48,6 +61,7 @@ export interface CreateMailData {
   isRecivedInStore?: boolean
   observations?: string
   contactPhone?: string
+  branchId?: string
 }
 
 export interface RegisterMailData {
@@ -58,6 +72,8 @@ export interface RegisterMailData {
   contactPhone?: string
   /** Tienda donde se registra el envío; si falta, usa la activa en sesión. */
   storeId?: string
+  /** Sucursal de retiro (obligatoria si la tienda tiene sucursales activas). */
+  branchId?: string
   /**
    * `onlyReceptor`: mismo flujo que un usuario (emisor = sesión, solo `toRut`).
    * Necesario si el emisor es admin para no exigir `fromUserId`/`toUserId`.
@@ -72,6 +88,36 @@ export interface MailRegisterQuota {
   remaining: number
 }
 
+export type MailRegisterDuplicateCheck = {
+  duplicate: boolean
+  count: number
+  latestCode: string | null
+  latestCreatedAt: string | null
+}
+
+/** Chequeo de posible duplicado (mismo RUT, mismo día Chile, misma tienda). */
+export async function fetchMailRegisterDuplicateCheck(
+  storeId: string,
+  toRut: string
+): Promise<MailRegisterDuplicateCheck> {
+  const sp = new URLSearchParams({
+    storeId: storeId.trim(),
+    toRut: toRut.trim()
+  })
+  const response = await fetch(
+    `/api/mail/register-duplicate-check?${sp.toString()}`
+  )
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error(
+      typeof err.error === 'string'
+        ? err.error
+        : 'No se pudo verificar posibles duplicados'
+    )
+  }
+  return response.json()
+}
+
 /** Datos para actualizar un mail (todos opcionales). */
 export interface UpdateMailData {
   fromUserId?: string
@@ -81,6 +127,8 @@ export interface UpdateMailData {
   isRecivedInStore?: boolean
   observations?: string
   contactPhone?: string
+  /** Sucursal; `null` o `''` quita el vínculo. No aplica si el correo está retirado. */
+  branchId?: string | null
 }
 
 export type MailListStageFilter = 'all' | 'pending' | 'inStore' | 'retired'
@@ -106,6 +154,7 @@ export type UseMailsParams = {
   q?: string
   fromQ?: string
   toQ?: string
+  branchId?: string | null
   enabled?: boolean
 }
 
@@ -160,6 +209,7 @@ export function buildMailsQueryString(params: UseMailsParams = {}): string {
   if (params.q?.trim()) sp.set('q', params.q.trim())
   if (params.fromQ?.trim()) sp.set('fromQ', params.fromQ.trim())
   if (params.toQ?.trim()) sp.set('toQ', params.toQ.trim())
+  if (params.branchId?.trim()) sp.set('branchId', params.branchId.trim())
   return sp.toString()
 }
 
@@ -180,6 +230,7 @@ export function useMails(params: UseMailsParams = {}) {
     q = '',
     fromQ = '',
     toQ = '',
+    branchId = null,
     enabled = true
   } = params
 
@@ -200,7 +251,8 @@ export function useMails(params: UseMailsParams = {}) {
         toRuts,
         q,
         fromQ,
-        toQ
+        toQ,
+        branchId
       }
     ],
     enabled,
@@ -220,11 +272,73 @@ export function useMails(params: UseMailsParams = {}) {
         toRuts,
         q,
         fromQ,
-        toQ
+        toQ,
+        branchId
       })
       const response = await fetch(`/api/mail?${qs}`)
       if (!response.ok) {
         throw new Error('Error al cargar mails')
+      }
+      return response.json()
+    }
+  })
+}
+
+export type MailBranchesResponse = {
+  storeId: string
+  required: boolean
+  branches: StoreBranchRow[]
+}
+
+/** Sucursales activas de una tienda (registro de correo). */
+export function useMailBranchesForStore(storeId: string | null) {
+  const id = storeId?.trim() || ''
+  return useQuery<MailBranchesResponse>({
+    queryKey: ['mail-branches', id],
+    enabled: Boolean(id),
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/mail/branches?storeId=${encodeURIComponent(id)}`
+      )
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}))
+        throw new Error(
+          typeof err.error === 'string'
+            ? err.error
+            : 'Error al cargar sucursales'
+        )
+      }
+      return response.json()
+    }
+  })
+}
+
+export type AdminMailBranchesResponse = {
+  storeId: string
+  branches: StoreBranchRow[]
+}
+
+export function adminMailBranchesQueryKey(storeKey: string) {
+  return ['admin-mail-branches', storeKey] as const
+}
+
+/** Sucursales de la tienda activa (staff, incluye inactivas). */
+export function useAdminMailBranches(enabled = true) {
+  const storeKey = useDashboardStoreQueryKey()
+  return useQuery<AdminMailBranchesResponse>({
+    queryKey: adminMailBranchesQueryKey(storeKey),
+    enabled,
+    staleTime: 30 * 1000,
+    queryFn: async () => {
+      const response = await fetch('/api/admin/mail-branches')
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}))
+        throw new Error(
+          typeof err.error === 'string'
+            ? err.error
+            : 'Error al cargar sucursales'
+        )
       }
       return response.json()
     }
@@ -499,6 +613,13 @@ export function useUpdateMail() {
           next.contactPhone = data.contactPhone ?? ''
         }
         if (data.toRut !== undefined) next.toRut = data.toRut
+        if (data.branchId !== undefined) {
+          if (data.branchId == null || data.branchId === '') {
+            next.branchId = null
+          } else {
+            next.branchId = { _id: data.branchId, name: '…' }
+          }
+        }
         return next
       }
 
@@ -723,6 +844,49 @@ export function useBulkReceiveInStoreMails() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['mails', storeKey] })
+    }
+  })
+}
+
+export interface BulkAssignMailBranchResult {
+  matchedCount: number
+  updatedCount: number
+  branchId: string | null
+}
+
+/** Asignar (o quitar) sucursal a varios correos no retirados. */
+export function useBulkAssignMailBranch() {
+  const queryClient = useQueryClient()
+  const storeKey = useDashboardStoreQueryKey()
+
+  return useMutation({
+    mutationFn: async ({
+      mailIds,
+      branchId
+    }: {
+      mailIds: string[]
+      branchId: string | null
+    }) => {
+      const response = await fetch('/api/mail/bulk-assign-branch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mailIds, branchId })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(
+          typeof error.error === 'string'
+            ? error.error
+            : 'Error al asignar sucursal'
+        )
+      }
+
+      return response.json() as Promise<BulkAssignMailBranchResult>
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mails', storeKey] })
+      queryClient.invalidateQueries({ queryKey: ['mails', 'me'] })
     }
   })
 }

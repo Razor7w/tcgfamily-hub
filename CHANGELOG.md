@@ -10,6 +10,41 @@ Registro de cambios notables del proyecto. El formato sigue [Keep a Changelog](h
 
 ### Corregido
 
+## [1.5.0] - 2026-09-24
+
+**Correo multi-sucursal e invitado**, equipos (amistosos y medallas), ranking comunidad Chile y hub «Tu actividad», con login renovado.
+
+### Añadido
+
+- **Sucursales de tienda** (`StoreBranch`): administración en tiendas, selector al registrar correo, listado/filtros admin por sucursal y asignación masiva a correos no retirados.
+- **Correo como invitado** (`/correo/invitado`): registro sin cuenta con RUT emisor/receptor, cupo diario por RUT+tienda (10), tope por sesión de navegador (cookie), vinculación a cuenta si el RUT ya existe, código + código de barras y mensaje para captura al receptor.
+- **Login**: panel de novedades (card/ticket de invitado) + formulario a la derecha; navegación lateral «Correos» en desktop.
+- **Teléfono de contacto** opcional en correos; **export CSV** del listado admin; **filtros** ampliados (etapa, sucursal, remitente/destinatario, código).
+- **Equipos**: amistosos (inter e intramural), alineaciones dinámicas, solicitudes de ingreso, medallas / Team Wars (doc), ranking de puntos de torneo del equipo, admin de equipos y purga al disolver.
+- **Ranking comunidad Chile** (jugadores Pokémon) y APIs/UI de tiendas asociadas.
+- **Dashboard «Tu actividad»** (resumen de temporada, rondas, atajos) y terminología alineada en el hub.
+- Torneos: standings unificados, mejoras de meta/caché, enlace/fusión con oficiales, notificaciones de retiro de correo.
+
+### Cambiado
+
+- Dependencias vía Yarn (sin `package-lock.json`); Header más liviano en ranking; sanitización de posts de equipo.
+- Gestión de puntos por torneo restringida a owners de tienda donde aplica.
+
+### Corregido
+
+- Defaults de filtros de correo; tipados en agregaciones de directorio público; copy de descripción de equipo.
+
+### Operaciones (Atlas)
+
+Si usas correo invitado / búsqueda por `fromRut`, crear índices en `mails` si aún no existen:
+
+```javascript
+db.mails.createIndex({ fromRut: 1, isRecived: 1, createdAt: -1 })
+db.mails.createIndex({ storeId: 1, isGuest: 1, fromRut: 1, createdAt: -1 })
+```
+
+(Sucursales: índices según `StoreBranch` / consultas de `branchId` en mails; verificar con `getIndexes()`.)
+
 ## [1.4.0] - 2026-05-28
 
 **Puntos de contribución** por tienda: reputación por participar (torneos oficiales, mazo, bitácora y correo), niveles, ranking mensual e histórico, insignias públicas y admin configurable. Distinto de crédito de tienda y de puntos por torneo.
@@ -513,7 +548,8 @@ Primera versión estable **TCG Nexo** con soporte multitienda.
 
 Línea base anterior en `package.json` antes de este changelog; el detalle de cambios queda en el historial de git.
 
-[Unreleased]: https://github.com/Razor7w/tcgfamily-hub/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/Razor7w/tcgfamily-hub/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/Razor7w/tcgfamily-hub/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/Razor7w/tcgfamily-hub/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/Razor7w/tcgfamily-hub/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Razor7w/tcgfamily-hub/compare/v1.1.0...v1.2.0

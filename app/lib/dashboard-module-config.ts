@@ -341,7 +341,11 @@ export function mergeDashboardSettings(
       recentPublicDecklists: true
     },
     order: canonicalizeDashboardOrder(order),
-    shortcuts,
+    shortcuts: {
+      ...shortcuts,
+      // Sin módulo correo, no exponer el atajo de registro
+      createMail: visibility.mail ? shortcuts.createMail : false
+    },
     storeCredit,
     contributionPoints
   }
