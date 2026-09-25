@@ -23,6 +23,7 @@ import {
 import { useSession } from 'next-auth/react'
 import { clean } from 'rut.js'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
+import { useMe } from '@/hooks/useMe'
 import { useMeStores, type MeStoreRow } from '@/hooks/useMeStores'
 import {
   fetchMailRegisterDuplicateCheck,
@@ -61,7 +62,9 @@ export default function RegisterMailDialog({
   onClose
 }: RegisterMailDialogProps) {
   const theme = useTheme()
-  const { data: session } = useSession()
+  const { data: session, update: updateSession } = useSession()
+  const { data: meProfile } = useMe()
+  const needsSenderRut = !meProfile?.rut?.trim() && !session?.user?.rut?.trim()
   const { data: meStoresRes, isLoading: storesLoading } = useMeStores()
   const storeOptions = useMemo(
     () => meStoresRes?.stores ?? [],
@@ -136,6 +139,7 @@ export default function RegisterMailDialog({
   const quotaBlocked = !quotaLoading && remaining <= 0
 
   const [rut, setRut] = useState('')
+  const [fromRut, setFromRut] = useState('')
   const [observations, setObservations] = useState('')
   const [contactPhone, setContactPhone] = useState('')
   const [submitAttempted, setSubmitAttempted] = useState(false)
@@ -148,6 +152,7 @@ export default function RegisterMailDialog({
   const handleClose = () => {
     setHelpAnchor(null)
     setRut('')
+    setFromRut('')
     setObservations('')
     setContactPhone('')
     setSubmitAttempted(false)
@@ -167,15 +172,28 @@ export default function RegisterMailDialog({
     return getRutFieldError(rut, false)
   }, [rut, submitAttempted])
 
+  const fromRutError = useMemo(() => {
+    if (!needsSenderRut) return null
+    const t = fromRut.trim()
+    if (!t) {
+      return submitAttempted ? getRutFieldError(fromRut, true) : null
+    }
+    return getRutFieldError(fromRut, false)
+  }, [needsSenderRut, fromRut, submitAttempted])
+
   const doRegister = async () => {
     await registerMail.mutateAsync({
       toRut: normalizeRutForApi(rut),
+      ...(needsSenderRut ? { fromRut: normalizeRutForApi(fromRut) } : {}),
       observations: observations.trim() || undefined,
       contactPhone: contactPhone.trim() || undefined,
       mode: 'onlyReceptor',
       storeId: selectedStoreId,
       ...(selectedBranch?.id ? { branchId: selectedBranch.id } : {})
     })
+    if (needsSenderRut && fromRut.trim()) {
+      await updateSession({ rut: formatRutOnBlur(fromRut) })
+    }
     handleClose()
   }
 
@@ -184,6 +202,7 @@ export default function RegisterMailDialog({
     if (!selectedStoreId) return
     if (branchRequired && !selectedBranch?.id) return
     if (getRutFieldError(rut, true)) return
+    if (needsSenderRut && getRutFieldError(fromRut, true)) return
 
     setCheckingDuplicate(true)
     try {
@@ -231,7 +250,8 @@ export default function RegisterMailDialog({
     !selectedStoreId ||
     (branchRequired && !selectedBranch?.id) ||
     registerMail.isPending ||
-    checkingDuplicate
+    checkingDuplicate ||
+    (needsSenderRut && getRutFieldError(fromRut, true) !== null)
 
   const titleRow = (
     <>
@@ -341,6 +361,33 @@ export default function RegisterMailDialog({
             />
           )}
         />
+      ) : null}
+
+      {needsSenderRut ? (
+        <>
+          <Alert severity="warning">
+            Tu cuenta aún no tiene RUT. Indica <strong>tu</strong> RUT emisor
+            (no el del receptor); se guardará en tu perfil y no podrás cambiarlo
+            después. <Link href="/dashboard/perfil">Ir al perfil</Link>
+          </Alert>
+          <TextField
+            label="Tu RUT emisor"
+            placeholder="12.345.678-9"
+            value={fromRut}
+            onChange={e => setFromRut(e.target.value)}
+            onBlur={() => setFromRut(prev => formatRutOnBlur(prev))}
+            error={!!fromRutError}
+            helperText={
+              fromRutError ??
+              'Debe ser tu RUT personal, distinto al del receptor. Una sola vez.'
+            }
+            size="small"
+            autoComplete="off"
+            disabled={fieldsDisabled}
+            required
+            inputProps={{ maxLength: 20, inputMode: 'text' }}
+          />
+        </>
       ) : null}
 
       <TextField

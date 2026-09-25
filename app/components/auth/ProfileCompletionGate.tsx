@@ -3,10 +3,6 @@
 import { useSession } from 'next-auth/react'
 import OAuthOnboardingModal from '@/components/auth/OAuthOnboardingModal'
 
-function needsRutCompletion(rut: string | undefined) {
-  return !rut?.trim()
-}
-
 function hasDefaultStorePref(
   defaultStoreId: string | null | undefined
 ): boolean {
@@ -19,14 +15,13 @@ function hasDefaultStorePref(
 export default function ProfileCompletionGate() {
   const { data: session, status, update } = useSession()
 
-  // OAuth sin contraseña: modal si falta RUT o tienda de preferencia en sesión.
+  // OAuth sin contraseña: solo exigir tienda de preferencia (RUT es opcional).
   const open =
     status === 'authenticated' &&
     session?.user &&
     !session.user.mustChangePassword &&
     !session.user.hasPassword &&
-    (needsRutCompletion(session.user.rut) ||
-      !hasDefaultStorePref(session.user.defaultStoreId))
+    !hasDefaultStorePref(session.user.defaultStoreId)
 
   async function handleComplete(data: {
     rut: string

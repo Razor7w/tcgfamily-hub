@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: emailErr }, { status: 400 })
     }
 
-    const rutErr = getRutFieldError(rutStr, true)
+    const rutErr = getRutFieldError(rutStr, false)
     if (rutErr) {
       return NextResponse.json({ error: rutErr }, { status: 400 })
     }
@@ -124,17 +124,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const rutStored = rutForStorage(rutStr)
-    const rutVariants = rutMatchVariants(rutStored)
-    const existingRut = await User.findOne({
-      rut: { $in: rutVariants },
-      ...(existing?._id ? { _id: { $ne: existing._id } } : {})
-    }).select('_id')
-    if (existingRut) {
-      return NextResponse.json(
-        { error: 'Ya existe una cuenta con este RUT.' },
-        { status: 409 }
-      )
+    const rutStored = rutStr.trim() ? rutForStorage(rutStr) : ''
+    if (rutStored) {
+      const rutVariants = rutMatchVariants(rutStored)
+      const existingRut = await User.findOne({
+        rut: { $in: rutVariants },
+        ...(existing?._id ? { _id: { $ne: existing._id } } : {})
+      }).select('_id')
+      if (existingRut) {
+        return NextResponse.json(
+          { error: 'Ya existe una cuenta con este RUT.' },
+          { status: 409 }
+        )
+      }
     }
 
     const passwordHash = await hashPassword(passwordStr)
@@ -151,16 +153,18 @@ export async function POST(request: NextRequest) {
       existing.popid = popidForStorage(popidStr)
       existing.defaultStoreId = storeResolved.objectId
       await existing.save()
-      try {
-        await linkAwaitingTeamInvitationsForUser(
-          String(existing._id),
-          rutStored
-        )
-      } catch (e) {
-        console.error(
-          'linkAwaitingTeamInvitationsForUser (register existing):',
-          e
-        )
+      if (rutStored) {
+        try {
+          await linkAwaitingTeamInvitationsForUser(
+            String(existing._id),
+            rutStored
+          )
+        } catch (e) {
+          console.error(
+            'linkAwaitingTeamInvitationsForUser (register existing):',
+            e
+          )
+        }
       }
       return NextResponse.json({ ok: true }, { status: 200 })
     }
@@ -179,10 +183,12 @@ export async function POST(request: NextRequest) {
       sessions: []
     })
 
-    try {
-      await linkAwaitingTeamInvitationsForUser(String(created._id), rutStored)
-    } catch (e) {
-      console.error('linkAwaitingTeamInvitationsForUser (register):', e)
+    if (rutStored) {
+      try {
+        await linkAwaitingTeamInvitationsForUser(String(created._id), rutStored)
+      } catch (e) {
+        console.error('linkAwaitingTeamInvitationsForUser (register):', e)
+      }
     }
 
     return NextResponse.json({ ok: true }, { status: 201 })

@@ -66,6 +66,11 @@ export interface CreateMailData {
 
 export interface RegisterMailData {
   toRut: string
+  /**
+   * RUT emisor a asignar si la cuenta aún no tiene RUT.
+   * Una vez asignado en el perfil/cuenta, no se puede cambiar.
+   */
+  fromRut?: string
   /** Comentario u observación (opcional). */
   observations?: string
   /** Teléfono de contacto del envío (opcional). */

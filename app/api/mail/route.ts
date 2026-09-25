@@ -32,6 +32,12 @@ import {
   generateNextMailCode,
   isMailDuplicateKeyError
 } from '@/lib/mail-create'
+import {
+  applyUserRutOnceToDoc,
+  linkTeamInvitesAfterRutAssign,
+  userHasAssignedRut
+} from '@/lib/assign-user-rut'
+import { rutCompareKey } from '@/lib/mail-recipient-filter'
 
 function parsePositiveInt(
   raw: string | null,
@@ -114,6 +120,7 @@ export async function POST(request: NextRequest) {
       fromUserId,
       toUserId,
       toRut,
+      fromRut: rawFromRut,
       isRecived,
       isRecivedInStore,
       observations,
@@ -155,6 +162,7 @@ export async function POST(request: NextRequest) {
     let resolvedFromUserId: string | null = null
     let resolvedToUserId: string | null = null
     let resolvedToRut: string | null = null
+    let resolvedFromRut: string | null = null
     /** Evita un segundo `findById` cuando el emisor ya se cargó desde la sesión. */
     let cachedFromUser: InstanceType<typeof User> | null = null
     /** Evita `findById` del receptor cuando ya se resolvió con `findUserByRut`. */
@@ -192,8 +200,50 @@ export async function POST(request: NextRequest) {
           { status: 404 }
         )
       }
+
+      if (!userHasAssignedRut(fromUser.rut)) {
+        const fromRutInput =
+          typeof rawFromRut === 'string' ? rawFromRut.trim() : ''
+        if (!fromRutInput) {
+          return NextResponse.json(
+            {
+              error:
+                'Debes asignar tu RUT emisor antes de registrar un correo. Puedes hacerlo aquí o en tu perfil (una sola vez).',
+              code: 'SENDER_RUT_REQUIRED'
+            },
+            { status: 400 }
+          )
+        }
+        if (rutCompareKey(fromRutInput) === rutCompareKey(toRut)) {
+          return NextResponse.json(
+            {
+              error: 'El RUT emisor no puede ser el mismo que el del receptor.',
+              code: 'SENDER_RUT_SAME_AS_RECIPIENT'
+            },
+            { status: 400 }
+          )
+        }
+        const assigned = await applyUserRutOnceToDoc(fromUser, fromRutInput, {
+          required: true
+        })
+        if (!assigned.ok) {
+          return NextResponse.json(
+            { error: assigned.error, code: 'SENDER_RUT_ASSIGN_FAILED' },
+            { status: assigned.status }
+          )
+        }
+        await fromUser.save()
+        if (assigned.assigned) {
+          await linkTeamInvitesAfterRutAssign(
+            String(fromUser._id),
+            assigned.rut
+          )
+        }
+      }
+
       cachedFromUser = fromUser
       resolvedFromUserId = String(fromUser._id)
+      resolvedFromRut = formatMailRut(String(fromUser.rut ?? ''))
       resolvedToRut = formatMailRut(toRut)
       const maybeUser = await findUserByRut(toRut)
       cachedToUserFromRut = maybeUser
@@ -242,9 +292,23 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       }
+      const fromRutRaw = String(fromUser.rut ?? '').trim()
+      if (!fromRutRaw) {
+        return NextResponse.json(
+          { error: 'El emisor no tiene RUT informado' },
+          { status: 400 }
+        )
+      }
+      resolvedFromRut = formatMailRut(fromRutRaw)
     }
     if (!resolvedToRut) {
       return NextResponse.json({ error: 'toRut es requerido' }, { status: 400 })
+    }
+    if (!resolvedFromRut) {
+      return NextResponse.json(
+        { error: 'fromRut es requerido' },
+        { status: 400 }
+      )
     }
 
     if (!adminFullCreate) {
@@ -303,6 +367,7 @@ export async function POST(request: NextRequest) {
           ...(branchGate.branchOid ? { branchId: branchGate.branchOid } : {}),
           code,
           fromUserId: resolvedFromUserId,
+          fromRut: resolvedFromRut,
           ...(resolvedToUserId ? { toUserId: resolvedToUserId } : {}),
           toRut: resolvedToRut,
           isRecived: adminCreateIsRecived,

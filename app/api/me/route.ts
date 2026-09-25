@@ -11,6 +11,11 @@ import {
   validateRegisterName
 } from '@/lib/password-rules'
 import { validatePopidOptional, popidForStorage } from '@/lib/rut-chile'
+import {
+  applyUserRutOnceToDoc,
+  linkTeamInvitesAfterRutAssign,
+  userHasAssignedRut
+} from '@/lib/assign-user-rut'
 import { linkTournamentParticipantsToUserByPop } from '@/lib/link-tournament-participants-by-pop'
 import { canUserActivateDashboardStore } from '@/lib/multitenancy/session-store-hydrate'
 
@@ -130,6 +135,7 @@ export async function PATCH(request: NextRequest) {
     const {
       name,
       popid,
+      rut,
       currentPassword,
       newPassword,
       confirmNewPassword,
@@ -151,6 +157,7 @@ export async function PATCH(request: NextRequest) {
       typeof newPassword === 'string' && newPassword.length > 0
     const hasName = name !== undefined
     const hasPop = popid !== undefined
+    const hasRut = rut !== undefined
     const hasImage = image !== undefined || imageKey !== undefined
     const hasDefaultStore = Object.prototype.hasOwnProperty.call(
       body as object,
@@ -161,6 +168,7 @@ export async function PATCH(request: NextRequest) {
       !wantsPasswordChange &&
       !hasName &&
       !hasPop &&
+      !hasRut &&
       !hasImage &&
       !hasDefaultStore
     ) {
@@ -173,7 +181,7 @@ export async function PATCH(request: NextRequest) {
     if (
       user.mustChangePassword &&
       !wantsPasswordChange &&
-      (hasName || hasPop || hasImage || hasDefaultStore)
+      (hasName || hasPop || hasRut || hasImage || hasDefaultStore)
     ) {
       return NextResponse.json(
         {
@@ -249,6 +257,32 @@ export async function PATCH(request: NextRequest) {
       user.popid = newPopNorm
     }
 
+    let rutAssigned = false
+    if (hasRut) {
+      const rutStr = typeof rut === 'string' ? rut : ''
+      if (userHasAssignedRut(user.rut)) {
+        if (rutStr.trim()) {
+          return NextResponse.json(
+            {
+              error: 'Tu RUT ya está asignado y no se puede modificar.'
+            },
+            { status: 400 }
+          )
+        }
+      } else {
+        const assigned = await applyUserRutOnceToDoc(user, rutStr, {
+          required: true
+        })
+        if (!assigned.ok) {
+          return NextResponse.json(
+            { error: assigned.error },
+            { status: assigned.status }
+          )
+        }
+        rutAssigned = assigned.assigned
+      }
+    }
+
     if (hasDefaultStore) {
       if (defaultStoreId === null || defaultStoreId === '') {
         return NextResponse.json(
@@ -322,6 +356,13 @@ export async function PATCH(request: NextRequest) {
 
     await user.save()
 
+    if (rutAssigned && userHasAssignedRut(user.rut)) {
+      await linkTeamInvitesAfterRutAssign(
+        String(user._id),
+        String(user.rut ?? '')
+      )
+    }
+
     if (popChanged && newPopNorm) {
       try {
         await linkTournamentParticipantsToUserByPop(
@@ -360,6 +401,8 @@ export async function PATCH(request: NextRequest) {
       ok: true,
       name: user.name ?? '',
       popid: user.popid ?? '',
+      rut: user.rut ?? '',
+      rutAssigned,
       hasPassword,
       mustChangePassword: Boolean(user.mustChangePassword),
       image: user.image ?? '',

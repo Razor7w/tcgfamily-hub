@@ -19,8 +19,11 @@ import {
   Typography
 } from '@mui/material'
 import { alpha } from '@mui/material/styles'
+import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import { clean } from 'rut.js'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
+import { useMe } from '@/hooks/useMe'
 import {
   fetchMailRegisterDuplicateCheck,
   useMailBranchesForStore,
@@ -75,6 +78,9 @@ function normalizeRutKey(input: string): string {
 export default function RegisterMultipleMailsForm() {
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { data: session, update: updateSession } = useSession()
+  const { data: meProfile } = useMe()
+  const needsSenderRut = !meProfile?.rut?.trim() && !session?.user?.rut?.trim()
   const storeKey = useDashboardStoreQueryKey()
   const batchProgressAnchorRef = useRef<HTMLDivElement>(null)
   const [submittingBatch, setSubmittingBatch] = useState(false)
@@ -82,6 +88,7 @@ export default function RegisterMultipleMailsForm() {
   const [batchProcessed, setBatchProcessed] = useState(0)
   const [batchOk, setBatchOk] = useState(0)
   const [batchProgressPct, setBatchProgressPct] = useState(0)
+  const [fromRut, setFromRut] = useState('')
 
   useEffect(() => {
     if (!submittingBatch) return
@@ -238,6 +245,7 @@ export default function RegisterMultipleMailsForm() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             toRut: normalizeRutForApi(row.rut),
+            ...(needsSenderRut ? { fromRut: normalizeRutForApi(fromRut) } : {}),
             observations: row.observations.trim() || undefined,
             contactPhone: row.contactPhone.trim() || undefined,
             mode: 'onlyReceptor',
@@ -264,6 +272,9 @@ export default function RegisterMultipleMailsForm() {
       setBatchProcessed(0)
       setBatchOk(0)
       setBatchProgressPct(0)
+      if (needsSenderRut && fromRut.trim() && ok > 0) {
+        await updateSession({ rut: formatRutOnBlur(fromRut) })
+      }
       await queryClient.invalidateQueries({ queryKey: ['mails'] })
       await queryClient.invalidateQueries({ queryKey: ['mails', 'me'] })
       await queryClient.invalidateQueries({ queryKey: ['mail-register-quota'] })
@@ -278,6 +289,16 @@ export default function RegisterMultipleMailsForm() {
 
   const handleSubmitAll = async () => {
     setSubmitSummary(null)
+    if (needsSenderRut && getRutFieldError(fromRut, true)) {
+      setSubmitSummary({
+        ok: 0,
+        errors: [
+          getRutFieldError(fromRut, true) ||
+            'Debes indicar tu RUT emisor antes de registrar correos.'
+        ]
+      })
+      return
+    }
     if (branchRequired && !effectiveBranch?.id) {
       setSubmitSummary({
         ok: 0,
@@ -378,6 +399,35 @@ export default function RegisterMultipleMailsForm() {
         <Alert severity="warning" variant="outlined" sx={{ borderRadius: 2 }}>
           Sin cupo: borra un envío pendiente o vuelve mañana (Chile).
         </Alert>
+      ) : null}
+
+      {needsSenderRut ? (
+        <>
+          <Alert severity="warning" variant="outlined" sx={{ borderRadius: 2 }}>
+            Tu cuenta aún no tiene RUT. Indica <strong>tu</strong> RUT emisor
+            (no el del receptor); se guardará en tu perfil y no podrás cambiarlo
+            después. <Link href="/dashboard/perfil">Ir al perfil</Link>
+          </Alert>
+          <TextField
+            label="Tu RUT emisor"
+            placeholder="12.345.678-9"
+            value={fromRut}
+            onChange={e => setFromRut(e.target.value)}
+            onBlur={() => setFromRut(formatRutOnBlur(fromRut))}
+            error={
+              Boolean(fromRut.trim()) &&
+              getRutFieldError(fromRut, false) !== null
+            }
+            helperText={
+              getRutFieldError(fromRut, false) ??
+              'Debe ser tu RUT personal, distinto al de los receptores. Una sola vez.'
+            }
+            size="small"
+            required
+            disabled={quotaBlocked || submittingBatch}
+            inputProps={{ maxLength: 20 }}
+          />
+        </>
       ) : null}
 
       {branchRequired || branchOptions.length > 0 ? (
