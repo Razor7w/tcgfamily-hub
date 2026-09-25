@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v16-appRouter'
 import { SessionProvider } from 'next-auth/react'
 import { auth } from '@/auth'
+import ImpactAffiliateScript from '@/components/ImpactAffiliateScript'
 import ThemeRegistry from '@/components/ThemeRegistry'
 import MustChangePasswordRedirect from '@/components/auth/MustChangePasswordRedirect'
 import ProfileCompletionGate from '@/components/auth/ProfileCompletionGate'
@@ -21,6 +22,7 @@ export default async function RootLayout({
   return (
     <html lang="es" className={outfit.variable}>
       <body>
+        <ImpactAffiliateScript />
         <AppRouterCacheProvider>
           <QueryProvider>
             <ThemeRegistry>
