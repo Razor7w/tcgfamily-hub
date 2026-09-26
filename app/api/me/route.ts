@@ -68,6 +68,7 @@ export async function GET() {
       popid?: string
       phone?: string
       role?: string
+      sellerModuleAccess?: boolean
       passwordHash?: string
       mustChangePassword?: boolean
       defaultStoreId?: mongoose.Types.ObjectId | null
@@ -89,6 +90,8 @@ export async function GET() {
       popid: u.popid ?? '',
       phone: u.phone ?? '',
       role: u.role ?? 'user',
+      sellerModuleAccess:
+        Boolean(u.sellerModuleAccess) || (u.role ?? 'user') === 'admin',
       hasPassword: Boolean(u.passwordHash),
       mustChangePassword: Boolean(u.mustChangePassword),
       defaultStoreId: defSid,

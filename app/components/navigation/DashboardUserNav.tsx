@@ -35,6 +35,7 @@ import { useStoreHubHref } from '@/hooks/useStoreHubHref'
 import SignOutList from '@/components/auth/SignOutList'
 import AdminSidebarClient from '@/components/navigation/AdminSidebarClient'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
+import { useMe } from '@/hooks/useMe'
 
 function isUnderDecklistNav(path: string) {
   return (
@@ -55,6 +56,8 @@ export default function DashboardUserNav({
   const storeHubHref = useStoreHubHref()
   const { visibility } = useDashboardModulesFromLayout()
   const showMail = visibility.mail
+  const { data: me } = useMe()
+  const showCarpetas = Boolean(me?.sellerModuleAccess)
   const [decklistOpen, setDecklistOpen] = useState(() =>
     isUnderDecklistNav(pathname)
   )
@@ -144,21 +147,23 @@ export default function DashboardUserNav({
               <ListItemText primary="Equipo" />
             </ListItemButton>
           </ListItem>
-          <ListItem disablePadding>
-            <ListItemButton
-              component={Link}
-              href="/dashboard/carpetas"
-              selected={
-                pathname === '/dashboard/carpetas' ||
-                pathname.startsWith('/dashboard/carpetas/')
-              }
-            >
-              <ListItemIcon>
-                <FolderOpen />
-              </ListItemIcon>
-              <ListItemText primary="Carpetas" />
-            </ListItemButton>
-          </ListItem>
+          {showCarpetas ? (
+            <ListItem disablePadding>
+              <ListItemButton
+                component={Link}
+                href="/dashboard/carpetas"
+                selected={
+                  pathname === '/dashboard/carpetas' ||
+                  pathname.startsWith('/dashboard/carpetas/')
+                }
+              >
+                <ListItemIcon>
+                  <FolderOpen />
+                </ListItemIcon>
+                <ListItemText primary="Carpetas" />
+              </ListItemButton>
+            </ListItem>
+          ) : null}
           <ListItem disablePadding>
             <ListItemButton
               onClick={() => setDecklistOpen(s => !s)}

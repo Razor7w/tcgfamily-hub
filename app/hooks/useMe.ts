@@ -13,6 +13,8 @@ export type MeProfile = {
   rut: string
   popid: string
   phone: string
+  /** Marcha blanca Carpetas / vendedores (incluye rol admin). */
+  sellerModuleAccess?: boolean
   hasPassword: boolean
   mustChangePassword: boolean
   defaultStoreId: string | null

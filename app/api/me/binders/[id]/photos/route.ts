@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import mongoose from 'mongoose'
-import { auth } from '@/auth'
+import { requireSellerModuleSession } from '@/lib/seller-module-access'
 import {
   CARD_PHOTO_DESCRIPTION_MAX,
   CARD_PHOTO_NAME_MAX
@@ -20,10 +20,9 @@ function isOwnedUploadKey(userId: string, key: string): boolean {
 
 export async function GET(_request: NextRequest, context: Ctx) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireSellerModuleSession()
+    if (!gate.ok) return gate.response
+    const session = gate.session
     const { id } = await context.params
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: 'Carpeta inválida' }, { status: 400 })
@@ -66,10 +65,9 @@ export async function GET(_request: NextRequest, context: Ctx) {
 
 export async function POST(request: NextRequest, context: Ctx) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireSellerModuleSession()
+    if (!gate.ok) return gate.response
+    const session = gate.session
     const { id } = await context.params
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: 'Carpeta inválida' }, { status: 400 })

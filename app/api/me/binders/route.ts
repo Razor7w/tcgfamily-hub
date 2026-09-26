@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import mongoose from 'mongoose'
-import { auth } from '@/auth'
+import { requireSellerModuleSession } from '@/lib/seller-module-access'
 import {
   CARD_BINDER_DESCRIPTION_MAX,
   CARD_BINDER_NAME_MAX
@@ -19,10 +19,9 @@ export const runtime = 'nodejs'
 
 export async function GET() {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireSellerModuleSession()
+    if (!gate.ok) return gate.response
+    const session = gate.session
     const userOid = new mongoose.Types.ObjectId(session.user.id)
     await connectDB()
 
@@ -52,10 +51,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireSellerModuleSession()
+    if (!gate.ok) return gate.response
+    const session = gate.session
 
     const body = (await request.json().catch(() => ({}))) as {
       name?: unknown

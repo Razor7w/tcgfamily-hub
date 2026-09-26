@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import mongoose from 'mongoose'
-import { auth } from '@/auth'
+import { requireSellerModuleSession } from '@/lib/seller-module-access'
 import { ensureUserSellerSlug } from '@/lib/ensure-user-seller-slug'
 import {
   isValidSellerSlug,
@@ -46,10 +46,9 @@ async function publishedBinderStats(userOid: mongoose.Types.ObjectId) {
 
 export async function GET() {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireSellerModuleSession()
+    if (!gate.ok) return gate.response
+    const session = gate.session
 
     await connectDB()
     const userOid = new mongoose.Types.ObjectId(session.user.id)
@@ -136,10 +135,9 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireSellerModuleSession()
+    if (!gate.ok) return gate.response
+    const session = gate.session
 
     const body = (await request.json().catch(() => ({}))) as {
       sellerSlug?: unknown

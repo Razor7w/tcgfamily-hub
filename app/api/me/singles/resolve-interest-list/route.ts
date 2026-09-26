@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import mongoose from 'mongoose'
-import { auth } from '@/auth'
+import { requireSellerModuleSession } from '@/lib/seller-module-access'
 import { toCardSingleDTO } from '@/lib/card-single-dto'
 import {
   interestLineMatchScore,
@@ -14,10 +14,9 @@ export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireSellerModuleSession()
+    if (!gate.ok) return gate.response
+    const session = gate.session
 
     const body = (await request.json().catch(() => ({}))) as {
       text?: unknown

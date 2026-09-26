@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import mongoose from 'mongoose'
-import { auth } from '@/auth'
+import { requireSellerModuleSession } from '@/lib/seller-module-access'
 import {
   CARD_SINGLE_NOTE_MAX,
   CARD_SINGLE_PRICE_CLP_MAX,
@@ -19,10 +19,9 @@ type Ctx = { params: Promise<{ id: string }> }
 
 export async function GET(_request: NextRequest, context: Ctx) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireSellerModuleSession()
+    if (!gate.ok) return gate.response
+    const session = gate.session
     const { id } = await context.params
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: 'Carpeta inválida' }, { status: 400 })
@@ -65,10 +64,9 @@ export async function GET(_request: NextRequest, context: Ctx) {
 
 export async function POST(request: NextRequest, context: Ctx) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const gate = await requireSellerModuleSession()
+    if (!gate.ok) return gate.response
+    const session = gate.session
     const { id } = await context.params
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: 'Carpeta inválida' }, { status: 400 })
