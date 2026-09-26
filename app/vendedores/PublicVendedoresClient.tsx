@@ -40,6 +40,8 @@ type ListResponse = {
   error?: string
 }
 
+const EMPTY_SELLERS: PublicSellerListItem[] = []
+
 export default function PublicVendedoresClient() {
   const [q, setQ] = useState('')
 
@@ -59,7 +61,7 @@ export default function PublicVendedoresClient() {
     }
   })
 
-  const sellers = data ?? []
+  const sellers = data ?? EMPTY_SELLERS
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase()
     if (!needle) return sellers
