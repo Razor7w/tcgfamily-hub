@@ -4,9 +4,8 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
   type ReactNode
 } from 'react'
 import type { CardSingleCondition } from '@/lib/card-single-condition'
@@ -38,8 +37,11 @@ type Ctx = {
 
 const SellerInterestContext = createContext<Ctx | null>(null)
 
+const STORAGE_PREFIX = 'tcg-seller-interest:'
+const CHANGE_EVENT = 'tcg-seller-interest-changed'
+
 function storageKey(sellerSlug: string) {
-  return `tcg-seller-interest:${sellerSlug}`
+  return `${STORAGE_PREFIX}${sellerSlug}`
 }
 
 function normalizeItem(raw: unknown): SellerInterestItem | null {
@@ -63,18 +65,14 @@ function normalizeItem(raw: unknown): SellerInterestItem | null {
         : undefined,
     quantity: typeof x.quantity === 'number' ? x.quantity : undefined,
     priceClp: typeof x.priceClp === 'number' ? x.priceClp : undefined,
-    description:
-      typeof x.description === 'string' ? x.description : undefined,
+    description: typeof x.description === 'string' ? x.description : undefined,
     binderSlug: typeof x.binderSlug === 'string' ? x.binderSlug : undefined,
     binderName: typeof x.binderName === 'string' ? x.binderName : undefined
   }
 }
 
-function readStored(sellerSlug: string): SellerInterestItem[] {
-  if (typeof window === 'undefined') return []
+function parseStoredJson(raw: string): SellerInterestItem[] {
   try {
-    const raw = window.localStorage.getItem(storageKey(sellerSlug))
-    if (!raw) return []
     const parsed = JSON.parse(raw) as unknown
     if (!Array.isArray(parsed)) return []
     return parsed
@@ -85,6 +83,36 @@ function readStored(sellerSlug: string): SellerInterestItem[] {
   }
 }
 
+function readSnapshot(sellerSlug: string): string {
+  if (typeof window === 'undefined') return '[]'
+  try {
+    return window.localStorage.getItem(storageKey(sellerSlug)) ?? '[]'
+  } catch {
+    return '[]'
+  }
+}
+
+function writeItems(sellerSlug: string, items: SellerInterestItem[]) {
+  try {
+    window.localStorage.setItem(storageKey(sellerSlug), JSON.stringify(items))
+  } catch {
+    // ignore quota
+  }
+  window.dispatchEvent(new Event(CHANGE_EVENT))
+}
+
+function subscribeInterestStore(onStoreChange: () => void) {
+  const onStorage = (e: StorageEvent) => {
+    if (e.key?.startsWith(STORAGE_PREFIX)) onStoreChange()
+  }
+  window.addEventListener('storage', onStorage)
+  window.addEventListener(CHANGE_EVENT, onStoreChange)
+  return () => {
+    window.removeEventListener('storage', onStorage)
+    window.removeEventListener(CHANGE_EVENT, onStoreChange)
+  }
+}
+
 export function SellerInterestProvider({
   sellerSlug,
   children
@@ -92,37 +120,29 @@ export function SellerInterestProvider({
   sellerSlug: string
   children: ReactNode
 }) {
-  const [items, setItems] = useState<SellerInterestItem[]>([])
-  const [hydrated, setHydrated] = useState(false)
+  const raw = useSyncExternalStore(
+    subscribeInterestStore,
+    () => readSnapshot(sellerSlug),
+    () => '[]'
+  )
+  const items = useMemo(() => parseStoredJson(raw), [raw])
 
-  useEffect(() => {
-    setItems(readStored(sellerSlug))
-    setHydrated(true)
+  const toggle = useCallback(
+    (item: SellerInterestItem) => {
+      const exists = items.some(x => x.id === item.id)
+      writeItems(
+        sellerSlug,
+        exists ? items.filter(x => x.id !== item.id) : [...items, item]
+      )
+    },
+    [items, sellerSlug]
+  )
+
+  const clear = useCallback(() => {
+    writeItems(sellerSlug, [])
   }, [sellerSlug])
 
-  useEffect(() => {
-    if (!hydrated) return
-    try {
-      window.localStorage.setItem(storageKey(sellerSlug), JSON.stringify(items))
-    } catch {
-      // ignore quota
-    }
-  }, [items, sellerSlug, hydrated])
-
-  const toggle = useCallback((item: SellerInterestItem) => {
-    setItems(prev => {
-      const exists = prev.some(x => x.id === item.id)
-      if (exists) return prev.filter(x => x.id !== item.id)
-      return [...prev, item]
-    })
-  }, [])
-
-  const clear = useCallback(() => setItems([]), [])
-
-  const selectedIds = useMemo(
-    () => new Set(items.map(i => i.id)),
-    [items]
-  )
+  const selectedIds = useMemo(() => new Set(items.map(i => i.id)), [items])
 
   const value = useMemo<Ctx>(
     () => ({
@@ -146,7 +166,9 @@ export function SellerInterestProvider({
 export function useSellerInterest(): Ctx {
   const ctx = useContext(SellerInterestContext)
   if (!ctx) {
-    throw new Error('useSellerInterest must be used within SellerInterestProvider')
+    throw new Error(
+      'useSellerInterest must be used within SellerInterestProvider'
+    )
   }
   return ctx
 }

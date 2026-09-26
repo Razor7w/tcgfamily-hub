@@ -1,6 +1,7 @@
 'use client'
 
-import { use, useCallback, useEffect, useState } from 'react'
+import { use } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import PublicCarpetaSinglesClient, {
   type BinderNavItem
 } from '@/carpetas/[slug]/PublicCarpetaSinglesClient'
@@ -22,25 +23,18 @@ export default function PublicVendedorBinderPage({
   const binderSlug =
     typeof binderRaw === 'string' ? binderRaw.trim().toLowerCase() : ''
 
-  const [binderNav, setBinderNav] = useState<BinderNavItem[]>([])
-
-  const loadNav = useCallback(async () => {
-    if (!sellerSlug) return
-    try {
+  const { data: binderNav = [] } = useQuery({
+    queryKey: ['public', 'vendedores', sellerSlug, 'binders'],
+    enabled: Boolean(sellerSlug),
+    queryFn: async (): Promise<BinderNavItem[]> => {
       const res = await fetch(
         `/api/public/vendedores/${encodeURIComponent(sellerSlug)}`
       )
       const json = (await res.json().catch(() => ({}))) as SellerResponse
-      if (!res.ok) return
-      setBinderNav(json.binders ?? [])
-    } catch {
-      // ignore; la carpeta igual carga
+      if (!res.ok) return []
+      return json.binders ?? []
     }
-  }, [sellerSlug])
-
-  useEffect(() => {
-    void loadNav()
-  }, [loadNav])
+  })
 
   return (
     <PublicCarpetaSinglesClient

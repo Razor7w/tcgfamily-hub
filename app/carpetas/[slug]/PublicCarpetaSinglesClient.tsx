@@ -686,8 +686,7 @@ export default function PublicCarpetaSinglesClient({
     setInterestBusy(s.id)
     setActionMsg(null)
     try {
-      const method =
-        opts?.onlyMark || !s.interestedByMe ? 'POST' : 'DELETE'
+      const method = opts?.onlyMark || !s.interestedByMe ? 'POST' : 'DELETE'
       const res = await fetch(
         `/api/me/singles/${encodeURIComponent(s.id)}/interest`,
         { method }
@@ -729,8 +728,7 @@ export default function PublicCarpetaSinglesClient({
     setInterestBusy(p.id)
     setActionMsg(null)
     try {
-      const method =
-        opts?.onlyMark || !p.interestedByMe ? 'POST' : 'DELETE'
+      const method = opts?.onlyMark || !p.interestedByMe ? 'POST' : 'DELETE'
       const res = await fetch(
         `/api/me/photos/${encodeURIComponent(p.id)}/interest`,
         { method }
@@ -788,8 +786,9 @@ export default function PublicCarpetaSinglesClient({
       })
       setLocalSelectedById(prev => {
         if (prev[s.id]) {
-          const { [s.id]: _, ...rest } = prev
-          return rest
+          const next = { ...prev }
+          delete next[s.id]
+          return next
         }
         return { ...prev, [s.id]: item }
       })
@@ -820,8 +819,9 @@ export default function PublicCarpetaSinglesClient({
       })
       setLocalSelectedById(prev => {
         if (prev[p.id]) {
-          const { [p.id]: _, ...rest } = prev
-          return rest
+          const next = { ...prev }
+          delete next[p.id]
+          return next
         }
         return { ...prev, [p.id]: item }
       })

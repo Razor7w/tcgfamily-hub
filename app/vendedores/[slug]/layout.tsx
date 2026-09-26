@@ -14,6 +14,8 @@ export default function VendedorLayout({
   const slug = typeof raw === 'string' ? raw.trim().toLowerCase() : ''
   if (!slug) return children
   return (
-    <SellerInterestProvider sellerSlug={slug}>{children}</SellerInterestProvider>
+    <SellerInterestProvider sellerSlug={slug}>
+      {children}
+    </SellerInterestProvider>
   )
 }

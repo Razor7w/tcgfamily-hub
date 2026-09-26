@@ -44,9 +44,7 @@ export async function POST(request: NextRequest) {
       CardSingle.find({ userId: userOid, published: true }).lean()
     ])
 
-    const binderNameById = new Map(
-      binders.map(b => [b._id.toString(), b.name])
-    )
+    const binderNameById = new Map(binders.map(b => [b._id.toString(), b.name]))
 
     const pool = singles.map(doc => {
       const dto = toCardSingleDTO(

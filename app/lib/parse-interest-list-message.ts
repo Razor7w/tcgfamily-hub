@@ -81,7 +81,10 @@ export function parseInterestListMessage(text: string): ParsedInterestLine[] {
     const line = chunk.replace(/\s*Total:\s*\$?[\d.\s]+$/i, '').trim()
     if (!line.includes('·') && !line.includes('(')) continue
 
-    const parts = line.split(/\s*·\s*/).map(p => p.trim()).filter(Boolean)
+    const parts = line
+      .split(/\s*·\s*/)
+      .map(p => p.trim())
+      .filter(Boolean)
     if (parts.length < 3) continue
 
     const head = extractNameSetNumber(parts[0])
@@ -100,7 +103,9 @@ export function parseInterestListMessage(text: string): ParsedInterestLine[] {
     if (languageIdx < 0) continue
 
     const binderName =
-      languageIdx > 1 ? parts.slice(1, languageIdx).join(' · ').trim() || null : null
+      languageIdx > 1
+        ? parts.slice(1, languageIdx).join(' · ').trim() || null
+        : null
 
     const afterLang = parts.slice(languageIdx + 1)
     if (!afterLang.length) continue
@@ -179,7 +184,11 @@ export function interestLineMatchScore(
   }
   const nameA = parsed.name.trim().toLowerCase()
   const nameB = single.name.trim().toLowerCase()
-  if (nameA && nameB && (nameA === nameB || nameB.includes(nameA) || nameA.includes(nameB))) {
+  if (
+    nameA &&
+    nameB &&
+    (nameA === nameB || nameB.includes(nameA) || nameA.includes(nameB))
+  ) {
     score += 2
   }
   return score

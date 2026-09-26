@@ -281,7 +281,7 @@ function getUserModel(): mongoose.Model<IUser> {
   }
   if (existing) {
     delete mongoose.models[MODEL]
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     delete (mongoose.connection.models as any)[MODEL]
   }
   return mongoose.model<IUser>(MODEL, UserSchema)

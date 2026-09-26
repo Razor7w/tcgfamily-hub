@@ -49,12 +49,8 @@ import {
   normalizeCardBinderSlug,
   slugFromCardBinderName
 } from '@/lib/card-binder-slug'
-import {
-  CARD_SINGLE_CONDITION_LABELS
-} from '@/lib/card-single-condition'
-import {
-  CARD_SINGLE_LANGUAGE_LABELS
-} from '@/lib/card-single-language'
+import { CARD_SINGLE_CONDITION_LABELS } from '@/lib/card-single-condition'
+import { CARD_SINGLE_LANGUAGE_LABELS } from '@/lib/card-single-language'
 import type { CardBinderDTO, CardSingleDTO } from '@/lib/card-single-dto'
 import {
   isValidSellerSlug,
@@ -118,7 +114,9 @@ export default function CarpetasPage() {
       const j = await res.json().catch(() => ({}))
       if (!res.ok) {
         throw new Error(
-          typeof j.error === 'string' ? j.error : 'Error al cargar página pública'
+          typeof j.error === 'string'
+            ? j.error
+            : 'Error al cargar página pública'
         )
       }
       return j as SellerPageInfo
@@ -144,7 +142,9 @@ export default function CarpetasPage() {
   const [pasteUnmatched, setPasteUnmatched] = useState<
     { name: string; set: string; number: string; raw: string }[]
   >([])
-  const [pasteSelected, setPasteSelected] = useState<Set<string>>(() => new Set())
+  const [pasteSelected, setPasteSelected] = useState<Set<string>>(
+    () => new Set()
+  )
   const [pastePlans, setPastePlans] = useState<Record<string, PasteCardPlan>>(
     {}
   )
@@ -217,9 +217,7 @@ export default function CarpetasPage() {
       }
       const matches = (j.matches as InterestMatch[]) ?? []
       setPasteMatches(matches)
-      setPasteUnmatched(
-        (j.unmatched as InterestMatch['parsed'][]) ?? []
-      )
+      setPasteUnmatched((j.unmatched as InterestMatch['parsed'][]) ?? [])
       setPasteSelected(new Set(matches.map(m => m.single.id)))
       const plans: Record<string, PasteCardPlan> = {}
       for (const m of matches) {
@@ -253,10 +251,7 @@ export default function CarpetasPage() {
         const stock = Math.max(1, m.single.quantity)
 
         if (plan.mode === 'reduce' && stock > 1) {
-          const take = Math.min(
-            Math.max(1, plan.reduceBy),
-            stock - 1
-          )
+          const take = Math.min(Math.max(1, plan.reduceBy), stock - 1)
           const newQty = stock - take
           const res = await fetch(
             `/api/me/singles/${encodeURIComponent(m.single.id)}`,
@@ -636,8 +631,8 @@ export default function CarpetasPage() {
             {pasteMatches.length === 0 ? (
               <>
                 <Typography variant="body2" color="text.secondary">
-                  Pega el mensaje que te enviaron (con las cartas y el total). Se
-                  buscarán en tus publicaciones para despublicarlas.
+                  Pega el mensaje que te enviaron (con las cartas y el total).
+                  Se buscarán en tus publicaciones para despublicarlas.
                 </Typography>
                 <TextField
                   label="Mensaje pegado"
@@ -708,8 +703,7 @@ export default function CarpetasPage() {
                 <Stack spacing={1.5}>
                   {pasteMatches.map(m => {
                     const checked = pasteSelected.has(m.single.id)
-                    const plan =
-                      pastePlans[m.single.id] ?? defaultPastePlan(m)
+                    const plan = pastePlans[m.single.id] ?? defaultPastePlan(m)
                     const stock = Math.max(1, m.single.quantity)
                     const canReduce = stock > 1
                     return (
@@ -732,7 +726,8 @@ export default function CarpetasPage() {
                           onChange={() => {
                             setPasteSelected(prev => {
                               const next = new Set(prev)
-                              if (next.has(m.single.id)) next.delete(m.single.id)
+                              if (next.has(m.single.id))
+                                next.delete(m.single.id)
                               else next.add(m.single.id)
                               return next
                             })
@@ -778,7 +773,10 @@ export default function CarpetasPage() {
                                 exclusive
                                 size="small"
                                 value={plan.mode}
-                                onChange={(_, v: 'reduce' | 'unpublish' | null) => {
+                                onChange={(
+                                  _,
+                                  v: 'reduce' | 'unpublish' | null
+                                ) => {
                                   if (!v) return
                                   setPastePlans(prev => ({
                                     ...prev,
@@ -798,13 +796,19 @@ export default function CarpetasPage() {
                               >
                                 <ToggleButton
                                   value="reduce"
-                                  sx={{ textTransform: 'none', fontWeight: 700 }}
+                                  sx={{
+                                    textTransform: 'none',
+                                    fontWeight: 700
+                                  }}
                                 >
                                   Bajar stock
                                 </ToggleButton>
                                 <ToggleButton
                                   value="unpublish"
-                                  sx={{ textTransform: 'none', fontWeight: 700 }}
+                                  sx={{
+                                    textTransform: 'none',
+                                    fontWeight: 700
+                                  }}
                                 >
                                   Despublicar
                                 </ToggleButton>
@@ -916,9 +920,7 @@ export default function CarpetasPage() {
               color="warning"
               variant="contained"
               disabled={
-                unpublishPending ||
-                pastePending ||
-                pasteSelected.size === 0
+                unpublishPending || pastePending || pasteSelected.size === 0
               }
               onClick={() => void applySelectedFromPaste()}
             >
@@ -950,7 +952,9 @@ export default function CarpetasPage() {
                   .slice(0, SELLER_SLUG_MAX)
                 setSellerSlugEdit(raw)
               }}
-              onBlur={() => setSellerSlugEdit(normalizeSellerSlug(sellerSlugEdit))}
+              onBlur={() =>
+                setSellerSlugEdit(normalizeSellerSlug(sellerSlugEdit))
+              }
               helperText={
                 normalizeSellerSlug(sellerSlugEdit)
                   ? `Link: /vendedores/${normalizeSellerSlug(sellerSlugEdit)}`

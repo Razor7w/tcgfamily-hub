@@ -33,10 +33,7 @@ export async function POST(_request: NextRequest, context: Ctx) {
       } | null>()
 
     if (!photo || !photo.published) {
-      return NextResponse.json(
-        { error: 'Foto no disponible' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Foto no disponible' }, { status: 404 })
     }
     if (photo.userId.equals(userOid)) {
       return NextResponse.json(

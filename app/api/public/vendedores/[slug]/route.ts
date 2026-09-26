@@ -68,9 +68,7 @@ export async function GET(_request: Request, context: Ctx) {
           slug: binderSlug,
           description: b.description ?? '',
           publishedCount,
-          path: binderSlug
-            ? sellerBinderPublicPath(slug, binderSlug)
-            : ''
+          path: binderSlug ? sellerBinderPublicPath(slug, binderSlug) : ''
         }
       })
       .filter(b => b.slug && b.publishedCount > 0)
@@ -78,8 +76,7 @@ export async function GET(_request: Request, context: Ctx) {
     if (!publicBinders.length) {
       return NextResponse.json(
         {
-          error:
-            'Este vendedor aún no tiene carpetas con cartas publicadas.'
+          error: 'Este vendedor aún no tiene carpetas con cartas publicadas.'
         },
         { status: 404 }
       )

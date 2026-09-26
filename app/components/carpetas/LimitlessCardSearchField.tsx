@@ -110,7 +110,7 @@ export default function LimitlessCardSearchField({ onPick, disabled }: Props) {
       renderOption={(props, option, { index }) => {
         // MUI pasa `key` en props; hay que aplicarla en el <li> (no en Box).
         // Incluir index: Limitless a veces repite id entre filas distintas.
-        const { key: _muiKey, ...liProps } = props
+        const { key, ...liProps } = props
         const src = limitlessCardImageUrl({
           set: option.set,
           number: option.number,
@@ -119,7 +119,7 @@ export default function LimitlessCardSearchField({ onPick, disabled }: Props) {
         })
         return (
           <li
-            key={`ll-${index}-${limitlessHitKey(option)}`}
+            key={`${String(key)}-${index}-${limitlessHitKey(option)}`}
             {...liProps}
             style={{
               display: 'flex',

@@ -103,7 +103,10 @@ export default function PublicVendedorClient({ slug }: { slug: string }) {
               variant="h3"
               component="h1"
               fontWeight={900}
-              sx={{ letterSpacing: '-0.03em', fontSize: { xs: '1.75rem', md: '2.25rem' } }}
+              sx={{
+                letterSpacing: '-0.03em',
+                fontSize: { xs: '1.75rem', md: '2.25rem' }
+              }}
             >
               {data?.seller.name ?? slug}
             </Typography>

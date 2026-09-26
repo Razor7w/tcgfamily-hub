@@ -53,7 +53,9 @@ export async function ensureUserSellerSlug(input: {
     }
     candidate = normalizeSellerSlug(`${base}-${i + 2}`)
     if (!isValidSellerSlug(candidate)) {
-      candidate = normalizeSellerSlug(`vendedor-${user._id.toString().slice(-6)}`)
+      candidate = normalizeSellerSlug(
+        `vendedor-${user._id.toString().slice(-6)}`
+      )
     }
   }
 

@@ -105,10 +105,7 @@ export async function POST(request: NextRequest, context: Ctx) {
       )
     }
     if (!isOwnedUploadKey(session.user.id, imageKey)) {
-      return NextResponse.json(
-        { error: 'Imagen inválida' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Imagen inválida' }, { status: 400 })
     }
 
     const userOid = new mongoose.Types.ObjectId(session.user.id)

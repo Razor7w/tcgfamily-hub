@@ -82,6 +82,9 @@ function formatClp(n: number) {
   }).format(n)
 }
 
+const EMPTY_SINGLES: CardSingleDTO[] = []
+const EMPTY_PHOTOS: CardPhotoDTO[] = []
+
 export default function CarpetaDetailPage({
   params
 }: {
@@ -476,7 +479,9 @@ export default function CarpetaDetailPage({
       const pre = await pres.json().catch(() => ({}))
       if (!pres.ok) {
         throw new Error(
-          typeof pre.error === 'string' ? pre.error : 'No se pudo preparar la subida'
+          typeof pre.error === 'string'
+            ? pre.error
+            : 'No se pudo preparar la subida'
         )
       }
       const { uploadUrl, key, publicUrl } = pre as {
@@ -515,7 +520,9 @@ export default function CarpetaDetailPage({
     try {
       await createPhoto.mutateAsync({
         name,
-        description: photoDescription.trim().slice(0, CARD_PHOTO_DESCRIPTION_MAX),
+        description: photoDescription
+          .trim()
+          .slice(0, CARD_PHOTO_DESCRIPTION_MAX),
         imageUrl: photoPreview,
         imageKey: photoKey
       })
@@ -555,8 +562,8 @@ export default function CarpetaDetailPage({
     }
   }
 
-  const singles = data?.singles ?? []
-  const photos = data?.photos ?? []
+  const singles = data?.singles ?? EMPTY_SINGLES
+  const photos = data?.photos ?? EMPTY_PHOTOS
   const groups = useMemo(() => groupCardSingles(singles), [singles])
 
   if (isPending) {
@@ -680,7 +687,11 @@ export default function CarpetaDetailPage({
             variant="contained"
             startIcon={<Add />}
             onClick={() => setAddPanelOpen(true)}
-            sx={{ textTransform: 'none', fontWeight: 700, alignSelf: 'flex-start' }}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+              alignSelf: 'flex-start'
+            }}
           >
             Agregar
           </Button>
@@ -930,13 +941,11 @@ export default function CarpetaDetailPage({
                         disabled={deletePhoto.isPending}
                         onClick={() => {
                           if (
-                            window.confirm(
-                              `¿Eliminar la foto «${p.name}»?`
-                            )
+                            window.confirm(`¿Eliminar la foto «${p.name}»?`)
                           ) {
-                            void deletePhoto.mutateAsync(p.id).catch(e =>
-                              handlePatchError(e)
-                            )
+                            void deletePhoto
+                              .mutateAsync(p.id)
+                              .catch(e => handlePatchError(e))
                           }
                         }}
                       >
