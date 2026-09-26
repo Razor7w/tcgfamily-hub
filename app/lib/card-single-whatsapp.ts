@@ -28,12 +28,16 @@ export function buildWhatsAppHref(phone: string, text?: string): string | null {
 
 export type InterestListLine = {
   name: string
-  set: string
-  number: string
-  languageLabel: string
-  conditionLabel: string
-  quantity: number
-  priceClp: number
+  /** Si es foto lotes, no lleva set/número/idioma/estado/precio. */
+  kind?: 'single' | 'photo'
+  set?: string
+  number?: string
+  languageLabel?: string
+  conditionLabel?: string
+  quantity?: number
+  priceClp?: number
+  description?: string
+  binderName?: string
 }
 
 function formatClp(n: number) {
@@ -59,16 +63,37 @@ export function buildInterestListMessage(
   out += ':\n\n'
 
   let total = 0
+  let hasPriced = false
   for (const line of lines) {
-    const qty = Math.max(1, Math.round(line.quantity) || 1)
-    const unit = Math.max(0, Math.round(line.priceClp) || 0)
+    const binderPart = line.binderName?.trim()
+      ? ` · ${line.binderName.trim()}`
+      : ''
+
+    if (line.kind === 'photo') {
+      const desc = line.description?.trim()
+      const descPart = desc ? ` · ${desc}` : ''
+      out += `• ${line.name} (foto)${binderPart}${descPart}\n`
+      continue
+    }
+
+    const qty = Math.max(1, Math.round(line.quantity ?? 1) || 1)
+    const unit = Math.max(0, Math.round(line.priceClp ?? 0) || 0)
     const sub = unit * qty
     total += sub
+    hasPriced = true
     const qtyPart = qty > 1 ? ` · x${qty}` : ''
     const unitPart =
       qty > 1 ? `${formatClp(unit)} c/u = ${formatClp(sub)}` : formatClp(unit)
-    out += `• ${line.name} (${line.set} ${line.number}) · ${line.languageLabel} · ${line.conditionLabel}${qtyPart} · ${unitPart}\n`
+    const setNum =
+      line.set || line.number
+        ? ` (${[line.set, line.number].filter(Boolean).join(' ')})`
+        : ''
+    const lang = line.languageLabel ? ` · ${line.languageLabel}` : ''
+    const cond = line.conditionLabel ? ` · ${line.conditionLabel}` : ''
+    out += `• ${line.name}${setNum}${binderPart}${lang}${cond}${qtyPart} · ${unitPart}\n`
   }
-  out += `\nTotal: ${formatClp(total)}`
+  if (hasPriced) {
+    out += `\nTotal: ${formatClp(total)}`
+  }
   return out.trim()
 }

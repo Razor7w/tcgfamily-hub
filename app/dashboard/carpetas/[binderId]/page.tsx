@@ -3,9 +3,11 @@
 import { use, useMemo, useState } from 'react'
 import Link from 'next/link'
 import ArrowBack from '@mui/icons-material/ArrowBack'
+import Add from '@mui/icons-material/Add'
 import DeleteOutline from '@mui/icons-material/DeleteOutline'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import FavoriteBorder from '@mui/icons-material/FavoriteBorder'
+import PhotoCameraOutlined from '@mui/icons-material/PhotoCameraOutlined'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -26,6 +28,8 @@ import Paper from '@mui/material/Paper'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
+import Tab from '@mui/material/Tab'
+import Tabs from '@mui/material/Tabs'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
@@ -34,16 +38,22 @@ import LimitlessCardSearchField, {
 } from '@/components/carpetas/LimitlessCardSearchField'
 import {
   useBinderSingles,
+  useCreateBinderPhoto,
   useCreateBinderSingle,
+  useDeleteCardPhoto,
   useDeleteCardSingle,
   usePatchCardBinder,
+  usePatchCardPhoto,
   usePatchCardSingle
 } from '@/hooks/useCardBinders'
 import {
   CARD_BINDER_DESCRIPTION_MAX,
   CARD_BINDER_NAME_MAX,
-  CARD_BINDER_SLUG_MAX
+  CARD_BINDER_SLUG_MAX,
+  CARD_PHOTO_DESCRIPTION_MAX,
+  CARD_PHOTO_NAME_MAX
 } from '@/lib/card-binder-constants'
+import type { CardPhotoDTO } from '@/lib/card-photo-dto'
 import {
   CARD_SINGLE_CONDITIONS,
   CARD_SINGLE_CONDITION_LABELS,
@@ -80,8 +90,11 @@ export default function CarpetaDetailPage({
   const { binderId } = use(params)
   const { data, isPending, error } = useBinderSingles(binderId)
   const createSingle = useCreateBinderSingle(binderId)
+  const createPhoto = useCreateBinderPhoto(binderId)
   const patchSingle = usePatchCardSingle(binderId)
+  const patchPhoto = usePatchCardPhoto(binderId)
   const deleteSingle = useDeleteCardSingle(binderId)
+  const deletePhoto = useDeleteCardPhoto(binderId)
   const patchBinder = usePatchCardBinder()
   const [editOpen, setEditOpen] = useState(false)
   const [editName, setEditName] = useState('')
@@ -108,6 +121,15 @@ export default function CarpetaDetailPage({
       priceClp: string
     }[]
   >([])
+
+  const [photoName, setPhotoName] = useState('')
+  const [photoDescription, setPhotoDescription] = useState('')
+  const [photoPreview, setPhotoPreview] = useState('')
+  const [photoKey, setPhotoKey] = useState('')
+  const [photoUploading, setPhotoUploading] = useState(false)
+  const [photoFormError, setPhotoFormError] = useState<string | null>(null)
+  const [addPanelOpen, setAddPanelOpen] = useState(false)
+  const [addTab, setAddTab] = useState<'single' | 'photo'>('single')
 
   const [editSingleOpen, setEditSingleOpen] = useState(false)
   const [editingSingle, setEditingSingle] = useState<CardSingleDTO | null>(null)
@@ -420,6 +442,93 @@ export default function CarpetaDetailPage({
     }
   }
 
+  const togglePhotoPublish = async (p: CardPhotoDTO, published: boolean) => {
+    setActionError(null)
+    try {
+      await patchPhoto.mutateAsync({ id: p.id, patch: { published } })
+    } catch (e) {
+      handlePatchError(e)
+    }
+  }
+
+  const uploadPhotoFile = async (file: File) => {
+    setPhotoFormError(null)
+    if (!file.type?.startsWith('image/')) {
+      setPhotoFormError('Selecciona una imagen')
+      return
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setPhotoFormError('La imagen no puede superar 8 MB')
+      return
+    }
+    setPhotoUploading(true)
+    try {
+      const contentType = file.type || 'image/jpeg'
+      const pres = await fetch('/api/r2/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          folder: 'uploads',
+          filename: file.name || 'cartas.jpg',
+          contentType
+        })
+      })
+      const pre = await pres.json().catch(() => ({}))
+      if (!pres.ok) {
+        throw new Error(
+          typeof pre.error === 'string' ? pre.error : 'No se pudo preparar la subida'
+        )
+      }
+      const { uploadUrl, key, publicUrl } = pre as {
+        uploadUrl: string
+        key: string
+        publicUrl: string
+      }
+      const put = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': contentType },
+        body: file
+      })
+      if (!put.ok) throw new Error('No se pudo subir la imagen')
+      setPhotoPreview(publicUrl)
+      setPhotoKey(key)
+    } catch (e) {
+      setPhotoFormError(e instanceof Error ? e.message : 'Error al subir')
+      setPhotoPreview('')
+      setPhotoKey('')
+    } finally {
+      setPhotoUploading(false)
+    }
+  }
+
+  const submitPhoto = async () => {
+    setPhotoFormError(null)
+    const name = photoName.trim().slice(0, CARD_PHOTO_NAME_MAX)
+    if (!name) {
+      setPhotoFormError('El nombre es obligatorio')
+      return
+    }
+    if (!photoPreview || !photoKey) {
+      setPhotoFormError('Sube una foto primero')
+      return
+    }
+    try {
+      await createPhoto.mutateAsync({
+        name,
+        description: photoDescription.trim().slice(0, CARD_PHOTO_DESCRIPTION_MAX),
+        imageUrl: photoPreview,
+        imageKey: photoKey
+      })
+      setPhotoName('')
+      setPhotoDescription('')
+      setPhotoPreview('')
+      setPhotoKey('')
+      setAddPanelOpen(false)
+    } catch (e) {
+      setPhotoFormError(e instanceof Error ? e.message : 'Error')
+    }
+  }
+
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev)
@@ -447,6 +556,7 @@ export default function CarpetaDetailPage({
   }
 
   const singles = data?.singles ?? []
+  const photos = data?.photos ?? []
   const groups = useMemo(() => groupCardSingles(singles), [singles])
 
   if (isPending) {
@@ -565,20 +675,155 @@ export default function CarpetaDetailPage({
           </Button>
         </Stack>
 
-        <Paper variant="outlined" sx={{ p: 2 }}>
-          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5 }}>
-            Agregar single
-          </Typography>
-          <LimitlessCardSearchField onPick={openAdd} />
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ display: 'block', mt: 1 }}
+        {!addPanelOpen ? (
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => setAddPanelOpen(true)}
+            sx={{ textTransform: 'none', fontWeight: 700, alignSelf: 'flex-start' }}
           >
-            Busca con Limitless. Si hay varias unidades con distinto idioma,
-            estado o precio, activa “Detallar variantes”.
-          </Typography>
-        </Paper>
+            Agregar
+          </Button>
+        ) : (
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              spacing={1}
+              sx={{ mb: 1 }}
+            >
+              <Tabs
+                value={addTab}
+                onChange={(_, v: 'single' | 'photo') => setAddTab(v)}
+                sx={{
+                  minHeight: 40,
+                  '& .MuiTab-root': {
+                    minHeight: 40,
+                    textTransform: 'none',
+                    fontWeight: 700
+                  }
+                }}
+              >
+                <Tab value="single" label="Single" />
+                <Tab
+                  value="photo"
+                  label="Foto"
+                  icon={<PhotoCameraOutlined sx={{ fontSize: 18 }} />}
+                  iconPosition="start"
+                />
+              </Tabs>
+              <Button
+                size="small"
+                onClick={() => setAddPanelOpen(false)}
+                sx={{ textTransform: 'none', fontWeight: 700, flexShrink: 0 }}
+              >
+                Cerrar
+              </Button>
+            </Stack>
+
+            {addTab === 'single' ? (
+              <Box>
+                <LimitlessCardSearchField onPick={openAdd} />
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: 'block', mt: 1 }}
+                >
+                  Busca con Limitless. Si hay varias unidades con distinto
+                  idioma, estado o precio, activa “Detallar variantes”.
+                </Typography>
+              </Box>
+            ) : (
+              <Stack spacing={1.5}>
+                <Typography variant="caption" color="text.secondary">
+                  Ideal para lotes o cartas sin ficha en Limitless. Solo nombre
+                  y descripción opcional; el contacto es por WhatsApp.
+                </Typography>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  disabled={photoUploading || createPhoto.isPending}
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    alignSelf: 'flex-start'
+                  }}
+                >
+                  {photoUploading
+                    ? 'Subiendo…'
+                    : photoPreview
+                      ? 'Cambiar foto'
+                      : 'Elegir foto'}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    hidden
+                    onChange={e => {
+                      const f = e.target.files?.[0]
+                      e.target.value = ''
+                      if (f) void uploadPhotoFile(f)
+                    }}
+                  />
+                </Button>
+                {photoPreview ? (
+                  <Box
+                    component="img"
+                    src={photoPreview}
+                    alt="Vista previa"
+                    sx={{
+                      width: '100%',
+                      maxWidth: 360,
+                      maxHeight: 240,
+                      objectFit: 'contain',
+                      borderRadius: 1,
+                      bgcolor: t => alpha(t.palette.common.black, 0.04)
+                    }}
+                  />
+                ) : null}
+                <TextField
+                  label="Nombre"
+                  required
+                  size="small"
+                  fullWidth
+                  value={photoName}
+                  onChange={e => setPhotoName(e.target.value)}
+                  inputProps={{ maxLength: CARD_PHOTO_NAME_MAX }}
+                />
+                <TextField
+                  label="Descripción (opcional)"
+                  size="small"
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  value={photoDescription}
+                  onChange={e => setPhotoDescription(e.target.value)}
+                  inputProps={{ maxLength: CARD_PHOTO_DESCRIPTION_MAX }}
+                />
+                {photoFormError ? (
+                  <Alert severity="error">{photoFormError}</Alert>
+                ) : null}
+                <Button
+                  variant="contained"
+                  disabled={
+                    photoUploading ||
+                    createPhoto.isPending ||
+                    !photoPreview ||
+                    !photoName.trim()
+                  }
+                  onClick={() => void submitPhoto()}
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    alignSelf: 'flex-start'
+                  }}
+                >
+                  {createPhoto.isPending ? 'Guardando…' : 'Guardar foto'}
+                </Button>
+              </Stack>
+            )}
+          </Paper>
+        )}
 
         {actionError ? (
           <Alert
@@ -601,12 +846,115 @@ export default function CarpetaDetailPage({
           </Alert>
         ) : null}
 
-        {!singles.length ? (
+        {!singles.length && !photos.length ? (
           <Typography color="text.secondary">
-            Esta carpeta aún no tiene singles.
+            Esta carpeta aún no tiene singles ni fotos.
           </Typography>
-        ) : (
+        ) : null}
+
+        {photos.length > 0 ? (
           <Stack spacing={1.5}>
+            <Typography variant="subtitle1" fontWeight={800}>
+              Fotos ({photos.length})
+            </Typography>
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 1.5,
+                gridTemplateColumns: {
+                  xs: '1fr',
+                  sm: 'repeat(2, minmax(0, 1fr))'
+                }
+              }}
+            >
+              {photos.map(p => (
+                <Paper
+                  key={p.id}
+                  variant="outlined"
+                  sx={{
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}
+                >
+                  <Box
+                    component="img"
+                    src={p.imageUrl}
+                    alt={p.name}
+                    sx={{
+                      width: '100%',
+                      aspectRatio: '4 / 3',
+                      objectFit: 'cover',
+                      bgcolor: t => alpha(t.palette.common.black, 0.04)
+                    }}
+                  />
+                  <Stack spacing={1} sx={{ p: 1.5, flex: 1 }}>
+                    <Typography variant="subtitle2" fontWeight={800}>
+                      {p.name}
+                    </Typography>
+                    {p.description ? (
+                      <Typography variant="body2" color="text.secondary">
+                        {p.description}
+                      </Typography>
+                    ) : null}
+                    <Typography variant="caption" color="text.secondary">
+                      {p.interestCount} interesado
+                      {p.interestCount === 1 ? '' : 's'}
+                    </Typography>
+                    <Stack
+                      direction="row"
+                      alignItems="center"
+                      justifyContent="space-between"
+                      spacing={1}
+                    >
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            size="small"
+                            checked={p.published}
+                            disabled={patchPhoto.isPending}
+                            onChange={(_, checked) =>
+                              void togglePhotoPublish(p, checked)
+                            }
+                          />
+                        }
+                        label={
+                          <Typography variant="body2">
+                            {p.published ? 'Pública' : 'Borrador'}
+                          </Typography>
+                        }
+                      />
+                      <IconButton
+                        size="small"
+                        aria-label="Eliminar foto"
+                        disabled={deletePhoto.isPending}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `¿Eliminar la foto «${p.name}»?`
+                            )
+                          ) {
+                            void deletePhoto.mutateAsync(p.id).catch(e =>
+                              handlePatchError(e)
+                            )
+                          }
+                        }}
+                      >
+                        <DeleteOutline fontSize="small" />
+                      </IconButton>
+                    </Stack>
+                  </Stack>
+                </Paper>
+              ))}
+            </Box>
+          </Stack>
+        ) : null}
+
+        {singles.length > 0 ? (
+          <Stack spacing={1.5}>
+            <Typography variant="subtitle1" fontWeight={800}>
+              Singles ({singles.length})
+            </Typography>
             <Stack
               direction="row"
               spacing={1}
@@ -899,7 +1247,7 @@ export default function CarpetaDetailPage({
               </Paper>
             ))}
           </Stack>
-        )}
+        ) : null}
       </Stack>
 
       <Dialog

@@ -30,6 +30,8 @@ export interface IUser extends Document {
   phone: string
   rut: string
   popid: string
+  /** Slug público del vendedor → `/vendedores/[slug]`. */
+  sellerSlug?: string
   /** Tienda preferida al iniciar sesión (si sigue accesible). `null` = sin preferencia. */
   defaultStoreId?: Types.ObjectId | null
   /** Puntos / crédito de tienda (columna Saldo del reporte). */
@@ -122,6 +124,13 @@ const UserSchema = new Schema<IUser>(
     popid: {
       type: String,
       default: ''
+    },
+    sellerSlug: {
+      type: String,
+      default: '',
+      trim: true,
+      lowercase: true,
+      maxlength: 48
     },
     defaultStoreId: {
       type: Schema.Types.ObjectId,
@@ -249,10 +258,33 @@ const UserSchema = new Schema<IUser>(
 )
 
 UserSchema.index({ rut: 1 })
+UserSchema.index(
+  { sellerSlug: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { sellerSlug: { $type: 'string', $gt: '' } }
+  }
+)
 UserSchema.index({
   playPokemonRankPublic: 1,
   defaultStoreId: 1,
   playPokemonChampionshipRank: 1
 })
 
-export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema)
+const MODEL = 'User'
+
+/** Evita schema viejo en HMR de Next (sin sellerSlug). */
+function getUserModel(): mongoose.Model<IUser> {
+  const existing = mongoose.models[MODEL] as mongoose.Model<IUser> | undefined
+  if (existing?.schema?.path('sellerSlug')) {
+    return existing
+  }
+  if (existing) {
+    delete mongoose.models[MODEL]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+    delete (mongoose.connection.models as any)[MODEL]
+  }
+  return mongoose.model<IUser>(MODEL, UserSchema)
+}
+
+export default getUserModel()

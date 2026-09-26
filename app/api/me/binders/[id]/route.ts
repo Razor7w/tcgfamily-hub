@@ -12,6 +12,8 @@ import {
 import { toCardBinderDTO } from '@/lib/card-single-dto'
 import connectDB from '@/lib/mongodb'
 import CardBinder from '@/models/CardBinder'
+import CardPhoto from '@/models/CardPhoto'
+import CardPhotoInterest from '@/models/CardPhotoInterest'
 import CardSingle from '@/models/CardSingle'
 import CardSingleInterest from '@/models/CardSingleInterest'
 
@@ -44,17 +46,20 @@ export async function GET(_request: NextRequest, context: Ctx) {
     }
 
     const binderOid = doc._id as mongoose.Types.ObjectId
-    const [total, published] = await Promise.all([
-      CardSingle.countDocuments({ binderId: binderOid }),
-      CardSingle.countDocuments({ binderId: binderOid, published: true })
-    ])
+    const [singleTotal, singlePublished, photoTotal, photoPublished] =
+      await Promise.all([
+        CardSingle.countDocuments({ binderId: binderOid }),
+        CardSingle.countDocuments({ binderId: binderOid, published: true }),
+        CardPhoto.countDocuments({ binderId: binderOid }),
+        CardPhoto.countDocuments({ binderId: binderOid, published: true })
+      ])
 
     return NextResponse.json({
       binder: toCardBinderDTO(
         doc.toObject() as unknown as Parameters<typeof toCardBinderDTO>[0],
         {
-          total,
-          published
+          total: singleTotal + photoTotal,
+          published: singlePublished + photoPublished
         }
       )
     })
@@ -231,6 +236,15 @@ export async function DELETE(_request: NextRequest, context: Ctx) {
     if (ids.length > 0) {
       await CardSingleInterest.deleteMany({ singleId: { $in: ids } })
       await CardSingle.deleteMany({ binderId: binderOid })
+    }
+    const photoIds = await CardPhoto.find({ binderId: binderOid })
+      .select('_id')
+      .lean()
+    if (photoIds.length > 0) {
+      await CardPhotoInterest.deleteMany({
+        photoId: { $in: photoIds.map(p => p._id) }
+      })
+      await CardPhoto.deleteMany({ binderId: binderOid })
     }
     await CardBinder.deleteOne({ _id: binderOid })
 

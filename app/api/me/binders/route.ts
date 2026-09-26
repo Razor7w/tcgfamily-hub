@@ -11,9 +11,9 @@ import {
   slugFromCardBinderName
 } from '@/lib/card-binder-slug'
 import { toCardBinderDTO } from '@/lib/card-single-dto'
+import { binderItemCountsByUser } from '@/lib/card-binder-counts'
 import connectDB from '@/lib/mongodb'
 import CardBinder from '@/models/CardBinder'
-import CardSingle from '@/models/CardSingle'
 
 export const runtime = 'nodejs'
 
@@ -30,29 +30,7 @@ export async function GET() {
       .sort({ updatedAt: -1 })
       .lean()
 
-    const counts = await CardSingle.aggregate<{
-      _id: mongoose.Types.ObjectId
-      total: number
-      published: number
-    }>([
-      { $match: { userId: userOid } },
-      {
-        $group: {
-          _id: '$binderId',
-          total: { $sum: 1 },
-          published: {
-            $sum: { $cond: ['$published', 1, 0] }
-          }
-        }
-      }
-    ])
-
-    const countMap = new Map(
-      counts.map(c => [
-        c._id.toString(),
-        { total: c.total, published: c.published }
-      ])
-    )
+    const countMap = await binderItemCountsByUser(userOid)
 
     const list = binders.map(b => {
       const c = countMap.get(String(b._id)) ?? { total: 0, published: 0 }
