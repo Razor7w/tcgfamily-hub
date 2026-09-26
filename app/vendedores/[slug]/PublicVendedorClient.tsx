@@ -115,7 +115,11 @@ export default function PublicVendedorClient({ slug }: { slug: string }) {
               carpetas; la selección se mantiene.
               {interest && interest.items.length > 0
                 ? ` · ${interest.items.length} en tu lista`
-                : ''}
+                : ''}{' '}
+              ·{' '}
+              <Link href="/vendedores" style={{ fontWeight: 700 }}>
+                Ver todos los vendedores
+              </Link>
             </Typography>
           </Stack>
 
