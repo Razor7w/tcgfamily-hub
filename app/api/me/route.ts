@@ -18,6 +18,7 @@ import {
 } from '@/lib/assign-user-rut'
 import { linkTournamentParticipantsToUserByPop } from '@/lib/link-tournament-participants-by-pop'
 import { canUserActivateDashboardStore } from '@/lib/multitenancy/session-store-hydrate'
+import { normalizeMailContactPhone } from '@/lib/mail-contact-phone'
 
 function isR2KeyForUser(userId: string, key: string): boolean {
   if (!userId || !key) return false
@@ -141,7 +142,8 @@ export async function PATCH(request: NextRequest) {
       confirmNewPassword,
       image,
       imageKey,
-      defaultStoreId
+      defaultStoreId,
+      phone
     } = body as Record<string, unknown>
 
     await connectDB()
@@ -158,6 +160,7 @@ export async function PATCH(request: NextRequest) {
     const hasName = name !== undefined
     const hasPop = popid !== undefined
     const hasRut = rut !== undefined
+    const hasPhone = phone !== undefined
     const hasImage = image !== undefined || imageKey !== undefined
     const hasDefaultStore = Object.prototype.hasOwnProperty.call(
       body as object,
@@ -169,6 +172,7 @@ export async function PATCH(request: NextRequest) {
       !hasName &&
       !hasPop &&
       !hasRut &&
+      !hasPhone &&
       !hasImage &&
       !hasDefaultStore
     ) {
@@ -181,7 +185,7 @@ export async function PATCH(request: NextRequest) {
     if (
       user.mustChangePassword &&
       !wantsPasswordChange &&
-      (hasName || hasPop || hasRut || hasImage || hasDefaultStore)
+      (hasName || hasPop || hasRut || hasPhone || hasImage || hasDefaultStore)
     ) {
       return NextResponse.json(
         {
@@ -255,6 +259,10 @@ export async function PATCH(request: NextRequest) {
       newPopNorm = popidForStorage(popStr)
       popChanged = newPopNorm !== previousPop
       user.popid = newPopNorm
+    }
+
+    if (hasPhone) {
+      user.phone = normalizeMailContactPhone(phone)
     }
 
     let rutAssigned = false
@@ -401,6 +409,7 @@ export async function PATCH(request: NextRequest) {
       ok: true,
       name: user.name ?? '',
       popid: user.popid ?? '',
+      phone: user.phone ?? '',
       rut: user.rut ?? '',
       rutAssigned,
       hasPassword,

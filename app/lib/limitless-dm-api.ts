@@ -68,6 +68,24 @@ export type LimitlessDmCardDetail = {
 }
 
 /**
+ * Limitless DM envía `market_price` en centavos de USD (417 → $4.17).
+ * El campo `marketPriceUsd` en singles guarda ese valor crudo (centavos).
+ * Devuelve dólares, o null si no hay precio válido.
+ */
+export function limitlessMarketPriceToUsd(raw: unknown): number | null {
+  const n = Number(raw)
+  if (!Number.isFinite(n) || n < 0) return null
+  return Math.round(n) / 100
+}
+
+/** Texto listo para UI, p. ej. "$4.17 USD". */
+export function formatLimitlessMarketPriceUsd(raw: unknown): string | null {
+  const usd = limitlessMarketPriceToUsd(raw)
+  if (usd == null) return null
+  return `$${usd.toFixed(2)} USD`
+}
+
+/**
  * Búsqueda en Limitless: con `format:standard` (u otros formatos) y/o `type:…` se
  * une el texto y tokens con un espacio; sin formato ni tipo, dos espacios entre el
  * texto y `lang:` + sufijo (misma búsqueda mínima que en la web).

@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import {
   ExpandLess,
   ExpandMore,
+  FolderOpen,
   Groups,
   Home,
   Insights,
@@ -141,6 +142,21 @@ export default function DashboardUserNav({
                 <Groups />
               </ListItemIcon>
               <ListItemText primary="Equipo" />
+            </ListItemButton>
+          </ListItem>
+          <ListItem disablePadding>
+            <ListItemButton
+              component={Link}
+              href="/dashboard/carpetas"
+              selected={
+                pathname === '/dashboard/carpetas' ||
+                pathname.startsWith('/dashboard/carpetas/')
+              }
+            >
+              <ListItemIcon>
+                <FolderOpen />
+              </ListItemIcon>
+              <ListItemText primary="Carpetas" />
             </ListItemButton>
           </ListItem>
           <ListItem disablePadding>
