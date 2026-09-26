@@ -43,6 +43,7 @@ import PlayPokemonRankChip from '@/components/play-pokemon/PlayPokemonRankChip'
 import { meProfileQueryKey, useMe, type MeProfile } from '@/hooks/useMe'
 import { useMeStores } from '@/hooks/useMeStores'
 import { useMyChampionshipPoints } from '@/hooks/useMyChampionshipPoints'
+import { MAIL_CONTACT_PHONE_MAX } from '@/lib/mail-contact-phone'
 
 type StoreOption = { id: string; name: string }
 
@@ -71,6 +72,7 @@ export default function PerfilPage() {
 
   const [name, setName] = useState('')
   const [popid, setPopid] = useState('')
+  const [phone, setPhone] = useState('')
   const [rutDraft, setRutDraft] = useState('')
   const [defaultStoreId, setDefaultStoreId] = useState('')
   const {
@@ -101,6 +103,7 @@ export default function PerfilPage() {
     formHydratedForUser.current = me.id
     setName(me.name)
     setPopid(me.popid)
+    setPhone(me.phone ?? '')
     setRutDraft(me.rut?.trim() ?? '')
     setDefaultStoreId(me.defaultStoreId?.trim() ?? '')
   }, [me])
@@ -167,10 +170,20 @@ export default function PerfilPage() {
     return (
       name.trim() !== me.name.trim() ||
       popid.trim() !== (me.popid || '').trim() ||
+      phone.trim() !== (me.phone || '').trim() ||
       prevDefault !== nextDefault ||
       rutChanged
     )
-  }, [me, name, popid, rutDraft, defaultStoreId, savingProfile, storeOptions])
+  }, [
+    me,
+    name,
+    popid,
+    phone,
+    rutDraft,
+    defaultStoreId,
+    savingProfile,
+    storeOptions
+  ])
 
   const canSavePassword = useMemo(() => {
     if (!me?.hasPassword || savingPw) return false
@@ -218,6 +231,7 @@ export default function PerfilPage() {
         body: JSON.stringify({
           name: name.trim(),
           popid,
+          phone: phone.trim(),
           defaultStoreId: sid,
           ...(!hasRutAlready && rutDraft.trim()
             ? { rut: formatRutOnBlur(rutDraft) }
@@ -228,6 +242,7 @@ export default function PerfilPage() {
         error?: string
         name?: string
         popid?: string
+        phone?: string
         rut?: string
         defaultStoreId?: string | null
       }
@@ -242,6 +257,7 @@ export default function PerfilPage() {
                 ...prev,
                 name: data.name ?? prev.name,
                 popid: data.popid ?? prev.popid,
+                phone: data.phone ?? prev.phone,
                 rut: data.rut ?? prev.rut,
                 defaultStoreId:
                   data.defaultStoreId !== undefined
@@ -256,6 +272,9 @@ export default function PerfilPage() {
       }
       if (typeof data.rut === 'string') {
         setRutDraft(data.rut)
+      }
+      if (typeof data.phone === 'string') {
+        setPhone(data.phone)
       }
       setProfileMsg('Datos actualizados.')
       const savedDefault = (data.defaultStoreId ?? sid).trim()
@@ -391,10 +410,10 @@ export default function PerfilPage() {
         color="text.secondary"
         sx={{ mb: { xs: 2, md: 3 }, maxWidth: '72ch', textWrap: 'pretty' }}
       >
-        Modifica tu nombre, Pop ID y tienda predeterminada (si tenés tiendas
-        disponibles, tenés que elegir una). El correo solo lo puede cambiar un
-        administrador. El RUT se puede asignar una sola vez si aún no lo tenés;
-        después queda fijo.
+        Modifica tu nombre, teléfono, Pop ID y tienda predeterminada (si tenés
+        tiendas disponibles, tenés que elegir una). El correo solo lo puede
+        cambiar un administrador. El RUT se puede asignar una sola vez si aún no
+        lo tenés; después queda fijo.
       </Typography>
 
       <Box
@@ -579,6 +598,23 @@ export default function PerfilPage() {
               required
               fullWidth
               inputProps={{ maxLength: 100 }}
+            />
+            <TextField
+              label="Teléfono"
+              name="phone"
+              value={phone}
+              onChange={e =>
+                setPhone(e.target.value.slice(0, MAIL_CONTACT_PHONE_MAX))
+              }
+              disabled={savingProfile}
+              fullWidth
+              placeholder="+56 9 1234 5678"
+              helperText="Para que te contacten por WhatsApp al publicar singles. Incluye código de país si puedes."
+              inputProps={{
+                maxLength: MAIL_CONTACT_PHONE_MAX,
+                inputMode: 'tel',
+                autoComplete: 'tel'
+              }}
             />
             <TextField
               label="Pop ID"

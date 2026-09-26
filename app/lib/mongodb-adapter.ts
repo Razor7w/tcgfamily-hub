@@ -1,9 +1,36 @@
-import { Adapter } from 'next-auth/adapters'
+import type { Adapter, AdapterUser } from 'next-auth/adapters'
 import connectDB from './mongodb'
-import User from '@/models/User'
+import User, { type UserRole } from '@/models/User'
 import Account from '@/models/Account'
 import Session from '@/models/Session'
 import VerificationToken from '@/models/VerificationToken'
+
+type UserLean = {
+  _id: { toString(): string }
+  name?: string | null
+  email?: string | null
+  emailVerified?: Date | null
+  image?: string | null
+  role?: UserRole | null
+  phone?: string | null
+  rut?: string | null
+  popid?: string | null
+}
+
+/** AdapterUser exige `email: string`; el schema de Mongoose lo tipa opcional. */
+function toAdapterUser(user: UserLean): AdapterUser {
+  return {
+    id: user._id.toString(),
+    name: user.name ?? undefined,
+    email: typeof user.email === 'string' ? user.email : '',
+    emailVerified: user.emailVerified ?? null,
+    image: user.image ?? undefined,
+    role: user.role || 'user',
+    phone: user.phone || '',
+    rut: user.rut || '',
+    popid: user.popid || ''
+  } as AdapterUser
+}
 
 export function MongoDBAdapter(): Adapter {
   return {
@@ -24,17 +51,7 @@ export function MongoDBAdapter(): Adapter {
           }
           await existingUser.save()
 
-          return {
-            id: existingUser._id.toString(),
-            name: existingUser.name,
-            email: existingUser.email,
-            emailVerified: existingUser.emailVerified,
-            image: existingUser.image,
-            role: existingUser.role || 'user',
-            phone: existingUser.phone || '',
-            rut: existingUser.rut || '',
-            popid: existingUser.popid || ''
-          }
+          return toAdapterUser(existingUser)
         }
       }
 
@@ -58,51 +75,21 @@ export function MongoDBAdapter(): Adapter {
         await newUser.save()
       }
 
-      return {
-        id: newUser._id.toString(),
-        name: newUser.name,
-        email: newUser.email,
-        emailVerified: newUser.emailVerified,
-        image: newUser.image,
-        role: newUser.role || 'user',
-        phone: newUser.phone || '',
-        rut: newUser.rut || '',
-        popid: newUser.popid || ''
-      }
+      return toAdapterUser(newUser)
     },
 
     async getUser(id) {
       await connectDB()
       const user = await User.findById(id)
       if (!user) return null
-      return {
-        id: user._id.toString(),
-        name: user.name,
-        email: user.email,
-        emailVerified: user.emailVerified,
-        image: user.image,
-        role: user.role || 'user',
-        phone: user.phone || '',
-        rut: user.rut || '',
-        popid: user.popid || ''
-      }
+      return toAdapterUser(user)
     },
 
     async getUserByEmail(email) {
       await connectDB()
       const user = await User.findOne({ email })
       if (!user) return null
-      return {
-        id: user._id.toString(),
-        name: user.name,
-        email: user.email,
-        emailVerified: user.emailVerified,
-        image: user.image,
-        role: user.role || 'user',
-        phone: user.phone || '',
-        rut: user.rut || '',
-        popid: user.popid || ''
-      }
+      return toAdapterUser(user)
     },
 
     async getUserByAccount({ providerAccountId, provider }) {
@@ -111,17 +98,7 @@ export function MongoDBAdapter(): Adapter {
       if (!account) return null
       const user = await User.findById(account.userId)
       if (!user) return null
-      return {
-        id: user._id.toString(),
-        name: user.name,
-        email: user.email,
-        emailVerified: user.emailVerified,
-        image: user.image,
-        role: user.role || 'user',
-        phone: user.phone || '',
-        rut: user.rut || '',
-        popid: user.popid || ''
-      }
+      return toAdapterUser(user)
     },
 
     async updateUser(user) {
@@ -157,17 +134,7 @@ export function MongoDBAdapter(): Adapter {
         new: true
       })
       if (!updatedUser) throw new Error('User not found')
-      return {
-        id: updatedUser._id.toString(),
-        name: updatedUser.name,
-        email: updatedUser.email,
-        emailVerified: updatedUser.emailVerified,
-        image: updatedUser.image,
-        role: updatedUser.role || 'user',
-        phone: updatedUser.phone || '',
-        rut: updatedUser.rut || '',
-        popid: updatedUser.popid || ''
-      }
+      return toAdapterUser(updatedUser)
     },
 
     async linkAccount(account) {
@@ -238,17 +205,7 @@ export function MongoDBAdapter(): Adapter {
           userId: session.userId.toString(),
           expires: session.expires
         },
-        user: {
-          id: user._id.toString(),
-          name: user.name,
-          email: user.email,
-          emailVerified: user.emailVerified,
-          image: user.image,
-          role: user.role || 'user',
-          phone: user.phone || '',
-          rut: user.rut || '',
-          popid: user.popid || ''
-        }
+        user: toAdapterUser(user)
       }
     },
 
