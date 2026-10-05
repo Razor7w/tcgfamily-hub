@@ -663,12 +663,47 @@ function rowBelongsToIdentity(
   primaryPopId: string,
   popsForUser: Set<string>
 ): boolean {
+  const rowPop = popidForStorage(String(row.popId ?? ''))
   if (userId) {
     if (row.userId?.toString() === userId) return true
-    if (popsForUser.has(row.popId)) return true
+    if (rowPop && popsForUser.has(rowPop)) return true
     return false
   }
-  return row.popId === primaryPopId
+  return Boolean(rowPop) && rowPop === primaryPopId
+}
+
+async function identityKeysForPlayer(args: {
+  popId: string
+  userId: string | null
+}): Promise<string[]> {
+  const keys = [`p:${args.popId}`]
+  if (args.userId) keys.push(`u:${args.userId}`)
+  return keys
+}
+
+async function isTournamentPointsIdentityExcluded(args: {
+  storeOid: mongoose.Types.ObjectId
+  popId: string
+  userId: string | null
+}): Promise<boolean> {
+  const keys = await identityKeysForPlayer(args)
+  const hit = await TournamentPointsListExclusion.exists({
+    storeId: args.storeOid,
+    identityKey: { $in: keys }
+  })
+  return Boolean(hit)
+}
+
+async function clearTournamentPointsIdentityExclusions(args: {
+  storeOid: mongoose.Types.ObjectId
+  popId: string
+  userId: string | null
+}): Promise<void> {
+  const keys = await identityKeysForPlayer(args)
+  await TournamentPointsListExclusion.deleteMany({
+    storeId: args.storeOid,
+    identityKey: { $in: keys }
+  })
 }
 
 export async function deductTournamentPointsForPlayer(input: {
@@ -1243,6 +1278,14 @@ async function playerHasTournamentPointsInStore(args: {
   popId: string
   userId: string | null
 }): Promise<boolean> {
+  return (await sumTournamentPointsForIdentity(args)) > 0
+}
+
+async function sumTournamentPointsForIdentity(args: {
+  storeOid: mongoose.Types.ObjectId
+  popId: string
+  userId: string | null
+}): Promise<number> {
   const popsForUser = new Set<string>([args.popId])
   if (args.userId && mongoose.Types.ObjectId.isValid(args.userId)) {
     const u = await User.findById(args.userId).select('popid').lean<{
@@ -1252,22 +1295,27 @@ async function playerHasTournamentPointsInStore(args: {
     if (pop) popsForUser.add(pop)
   }
 
+  let total = 0
   const awards = await TournamentPointsAward.find({ storeId: args.storeOid })
+    .select('rows')
+    .lean<{ rows?: ITournamentPointsAwardRow[] }[]>()
   for (const award of awards) {
     for (const row of award.rows ?? []) {
+      const pts = Number(row.points) || 0
+      if (pts <= 0) continue
       const parsed: ParsedAwardRow = {
         place: row.place,
         displayName: row.displayName,
-        popId: row.popId,
+        popId: popidForStorage(String(row.popId ?? '')),
         userId: row.userId,
-        points: row.points
+        points: pts
       }
       if (rowBelongsToIdentity(parsed, args.userId, args.popId, popsForUser)) {
-        return true
+        total += pts
       }
     }
   }
-  return false
+  return total
 }
 
 /** Alta manual de jugador con POP, nombre y puntos iniciales (torneo «Ajuste manual»). */
@@ -1289,6 +1337,7 @@ export async function registerTournamentPointsPlayerManually(input: {
   credited: boolean
   adjustments: number
   skippedNoUser: number
+  restored?: boolean
 }> {
   const popId = popidForStorage(input.popId)
   if (!popId) {
@@ -1310,22 +1359,50 @@ export async function registerTournamentPointsPlayerManually(input: {
   const linkedUser = popToUser.get(popId)
   const userId = linkedUser?.toString() ?? null
 
-  if (
-    await playerHasTournamentPointsInStore({
+  const hasPoints = await playerHasTournamentPointsInStore({
+    storeOid: input.storeOid,
+    popId,
+    userId
+  })
+  if (hasPoints) {
+    const hidden = await isTournamentPointsIdentityExcluded({
       storeOid: input.storeOid,
       popId,
       userId
     })
-  ) {
+    if (hidden) {
+      // Estaba oculto de la lista (quitar) pero aún con saldo → restaurar para Sumar/editar.
+      await clearTournamentPointsIdentityExclusions({
+        storeOid: input.storeOid,
+        popId,
+        userId
+      })
+      const existingPoints = await sumTournamentPointsForIdentity({
+        storeOid: input.storeOid,
+        popId,
+        userId
+      })
+      return {
+        ok: true,
+        popId,
+        displayName,
+        points: existingPoints,
+        userLinked: Boolean(userId),
+        credited: false,
+        adjustments: 0,
+        skippedNoUser: 0,
+        restored: true
+      }
+    }
     throw new Error(
       'Este jugador ya tiene puntos asignados en la tienda. Usa Sumar o edita desde la lista.'
     )
   }
 
-  const identityKey = userId ? `u:${userId}` : `p:${popId}`
-  await TournamentPointsListExclusion.deleteOne({
-    storeId: input.storeOid,
-    identityKey
+  await clearTournamentPointsIdentityExclusions({
+    storeOid: input.storeOid,
+    popId,
+    userId
   })
 
   const manual = await getOrCreateManualAdjustmentAward(

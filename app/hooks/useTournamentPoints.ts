@@ -499,6 +499,7 @@ export type TournamentPointsManualRegisterResult = {
   credited: boolean
   adjustments: number
   skippedNoUser: number
+  restored?: boolean
 }
 
 export function useRegisterTournamentPointsPlayer() {
