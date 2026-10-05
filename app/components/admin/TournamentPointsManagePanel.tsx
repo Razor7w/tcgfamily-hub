@@ -240,12 +240,19 @@ export default function TournamentPointsManagePanel() {
   const filteredPlayers = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return players
-    return players.filter(
-      p =>
-        p.displayName.toLowerCase().includes(q) ||
-        p.primaryPopId.toLowerCase().includes(q) ||
-        p.sources.some(s => s.eventTitle.toLowerCase().includes(q))
-    )
+    return players.filter(p => {
+      if (p.displayName.toLowerCase().includes(q)) return true
+      if (p.primaryPopId.toLowerCase().includes(q)) return true
+      if (p.identityKey.toLowerCase().includes(q)) return true
+      const pops = collectPopIdsForPlayer(p)
+      if (pops.some(pop => pop.toLowerCase().includes(q))) return true
+      return p.sources.some(
+        s =>
+          s.eventTitle.toLowerCase().includes(q) ||
+          s.popId.toLowerCase().includes(q) ||
+          s.displayName.toLowerCase().includes(q)
+      )
+    })
   }, [players, search])
 
   const auditRow = useMemo(

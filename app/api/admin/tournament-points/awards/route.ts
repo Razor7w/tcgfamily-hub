@@ -32,7 +32,6 @@ export async function GET() {
       storeId: gate.activeStoreOid
     })
       .sort({ createdAt: -1 })
-      .limit(120)
       .lean()) as unknown as (ITournamentPointsAward & {
       _id: unknown
       createdAt?: Date

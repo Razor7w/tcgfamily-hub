@@ -154,19 +154,34 @@ export default function TournamentPointsManualRegister() {
           ) : null}
 
           {register.isSuccess ? (
-            <Alert severity="success" onClose={() => register.reset()}>
-              <strong>{register.data?.displayName}</strong> (
-              {register.data?.popId}) registrado con{' '}
-              <strong>{register.data?.points}</strong> pts
-              {register.data?.userLinked
-                ? register.data?.credited
-                  ? ' · saldo acreditado en la app'
-                  : ' · cuenta vinculada (sin acreditar saldo)'
-                : ' · sin cuenta en la app'}
-              {(register.data?.skippedNoUser ?? 0) > 0
-                ? ` · aviso: ${register.data?.skippedNoUser} sin wallet`
-                : ''}
-              .
+            <Alert
+              severity={register.data?.restored ? 'info' : 'success'}
+              onClose={() => register.reset()}
+            >
+              {register.data?.restored ? (
+                <>
+                  <strong>{register.data.displayName}</strong> (
+                  {register.data.popId}) ya tenía{' '}
+                  <strong>{register.data.points}</strong> pts y estaba oculto.
+                  Ya aparece en la lista: búscalo y usa <strong>Sumar</strong> o
+                  editar.
+                </>
+              ) : (
+                <>
+                  <strong>{register.data?.displayName}</strong> (
+                  {register.data?.popId}) registrado con{' '}
+                  <strong>{register.data?.points}</strong> pts
+                  {register.data?.userLinked
+                    ? register.data?.credited
+                      ? ' · saldo acreditado en la app'
+                      : ' · cuenta vinculada (sin acreditar saldo)'
+                    : ' · sin cuenta en la app'}
+                  {(register.data?.skippedNoUser ?? 0) > 0
+                    ? ` · aviso: ${register.data?.skippedNoUser} sin wallet`
+                    : ''}
+                  .
+                </>
+              )}
             </Alert>
           ) : null}
         </Stack>

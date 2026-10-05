@@ -61,12 +61,10 @@ export default function AdminPuntosPage() {
     return tabs
   }, [tournamentEnabled, csvEnabled])
 
-  useEffect(() => {
-    if (availableTabs.length === 0) return
-    if (!availableTabs.some(t => t.value === tab)) {
-      setTab(availableTabs[0].value)
-    }
-  }, [availableTabs, tab])
+  const activeTab =
+    availableTabs.find(t => t.value === tab)?.value ??
+    availableTabs[0]?.value ??
+    null
 
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
@@ -149,9 +147,9 @@ export default function AdminPuntosPage() {
             </Stack>
           </AdminStorePageHeading>
 
-          {availableTabs.length > 0 ? (
+          {availableTabs.length > 0 && activeTab ? (
             <Tabs
-              value={tab}
+              value={activeTab}
               onChange={(_e, v: PuntosTab) => setTab(v)}
               variant="scrollable"
               scrollButtons="auto"
@@ -162,7 +160,7 @@ export default function AdminPuntosPage() {
             </Tabs>
           ) : null}
 
-          {tournamentEnabled && tab === 'canjes' ? (
+          {tournamentEnabled && activeTab === 'canjes' ? (
             <Box
               sx={{
                 p: 2,
@@ -176,7 +174,7 @@ export default function AdminPuntosPage() {
             </Box>
           ) : null}
 
-          {tournamentEnabled && tab === 'asignaciones' ? (
+          {tournamentEnabled && activeTab === 'asignaciones' ? (
             <Box
               sx={{
                 p: 2,
@@ -196,7 +194,8 @@ export default function AdminPuntosPage() {
             </Box>
           ) : null}
 
-          {tab === 'configuraciones' && (tournamentEnabled || csvEnabled) ? (
+          {activeTab === 'configuraciones' &&
+          (tournamentEnabled || csvEnabled) ? (
             <Box
               sx={{
                 p: 2,
