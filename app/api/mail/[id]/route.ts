@@ -171,7 +171,10 @@ export async function PUT(
           { status: 404 }
         )
       }
-      existing.fromUserId = fromUserId as mongoose.Types.ObjectId
+      existing.set(
+        'fromUserId',
+        new mongoose.Types.ObjectId(String(fromUserId))
+      )
     }
     if (toUserId != null) {
       const toUser = await User.findById(toUserId)
@@ -181,7 +184,7 @@ export async function PUT(
           { status: 404 }
         )
       }
-      existing.toUserId = toUserId as mongoose.Types.ObjectId
+      existing.set('toUserId', new mongoose.Types.ObjectId(String(toUserId)))
     }
 
     const wasReceivedInStore = existing.isRecivedInStore
@@ -195,6 +198,34 @@ export async function PUT(
       currentIsRecivedInStore: existing.isRecivedInStore
     })
 
+    const transfer = existing.transfer as
+      | { status?: string; destinationBranchId?: mongoose.Types.ObjectId }
+      | undefined
+    if (
+      transfer?.status === 'in_transit' &&
+      (typeof isRecived === 'boolean' || typeof isRecivedInStore === 'boolean')
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Este correo está en tránsito entre sucursales. Recepcionalo en la sucursal de destino.'
+        },
+        { status: 409 }
+      )
+    }
+    if (
+      (transfer?.status === 'requested' || transfer?.status === 'in_transit') &&
+      nextStatus.isRecived
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'No puedes marcarlo como retirado hasta que la sucursal de destino lo recepcione.'
+        },
+        { status: 409 }
+      )
+    }
+
     const validationError = validateMailStatusTransition({
       nextIsRecived: nextStatus.isRecived,
       nextIsRecivedInStore: nextStatus.isRecivedInStore
@@ -207,6 +238,10 @@ export async function PUT(
     existing.isRecivedInStore = nextStatus.isRecivedInStore
     if (nextStatus.isRecivedInStore && !wasReceivedInStore) {
       existing.receivedInStoreAt = new Date()
+      if (transfer?.status === 'requested') {
+        existing.transfer!.status = 'in_transit'
+        existing.markModified('transfer')
+      }
     } else if (!nextStatus.isRecivedInStore && wasReceivedInStore) {
       existing.receivedInStoreAt = null
     }
@@ -238,28 +273,38 @@ export async function PUT(
         )
       }
       if (branchGate.branchOid) {
-        existing.branchId = branchGate.branchOid
+        existing.set('branchId', branchGate.branchOid)
       } else {
         existing.set('branchId', undefined)
         existing.markModified('branchId')
       }
     }
 
+    const startedBranchTransit =
+      transfer?.status === 'requested' &&
+      nextStatus.isRecivedInStore &&
+      !wasReceivedInStore
     const becameReadyInStore =
-      nextStatus.isRecivedInStore && !wasReceivedInStore
+      nextStatus.isRecivedInStore &&
+      !wasReceivedInStore &&
+      !startedBranchTransit
     const becameWithdrawn = nextStatus.isRecived && !wasWithdrawn
 
     await existing.save()
 
     const storeIdForPoints = existing.storeId ?? gate.activeStoreOid
 
-    if (becameReadyInStore || becameWithdrawn) {
+    const fromIdForPoints = existing.fromUserId?.toString()
+    if (
+      fromIdForPoints &&
+      (becameReadyInStore || startedBranchTransit || becameWithdrawn)
+    ) {
       await applyMailStatusContributionAwards({
-        storeId: storeIdForPoints,
-        mailId: existing._id,
-        fromUserId: existing.fromUserId,
-        toUserId: existing.toUserId,
-        receivedInStore: becameReadyInStore,
+        storeId: storeIdForPoints.toString(),
+        mailId: existing._id.toString(),
+        fromUserId: fromIdForPoints,
+        toUserId: existing.toUserId?.toString(),
+        receivedInStore: becameReadyInStore || Boolean(startedBranchTransit),
         withdrawn: becameWithdrawn
       })
     }

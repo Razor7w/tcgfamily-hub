@@ -16,6 +16,7 @@ import ButtonBarCode from '../molecule/ButtonBarCode'
 import { useMyMails } from '@/hooks/useMails'
 import { useSession } from 'next-auth/react'
 import { getMailStatusChip } from '@/lib/mail-status'
+import { mailTransferRouteLabel } from '@/lib/mail-store-transfer'
 import { format } from 'rut.js'
 
 const PENDING_MAILS_LIMIT = 4
@@ -153,6 +154,12 @@ export default function CardMails() {
                   Código: {mail.code ?? mail._id}
                 </Typography>
               </Stack>
+              {mail.transfer?.status === 'requested' ||
+              mail.transfer?.status === 'in_transit' ? (
+                <Typography variant="caption" color="info.main">
+                  {mailTransferRouteLabel(mail.transfer)}
+                </Typography>
+              ) : null}
 
               {/* MAIN CONTENT */}
               <Box>

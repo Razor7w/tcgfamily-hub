@@ -1,4 +1,8 @@
 import { getMailStatusChip } from '@/lib/mail-status'
+import {
+  mailTransferRouteLabel,
+  mailTransferStatusSentence
+} from '@/lib/mail-store-transfer'
 import { getMailStoreWaitDays } from '@/lib/mail-store-days'
 import { santiagoDayKey } from '@/lib/santiago-day-key'
 
@@ -25,7 +29,8 @@ export const MAIL_CSV_HEADERS = [
   'recibido_en_tienda',
   'retirado',
   'observaciones',
-  'id'
+  'id',
+  'traslado'
 ] as const
 
 type PopulatedUserSlice = {
@@ -156,7 +161,11 @@ function mailToCsvCells(mail: unknown): string[] {
 
   return [
     strField(row, 'code'),
-    getMailStatusChip({ isRecived, isRecivedInStore }).label,
+    getMailStatusChip({
+      isRecived,
+      isRecivedInStore,
+      transfer: (row as { transfer?: { status?: string } }).transfer
+    }).label,
     formatMailCsvDateTime(createdAt),
     formatMailCsvDateTime(receivedInStoreAt),
     formatMailCsvDateTime(updatedAt),
@@ -174,7 +183,15 @@ function mailToCsvCells(mail: unknown): string[] {
     yesNo(isRecivedInStore),
     yesNo(isRecived),
     strField(row, 'observations'),
-    row._id != null ? String(row._id) : ''
+    row._id != null ? String(row._id) : '',
+    (() => {
+      const transfer = (
+        row as { transfer?: Parameters<typeof mailTransferRouteLabel>[0] }
+      ).transfer
+      const sentence = mailTransferStatusSentence(transfer)
+      const route = mailTransferRouteLabel(transfer)
+      return [sentence, route].filter(Boolean).join(' · ')
+    })()
   ]
 }
 

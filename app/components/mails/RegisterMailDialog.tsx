@@ -8,11 +8,13 @@ import {
   Autocomplete,
   Box,
   Button,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Drawer,
+  FormControlLabel,
   IconButton,
   Popover,
   Stack,
@@ -34,6 +36,7 @@ import {
 } from '@/hooks/useMails'
 import { MAIL_REGISTER_DAILY_LIMIT } from '@/lib/mail-register-constants'
 import { MAIL_CONTACT_PHONE_MAX } from '@/lib/mail-contact-phone'
+import { formatMailTransferFee } from '@/lib/mail-store-transfer'
 import type { StoreBranchRow } from '@/lib/store-branch'
 
 const OBS_MAX = 2000
@@ -67,9 +70,10 @@ export default function RegisterMailDialog({
   const needsSenderRut = !meProfile?.rut?.trim() && !session?.user?.rut?.trim()
   const { data: meStoresRes, isLoading: storesLoading } = useMeStores()
   const storeOptions = useMemo(
-    () => meStoresRes?.stores ?? [],
+    () => (meStoresRes?.stores ?? []).filter(s => s.mailEnabled !== false),
     [meStoresRes?.stores]
   )
+  const singleStore = storeOptions.length === 1
 
   const activeStoreId = useMemo(() => {
     const id =
@@ -125,6 +129,10 @@ export default function RegisterMailDialog({
   const branchRequired = Boolean(branchesRes?.required)
 
   const [userBranch, setUserBranch] = useState<StoreBranchRow | null>(null)
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [userDestBranch, setUserDestBranch] = useState<StoreBranchRow | null>(
+    null
+  )
   const selectedBranch = useMemo(() => {
     if (!open || !selectedStoreId) return null
     if (userBranch && branchOptions.some(b => b.id === userBranch.id)) {
@@ -132,6 +140,23 @@ export default function RegisterMailDialog({
     }
     return branchOptions.length === 1 ? branchOptions[0]! : null
   }, [open, selectedStoreId, userBranch, branchOptions])
+
+  const destinationBranchOptions = useMemo(
+    () => branchOptions.filter(b => b.id !== selectedBranch?.id),
+    [branchOptions, selectedBranch]
+  )
+  const selectedDestBranch = useMemo(() => {
+    if (!transferOpen) return null
+    if (
+      userDestBranch &&
+      destinationBranchOptions.some(b => b.id === userDestBranch.id)
+    ) {
+      return userDestBranch
+    }
+    return destinationBranchOptions.length === 1
+      ? destinationBranchOptions[0]!
+      : null
+  }, [transferOpen, userDestBranch, destinationBranchOptions])
 
   const remaining = quota?.remaining ?? 0
   const limit = quota?.limit ?? MAIL_REGISTER_DAILY_LIMIT
@@ -158,6 +183,8 @@ export default function RegisterMailDialog({
     setSubmitAttempted(false)
     setUserStore(null)
     setUserBranch(null)
+    setTransferOpen(false)
+    setUserDestBranch(null)
     setDuplicateConfirm(null)
     setCheckingDuplicate(false)
     registerMail.reset()
@@ -189,7 +216,10 @@ export default function RegisterMailDialog({
       contactPhone: contactPhone.trim() || undefined,
       mode: 'onlyReceptor',
       storeId: selectedStoreId,
-      ...(selectedBranch?.id ? { branchId: selectedBranch.id } : {})
+      ...(selectedBranch?.id ? { branchId: selectedBranch.id } : {}),
+      ...(transferOpen && selectedDestBranch?.id
+        ? { transferToBranchId: selectedDestBranch.id }
+        : {})
     })
     if (needsSenderRut && fromRut.trim()) {
       await updateSession({ rut: formatRutOnBlur(fromRut) })
@@ -201,6 +231,10 @@ export default function RegisterMailDialog({
     setSubmitAttempted(true)
     if (!selectedStoreId) return
     if (branchRequired && !selectedBranch?.id) return
+    if (transferOpen) {
+      if (!selectedBranch?.id) return
+      if (!selectedDestBranch?.id) return
+    }
     if (getRutFieldError(rut, true)) return
     if (needsSenderRut && getRutFieldError(fromRut, true)) return
 
@@ -249,6 +283,8 @@ export default function RegisterMailDialog({
     quotaError ||
     !selectedStoreId ||
     (branchRequired && !selectedBranch?.id) ||
+    (transferOpen && !selectedBranch?.id) ||
+    (transferOpen && !selectedDestBranch?.id) ||
     registerMail.isPending ||
     checkingDuplicate ||
     (needsSenderRut && getRutFieldError(fromRut, true) !== null)
@@ -300,30 +336,42 @@ export default function RegisterMailDialog({
         pt: { xs: 0.5, sm: 1 }
       }}
     >
-      <Autocomplete<MeStoreRow>
-        size="small"
-        options={storeOptions}
-        value={selectedStore}
-        onChange={(_, value) => {
-          setUserStore(value)
-          setUserBranch(null)
-        }}
-        getOptionLabel={o => o.name?.trim() || o.slug || 'Tienda'}
-        isOptionEqualToValue={(a, b) => a.id === b.id}
-        disabled={storesLoading || noStores || registerMail.isPending}
-        loading={storesLoading}
-        noOptionsText={
-          storesLoading ? 'Cargando tiendas…' : 'No hay tiendas disponibles'
-        }
-        renderInput={params => (
-          <TextField
-            {...params}
-            label="Tienda"
-            required
-            helperText="Donde quedará pendiente el ingreso del paquete."
-          />
-        )}
-      />
+      {singleStore && selectedStore ? (
+        <Typography variant="body2" color="text.secondary">
+          El paquete queda pendiente de ingreso en{' '}
+          <Box component="span" sx={{ fontWeight: 700, color: 'text.primary' }}>
+            {selectedStoreLabel}
+          </Box>
+          .
+        </Typography>
+      ) : (
+        <Autocomplete<MeStoreRow>
+          size="small"
+          options={storeOptions}
+          value={selectedStore}
+          onChange={(_, value) => {
+            setUserStore(value)
+            setUserBranch(null)
+          }}
+          getOptionLabel={o => o.name?.trim() || o.slug || 'Tienda'}
+          isOptionEqualToValue={(a, b) => a.id === b.id}
+          disabled={storesLoading || noStores || registerMail.isPending}
+          loading={storesLoading}
+          noOptionsText={
+            storesLoading
+              ? 'Cargando tiendas…'
+              : 'No hay tiendas con correo habilitado'
+          }
+          renderInput={params => (
+            <TextField
+              {...params}
+              label="Tienda"
+              required
+              helperText="Donde quedará pendiente el ingreso del paquete."
+            />
+          )}
+        />
+      )}
 
       {branchRequired || branchOptions.length > 0 ? (
         <Autocomplete<StoreBranchRow>
@@ -355,12 +403,67 @@ export default function RegisterMailDialog({
               error={submitAttempted && branchRequired && !selectedBranch?.id}
               helperText={
                 submitAttempted && branchRequired && !selectedBranch?.id
-                  ? 'Elige la sucursal de retiro.'
-                  : 'Local donde se recibirá el paquete.'
+                  ? 'Elige la sucursal donde dejas el paquete.'
+                  : transferOpen
+                    ? 'Local donde dejas el paquete.'
+                    : 'Local donde se recibirá el paquete.'
               }
             />
           )}
         />
+      ) : null}
+
+      {branchOptions.length > 1 ? (
+        <Box>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={transferOpen}
+                onChange={(_, checked) => {
+                  setTransferOpen(checked)
+                  if (!checked) setUserDestBranch(null)
+                }}
+                disabled={fieldsDisabled}
+              />
+            }
+            label="Enviar este correo a otra sucursal"
+          />
+          {transferOpen ? (
+            <Stack spacing={1.5} sx={{ mt: 1 }}>
+              <Alert severity="info">
+                El traslado entre sucursales tiene un costo de{' '}
+                <strong>{formatMailTransferFee()}</strong>, que se paga en
+                tienda. Después queda en camino a la sucursal de destino.
+              </Alert>
+              <Autocomplete<StoreBranchRow>
+                size="small"
+                options={destinationBranchOptions}
+                value={selectedDestBranch}
+                onChange={(_, value) => setUserDestBranch(value)}
+                getOptionLabel={o =>
+                  o.address?.trim()
+                    ? `${o.name}${o.address ? ` · ${o.address}` : ''}`
+                    : o.name
+                }
+                isOptionEqualToValue={(a, b) => a.id === b.id}
+                disabled={fieldsDisabled || !selectedBranch?.id}
+                renderInput={params => (
+                  <TextField
+                    {...params}
+                    label="Sucursal de destino"
+                    required
+                    error={submitAttempted && !selectedDestBranch?.id}
+                    helperText={
+                      selectedBranch
+                        ? 'Hacia dónde irá el paquete después de ingresarlo.'
+                        : 'Primero elige la sucursal donde dejas el paquete.'
+                    }
+                  />
+                )}
+              />
+            </Stack>
+          ) : null}
+        </Box>
       ) : null}
 
       {needsSenderRut ? (

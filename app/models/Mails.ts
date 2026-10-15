@@ -21,6 +21,21 @@ export interface IMail extends Document {
   observations?: string
   /** Teléfono de contacto del envío (opcional). */
   contactPhone?: string
+  /**
+   * Traslado entre sucursales de la misma tienda.
+   * `requested`: el usuario pidió el envío; la tienda aún no lo recibe.
+   * `in_transit`: recibido en la sucursal de origen, esperando la de destino.
+   * `received`: recepcionado en la sucursal de destino.
+   */
+  transfer?: {
+    status: 'requested' | 'in_transit' | 'received'
+    feeClp: number
+    originBranchId?: ObjectId
+    originBranchName?: string
+    destinationBranchId: ObjectId
+    destinationBranchName: string
+    receivedAtDestinationAt?: Date | null
+  }
 }
 
 const MailSchema = new Schema<IMail>(
@@ -61,7 +76,28 @@ const MailSchema = new Schema<IMail>(
     isRecivedInStore: { type: Boolean, default: false, required: true },
     receivedInStoreAt: { type: Date, default: undefined },
     observations: { type: String, default: '' },
-    contactPhone: { type: String, default: '' }
+    contactPhone: { type: String, default: '' },
+    transfer: {
+      status: {
+        type: String,
+        enum: ['requested', 'in_transit', 'received'],
+        required: false
+      },
+      feeClp: { type: Number, required: false },
+      originBranchId: {
+        type: Schema.Types.ObjectId,
+        ref: 'StoreBranch',
+        required: false
+      },
+      originBranchName: { type: String, required: false },
+      destinationBranchId: {
+        type: Schema.Types.ObjectId,
+        ref: 'StoreBranch',
+        required: false
+      },
+      destinationBranchName: { type: String, required: false },
+      receivedAtDestinationAt: { type: Date, required: false }
+    }
   },
   {
     timestamps: true,
@@ -127,4 +163,11 @@ MailSchema.index({ fromRut: 1, isRecived: 1, createdAt: -1 })
 /** Cupo diario invitado: tienda + isGuest + fromRut + rango createdAt */
 MailSchema.index({ storeId: 1, isGuest: 1, fromRut: 1, createdAt: -1 })
 
-export default mongoose.models.Mail || mongoose.model<IMail>('Mail', MailSchema)
+/** Traslados entre sucursales de la misma tienda, ordenados por fecha. */
+MailSchema.index({ storeId: 1, 'transfer.status': 1, createdAt: -1 })
+
+if (mongoose.models.Mail) {
+  mongoose.deleteModel('Mail')
+}
+
+export default mongoose.model<IMail>('Mail', MailSchema)

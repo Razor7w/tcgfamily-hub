@@ -23,6 +23,7 @@ import {
   guestMailSessionSnapshot
 } from '@/lib/guest-mail-session'
 import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
+import { isMailModuleEnabledForStore } from '@/lib/load-dashboard-module-settings'
 import { rutCompareKey } from '@/lib/mail-recipient-filter'
 
 export const runtime = 'nodejs'
@@ -114,6 +115,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Tienda no encontrada o inactiva' },
         { status: 404 }
+      )
+    }
+    if (!(await isMailModuleEnabledForStore(storeOid.toString()))) {
+      return NextResponse.json(
+        { error: 'Esta tienda no tiene el correo habilitado.' },
+        { status: 403 }
       )
     }
 

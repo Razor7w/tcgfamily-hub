@@ -5,6 +5,7 @@ import connectDB from '@/lib/mongodb'
 import Store from '@/models/Store'
 import { loadDashboardAccessContext } from '@/lib/multitenancy/session-store-hydrate'
 import { serializeStorePublicFields } from '@/lib/store-api-serialize'
+import { mailModuleEnabledByStoreId } from '@/lib/load-dashboard-module-settings'
 
 type StoreRow = {
   id: string
@@ -15,6 +16,7 @@ type StoreRow = {
   websiteUrl: string
   instagramUrl: string
   role?: 'owner' | 'store_admin'
+  mailEnabled: boolean
 }
 
 export async function GET() {
@@ -52,6 +54,10 @@ export async function GET() {
       }
     }
 
+    const mailByStore = await mailModuleEnabledByStoreId(
+      allActive.map(s => String(s._id))
+    )
+
     const stores: StoreRow[] = allActive.map(s => {
       const id = String(s._id)
       const r = s as {
@@ -67,6 +73,7 @@ export async function GET() {
         name: typeof r.name === 'string' ? r.name : '',
         slug: typeof r.slug === 'string' ? r.slug : '',
         logoUrl: typeof r.logoUrl === 'string' ? r.logoUrl : '',
+        mailEnabled: mailByStore.get(id) !== false,
         ...serializeStorePublicFields({
           address: typeof r.address === 'string' ? r.address : '',
           websiteUrl: typeof r.websiteUrl === 'string' ? r.websiteUrl : '',

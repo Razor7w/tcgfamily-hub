@@ -7,6 +7,7 @@ import Store from '@/models/Store'
 import StoreMembership from '@/models/StoreMembership'
 import User from '@/models/User'
 import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
+import { isMailModuleEnabledForStore } from '@/lib/load-dashboard-module-settings'
 import { resolveStoreRoleForUser } from '@/lib/multitenancy/session-store-hydrate'
 import type { StoreMembershipRole } from '@/models/StoreMembership'
 
@@ -241,6 +242,16 @@ export async function resolveMailRegisterStoreOid(
       response: NextResponse.json(
         { error: 'Tienda no encontrada.' },
         { status: 400 }
+      )
+    }
+  }
+
+  if (!(await isMailModuleEnabledForStore(oid.toString()))) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: 'Esta tienda no tiene el correo habilitado.' },
+        { status: 403 }
       )
     }
   }

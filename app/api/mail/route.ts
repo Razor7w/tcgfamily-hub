@@ -14,6 +14,7 @@ import {
   getMailRegisterDailyLimitForStore
 } from '@/lib/mail-register-daily'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
+import { MAIL_BRANCH_TRANSFER_FEE_CLP } from '@/lib/mail-store-transfer'
 import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
 import { validateMailStatusTransition } from '@/lib/mail-status-transitions'
 import {
@@ -25,7 +26,10 @@ import {
   parseMailAdminListFiltersFromSearchParams
 } from '@/lib/mail-admin-list'
 import { normalizeMailContactPhone } from '@/lib/mail-contact-phone'
-import { resolveMailBranchIdForStore } from '@/lib/store-branch'
+import {
+  listActiveBranchesForStore,
+  resolveMailBranchIdForStore
+} from '@/lib/store-branch'
 import {
   findUserByRut,
   formatMailRut,
@@ -127,7 +131,8 @@ export async function POST(request: NextRequest) {
       contactPhone,
       mode: rawMode,
       storeId: rawStoreId,
-      branchId: rawBranchId
+      branchId: rawBranchId,
+      transferToBranchId: rawTransferToBranchId
     } = body
 
     /** Admin: `all` = emisor/destinatario por ID (panel). `onlyReceptor` = como usuario (solo toRut). */
@@ -356,12 +361,56 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const transferToBranchRaw =
+      typeof rawTransferToBranchId === 'string'
+        ? rawTransferToBranchId.trim()
+        : ''
+    let transferDoc: Record<string, unknown> | null = null
+    if (transferToBranchRaw) {
+      if (!branchGate.branchOid) {
+        return NextResponse.json(
+          { error: 'Indica la sucursal donde dejas el paquete' },
+          { status: 400 }
+        )
+      }
+      if (!mongoose.Types.ObjectId.isValid(transferToBranchRaw)) {
+        return NextResponse.json(
+          { error: 'Sucursal de destino inválida' },
+          { status: 400 }
+        )
+      }
+      if (transferToBranchRaw === branchGate.branchOid.toString()) {
+        return NextResponse.json(
+          { error: 'La sucursal de destino debe ser distinta a la de origen' },
+          { status: 400 }
+        )
+      }
+      const branches = await listActiveBranchesForStore(activeStoreOid)
+      const originBranch = branches.find(
+        b => b.id === branchGate.branchOid!.toString()
+      )
+      const destBranch = branches.find(b => b.id === transferToBranchRaw)
+      if (!originBranch || !destBranch) {
+        return NextResponse.json(
+          { error: 'La sucursal de destino no pertenece a esta tienda' },
+          { status: 400 }
+        )
+      }
+      transferDoc = {
+        status: 'requested',
+        feeClp: MAIL_BRANCH_TRANSFER_FEE_CLP,
+        originBranchId: branchGate.branchOid,
+        originBranchName: originBranch.name.trim(),
+        destinationBranchId: new mongoose.Types.ObjectId(destBranch.id),
+        destinationBranchName: destBranch.name.trim()
+      }
+    }
+
     let savedMail: { _id: unknown } | null = null
     let lastError: unknown = null
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
         const code = await generateNextMailCode(activeStoreOid, primaryStoreOid)
-        const adminInStore = adminCreateInStore
         const newMail = new Mail({
           storeId: activeStoreOid,
           ...(branchGate.branchOid ? { branchId: branchGate.branchOid } : {}),
@@ -372,7 +421,8 @@ export async function POST(request: NextRequest) {
           toRut: resolvedToRut,
           isRecived: adminCreateIsRecived,
           isRecivedInStore: adminCreateInStore,
-          ...(adminInStore ? { receivedInStoreAt: new Date() } : {}),
+          ...(adminCreateInStore ? { receivedInStoreAt: new Date() } : {}),
+          ...(transferDoc ? { transfer: transferDoc } : {}),
           observations: adminFullCreate
             ? normalizeObs(observations ?? '')
             : normalizeObs(observations),

@@ -15,6 +15,7 @@ import {
   Typography
 } from '@mui/material'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   adminMailBranchesQueryKey,
@@ -40,6 +41,7 @@ export function AdminMailBranchesDialog({
 
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
 
@@ -48,6 +50,12 @@ export function AdminMailBranchesDialog({
       queryKey: adminMailBranchesQueryKey(storeKey)
     })
     void queryClient.invalidateQueries({ queryKey: ['mail-branches'] })
+  }
+
+  const resetForm = () => {
+    setName('')
+    setAddress('')
+    setEditingId(null)
   }
 
   const handleCreate = async () => {
@@ -77,6 +85,42 @@ export function AdminMailBranchesDialog({
     } finally {
       setBusy(false)
     }
+  }
+
+  const handleSave = async () => {
+    if (!editingId) return
+    setBusy(true)
+    setLocalError(null)
+    try {
+      const res = await fetch(`/api/admin/mail-branches/${editingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          address: address.trim()
+        })
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(
+          typeof body?.error === 'string' ? body.error : 'No se pudo guardar'
+        )
+      }
+      resetForm()
+      invalidate()
+      await refetch()
+    } catch (e) {
+      setLocalError(e instanceof Error ? e.message : 'Error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleStartEdit = (b: StoreBranchRow) => {
+    setLocalError(null)
+    setEditingId(b.id)
+    setName(b.name)
+    setAddress(b.address ?? '')
   }
 
   const handleToggle = async (b: StoreBranchRow) => {
@@ -181,14 +225,30 @@ export function AdminMailBranchesDialog({
             disabled={busy}
             fullWidth
           />
-          <Button
-            variant="contained"
-            disabled={busy || !name.trim()}
-            onClick={() => void handleCreate()}
-            sx={{ alignSelf: 'flex-start' }}
-          >
-            Agregar sucursal
-          </Button>
+          <Stack direction="row" spacing={1}>
+            {editingId ? (
+              <>
+                <Button
+                  variant="contained"
+                  disabled={busy || !name.trim()}
+                  onClick={() => void handleSave()}
+                >
+                  Guardar cambios
+                </Button>
+                <Button disabled={busy} onClick={resetForm}>
+                  Cancelar
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="contained"
+                disabled={busy || !name.trim()}
+                onClick={() => void handleCreate()}
+              >
+                Agregar sucursal
+              </Button>
+            )}
+          </Stack>
         </Stack>
 
         {isLoading ? (
@@ -210,7 +270,7 @@ export function AdminMailBranchesDialog({
                   px: 1.25,
                   borderRadius: 1.5,
                   border: 1,
-                  borderColor: 'divider',
+                  borderColor: editingId === b.id ? 'primary.main' : 'divider',
                   opacity: b.isActive ? 1 : 0.65
                 }}
               >
@@ -225,6 +285,14 @@ export function AdminMailBranchesDialog({
                     </Typography>
                   ) : null}
                 </Box>
+                <IconButton
+                  size="small"
+                  disabled={busy}
+                  aria-label={`Editar ${b.name}`}
+                  onClick={() => handleStartEdit(b)}
+                >
+                  <EditOutlinedIcon fontSize="small" />
+                </IconButton>
                 <Button
                   size="small"
                   disabled={busy}

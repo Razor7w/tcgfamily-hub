@@ -20,7 +20,12 @@ import StoreBranch from '@/models/StoreBranch'
 // Asegura registro del modelo para `.populate('branchId')`.
 void StoreBranch
 
-export type MailListStageFilter = 'all' | 'pending' | 'inStore' | 'retired'
+export type MailListStageFilter =
+  | 'all'
+  | 'pending'
+  | 'inStore'
+  | 'transfer'
+  | 'retired'
 
 export type MailAdminListFilters = {
   stage?: MailListStageFilter
@@ -49,7 +54,7 @@ export const MAIL_EXPORT_MAX_LIMIT = 10_000
 const MAIL_EXPORT_USER_SELECT = 'name rut email phone'
 
 const MAIL_LIST_SELECT =
-  'code storeId branchId fromUserId fromRut isGuest toUserId toRut isRecived isRecivedInStore receivedInStoreAt observations contactPhone createdAt updatedAt'
+  'code storeId branchId fromUserId fromRut isGuest toUserId toRut isRecived isRecivedInStore receivedInStoreAt observations contactPhone transfer createdAt updatedAt'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -58,6 +63,7 @@ function parseStage(raw: string | null): MailListStageFilter | undefined {
     raw === 'all' ||
     raw === 'pending' ||
     raw === 'inStore' ||
+    raw === 'transfer' ||
     raw === 'retired'
   ) {
     return raw
@@ -165,7 +171,14 @@ function stageMongoFilter(
   if (!stage || stage === 'all') return null
   if (stage === 'retired') return { isRecived: true }
   if (stage === 'inStore') {
-    return { isRecived: false, isRecivedInStore: true }
+    return {
+      isRecived: false,
+      isRecivedInStore: true,
+      'transfer.status': { $ne: 'in_transit' }
+    }
+  }
+  if (stage === 'transfer') {
+    return { 'transfer.status': 'in_transit' }
   }
   if (stage === 'pending') {
     return { isRecived: false, isRecivedInStore: false }
@@ -182,6 +195,7 @@ function elapsedMongoFilter(
   const base = {
     isRecived: false,
     isRecivedInStore: true,
+    'transfer.status': { $ne: 'in_transit' },
     receivedInStoreAt: { $type: 'date' as const }
   }
   if (elapsed === 'green') {
@@ -391,6 +405,8 @@ export async function buildMailAdminListMongoFilter(
   } else {
     const branchOid = parseObjectId(branchRaw)
     if (branchOid) {
+      // Sucursal actual: donde está el paquete. En tránsito sigue en el origen
+      // hasta que la sucursal de destino lo recepciona (ahí cambia branchId).
       parts.push({ branchId: branchOid })
     }
   }
