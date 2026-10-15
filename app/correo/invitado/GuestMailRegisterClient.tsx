@@ -30,7 +30,12 @@ import type { StoreBranchRow } from '@/lib/store-branch'
 
 const OBS_MAX = 2000
 
-type PublicStore = { id: string; name: string; slug: string }
+type PublicStore = {
+  id: string
+  name: string
+  slug: string
+  mailEnabled?: boolean
+}
 
 type GuestSuccess = {
   code: string
@@ -110,9 +115,9 @@ export default function GuestMailRegisterPage() {
         const res = await fetch('/api/public/stores')
         const data = await res.json()
         if (!cancelled && res.ok) {
-          const list = Array.isArray(data.stores)
-            ? (data.stores as PublicStore[])
-            : []
+          const list = (
+            Array.isArray(data.stores) ? (data.stores as PublicStore[]) : []
+          ).filter(s => s.mailEnabled !== false)
           setStores(list)
           if (list.length === 1) setStore(list[0]!)
         }
@@ -505,17 +510,40 @@ export default function GuestMailRegisterPage() {
                 </Alert>
               ) : null}
 
-              <Autocomplete<PublicStore>
-                options={stores}
-                loading={storesLoading}
-                value={store}
-                onChange={(_, v) => setStore(v)}
-                getOptionLabel={o => o.name}
-                isOptionEqualToValue={(a, b) => a.id === b.id}
-                renderInput={params => (
-                  <TextField {...params} label="Tienda" required size="small" />
-                )}
-              />
+              {stores.length === 1 && store ? (
+                <Typography variant="body2" color="text.secondary">
+                  El paquete queda pendiente de ingreso en{' '}
+                  <Box
+                    component="span"
+                    sx={{ fontWeight: 700, color: 'text.primary' }}
+                  >
+                    {store.name}
+                  </Box>
+                  .
+                </Typography>
+              ) : (
+                <Autocomplete<PublicStore>
+                  options={stores}
+                  loading={storesLoading}
+                  value={store}
+                  onChange={(_, v) => setStore(v)}
+                  getOptionLabel={o => o.name}
+                  isOptionEqualToValue={(a, b) => a.id === b.id}
+                  noOptionsText={
+                    storesLoading
+                      ? 'Cargando tiendas…'
+                      : 'No hay tiendas con correo habilitado'
+                  }
+                  renderInput={params => (
+                    <TextField
+                      {...params}
+                      label="Tienda"
+                      required
+                      size="small"
+                    />
+                  )}
+                />
+              )}
 
               {branchRequired || branches.length > 0 ? (
                 <Autocomplete<StoreBranchRow>

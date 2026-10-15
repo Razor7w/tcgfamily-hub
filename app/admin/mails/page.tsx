@@ -48,6 +48,7 @@ import {
   useBulkReceiveInStoreMails,
   useBulkAssignMailBranch,
   useDeleteMail,
+  useReceiveMailTransfer,
   useAdminMailBranches,
   buildMailsQueryString,
   type Mail,
@@ -59,6 +60,10 @@ import { useCreateUser, type CreateUserData } from '@/hooks/useUsers'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
 import { MAIL_CONTACT_PHONE_MAX } from '@/lib/mail-contact-phone'
 import { getMailStatusChip } from '@/lib/mail-status'
+import {
+  mailTransferRouteLabel,
+  mailTransferStatusSentence
+} from '@/lib/mail-store-transfer'
 import {
   canMarkMailWithdrawn,
   MAIL_WITHDRAW_REQUIRES_IN_STORE,
@@ -108,10 +113,11 @@ const EMPTY_TO_RECIPIENTS: FilterToRecipient[] = []
 const EMPTY_STORE_BRANCHES: StoreBranchRow[] = []
 
 function mailStatusAccentColor(
-  mail: Pick<Mail, 'isRecived' | 'isRecivedInStore'>,
+  mail: Pick<Mail, 'isRecived' | 'isRecivedInStore' | 'transfer'>,
   theme: Theme
 ): string {
   if (mail.isRecived) return theme.palette.success.main
+  if (mail.transfer?.status === 'in_transit') return theme.palette.info.main
   if (mail.isRecivedInStore) return theme.palette.warning.main
   return theme.palette.text.disabled
 }
@@ -144,7 +150,7 @@ export default function MailsPage() {
   const [searchId, setSearchId] = useState('')
   /** Etapa del envío (alineada con estados del portal). */
   const [filterStage, setFilterStage] = useState<
-    'all' | 'pending' | 'inStore' | 'retired'
+    'all' | 'pending' | 'inStore' | 'transfer' | 'retired'
   >('all')
   /** Pendiente retiro en tienda: rangos por días desde ingreso a tienda. */
   const [filterElapsed, setFilterElapsed] = useState<ElapsedBucketFilter>('all')
@@ -195,6 +201,7 @@ export default function MailsPage() {
 
   const createMail = useCreateMail()
   const updateMail = useUpdateMail()
+  const receiveTransfer = useReceiveMailTransfer()
   const bulkWithdraw = useBulkWithdrawMails()
   const bulkReceiveInStore = useBulkReceiveInStoreMails()
   const bulkAssignBranch = useBulkAssignMailBranch()
@@ -680,6 +687,15 @@ export default function MailsPage() {
   }
 
   const handleToggleRecived = async (mail: Mail) => {
+    if (mail.transfer?.status === 'in_transit') {
+      setSnackbar({
+        open: true,
+        message:
+          'Este correo está en tránsito entre sucursales. Recepcionalo en la sucursal de destino.',
+        severity: 'error'
+      })
+      return
+    }
     if (!mail.isRecived && !canMarkMailWithdrawn(mail)) {
       setSnackbar({
         open: true,
@@ -707,6 +723,15 @@ export default function MailsPage() {
   }
 
   const handleToggleRecivedInStore = async (mail: Mail) => {
+    if (mail.transfer?.status === 'in_transit') {
+      setSnackbar({
+        open: true,
+        message:
+          'Este correo está en tránsito entre sucursales. Recepcionalo en la sucursal de destino.',
+        severity: 'error'
+      })
+      return
+    }
     try {
       await updateMail.mutateAsync({
         mailId: mail._id,
@@ -721,6 +746,20 @@ export default function MailsPage() {
       })
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Error al actualizar'
+      setSnackbar({ open: true, message: msg, severity: 'error' })
+    }
+  }
+
+  const handleReceiveTransfer = async (mail: Mail) => {
+    try {
+      await receiveTransfer.mutateAsync(mail._id)
+      setSnackbar({
+        open: true,
+        message: 'Correo recepcionado en esta tienda',
+        severity: 'success'
+      })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Error al recepcionar'
       setSnackbar({ open: true, message: msg, severity: 'error' })
     }
   }
@@ -810,7 +849,7 @@ export default function MailsPage() {
             fetchIds('inStore')
           ])
           setBulkAssignTargetIds([...new Set([...pending, ...inStore])])
-        } else if (filterStage === 'retired') {
+        } else if (filterStage === 'retired' || filterStage === 'transfer') {
           setBulkAssignTargetIds([])
         } else {
           setBulkAssignTargetIds(await fetchIds(filterStage))
@@ -834,11 +873,13 @@ export default function MailsPage() {
   )
 
   const openBulkAssignDialog = async () => {
-    if (filterStage === 'retired') {
+    if (filterStage === 'retired' || filterStage === 'transfer') {
       setSnackbar({
         open: true,
         message:
-          'Cambia el filtro de etapa: no se puede vincular sucursal a correos retirados',
+          filterStage === 'transfer'
+            ? 'Los correos en tránsito conservan la sucursal de origen hasta que la de destino los recepcione'
+            : 'Cambia el filtro de etapa: no se puede vincular sucursal a correos retirados',
         severity: 'warning'
       })
       return
@@ -984,7 +1025,11 @@ export default function MailsPage() {
               <Button
                 variant="outlined"
                 onClick={() => void openBulkAssignDialog()}
-                disabled={filterStage === 'retired' || mailActionsDisabled}
+                disabled={
+                  filterStage === 'retired' ||
+                  filterStage === 'transfer' ||
+                  mailActionsDisabled
+                }
               >
                 Vincular a sucursal
               </Button>
@@ -1178,6 +1223,9 @@ export default function MailsPage() {
                 <ToggleButton value="pending">Sin ingresar</ToggleButton>
                 <ToggleButton value="inStore" color="warning">
                   En tienda
+                </ToggleButton>
+                <ToggleButton value="transfer" color="info">
+                  En tránsito
                 </ToggleButton>
                 <ToggleButton value="retired" color="success">
                   Retirado
@@ -1481,19 +1529,39 @@ export default function MailsPage() {
                               Sin sucursal
                             </Typography>
                           ) : null}
+                          {mail.transfer?.destinationBranchName ? (
+                            <Typography
+                              variant="caption"
+                              color="info.main"
+                              sx={{
+                                display: 'block',
+                                mt: 0.5,
+                                fontWeight: 700
+                              }}
+                            >
+                              {mailTransferRouteLabel(mail.transfer)}
+                            </Typography>
+                          ) : null}
                         </Box>
                         <Stack
-                          direction="row"
                           spacing={0.75}
-                          flexWrap="wrap"
-                          justifyContent="flex-end"
-                          sx={{ maxWidth: '58%' }}
+                          alignItems="flex-end"
+                          sx={{ maxWidth: '58%', flexShrink: 0 }}
                         >
                           <Chip
                             label={status.label}
                             color={status.color}
                             size="small"
-                            sx={{ fontWeight: 700, height: 28 }}
+                            sx={{
+                              fontWeight: 700,
+                              height: 'auto',
+                              maxWidth: '100%',
+                              '& .MuiChip-label': {
+                                whiteSpace: 'normal',
+                                py: 0.5,
+                                lineHeight: 1.25
+                              }
+                            }}
                           />
                           {waitChip ? (
                             <Tooltip title="Esperando retiro: días desde el ingreso confirmado en tienda">
@@ -1519,6 +1587,35 @@ export default function MailsPage() {
                           ) : null}
                         </Stack>
                       </Box>
+                      {mail.transfer?.status === 'requested' ||
+                      mail.transfer?.status === 'in_transit' ||
+                      mail.transfer?.status === 'received' ? (
+                        <Box
+                          sx={{
+                            mb: 1.5,
+                            px: 1.25,
+                            py: 1,
+                            borderRadius: 1.5,
+                            bgcolor: theme =>
+                              alpha(
+                                mail.transfer?.status === 'received'
+                                  ? theme.palette.warning.main
+                                  : theme.palette.info.main,
+                                0.08
+                              )
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                            {mailTransferStatusSentence(mail.transfer)}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {mailTransferRouteLabel(mail.transfer)}
+                            {mail.transfer?.feeClp
+                              ? ` · ${mail.transfer.feeClp.toLocaleString('es-CL')} CLP`
+                              : ''}
+                          </Typography>
+                        </Box>
+                      ) : null}
                       <Stack spacing={1} sx={{ mb: 2 }}>
                         <Typography variant="body2">
                           <Box
@@ -1580,6 +1677,26 @@ export default function MailsPage() {
                       >
                         Cambiar estado
                       </Typography>
+                      {mail.transfer?.status === 'in_transit' ? (
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          color="info"
+                          sx={{
+                            mb: 1.25,
+                            fontWeight: 700,
+                            textTransform: 'none'
+                          }}
+                          disabled={
+                            mailActionsDisabled || receiveTransfer.isPending
+                          }
+                          onClick={() => handleReceiveTransfer(mail)}
+                        >
+                          Recepcionar en{' '}
+                          {mail.transfer.destinationBranchName ||
+                            'la sucursal de destino'}
+                        </Button>
+                      ) : null}
                       <Box
                         sx={{
                           display: 'grid',
@@ -1612,7 +1729,10 @@ export default function MailsPage() {
                                 )
                               }
                               onClick={() => handleToggleRecivedInStore(mail)}
-                              disabled={mailActionsDisabled}
+                              disabled={
+                                mailActionsDisabled ||
+                                mail.transfer?.status === 'in_transit'
+                              }
                               sx={{
                                 minHeight: 48,
                                 py: 1.1,
@@ -1656,6 +1776,7 @@ export default function MailsPage() {
                               onClick={() => handleToggleRecived(mail)}
                               disabled={
                                 mailActionsDisabled ||
+                                mail.transfer?.status === 'in_transit' ||
                                 (!mail.isRecived && !canWithdraw)
                               }
                               sx={{

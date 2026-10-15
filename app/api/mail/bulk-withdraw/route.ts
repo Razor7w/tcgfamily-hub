@@ -56,7 +56,8 @@ export async function POST(request: NextRequest) {
       _id: { $in: mailIds },
       ...scoped,
       isRecived: false,
-      isRecivedInStore: true
+      isRecivedInStore: true,
+      'transfer.status': { $ne: 'in_transit' }
     }
 
     const pending = await Mails.find(withdrawFilter)

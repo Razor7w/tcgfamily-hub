@@ -74,7 +74,12 @@ export async function GET(request: Request) {
           : [])
       ],
       ...(pendingOnly ? { isRecived: false } : {}),
-      ...(inStoreOnly ? { isRecivedInStore: true } : {})
+      ...(inStoreOnly
+        ? {
+            isRecivedInStore: true,
+            'transfer.status': { $ne: 'in_transit' }
+          }
+        : {})
     }
 
     const query = Mail.find(

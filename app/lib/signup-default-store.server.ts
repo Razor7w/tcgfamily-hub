@@ -3,8 +3,14 @@ import 'server-only'
 import mongoose from 'mongoose'
 import connectDB from '@/lib/mongodb'
 import Store from '@/models/Store'
+import { mailModuleEnabledByStoreId } from '@/lib/load-dashboard-module-settings'
 
-export type SignupStoreOption = { id: string; name: string; slug: string }
+export type SignupStoreOption = {
+  id: string
+  name: string
+  slug: string
+  mailEnabled: boolean
+}
 
 export async function listActiveStoresForSignup(): Promise<
   SignupStoreOption[]
@@ -14,7 +20,17 @@ export async function listActiveStoresForSignup(): Promise<
     .sort({ createdAt: 1 })
     .select('_id name slug')
     .lean<Array<{ _id: mongoose.Types.ObjectId; name: string; slug: string }>>()
-  return rows.map(r => ({ id: String(r._id), name: r.name, slug: r.slug }))
+  const ids = rows.map(r => String(r._id))
+  const mailByStore = await mailModuleEnabledByStoreId(ids)
+  return rows.map(r => {
+    const id = String(r._id)
+    return {
+      id,
+      name: r.name,
+      slug: r.slug,
+      mailEnabled: mailByStore.get(id) !== false
+    }
+  })
 }
 
 export async function resolveValidSignupStoreObjectId(

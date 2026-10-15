@@ -112,6 +112,17 @@ export async function PATCH(
       )
     }
 
+    if (patch.name && patch.name !== existing.name) {
+      await Mail.updateMany(
+        { 'transfer.originBranchId': existing._id },
+        { $set: { 'transfer.originBranchName': patch.name } }
+      )
+      await Mail.updateMany(
+        { 'transfer.destinationBranchId': existing._id },
+        { $set: { 'transfer.destinationBranchName': patch.name } }
+      )
+    }
+
     return NextResponse.json(
       serializeStoreBranch(updated) satisfies StoreBranchRow
     )

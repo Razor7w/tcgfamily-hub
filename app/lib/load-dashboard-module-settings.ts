@@ -82,3 +82,59 @@ export async function loadDashboardModuleSettings(
     contributionPoints: mergeContributionPointsAdmin(d ?? null)
   }
 }
+
+/** Correo habilitado en la tienda (módulo `visibility.mail`). */
+export async function isMailModuleEnabledForStore(
+  storeId: string
+): Promise<boolean> {
+  const settings = await loadDashboardModuleSettings(storeId)
+  return settings.visibility.mail !== false
+}
+
+/**
+ * `visibility.mail` por tienda. Sin documento propio, el default es habilitado.
+ * Un documento legacy sin `storeId` aplica solo a la tienda primaria.
+ */
+export async function mailModuleEnabledByStoreId(
+  storeIds: string[]
+): Promise<Map<string, boolean>> {
+  await connectDB()
+  const primary = await memoPrimaryTcgfamilyStoreObjectId()
+  const primaryId = primary?.toString() ?? ''
+  const oids = storeIds
+    .filter(id => mongoose.Types.ObjectId.isValid(id))
+    .map(id => new mongoose.Types.ObjectId(id))
+
+  const docs = await DashboardModuleSettings.find({
+    $or: [
+      { storeId: { $in: oids } },
+      { storeId: { $exists: false } },
+      { storeId: null }
+    ]
+  })
+    .select('storeId visibility.mail')
+    .lean<
+      Array<{
+        storeId?: mongoose.Types.ObjectId | null
+        visibility?: { mail?: boolean }
+      }>
+    >()
+
+  const explicit = new Map<string, boolean>()
+  let legacyMail: boolean | undefined
+  for (const doc of docs) {
+    const enabled = doc.visibility?.mail !== false
+    const sid = doc.storeId ? String(doc.storeId) : ''
+    if (sid) explicit.set(sid, enabled)
+    else legacyMail = enabled
+  }
+
+  const out = new Map<string, boolean>()
+  for (const id of storeIds) {
+    if (explicit.has(id)) out.set(id, explicit.get(id) === true)
+    else if (primaryId && id === primaryId && legacyMail !== undefined) {
+      out.set(id, legacyMail)
+    } else out.set(id, true)
+  }
+  return out
+}

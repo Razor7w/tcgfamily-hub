@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useDashboardStoreQueryKey } from '@/hooks/use-dashboard-store-key'
 import { resolveMailStatusAfterUpdate } from '@/lib/mail-status-transitions'
+import type { MailTransferView } from '@/lib/mail-store-transfer'
 import type { StoreBranchRow } from '@/lib/store-branch'
 
 /**
@@ -51,6 +52,7 @@ export interface Mail {
   contactPhone?: string
   createdAt: string
   updatedAt: string
+  transfer?: MailTransferView | null
 }
 
 export interface CreateMailData {
@@ -79,6 +81,8 @@ export interface RegisterMailData {
   storeId?: string
   /** Sucursal de retiro (obligatoria si la tienda tiene sucursales activas). */
   branchId?: string
+  /** Sucursal de destino, distinta a la de origen, en la misma tienda. */
+  transferToBranchId?: string
   /**
    * `onlyReceptor`: mismo flujo que un usuario (emisor = sesión, solo `toRut`).
    * Necesario si el emisor es admin para no exigir `fromUserId`/`toUserId`.
@@ -136,7 +140,12 @@ export interface UpdateMailData {
   branchId?: string | null
 }
 
-export type MailListStageFilter = 'all' | 'pending' | 'inStore' | 'retired'
+export type MailListStageFilter =
+  | 'all'
+  | 'pending'
+  | 'inStore'
+  | 'transfer'
+  | 'retired'
 export type MailListElapsedFilter =
   | 'all'
   | 'green'
@@ -542,6 +551,33 @@ export function useRegisterMail() {
   })
 }
 
+export function useReceiveMailTransfer() {
+  const queryClient = useQueryClient()
+  const storeKey = useDashboardStoreQueryKey()
+
+  return useMutation({
+    mutationFn: async (mailId: string) => {
+      const response = await fetch(
+        `/api/mail/${encodeURIComponent(mailId)}/receive-transfer`,
+        { method: 'POST' }
+      )
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(
+          typeof error.error === 'string'
+            ? error.error
+            : 'No se pudo recepcionar el correo'
+        )
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mails', storeKey] })
+      queryClient.invalidateQueries({ queryKey: ['mails', 'me'] })
+    }
+  })
+}
+
 // Hook para obtener un mail por ID
 export function useGetMailById(mailId: string | null) {
   return useQuery<Mail>({
@@ -605,6 +641,13 @@ export function useUpdateMail() {
           })
           next.isRecived = resolved.isRecived
           next.isRecivedInStore = resolved.isRecivedInStore
+          if (
+            resolved.isRecivedInStore &&
+            mail.isRecivedInStore !== true &&
+            mail.transfer?.status === 'requested'
+          ) {
+            next.transfer = { ...mail.transfer, status: 'in_transit' }
+          }
           if (resolved.isRecivedInStore && mail.isRecivedInStore !== true) {
             next.receivedInStoreAt = new Date().toISOString()
           } else if (!resolved.isRecivedInStore) {

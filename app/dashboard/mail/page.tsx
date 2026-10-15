@@ -35,6 +35,10 @@ import ButtonBarCode from '@/components/molecule/ButtonBarCode'
 import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
 import MailFlowExplainer from '@/components/mails/MailFlowExplainer'
 import { getMailStatusChip } from '@/lib/mail-status'
+import {
+  mailTransferRouteLabel,
+  mailTransferStatusSentence
+} from '@/lib/mail-store-transfer'
 import { normalizeMailCodeForSearch } from '@/lib/mail-code-search'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
@@ -417,6 +421,19 @@ function MailDashboardCard({
             ) : null}
           </Stack>
         </Box>
+        {mail.transfer?.status === 'requested' ||
+        mail.transfer?.status === 'in_transit' ||
+        mail.transfer?.status === 'received' ? (
+          <Typography
+            variant="body2"
+            sx={{ px: { xs: 2, sm: 2.25 }, pt: 1.25 }}
+          >
+            {mailTransferStatusSentence(mail.transfer)}
+            {mailTransferRouteLabel(mail.transfer)
+              ? ` · ${mailTransferRouteLabel(mail.transfer)}`
+              : ''}
+          </Typography>
+        ) : null}
 
         <Box
           sx={{

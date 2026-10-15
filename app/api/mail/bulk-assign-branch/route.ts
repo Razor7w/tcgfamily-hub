@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
     const filter = {
       _id: { $in: mailIds },
       isRecived: false,
+      'transfer.status': { $ne: 'in_transit' },
       ...scoped
     }
 

@@ -12,6 +12,8 @@ export type MeStoreRow = {
   websiteUrl: string
   instagramUrl: string
   role?: 'owner' | 'store_admin'
+  /** Módulo de correo de la tienda. Ausente en caché vieja = se trata como habilitado. */
+  mailEnabled?: boolean
 }
 
 export type MeStoresResponse = { stores: MeStoreRow[] }

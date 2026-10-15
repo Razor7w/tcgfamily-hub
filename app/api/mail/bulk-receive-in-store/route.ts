@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     const pending = await Mails.find(filter)
-      .select('_id fromUserId toUserId code storeId')
+      .select('_id fromUserId toUserId code storeId transfer.status')
       .lean<
         Array<{
           _id: mongoose.Types.ObjectId
@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
           toUserId?: unknown
           code?: string
           storeId?: mongoose.Types.ObjectId
+          transfer?: { status?: string }
         }>
       >()
 
@@ -77,6 +78,20 @@ export async function POST(request: NextRequest) {
     const result = await Mails.updateMany(filter, {
       $set: { isRecivedInStore: true, receivedInStoreAt: now }
     })
+
+    const transitIds = pending
+      .filter(mail => mail.transfer?.status === 'requested')
+      .map(mail => mail._id)
+    if (transitIds.length > 0) {
+      await Mails.updateMany(
+        { _id: { $in: transitIds } },
+        { $set: { 'transfer.status': 'in_transit' } }
+      )
+    }
+
+    const readyForPickup = pending.filter(
+      mail => mail.transfer?.status !== 'requested'
+    )
 
     for (const mail of pending) {
       if (!mail.fromUserId) continue
@@ -94,10 +109,10 @@ export async function POST(request: NextRequest) {
       mailCode: string
     }[] = []
 
-    if (pending.length > 0) {
+    if (readyForPickup.length > 0) {
       const toUserIds = [
         ...new Set(
-          pending
+          readyForPickup
             .map(m => m.toUserId)
             .filter((id): id is mongoose.Types.ObjectId => id != null)
             .map(id => id.toString())
@@ -127,7 +142,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      for (const mail of pending) {
+      for (const mail of readyForPickup) {
         if (!mail.toUserId) continue
         const recipient = recipientsById.get(String(mail.toUserId))
         const toEmail =
