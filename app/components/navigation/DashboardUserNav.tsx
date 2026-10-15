@@ -12,6 +12,7 @@ import {
   Insights,
   Layers,
   MarkunreadMailboxOutlined,
+  CatchingPokemon,
   Storefront,
   Person,
   Public,
@@ -145,6 +146,21 @@ export default function DashboardUserNav({
                 <Groups />
               </ListItemIcon>
               <ListItemText primary="Equipo" />
+            </ListItemButton>
+          </ListItem>
+          <ListItem disablePadding>
+            <ListItemButton
+              component={Link}
+              href="/dashboard/pokedex-30"
+              selected={
+                pathname === '/dashboard/pokedex-30' ||
+                pathname.startsWith('/dashboard/pokedex-30/')
+              }
+            >
+              <ListItemIcon>
+                <CatchingPokemon />
+              </ListItemIcon>
+              <ListItemText primary="Pokédex 30" />
             </ListItemButton>
           </ListItem>
           {showCarpetas ? (
