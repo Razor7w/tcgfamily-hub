@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState, useSyncExternalStore } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import {
   Box,
@@ -44,43 +45,44 @@ function storageKey(userId: string) {
   return `tcgfamily-pokedex-30:${userId || 'anon'}`
 }
 
-const EMPTY_OWNED = new Set<string>()
-const ownedListeners = new Set<() => void>()
-const ownedByUser = new Map<string, Set<string>>()
-
-function subscribeOwned(onStoreChange: () => void) {
-  ownedListeners.add(onStoreChange)
-  return () => {
-    ownedListeners.delete(onStoreChange)
-  }
+function pokedexQueryKey(userId: string) {
+  return ['me', 'pokedex-30', userId] as const
 }
 
-function readOwned(userId: string) {
-  const cached = ownedByUser.get(userId)
-  if (cached) return cached
-  let ids: string[] = []
+function readLocalCardIds(userId: string) {
   try {
     const raw = localStorage.getItem(storageKey(userId))
     const parsed: unknown = raw ? JSON.parse(raw) : []
-    ids = Array.isArray(parsed)
+    return Array.isArray(parsed)
       ? parsed.filter((id): id is string => typeof id === 'string')
       : []
   } catch {
-    ids = []
+    return []
   }
-  const next = new Set(ids)
-  ownedByUser.set(userId, next)
-  return next
 }
 
-function writeOwned(userId: string, next: Set<string>) {
-  ownedByUser.set(userId, next)
-  localStorage.setItem(storageKey(userId), JSON.stringify([...next]))
-  ownedListeners.forEach(listener => listener())
+async function savePokedex(cardIds: string[]) {
+  const res = await fetch('/api/me/pokedex-30', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cardIds })
+  })
+  if (!res.ok) throw new Error('No se pudo guardar la Pokédex')
+  const body = (await res.json()) as { cardIds?: string[] }
+  return body.cardIds ?? cardIds
 }
 
-function subscribeClientReady() {
-  return () => {}
+async function loadPokedex(userId: string) {
+  const res = await fetch('/api/me/pokedex-30')
+  if (!res.ok) throw new Error('No se pudo leer la Pokédex')
+  const body = (await res.json()) as { cardIds?: string[] }
+  const remote = body.cardIds ?? []
+  const local = readLocalCardIds(userId)
+  const merged = [...new Set([...remote, ...local])]
+  if (local.length === 0) return remote
+  localStorage.removeItem(storageKey(userId))
+  if (merged.length === remote.length) return remote
+  return savePokedex(merged)
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -101,16 +103,16 @@ function printedLabel(card: Pokedex30Card) {
 export default function Pokedex30Client() {
   const { data: session } = useSession()
   const userId = session?.user?.id ? String(session.user.id) : ''
-  const owned = useSyncExternalStore(
-    subscribeOwned,
-    () => readOwned(userId),
-    () => EMPTY_OWNED
-  )
-  const ready = useSyncExternalStore(
-    subscribeClientReady,
-    () => true,
-    () => false
-  )
+  const queryClient = useQueryClient()
+  const queryKey = pokedexQueryKey(userId)
+  const { data: cardIds = [], isSuccess } = useQuery({
+    queryKey,
+    queryFn: () => loadPokedex(userId),
+    enabled: userId.length > 0
+  })
+  const owned = useMemo(() => new Set(cardIds), [cardIds])
+  const ready = isSuccess
+  const saveQueue = useRef(Promise.resolve())
   const [section, setSection] = useState<SectionFilter>('all')
   const [ownedFilter, setOwnedFilter] = useState<OwnedFilter>('all')
   const [type, setType] = useState<string>('all')
@@ -118,10 +120,28 @@ export default function Pokedex30Client() {
   const [selected, setSelected] = useState<Pokedex30Card | null>(null)
 
   const toggle = (id: string) => {
-    const next = new Set(owned)
+    if (!userId) return
+    const current = queryClient.getQueryData<string[]>(queryKey) ?? cardIds
+    const next = new Set(current)
     if (next.has(id)) next.delete(id)
     else next.add(id)
-    writeOwned(userId, next)
+    const ids = [...next]
+    queryClient.setQueryData(queryKey, ids)
+    saveQueue.current = saveQueue.current
+      .catch(() => undefined)
+      .then(() => savePokedex(ids))
+      .then(saved => {
+        const shown = queryClient.getQueryData<string[]>(queryKey)
+        if (shown?.join('\n') === ids.join('\n')) {
+          queryClient.setQueryData(queryKey, saved)
+        }
+      })
+      .catch(() => {
+        const shown = queryClient.getQueryData<string[]>(queryKey)
+        if (shown?.join('\n') === ids.join('\n')) {
+          void queryClient.invalidateQueries({ queryKey })
+        }
+      })
   }
 
   const types = useMemo(
@@ -184,7 +204,7 @@ export default function Pokedex30Client() {
           >
             Las 158 cartas del set, las 3 Mew RGB y las 30 de Classic
             Collection. Toca una carta para marcarla. La lupa abre la imagen
-            grande. El avance queda guardado en este navegador.
+            grande. El avance queda guardado en tu cuenta.
           </Typography>
         </Box>
         <Box sx={{ minWidth: { md: 220 } }}>
