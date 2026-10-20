@@ -32,6 +32,8 @@
     "@uppy/dashboard": "^5.1.1",
     "@uppy/image-editor": "^4.2.0",
     "@uppy/locales": "^5.1.1",
+    "@zxing/browser": "^0.1.5",
+    "@zxing/library": "^0.21.3",
     "bcryptjs": "^3.0.3",
     "mongodb": "^6.21.0",
     "mongoose": "^8.24.1",
