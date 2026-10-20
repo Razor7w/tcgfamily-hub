@@ -7,7 +7,9 @@ import {
   Autocomplete,
   Box,
   Button,
+  Checkbox,
   Container,
+  FormControlLabel,
   Paper,
   Stack,
   TextField,
@@ -27,6 +29,7 @@ import {
   GUEST_MAIL_SESSION_LIMIT
 } from '@/lib/mail-register-constants'
 import type { StoreBranchRow } from '@/lib/store-branch'
+import { formatMailTransferFee } from '@/lib/mail-store-transfer'
 
 const OBS_MAX = 2000
 
@@ -65,6 +68,8 @@ export default function GuestMailRegisterPage() {
   const [branchRequired, setBranchRequired] = useState(false)
   const [branchesLoading, setBranchesLoading] = useState(false)
   const [branch, setBranch] = useState<StoreBranchRow | null>(null)
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [destBranch, setDestBranch] = useState<StoreBranchRow | null>(null)
 
   const [fromRut, setFromRut] = useState('')
   const [toRut, setToRut] = useState('')
@@ -134,6 +139,8 @@ export default function GuestMailRegisterPage() {
 
   useEffect(() => {
     setBranch(null)
+    setTransferOpen(false)
+    setDestBranch(null)
     if (!store?.id) {
       setBranches([])
       setBranchRequired(false)
@@ -167,6 +174,24 @@ export default function GuestMailRegisterPage() {
       cancelled = true
     }
   }, [store?.id])
+
+  const destinationBranchOptions = useMemo(
+    () => branches.filter(b => b.id !== branch?.id),
+    [branches, branch?.id]
+  )
+
+  const selectedDestBranch = useMemo(() => {
+    if (!transferOpen) return null
+    if (
+      destBranch &&
+      destinationBranchOptions.some(b => b.id === destBranch.id)
+    ) {
+      return destBranch
+    }
+    return destinationBranchOptions.length === 1
+      ? destinationBranchOptions[0]!
+      : null
+  }, [transferOpen, destBranch, destinationBranchOptions])
 
   useEffect(() => {
     const rutOk = !getRutFieldError(fromRut, true)
@@ -249,6 +274,16 @@ export default function GuestMailRegisterPage() {
       setError('Selecciona una sucursal')
       return
     }
+    if (transferOpen) {
+      if (!branch?.id) {
+        setError('Selecciona la sucursal donde dejas el paquete')
+        return
+      }
+      if (!selectedDestBranch?.id) {
+        setError('Selecciona la sucursal de destino')
+        return
+      }
+    }
     setSubmitting(true)
     try {
       const res = await fetch('/api/mail/guest', {
@@ -259,6 +294,9 @@ export default function GuestMailRegisterPage() {
           toRut: normalizeRutForApi(toRut),
           storeId: store.id,
           ...(branch?.id ? { branchId: branch.id } : {}),
+          ...(transferOpen && selectedDestBranch?.id
+            ? { transferToBranchId: selectedDestBranch.id }
+            : {}),
           contactPhone: contactPhone.trim() || undefined,
           observations: observations.trim() || undefined
         })
@@ -550,7 +588,10 @@ export default function GuestMailRegisterPage() {
                   options={branches}
                   loading={branchesLoading}
                   value={branch}
-                  onChange={(_, v) => setBranch(v)}
+                  onChange={(_, v) => {
+                    setBranch(v)
+                    setDestBranch(null)
+                  }}
                   getOptionLabel={o =>
                     o.address?.trim() ? `${o.name} · ${o.address}` : o.name
                   }
@@ -559,12 +600,79 @@ export default function GuestMailRegisterPage() {
                     <TextField
                       {...params}
                       label="Sucursal"
-                      required={branchRequired}
+                      required={branchRequired || transferOpen}
                       size="small"
-                      error={submitAttempted && branchRequired && !branch?.id}
+                      error={
+                        submitAttempted &&
+                        ((branchRequired && !branch?.id) ||
+                          (transferOpen && !branch?.id))
+                      }
+                      helperText={
+                        transferOpen
+                          ? 'Local donde dejas el paquete.'
+                          : undefined
+                      }
                     />
                   )}
                 />
+              ) : null}
+
+              {branches.length > 1 ? (
+                <Box>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={transferOpen}
+                        onChange={(_, checked) => {
+                          setTransferOpen(checked)
+                          if (!checked) setDestBranch(null)
+                        }}
+                        disabled={submitting || formBlocked}
+                      />
+                    }
+                    label="Enviar este correo a otra sucursal"
+                  />
+                  {transferOpen ? (
+                    <Stack spacing={1.5} sx={{ mt: 1 }}>
+                      <Alert severity="info">
+                        El traslado entre sucursales tiene un costo de{' '}
+                        <strong>{formatMailTransferFee()}</strong>, que se paga
+                        en tienda. Después queda en camino a la sucursal de
+                        destino.
+                      </Alert>
+                      <Autocomplete<StoreBranchRow>
+                        size="small"
+                        options={destinationBranchOptions}
+                        value={selectedDestBranch}
+                        onChange={(_, value) => setDestBranch(value)}
+                        getOptionLabel={o =>
+                          o.address?.trim()
+                            ? `${o.name} · ${o.address}`
+                            : o.name
+                        }
+                        isOptionEqualToValue={(a, b) => a.id === b.id}
+                        disabled={
+                          submitting || formBlocked || !branch?.id
+                        }
+                        renderInput={params => (
+                          <TextField
+                            {...params}
+                            label="Sucursal de destino"
+                            required
+                            error={
+                              submitAttempted && !selectedDestBranch?.id
+                            }
+                            helperText={
+                              branch
+                                ? 'Hacia dónde irá el paquete después de ingresarlo.'
+                                : 'Primero elige la sucursal donde dejas el paquete.'
+                            }
+                          />
+                        )}
+                      />
+                    </Stack>
+                  ) : null}
+                </Box>
               ) : null}
 
               <TextField
@@ -658,7 +766,9 @@ export default function GuestMailRegisterPage() {
                   storesLoading ||
                   !store ||
                   formBlocked ||
-                  (branchRequired && !branch)
+                  (branchRequired && !branch) ||
+                  (transferOpen && !branch) ||
+                  (transferOpen && !selectedDestBranch)
                 }
                 sx={{ fontWeight: 700, py: 1.25 }}
               >
