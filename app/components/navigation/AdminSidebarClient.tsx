@@ -8,6 +8,7 @@ import {
   ExpandMore,
   AssignmentOutlined,
   LightbulbOutlined,
+  LocalOfferOutlined,
   MilitaryTech,
   People,
   Settings,
@@ -33,17 +34,11 @@ export default function AdminSidebarClient({ isOwner }: { isOwner: boolean }) {
   const { storeCredit } = useDashboardModulesFromLayout()
   const showStorePointsMenu =
     storeCredit.csvEnabled || storeCredit.tournamentPointsEnabled
-  const hasStoreStaffNav =
-    showWeeklyEvents || showLeagues || showMail || showStorePointsMenu
 
   const [open, setOpen] = useState(true)
 
   const handleClick = () => {
     setOpen(!open)
-  }
-
-  if (!isOwner && !hasStoreStaffNav) {
-    return null
   }
 
   return (
@@ -126,6 +121,14 @@ export default function AdminSidebarClient({ isOwner }: { isOwner: boolean }) {
             </ListItemButton>
           </List>
         ) : null}
+        <List component="div" disablePadding>
+          <ListItemButton sx={{ pl: 4 }} href="/admin/precios">
+            <ListItemIcon>
+              <LocalOfferOutlined />
+            </ListItemIcon>
+            <ListItemText primary="Precios" />
+          </ListItemButton>
+        </List>
         {showMail ? (
           <List component="div" disablePadding>
             <ListItemButton sx={{ pl: 4 }} href="/admin/mails">
