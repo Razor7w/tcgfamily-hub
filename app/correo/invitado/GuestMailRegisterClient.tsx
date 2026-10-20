@@ -374,52 +374,80 @@ export default function GuestMailRegisterPage() {
       })}
     >
       <Header />
-      <Container maxWidth="sm" sx={{ py: { xs: 3, sm: 5 } }}>
-        <Stack spacing={2.5} alignItems="center" sx={{ mb: 3 }}>
-          <BrandLogo variant="wordmark" size="md" href="/" />
-          <Typography
-            variant="h4"
-            component="h1"
-            sx={{
-              fontWeight: 800,
-              textAlign: 'center',
-              letterSpacing: '-0.02em'
-            }}
+      <Container
+        maxWidth="md"
+        sx={{ py: { xs: 3, sm: 4, md: 5 }, px: { xs: 2, sm: 3 } }}
+      >
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          spacing={{ xs: 2, md: 4 }}
+          alignItems={{ xs: 'center', md: 'flex-end' }}
+          justifyContent="space-between"
+          sx={{ mb: { xs: 3, md: 3.5 } }}
+        >
+          <Stack
+            spacing={1.5}
+            alignItems={{ xs: 'center', md: 'flex-start' }}
+            sx={{ maxWidth: { md: 520 } }}
           >
-            Registrar correo
-          </Typography>
-          <Typography
-            color="text.secondary"
-            sx={{ textAlign: 'center', maxWidth: 440 }}
-          >
-            Sin crear cuenta. Usa tu RUT, genera el código y envíaselo al
-            receptor para mostrarlo en la tienda. Máximo{' '}
-            {GUEST_MAIL_SESSION_LIMIT} correos por sesión de navegador.
-          </Typography>
+            <BrandLogo variant="wordmark" size="md" href="/" />
+            <Typography
+              variant="h4"
+              component="h1"
+              sx={{
+                fontWeight: 800,
+                textAlign: { xs: 'center', md: 'left' },
+                letterSpacing: '-0.02em',
+                fontSize: { xs: '1.75rem', sm: '2rem', md: '2.15rem' }
+              }}
+            >
+              Registrar correo
+            </Typography>
+            <Typography
+              color="text.secondary"
+              sx={{
+                textAlign: { xs: 'center', md: 'left' },
+                maxWidth: { xs: 440, md: 'none' }
+              }}
+            >
+              Sin crear cuenta. Usa tu RUT, genera el código y envíaselo al
+              receptor para mostrarlo en la tienda. Máximo{' '}
+              {GUEST_MAIL_SESSION_LIMIT} correos por sesión de navegador.
+            </Typography>
+          </Stack>
         </Stack>
 
         {success ? (
           <Paper
             elevation={0}
             sx={{
-              p: { xs: 2.5, sm: 3.5 },
+              p: { xs: 2.5, sm: 3.5, md: 4 },
               borderRadius: 3,
               border: 1,
-              borderColor: 'divider'
+              borderColor: 'divider',
+              maxWidth: { sm: 640, md: 720 },
+              mx: 'auto'
             }}
           >
             <Stack spacing={2.5} alignItems="center">
-              <CheckCircleOutlineIcon color="success" sx={{ fontSize: 48 }} />
+              <CheckCircleOutlineIcon
+                color="success"
+                sx={{ fontSize: { xs: 48, sm: 56 } }}
+              />
               <Typography
                 variant="h6"
-                sx={{ fontWeight: 700, textAlign: 'center' }}
+                sx={{
+                  fontWeight: 700,
+                  textAlign: 'center',
+                  fontSize: { sm: '1.35rem' }
+                }}
               >
                 Correo registrado
               </Typography>
               <Typography
                 variant="body2"
                 color="text.secondary"
-                sx={{ textAlign: 'center' }}
+                sx={{ textAlign: 'center', maxWidth: 420 }}
               >
                 En {success.storeName}. Muestra este código en la tienda.
               </Typography>
@@ -427,8 +455,8 @@ export default function GuestMailRegisterPage() {
               <Box
                 sx={t => ({
                   width: '100%',
-                  py: 2.5,
-                  px: 2,
+                  py: { xs: 2.5, sm: 3 },
+                  px: { xs: 2, sm: 3 },
                   borderRadius: 2,
                   bgcolor: alpha(t.palette.primary.main, 0.08),
                   border: `1px dashed ${alpha(t.palette.primary.main, 0.45)}`,
@@ -449,7 +477,8 @@ export default function GuestMailRegisterPage() {
                     fontVariantNumeric: 'tabular-nums',
                     letterSpacing: '0.04em',
                     mt: 0.5,
-                    wordBreak: 'break-all'
+                    wordBreak: 'break-all',
+                    fontSize: { xs: '1.75rem', sm: '2.1rem' }
                   }}
                 >
                   {success.code}
@@ -458,19 +487,19 @@ export default function GuestMailRegisterPage() {
                   sx={{
                     mt: 1.5,
                     width: '100%',
-                    maxWidth: 360,
+                    maxWidth: { xs: 360, sm: 440 },
                     mx: 'auto',
                     display: 'flex',
                     justifyContent: 'center',
                     alignItems: 'center',
                     bgcolor: 'common.white',
                     borderRadius: 1,
-                    py: 1,
+                    py: { xs: 1, sm: 1.5 },
                     px: 1,
                     '& svg': {
                       width: '100%',
                       height: 'auto',
-                      maxHeight: 100
+                      maxHeight: { xs: 100, sm: 120 }
                     }
                   }}
                 >
@@ -535,87 +564,112 @@ export default function GuestMailRegisterPage() {
           <Paper
             elevation={0}
             sx={{
-              p: { xs: 2.5, sm: 3 },
+              p: { xs: 2.5, sm: 3, md: 3.5 },
               borderRadius: 3,
               border: 1,
               borderColor: 'divider'
             }}
           >
-            <Stack spacing={2}>
+            <Stack spacing={{ xs: 2, sm: 2.25 }}>
               {error ? (
                 <Alert severity="error" onClose={() => setError(null)}>
                   {error}
                 </Alert>
               ) : null}
 
-              {stores.length === 1 && store ? (
-                <Typography variant="body2" color="text.secondary">
-                  El paquete queda pendiente de ingreso en{' '}
-                  <Box
-                    component="span"
-                    sx={{ fontWeight: 700, color: 'text.primary' }}
+              <Box
+                sx={{
+                  display: 'grid',
+                  gap: { xs: 2, sm: 2.25 },
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, minmax(0, 1fr))'
+                  }
+                }}
+              >
+                {stores.length === 1 && store ? (
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ gridColumn: '1 / -1' }}
                   >
-                    {store.name}
-                  </Box>
-                  .
-                </Typography>
-              ) : (
-                <Autocomplete<PublicStore>
-                  options={stores}
-                  loading={storesLoading}
-                  value={store}
-                  onChange={(_, v) => setStore(v)}
-                  getOptionLabel={o => o.name}
-                  isOptionEqualToValue={(a, b) => a.id === b.id}
-                  noOptionsText={
-                    storesLoading
-                      ? 'Cargando tiendas…'
-                      : 'No hay tiendas con correo habilitado'
-                  }
-                  renderInput={params => (
-                    <TextField
-                      {...params}
-                      label="Tienda"
-                      required
-                      size="small"
-                    />
-                  )}
-                />
-              )}
+                    El paquete queda pendiente de ingreso en{' '}
+                    <Box
+                      component="span"
+                      sx={{ fontWeight: 700, color: 'text.primary' }}
+                    >
+                      {store.name}
+                    </Box>
+                    .
+                  </Typography>
+                ) : (
+                  <Autocomplete<PublicStore>
+                    options={stores}
+                    loading={storesLoading}
+                    value={store}
+                    onChange={(_, v) => setStore(v)}
+                    getOptionLabel={o => o.name}
+                    isOptionEqualToValue={(a, b) => a.id === b.id}
+                    noOptionsText={
+                      storesLoading
+                        ? 'Cargando tiendas…'
+                        : 'No hay tiendas con correo habilitado'
+                    }
+                    sx={{
+                      gridColumn:
+                        branchRequired || branches.length > 0
+                          ? undefined
+                          : '1 / -1'
+                    }}
+                    renderInput={params => (
+                      <TextField
+                        {...params}
+                        label="Tienda"
+                        required
+                        size="small"
+                      />
+                    )}
+                  />
+                )}
 
-              {branchRequired || branches.length > 0 ? (
-                <Autocomplete<StoreBranchRow>
-                  options={branches}
-                  loading={branchesLoading}
-                  value={branch}
-                  onChange={(_, v) => {
-                    setBranch(v)
-                    setDestBranch(null)
-                  }}
-                  getOptionLabel={o =>
-                    o.address?.trim() ? `${o.name} · ${o.address}` : o.name
-                  }
-                  isOptionEqualToValue={(a, b) => a.id === b.id}
-                  renderInput={params => (
-                    <TextField
-                      {...params}
-                      label="Sucursal"
-                      required={branchRequired || transferOpen}
-                      size="small"
-                      error={
-                        submitAttempted &&
-                        ((branchRequired && !branch?.id) ||
-                          (transferOpen && !branch?.id))
-                      }
-                      helperText={
-                        transferOpen
-                          ? 'Local donde dejas el paquete.'
-                          : undefined
-                      }
-                    />
-                  )}
-                />
-              ) : null}
+                {branchRequired || branches.length > 0 ? (
+                  <Autocomplete<StoreBranchRow>
+                    options={branches}
+                    loading={branchesLoading}
+                    value={branch}
+                    onChange={(_, v) => {
+                      setBranch(v)
+                      setDestBranch(null)
+                    }}
+                    getOptionLabel={o =>
+                      o.address?.trim() ? `${o.name} · ${o.address}` : o.name
+                    }
+                    isOptionEqualToValue={(a, b) => a.id === b.id}
+                    sx={{
+                      gridColumn:
+                        stores.length === 1 && store ? '1 / -1' : undefined
+                    }}
+                    renderInput={params => (
+                      <TextField
+                        {...params}
+                        label="Sucursal"
+                        required={branchRequired || transferOpen}
+                        size="small"
+                        error={
+                          submitAttempted &&
+                          ((branchRequired && !branch?.id) ||
+                            (transferOpen && !branch?.id))
+                        }
+                        helperText={
+                          transferOpen
+                            ? 'Local donde dejas el paquete.'
+                            : undefined
+                        }
+                      />
+                    )}
+                  />
+                ) : null}
+              </Box>
 
               {branches.length > 1 ? (
                 <Box>
@@ -651,17 +705,13 @@ export default function GuestMailRegisterPage() {
                             : o.name
                         }
                         isOptionEqualToValue={(a, b) => a.id === b.id}
-                        disabled={
-                          submitting || formBlocked || !branch?.id
-                        }
+                        disabled={submitting || formBlocked || !branch?.id}
                         renderInput={params => (
                           <TextField
                             {...params}
                             label="Sucursal de destino"
                             required
-                            error={
-                              submitAttempted && !selectedDestBranch?.id
-                            }
+                            error={submitAttempted && !selectedDestBranch?.id}
                             helperText={
                               branch
                                 ? 'Hacia dónde irá el paquete después de ingresarlo.'
@@ -675,71 +725,82 @@ export default function GuestMailRegisterPage() {
                 </Box>
               ) : null}
 
-              <TextField
-                label="Tu RUT (emisor)"
-                placeholder="12.345.678-5"
-                value={fromRut}
-                onChange={e => setFromRut(e.target.value)}
-                onBlur={() => setFromRut(prev => formatRutOnBlur(prev))}
-                error={!!fromRutError}
-                helperText={
-                  fromRutError ??
-                  [
-                    quota
-                      ? `Cupo RUT hoy: ${quota.usedToday}/${quota.limit} — quedan ${quota.remaining}`
-                      : `Máximo ${GUEST_MAIL_REGISTER_DAILY_LIMIT} correos/día por RUT (hora Chile).`,
-                    sessionQuota
-                      ? `Sesión navegador: ${sessionQuota.sessionUsed}/${sessionQuota.sessionLimit}`
-                      : `Máximo ${GUEST_MAIL_SESSION_LIMIT} por sesión de navegador.`
-                  ].join(' · ')
-                }
-                size="small"
-                required
-                disabled={submitting || sessionBlocked}
-              />
+              <Box
+                sx={{
+                  display: 'grid',
+                  gap: { xs: 2, sm: 2.25 },
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, minmax(0, 1fr))'
+                  }
+                }}
+              >
+                <TextField
+                  label="Tu RUT (emisor)"
+                  placeholder="12.345.678-5"
+                  value={fromRut}
+                  onChange={e => setFromRut(e.target.value)}
+                  onBlur={() => setFromRut(prev => formatRutOnBlur(prev))}
+                  error={!!fromRutError}
+                  helperText={
+                    fromRutError ??
+                    [
+                      quota
+                        ? `Cupo RUT hoy: ${quota.usedToday}/${quota.limit} — quedan ${quota.remaining}`
+                        : `Máximo ${GUEST_MAIL_REGISTER_DAILY_LIMIT} correos/día por RUT (hora Chile).`,
+                      sessionQuota
+                        ? `Sesión navegador: ${sessionQuota.sessionUsed}/${sessionQuota.sessionLimit}`
+                        : `Máximo ${GUEST_MAIL_SESSION_LIMIT} por sesión de navegador.`
+                    ].join(' · ')
+                  }
+                  size="small"
+                  required
+                  disabled={submitting || sessionBlocked}
+                />
 
-              <TextField
-                label="RUT del receptor"
-                placeholder="12.345.678-5"
-                value={toRut}
-                onChange={e => setToRut(e.target.value)}
-                onBlur={() => setToRut(prev => formatRutOnBlur(prev))}
-                error={!!toRutError}
-                helperText={
-                  toRutError ?? 'Quién retirará el paquete en tienda.'
-                }
-                size="small"
-                required
-                disabled={submitting || formBlocked}
-              />
+                <TextField
+                  label="RUT del receptor"
+                  placeholder="12.345.678-5"
+                  value={toRut}
+                  onChange={e => setToRut(e.target.value)}
+                  onBlur={() => setToRut(prev => formatRutOnBlur(prev))}
+                  error={!!toRutError}
+                  helperText={
+                    toRutError ?? 'Quién retirará el paquete en tienda.'
+                  }
+                  size="small"
+                  required
+                  disabled={submitting || formBlocked}
+                />
 
-              <TextField
-                label="Número de contacto (opcional)"
-                placeholder="+56 9 1234 5678"
-                value={contactPhone}
-                onChange={e =>
-                  setContactPhone(
-                    e.target.value.slice(0, MAIL_CONTACT_PHONE_MAX)
-                  )
-                }
-                size="small"
-                disabled={submitting || formBlocked}
-                inputProps={{ maxLength: MAIL_CONTACT_PHONE_MAX }}
-              />
+                <TextField
+                  label="Número de contacto (opcional)"
+                  placeholder="+56 9 1234 5678"
+                  value={contactPhone}
+                  onChange={e =>
+                    setContactPhone(
+                      e.target.value.slice(0, MAIL_CONTACT_PHONE_MAX)
+                    )
+                  }
+                  size="small"
+                  disabled={submitting || formBlocked}
+                  inputProps={{ maxLength: MAIL_CONTACT_PHONE_MAX }}
+                />
 
-              <TextField
-                label="Comentarios (opcional)"
-                value={observations}
-                onChange={e =>
-                  setObservations(e.target.value.slice(0, OBS_MAX))
-                }
-                multiline
-                minRows={2}
-                size="small"
-                disabled={submitting || formBlocked}
-                helperText={`${observations.length}/${OBS_MAX}`}
-                inputProps={{ maxLength: OBS_MAX }}
-              />
+                <TextField
+                  label="Comentarios (opcional)"
+                  value={observations}
+                  onChange={e =>
+                    setObservations(e.target.value.slice(0, OBS_MAX))
+                  }
+                  multiline
+                  minRows={2}
+                  size="small"
+                  disabled={submitting || formBlocked}
+                  helperText={`${observations.length}/${OBS_MAX}`}
+                  inputProps={{ maxLength: OBS_MAX }}
+                />
+              </Box>
 
               {sessionBlocked ? (
                 <Alert severity="error">
@@ -770,7 +831,16 @@ export default function GuestMailRegisterPage() {
                   (transferOpen && !branch) ||
                   (transferOpen && !selectedDestBranch)
                 }
-                sx={{ fontWeight: 700, py: 1.25 }}
+                sx={{
+                  fontWeight: 700,
+                  py: { xs: 1.25, sm: 1.4 },
+                  mt: { sm: 0.5 },
+                  maxWidth: { sm: 420 },
+                  alignSelf: { sm: 'center' },
+                  width: { xs: '100%', sm: 'auto' },
+                  minWidth: { sm: 320 },
+                  px: { sm: 4 }
+                }}
               >
                 {submitting ? 'Registrando…' : 'Registrar y mostrar código'}
               </Button>

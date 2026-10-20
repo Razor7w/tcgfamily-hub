@@ -214,35 +214,53 @@ export default function Pokedex30Client() {
   const progress = total === 0 ? 0 : Math.round((ownedCount / total) * 100)
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 2, sm: 3 }, py: 3 }}>
+    <Box
+      sx={{
+        maxWidth: 1200,
+        mx: 'auto',
+        px: { xs: 2, sm: 3, md: 4 },
+        py: { xs: 2.5, sm: 3, md: 3.5 }
+      }}
+    >
       <Stack
-        direction={{ xs: 'column', md: 'row' }}
-        spacing={2}
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={{ xs: 2, sm: 3 }}
         justifyContent="space-between"
-        alignItems={{ md: 'flex-end' }}
-        sx={{ mb: 2.5 }}
+        alignItems={{ xs: 'stretch', sm: 'flex-end' }}
+        sx={{ mb: { xs: 2.5, sm: 3 } }}
       >
-        <Box>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="overline" color="text.secondary">
             Pokémon TCG · set 30C
           </Typography>
           <Typography
             variant="h4"
-            sx={{ fontWeight: 800, letterSpacing: '-0.03em' }}
+            sx={{
+              fontWeight: 800,
+              letterSpacing: '-0.03em',
+              fontSize: { xs: '1.65rem', sm: '1.9rem', md: '2.15rem' },
+              lineHeight: 1.15
+            }}
           >
             Pokédex 30th Celebration
           </Typography>
           <Typography
             variant="body2"
             color="text.secondary"
-            sx={{ mt: 0.5, maxWidth: 560 }}
+            sx={{ mt: 0.75, maxWidth: { sm: 480, md: 560 } }}
           >
             Las 158 cartas del set, las 3 Mew RGB y las 30 de Classic
             Collection. Toca una carta para marcarla. La lupa abre la imagen
             grande. El avance queda guardado en tu cuenta.
           </Typography>
         </Box>
-        <Stack spacing={1} sx={{ minWidth: { md: 220 } }}>
+        <Stack
+          spacing={1}
+          sx={{
+            width: { xs: '100%', sm: 220, md: 240 },
+            flexShrink: 0
+          }}
+        >
           <Typography variant="body2" sx={{ fontWeight: 700 }}>
             {ownedCount} de {total} · {progress}%
           </Typography>
@@ -257,7 +275,7 @@ export default function Pokedex30Client() {
             startIcon={<ShareOutlined />}
             disabled={!ready}
             onClick={event => setShareAnchor(event.currentTarget)}
-            sx={{ alignSelf: { xs: 'stretch', md: 'flex-start' } }}
+            sx={{ alignSelf: 'stretch' }}
           >
             Compartir
           </Button>
@@ -367,7 +385,16 @@ export default function Pokedex30Client() {
         ))}
       </Menu>
 
-      <Stack spacing={1.5} sx={{ mb: 2 }}>
+      <Stack
+        spacing={{ xs: 1.5, sm: 1.75 }}
+        sx={{
+          mb: { xs: 2, sm: 2.25 },
+          p: { sm: 1.5, md: 2 },
+          mx: { sm: -1.5, md: -2 },
+          borderRadius: { sm: 2 },
+          bgcolor: { sm: 'action.hover' }
+        }}
+      >
         <ToggleButtonGroup
           exclusive
           size="small"
@@ -375,7 +402,14 @@ export default function Pokedex30Client() {
           onChange={(_, value: SectionFilter | null) =>
             value && setSection(value)
           }
-          sx={{ flexWrap: 'wrap' }}
+          sx={{
+            flexWrap: 'wrap',
+            gap: 0.5,
+            '& .MuiToggleButton-root': {
+              px: { xs: 1, sm: 1.25 },
+              minHeight: { sm: 36 }
+            }
+          }}
         >
           <ToggleButton value="all">Todas</ToggleButton>
           <ToggleButton value="main">Principal</ToggleButton>
@@ -383,14 +417,18 @@ export default function Pokedex30Client() {
           <ToggleButton value="secret">Secretas</ToggleButton>
           <ToggleButton value="classic">Clásicas</ToggleButton>
         </ToggleButtonGroup>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1}
+          alignItems={{ sm: 'flex-start' }}
+        >
           <TextField
             size="small"
             label="Buscar"
             placeholder="Nombre o número"
             value={query}
             onChange={event => setQuery(event.target.value)}
-            sx={{ flex: 1 }}
+            sx={{ flex: 1, minWidth: { sm: 200 } }}
           />
           <ToggleButtonGroup
             exclusive
@@ -399,6 +437,10 @@ export default function Pokedex30Client() {
             onChange={(_, value: OwnedFilter | null) =>
               value && setOwnedFilter(value)
             }
+            sx={{
+              flexShrink: 0,
+              '& .MuiToggleButton-root': { minHeight: { sm: 40 } }
+            }}
           >
             <ToggleButton value="all">Todas</ToggleButton>
             <ToggleButton value="owned">Tengo</ToggleButton>
@@ -411,6 +453,7 @@ export default function Pokedex30Client() {
             size="small"
             variant={type === 'all' ? 'filled' : 'outlined'}
             onClick={() => setType('all')}
+            sx={{ minHeight: { sm: 32 } }}
           />
           {types.map(item => (
             <Chip
@@ -419,11 +462,12 @@ export default function Pokedex30Client() {
               size="small"
               variant={type === item ? 'filled' : 'outlined'}
               onClick={() => setType(item)}
-              sx={
-                type === item
+              sx={{
+                minHeight: { sm: 32 },
+                ...(type === item
                   ? { bgcolor: TYPE_COLOR[item], color: '#fff' }
-                  : undefined
-              }
+                  : {})
+              }}
             />
           ))}
         </Stack>
@@ -432,7 +476,7 @@ export default function Pokedex30Client() {
       <Typography
         variant="caption"
         color="text.secondary"
-        sx={{ display: 'block', mb: 1 }}
+        sx={{ display: 'block', mb: { xs: 1, sm: 1.25 } }}
       >
         {visible.length} cartas en esta vista
       </Typography>
@@ -446,7 +490,7 @@ export default function Pokedex30Client() {
             md: 'repeat(4, minmax(0, 1fr))',
             lg: 'repeat(5, minmax(0, 1fr))'
           },
-          gap: 1.25
+          gap: { xs: 1.25, sm: 1.5, md: 1.75 }
         }}
       >
         {visible.map(card => {
@@ -467,7 +511,7 @@ export default function Pokedex30Client() {
               sx={{
                 position: 'relative',
                 textAlign: 'left',
-                p: 1,
+                p: { xs: 1, sm: 1.15, md: 1.25 },
                 borderRadius: 2,
                 border: 1,
                 borderColor: has ? 'success.main' : 'divider',
@@ -487,10 +531,12 @@ export default function Pokedex30Client() {
                 }}
                 sx={{
                   position: 'absolute',
-                  top: 12,
-                  right: 12,
+                  top: { xs: 10, sm: 12 },
+                  right: { xs: 10, sm: 12 },
                   zIndex: 1,
                   bgcolor: 'background.paper',
+                  width: { sm: 34 },
+                  height: { sm: 34 },
                   '&:hover': { bgcolor: 'background.paper' }
                 }}
               >
@@ -502,7 +548,7 @@ export default function Pokedex30Client() {
                   borderRadius: 1,
                   overflow: 'hidden',
                   bgcolor: 'action.hover',
-                  mb: 0.75,
+                  mb: { xs: 0.75, sm: 1 },
                   filter: ready && !has ? 'grayscale(0.85)' : 'none'
                 }}
               >
@@ -553,8 +599,13 @@ export default function Pokedex30Client() {
       <Dialog
         open={Boolean(selected)}
         onClose={() => setSelected(null)}
-        maxWidth="xs"
+        maxWidth="sm"
         fullWidth
+        slotProps={{
+          paper: {
+            sx: { maxWidth: { xs: 400, sm: 440 } }
+          }
+        }}
       >
         {selected ? (
           <DialogContent>
