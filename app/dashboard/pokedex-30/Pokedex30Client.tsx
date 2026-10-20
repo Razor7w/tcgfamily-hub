@@ -9,20 +9,34 @@ import {
   Chip,
   Dialog,
   DialogContent,
+  Divider,
   IconButton,
   LinearProgress,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  Snackbar,
   Stack,
+  Switch,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
   Typography
 } from '@mui/material'
 import Search from '@mui/icons-material/Search'
+import ShareOutlined from '@mui/icons-material/ShareOutlined'
+import ChevronRight from '@mui/icons-material/ChevronRight'
 import {
   POKEDEX_30_CARDS,
   type Pokedex30Card,
   type Pokedex30Section
 } from '@/lib/pokedex-30-cards'
+import {
+  buildPokedex30ShareMessage,
+  type Pokedex30ShareOwned,
+  type Pokedex30ShareScope
+} from '@/lib/pokedex-30-share'
 
 const TYPE_COLOR: Record<string, string> = {
   Planta: '#3d8c5a',
@@ -118,6 +132,27 @@ export default function Pokedex30Client() {
   const [type, setType] = useState<string>('all')
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<Pokedex30Card | null>(null)
+  const [shareAnchor, setShareAnchor] = useState<null | HTMLElement>(null)
+  const [typeMenuAnchor, setTypeMenuAnchor] = useState<null | HTMLElement>(null)
+  const [shareSnack, setShareSnack] = useState<string | null>(null)
+  const [shareOwnedMode, setShareOwnedMode] =
+    useState<Pokedex30ShareOwned>('missing')
+
+  const closeShareMenus = () => {
+    setShareAnchor(null)
+    setTypeMenuAnchor(null)
+  }
+
+  const copyShare = async (scope: Pokedex30ShareScope) => {
+    const text = buildPokedex30ShareMessage(owned, shareOwnedMode, scope)
+    closeShareMenus()
+    try {
+      await navigator.clipboard.writeText(text)
+      setShareSnack('Mensaje copiado. Ya lo puedes pegar en el chat.')
+    } catch {
+      setShareSnack('No se pudo copiar. Revisa los permisos del navegador.')
+    }
+  }
 
   const toggle = (id: string) => {
     if (!userId) return
@@ -207,8 +242,8 @@ export default function Pokedex30Client() {
             grande. El avance queda guardado en tu cuenta.
           </Typography>
         </Box>
-        <Box sx={{ minWidth: { md: 220 } }}>
-          <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
+        <Stack spacing={1} sx={{ minWidth: { md: 220 } }}>
+          <Typography variant="body2" sx={{ fontWeight: 700 }}>
             {ownedCount} de {total} · {progress}%
           </Typography>
           <LinearProgress
@@ -216,8 +251,121 @@ export default function Pokedex30Client() {
             value={progress}
             sx={{ height: 8, borderRadius: 99 }}
           />
-        </Box>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<ShareOutlined />}
+            disabled={!ready}
+            onClick={event => setShareAnchor(event.currentTarget)}
+            sx={{ alignSelf: { xs: 'stretch', md: 'flex-start' } }}
+          >
+            Compartir
+          </Button>
+        </Stack>
       </Stack>
+
+      <Menu
+        anchorEl={shareAnchor}
+        open={Boolean(shareAnchor)}
+        onClose={closeShareMenus}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        slotProps={{ list: { sx: { minWidth: 280 } } }}
+      >
+        <Box
+          sx={{ px: 2, py: 1.25 }}
+          onClick={event => event.stopPropagation()}
+          onKeyDown={event => event.stopPropagation()}
+        >
+          <Typography variant="caption" color="text.secondary">
+            ¿Qué quieres compartir?
+          </Typography>
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ mt: 0.75 }}
+          >
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: shareOwnedMode === 'missing' ? 700 : 400,
+                color:
+                  shareOwnedMode === 'missing'
+                    ? 'text.primary'
+                    : 'text.secondary'
+              }}
+            >
+              Me falta
+            </Typography>
+            <Switch
+              size="small"
+              checked={shareOwnedMode === 'owned'}
+              onChange={(_, checked) =>
+                setShareOwnedMode(checked ? 'owned' : 'missing')
+              }
+              inputProps={{ 'aria-label': 'Tengo o me falta' }}
+            />
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: shareOwnedMode === 'owned' ? 700 : 400,
+                color:
+                  shareOwnedMode === 'owned' ? 'text.primary' : 'text.secondary'
+              }}
+            >
+              Tengo
+            </Typography>
+          </Stack>
+        </Box>
+        <Divider />
+        <MenuItem onClick={() => void copyShare('all')}>
+          <ListItemText
+            primary="Set completo"
+            secondary={
+              shareOwnedMode === 'owned'
+                ? 'Todas las cartas que tienes'
+                : 'Todas las que aún te faltan'
+            }
+          />
+        </MenuItem>
+        <MenuItem onClick={() => void copyShare('pikachu')}>
+          <ListItemText primary="Solo Pikachu" />
+        </MenuItem>
+        <MenuItem onClick={() => void copyShare('secret')}>
+          <ListItemText primary="Solo secretas" />
+        </MenuItem>
+        <MenuItem onClick={() => void copyShare('classic')}>
+          <ListItemText primary="Solo clásicas" />
+        </MenuItem>
+        <MenuItem onClick={() => void copyShare('mew-rgb')}>
+          <ListItemText primary="Solo Mew RGB" />
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={event => setTypeMenuAnchor(event.currentTarget)}>
+          <ListItemText primary="Por tipo" secondary="Planta, Fuego, Rayo…" />
+          <ListItemIcon sx={{ minWidth: 28, justifyContent: 'flex-end' }}>
+            <ChevronRight fontSize="small" />
+          </ListItemIcon>
+        </MenuItem>
+      </Menu>
+
+      <Menu
+        anchorEl={typeMenuAnchor}
+        open={Boolean(typeMenuAnchor)}
+        onClose={() => setTypeMenuAnchor(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <MenuItem disabled sx={{ opacity: 1, typography: 'caption' }}>
+          {shareOwnedMode === 'owned' ? 'Tipo · tengo' : 'Tipo · me faltan'}
+        </MenuItem>
+        {types.map(item => (
+          <MenuItem key={item} onClick={() => void copyShare({ type: item })}>
+            {typeLabel(item)}
+          </MenuItem>
+        ))}
+      </Menu>
 
       <Stack spacing={1.5} sx={{ mb: 2 }}>
         <ToggleButtonGroup
@@ -442,6 +590,14 @@ export default function Pokedex30Client() {
           </DialogContent>
         ) : null}
       </Dialog>
+
+      <Snackbar
+        open={Boolean(shareSnack)}
+        autoHideDuration={3500}
+        onClose={() => setShareSnack(null)}
+        message={shareSnack ?? ''}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </Box>
   )
 }
