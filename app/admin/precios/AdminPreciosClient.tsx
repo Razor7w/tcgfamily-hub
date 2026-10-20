@@ -32,7 +32,7 @@ import {
   parseStoreProductPriceClp,
   type StoreProductDto
 } from '@/lib/store-product'
-import { openNotebookCamera } from '@/lib/open-notebook-camera'
+import StoreProductBarcodeScanner from '@/components/admin/StoreProductBarcodeScanner'
 
 type LookupState =
   | { status: 'idle' }
@@ -41,14 +41,8 @@ type LookupState =
   | { status: 'missing'; barcode: string }
   | { status: 'error'; message: string }
 
-type ScannerControls = { stop: () => void }
-
 export default function AdminPreciosClient() {
   const inputRef = useRef<HTMLInputElement>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const streamRef = useRef<MediaStream | null>(null)
-  const scanLoopRef = useRef(0)
-  const scannerRef = useRef<ScannerControls | null>(null)
 
   const [barcode, setBarcode] = useState('')
   const [lookup, setLookup] = useState<LookupState>({ status: 'idle' })
@@ -64,37 +58,23 @@ export default function AdminPreciosClient() {
   const updateProduct = useUpdateStoreProduct()
 
   useEffect(() => {
+    if (window.matchMedia('(pointer: coarse)').matches) return
     inputRef.current?.focus()
   }, [])
-
-  useEffect(() => {
-    return () => {
-      scanLoopRef.current += 1
-      scannerRef.current?.stop()
-      scannerRef.current = null
-      streamRef.current?.getTracks().forEach(track => track.stop())
-      streamRef.current = null
-    }
-  }, [])
-
-  const stopCamera = () => {
-    scanLoopRef.current += 1
-    scannerRef.current?.stop()
-    scannerRef.current = null
-    streamRef.current?.getTracks().forEach(track => track.stop())
-    streamRef.current = null
-    setCameraOn(false)
-  }
 
   const applyBarcode = (raw: string) => {
     const next = normalizeStoreProductBarcode(raw)
     setBarcode(next)
+    setCameraOn(false)
     if (isValidStoreProductBarcode(next)) {
-      void runLookup(next)
+      void runLookup(next, { focusInput: false })
     }
   }
 
-  const runLookup = async (code = barcode) => {
+  const runLookup = async (
+    code = barcode,
+    options?: { focusInput?: boolean }
+  ) => {
     const normalized = normalizeStoreProductBarcode(code)
     if (!isValidStoreProductBarcode(normalized)) {
       setLookup({ status: 'error', message: 'Ingresa o lee un código válido.' })
@@ -122,60 +102,11 @@ export default function AdminPreciosClient() {
             : 'No se pudo consultar el código'
       })
     }
-    window.setTimeout(() => {
-      inputRef.current?.focus()
-      inputRef.current?.select()
-    }, 0)
-  }
-
-  const startCamera = async () => {
-    setCameraError(null)
-    if (!window.isSecureContext) {
-      setCameraError(
-        'El navegador solo entrega la cámara en localhost o HTTPS. En una IP de red (http://192.168…) no la abre.'
-      )
-      return
-    }
-    try {
-      const stream = await openNotebookCamera()
-      streamRef.current = stream
-      setCameraOn(true)
-      const video = videoRef.current
-      if (!video) {
-        throw new Error('No se pudo mostrar la cámara.')
-      }
-      video.srcObject = stream
-      await video.play()
-      const loopId = scanLoopRef.current + 1
-      scanLoopRef.current = loopId
-      const { BrowserMultiFormatReader } = await import('@zxing/browser')
-      const reader = new BrowserMultiFormatReader()
-      const controls = await reader.decodeFromStream(stream, video, result => {
-        if (scanLoopRef.current !== loopId) return
-        const value = result?.getText()
-        if (!value) return
-        stopCamera()
-        applyBarcode(value)
-      })
-      scannerRef.current = controls
-    } catch (error) {
-      const errorName = error instanceof DOMException ? error.name : ''
-      if (errorName === 'NotAllowedError') {
-        setCameraError(
-          'El navegador bloqueó la cámara. Revisa el permiso del sitio y vuelve a intentar.'
-        )
-      } else if (errorName === 'NotFoundError') {
-        setCameraError('No se encontró una cámara en este equipo.')
-      } else if (errorName === 'NotReadableError') {
-        setCameraError(
-          'La cámara está ocupada por otra aplicación. Ciérrala e inténtalo de nuevo.'
-        )
-      } else {
-        setCameraError(
-          error instanceof Error ? error.message : 'No se pudo abrir la cámara.'
-        )
-      }
-      stopCamera()
+    if (options?.focusInput !== false) {
+      window.setTimeout(() => {
+        inputRef.current?.focus()
+        inputRef.current?.select()
+      }, 0)
     }
   }
 
@@ -294,9 +225,10 @@ export default function AdminPreciosClient() {
                         <InputAdornment position="end">
                           <IconButton
                             aria-label="Leer con cámara"
-                            onClick={() =>
-                              cameraOn ? stopCamera() : void startCamera()
-                            }
+                            onClick={() => {
+                              setCameraError(null)
+                              setCameraOn(open => !open)
+                            }}
                           >
                             <QrCodeScanner />
                           </IconButton>
@@ -314,34 +246,16 @@ export default function AdminPreciosClient() {
                 />
               </Box>
 
-              <Box
-                sx={{
-                  display: cameraOn ? 'block' : 'none',
-                  position: 'relative',
-                  borderRadius: 2,
-                  overflow: 'hidden',
-                  bgcolor: 'common.black',
-                  aspectRatio: '4 / 3',
-                  maxHeight: 320
-                }}
-              >
-                <Box
-                  component="video"
-                  ref={videoRef}
-                  muted
-                  playsInline
-                  autoPlay
-                  sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              {cameraOn ? (
+                <StoreProductBarcodeScanner
+                  onDetect={applyBarcode}
+                  onClose={() => setCameraOn(false)}
+                  onError={message => {
+                    setCameraError(message)
+                    setCameraOn(false)
+                  }}
                 />
-                <Button
-                  size="small"
-                  variant="contained"
-                  onClick={stopCamera}
-                  sx={{ position: 'absolute', bottom: 12, right: 12 }}
-                >
-                  Cerrar cámara
-                </Button>
-              </Box>
+              ) : null}
 
               {cameraError ? (
                 <Alert severity="info">{cameraError}</Alert>
