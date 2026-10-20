@@ -1118,7 +1118,7 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     number: 101,
     printed: '101/128',
     name: 'Galarian Meowth',
-    type: 'Siniestro',
+    type: 'Metal',
     rarity: 'Set principal',
     section: 'main',
     image: 'https://assets.tcgdex.net/en/me/30th/101/low.webp',
@@ -1799,9 +1799,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC1_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC2_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC1_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC2_R_EN_LG.png'
   },
   {
     id: '30th-c-002',
@@ -1812,9 +1812,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC2_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC8_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC2_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC8_R_EN_LG.png'
   },
   {
     id: '30th-c-003',
@@ -1825,9 +1825,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC3_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC11_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC3_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC11_R_EN_LG.png'
   },
   {
     id: '30th-c-004',
@@ -1838,9 +1838,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC4_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC20_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC4_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC20_R_EN_LG.png'
   },
   {
     id: '30th-c-005',
@@ -1851,9 +1851,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC5_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC3_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC5_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC3_R_EN_LG.png'
   },
   {
     id: '30th-c-006',
@@ -1864,9 +1864,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC6_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC9_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC6_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC9_R_EN_LG.png'
   },
   {
     id: '30th-c-007',
@@ -1877,9 +1877,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC7_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC5_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC7_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC5_R_EN_LG.png'
   },
   {
     id: '30th-c-008',
@@ -1890,9 +1890,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC8_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC25_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC8_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC25_R_EN_LG.png'
   },
   {
     id: '30th-c-009',
@@ -1903,9 +1903,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC9_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC22_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC9_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC22_R_EN_LG.png'
   },
   {
     id: '30th-c-010',
@@ -1916,9 +1916,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC10_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC13_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC10_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC13_R_EN_LG.png'
   },
   {
     id: '30th-c-011',
@@ -1929,9 +1929,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC11_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC14_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC11_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC14_R_EN_LG.png'
   },
   {
     id: '30th-c-012',
@@ -1942,9 +1942,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC12_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC27_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC12_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC27_R_EN_LG.png'
   },
   {
     id: '30th-c-013',
@@ -1955,9 +1955,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC13_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC24_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC13_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC24_R_EN_LG.png'
   },
   {
     id: '30th-c-014',
@@ -1968,9 +1968,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC14_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC1_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC14_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC1_R_EN_LG.png'
   },
   {
     id: '30th-c-015',
@@ -1981,9 +1981,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC15_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC4_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC15_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC4_R_EN_LG.png'
   },
   {
     id: '30th-c-016',
@@ -1994,9 +1994,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC16_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC19_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC16_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC19_R_EN_LG.png'
   },
   {
     id: '30th-c-017',
@@ -2007,9 +2007,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC17_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC23_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC17_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC23_R_EN_LG.png'
   },
   {
     id: '30th-c-018',
@@ -2020,9 +2020,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC18_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC15_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC18_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC15_R_EN_LG.png'
   },
   {
     id: '30th-c-019',
@@ -2033,9 +2033,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC19_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC16_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC19_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC16_R_EN_LG.png'
   },
   {
     id: '30th-c-020',
@@ -2046,9 +2046,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC20_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC17_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC20_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC17_R_EN_LG.png'
   },
   {
     id: '30th-c-021',
@@ -2059,9 +2059,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC21_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC18_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC21_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC18_R_EN_LG.png'
   },
   {
     id: '30th-c-022',
@@ -2072,9 +2072,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC22_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC12_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC22_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC12_R_EN_LG.png'
   },
   {
     id: '30th-c-023',
@@ -2085,9 +2085,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC23_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC21_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC23_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC21_R_EN_LG.png'
   },
   {
     id: '30th-c-024',
@@ -2098,9 +2098,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC24_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC6_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC24_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC6_R_EN_LG.png'
   },
   {
     id: '30th-c-025',
@@ -2111,9 +2111,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC25_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC10_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC25_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC10_R_EN_LG.png'
   },
   {
     id: '30th-c-026',
@@ -2124,9 +2124,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC26_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC28_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC26_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC28_R_EN_LG.png'
   },
   {
     id: '30th-c-027',
@@ -2137,9 +2137,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC27_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC29_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC27_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC29_R_EN_LG.png'
   },
   {
     id: '30th-c-028',
@@ -2150,9 +2150,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC28_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC26_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC28_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC26_R_EN_LG.png'
   },
   {
     id: '30th-c-029',
@@ -2163,9 +2163,9 @@ export const POKEDEX_30_CARDS: Pokedex30Card[] = [
     rarity: 'Classic Collection',
     section: 'classic',
     image:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC29_R_EN_SM.png',
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC7_R_EN_SM.png',
     imageLarge:
-      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC29_R_EN_LG.png'
+      'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/30C/30C_CC7_R_EN_LG.png'
   },
   {
     id: '30th-c-030',
