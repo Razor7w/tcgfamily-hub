@@ -2,7 +2,10 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDashboardStoreQueryKey } from '@/hooks/use-dashboard-store-key'
-import type { StoreProductDto } from '@/lib/store-product'
+import {
+  STORE_PRODUCT_PAGE_SIZE,
+  type StoreProductDto
+} from '@/lib/store-product'
 
 export function storeProductsQueryKey(storeId: string) {
   return ['admin', 'products', storeId] as const
@@ -24,22 +27,28 @@ export async function lookupStoreProduct(barcode: string) {
   }>
 }
 
-export async function fetchStoreProducts(q = '') {
+export async function fetchStoreProducts(q = '', page = 1) {
   const params = new URLSearchParams()
   if (q.trim()) params.set('q', q.trim())
-  const res = await fetch(
-    `/api/admin/products${params.size ? `?${params}` : ''}`
-  )
+  params.set('page', String(Math.max(1, page)))
+  params.set('limit', String(STORE_PRODUCT_PAGE_SIZE))
+  const res = await fetch(`/api/admin/products?${params}`)
   if (!res.ok) await readError(res, 'No se pudieron cargar los productos')
-  return res.json() as Promise<{ products: StoreProductDto[] }>
+  return res.json() as Promise<{
+    products: StoreProductDto[]
+    total: number
+    page: number
+    pageSize: number
+  }>
 }
 
-export function useStoreProducts(q = '') {
+export function useStoreProducts(q = '', page = 1) {
   const storeId = useDashboardStoreQueryKey()
   return useQuery({
-    queryKey: [...storeProductsQueryKey(storeId), q],
-    queryFn: () => fetchStoreProducts(q),
-    enabled: storeId !== 'none'
+    queryKey: [...storeProductsQueryKey(storeId), q, page],
+    queryFn: () => fetchStoreProducts(q, page),
+    enabled: storeId !== 'none',
+    placeholderData: previous => previous
   })
 }
 
@@ -96,6 +105,24 @@ export function useUpdateStoreProduct() {
         throw new Error(data?.error || 'No se pudo actualizar el producto')
       }
       return data?.product as StoreProductDto
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: storeProductsQueryKey(storeId)
+      })
+    }
+  })
+}
+
+export function useDeleteStoreProduct() {
+  const storeId = useDashboardStoreQueryKey()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/admin/products/${id}`, {
+        method: 'DELETE'
+      })
+      if (!res.ok) await readError(res, 'No se pudo borrar el producto')
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({

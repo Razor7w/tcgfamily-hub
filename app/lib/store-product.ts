@@ -1,6 +1,7 @@
 export const STORE_PRODUCT_NAME_MAX = 160
 export const STORE_PRODUCT_BARCODE_MAX = 64
 export const STORE_PRODUCT_PRICE_CLP_MAX = 99_999_999
+export const STORE_PRODUCT_PAGE_SIZE = 10
 
 export function normalizeStoreProductBarcode(raw: unknown): string {
   if (typeof raw !== 'string') return ''
