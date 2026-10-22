@@ -12,6 +12,7 @@ import {
   MilitaryTech,
   People,
   Settings,
+  StickyNote2Outlined,
   Storefront,
   SportsEsports,
   WorkspacePremium
@@ -23,10 +24,15 @@ import {
   ListItemIcon,
   ListItemText
 } from '@mui/material'
-import { useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { useMemo, useState } from 'react'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
+import { useMeStores } from '@/hooks/useMeStores'
+import { isTcgFamilyStoreSlug } from '@/lib/store-points-clp'
 
 export default function AdminSidebarClient({ isOwner }: { isOwner: boolean }) {
+  const { data: session } = useSession()
+  const { data: meStores } = useMeStores()
   const { visibility } = useDashboardModulesFromLayout()
   const showWeeklyEvents = visibility.weeklyEvents
   const showLeagues = visibility.leagues
@@ -34,6 +40,12 @@ export default function AdminSidebarClient({ isOwner }: { isOwner: boolean }) {
   const { storeCredit } = useDashboardModulesFromLayout()
   const showStorePointsMenu =
     storeCredit.csvEnabled || storeCredit.tournamentPointsEnabled
+  const showShiftNotes = useMemo(() => {
+    const aid = session?.user?.activeStoreId?.trim() ?? ''
+    if (!aid) return false
+    const hit = (meStores?.stores ?? []).find(row => row.id === aid)
+    return isTcgFamilyStoreSlug(hit?.slug)
+  }, [meStores?.stores, session?.user?.activeStoreId])
 
   const [open, setOpen] = useState(true)
 
@@ -51,6 +63,16 @@ export default function AdminSidebarClient({ isOwner }: { isOwner: boolean }) {
         {open ? <ExpandLess /> : <ExpandMore />}
       </ListItemButton>
       <Collapse in={open} timeout="auto" unmountOnExit>
+        {showShiftNotes ? (
+          <List component="div" disablePadding>
+            <ListItemButton sx={{ pl: 4 }} href="/admin/notas">
+              <ListItemIcon>
+                <StickyNote2Outlined />
+              </ListItemIcon>
+              <ListItemText primary="Notas" />
+            </ListItemButton>
+          </List>
+        ) : null}
         {isOwner ? (
           <List component="div" disablePadding>
             <ListItemButton sx={{ pl: 4 }} href="/admin/users">
