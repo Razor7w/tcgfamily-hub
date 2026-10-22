@@ -7,19 +7,27 @@ import {
   Box,
   Button,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   IconButton,
   InputAdornment,
+  Pagination,
   Paper,
   Stack,
   TextField,
   Typography
 } from '@mui/material'
+import DeleteOutline from '@mui/icons-material/DeleteOutline'
 import LocalOfferOutlined from '@mui/icons-material/LocalOfferOutlined'
 import QrCodeScanner from '@mui/icons-material/QrCodeScanner'
 import Search from '@mui/icons-material/Search'
 import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
 import {
   useCreateStoreProduct,
+  useDeleteStoreProduct,
   useStoreProducts,
   useUpdateStoreProduct,
   lookupStoreProduct
@@ -30,6 +38,7 @@ import {
   normalizeStoreProductBarcode,
   normalizeStoreProductName,
   parseStoreProductPriceClp,
+  STORE_PRODUCT_PAGE_SIZE,
   type StoreProductDto
 } from '@/lib/store-product'
 import StoreProductBarcodeScanner from '@/components/admin/StoreProductBarcodeScanner'
@@ -49,13 +58,16 @@ export default function AdminPreciosClient() {
   const [name, setName] = useState('')
   const [price, setPrice] = useState('')
   const [listQuery, setListQuery] = useState('')
+  const [page, setPage] = useState(1)
   const [cameraOn, setCameraOn] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<StoreProductDto | null>(null)
 
-  const list = useStoreProducts(listQuery)
+  const list = useStoreProducts(listQuery, page)
   const createProduct = useCreateStoreProduct()
   const updateProduct = useUpdateStoreProduct()
+  const deleteProduct = useDeleteStoreProduct()
 
   useEffect(() => {
     if (window.matchMedia('(pointer: coarse)').matches) return
@@ -124,12 +136,38 @@ export default function AdminPreciosClient() {
       setLookup({ status: 'found', product })
       setName(product.name)
       setPrice(String(product.priceClp))
+      setPage(1)
       setNotice('Producto registrado.')
     } catch (error) {
       setLookup({
         status: 'error',
         message: error instanceof Error ? error.message : 'No se pudo registrar'
       })
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    const id = deleteTarget.id
+    const leaveEmptyPage = (list.data?.products.length ?? 0) <= 1 && page > 1
+    try {
+      await deleteProduct.mutateAsync(id)
+      if (lookup.status === 'found' && lookup.product.id === id) {
+        setLookup({ status: 'idle' })
+        setName('')
+        setPrice('')
+      }
+      if (leaveEmptyPage) {
+        setPage(current => Math.max(1, current - 1))
+      }
+      setNotice(`Se borró ${deleteTarget.name}.`)
+      setDeleteTarget(null)
+    } catch (error) {
+      setLookup({
+        status: 'error',
+        message: error instanceof Error ? error.message : 'No se pudo borrar'
+      })
+      setDeleteTarget(null)
     }
   }
 
@@ -145,6 +183,7 @@ export default function AdminPreciosClient() {
         priceClp
       })
       setLookup({ status: 'found', product })
+      setPage(1)
       setNotice('Datos actualizados.')
     } catch (error) {
       setLookup({
@@ -156,6 +195,12 @@ export default function AdminPreciosClient() {
   }
 
   const products = list.data?.products ?? []
+  const total = list.data?.total ?? 0
+  const pageSize = list.data?.pageSize ?? STORE_PRODUCT_PAGE_SIZE
+  const pageCount = Math.max(1, Math.ceil(total / pageSize))
+  const pageClamped = Math.min(page, pageCount)
+  const rangeFrom = total === 0 ? 0 : (pageClamped - 1) * pageSize + 1
+  const rangeTo = Math.min(pageClamped * pageSize, total)
 
   return (
     <Box
@@ -326,14 +371,26 @@ export default function AdminPreciosClient() {
                       size="small"
                       inputProps={{ inputMode: 'numeric' }}
                     />
-                    <Button
-                      variant="outlined"
-                      onClick={() => void saveEdit()}
-                      disabled={updateProduct.isPending}
-                      sx={{ minHeight: 40 }}
-                    >
-                      {updateProduct.isPending ? 'Guardando…' : 'Actualizar'}
-                    </Button>
+                    <Stack direction="row" spacing={1}>
+                      <Button
+                        variant="outlined"
+                        onClick={() => void saveEdit()}
+                        disabled={updateProduct.isPending}
+                        sx={{ minHeight: 40 }}
+                      >
+                        {updateProduct.isPending ? 'Guardando…' : 'Actualizar'}
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        startIcon={<DeleteOutline />}
+                        onClick={() => setDeleteTarget(lookup.product)}
+                        disabled={deleteProduct.isPending}
+                        sx={{ minHeight: 40 }}
+                      >
+                        Borrar
+                      </Button>
+                    </Stack>
                   </Box>
                 </Stack>
               ) : null}
@@ -413,35 +470,31 @@ export default function AdminPreciosClient() {
                 label="Buscar"
                 placeholder="Nombre o código"
                 value={listQuery}
-                onChange={event => setListQuery(event.target.value)}
+                onChange={event => {
+                  setListQuery(event.target.value)
+                  setPage(1)
+                }}
                 sx={{ width: { xs: '100%', sm: 260 } }}
               />
             </Stack>
-            {list.isPending ? (
+            {list.isPending && products.length === 0 ? (
               <Typography color="text.secondary">Cargando…</Typography>
             ) : products.length === 0 ? (
               <Typography color="text.secondary">
-                Aún no hay productos registrados en esta tienda.
+                {listQuery.trim()
+                  ? 'No hay productos que coincidan con la búsqueda.'
+                  : 'Aún no hay productos registrados en esta tienda.'}
               </Typography>
             ) : (
               <Stack spacing={1}>
                 {products.map(product => (
                   <Box
                     key={product.id}
-                    component="button"
-                    type="button"
-                    onClick={() => {
-                      setBarcode(product.barcode)
-                      setLookup({ status: 'found', product })
-                      setName(product.name)
-                      setPrice(String(product.priceClp))
-                      inputRef.current?.focus()
-                    }}
                     sx={{
                       display: 'flex',
                       justifyContent: 'space-between',
-                      gap: 2,
-                      textAlign: 'left',
+                      alignItems: 'center',
+                      gap: 1,
                       p: 1.25,
                       borderRadius: 2,
                       border: 1,
@@ -450,29 +503,110 @@ export default function AdminPreciosClient() {
                         lookup.product.id === product.id
                           ? 'primary.main'
                           : 'divider',
-                      bgcolor: 'background.paper',
-                      cursor: 'pointer',
-                      color: 'inherit'
+                      bgcolor: 'background.paper'
                     }}
                   >
-                    <Box sx={{ minWidth: 0 }}>
-                      <Typography sx={{ fontWeight: 700 }}>
-                        {product.name}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {product.barcode}
+                    <Box
+                      component="button"
+                      type="button"
+                      onClick={() => {
+                        setBarcode(product.barcode)
+                        setLookup({ status: 'found', product })
+                        setName(product.name)
+                        setPrice(String(product.priceClp))
+                        inputRef.current?.focus()
+                      }}
+                      sx={{
+                        flex: 1,
+                        minWidth: 0,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: 2,
+                        textAlign: 'left',
+                        border: 0,
+                        bgcolor: 'transparent',
+                        cursor: 'pointer',
+                        color: 'inherit',
+                        p: 0
+                      }}
+                    >
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography sx={{ fontWeight: 700 }}>
+                          {product.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {product.barcode}
+                        </Typography>
+                      </Box>
+                      <Typography
+                        sx={{ fontWeight: 800, whiteSpace: 'nowrap' }}
+                      >
+                        {formatStoreProductPriceClp(product.priceClp)}
                       </Typography>
                     </Box>
-                    <Typography sx={{ fontWeight: 800, whiteSpace: 'nowrap' }}>
-                      {formatStoreProductPriceClp(product.priceClp)}
-                    </Typography>
+                    <IconButton
+                      aria-label={`Borrar ${product.name}`}
+                      color="error"
+                      onClick={event => {
+                        event.stopPropagation()
+                        setDeleteTarget(product)
+                      }}
+                    >
+                      <DeleteOutline />
+                    </IconButton>
                   </Box>
                 ))}
+                <Stack alignItems="center" spacing={0.75} sx={{ pt: 1 }}>
+                  {pageCount > 1 ? (
+                    <Pagination
+                      count={pageCount}
+                      page={pageClamped}
+                      onChange={(_, next) => setPage(next)}
+                      color="primary"
+                      size="small"
+                      showFirstButton
+                      showLastButton
+                      sx={{
+                        '& .MuiPagination-ul': {
+                          flexWrap: 'wrap',
+                          justifyContent: 'center'
+                        }
+                      }}
+                    />
+                  ) : null}
+                  <Typography variant="caption" color="text.secondary">
+                    {rangeFrom}–{rangeTo} de {total}
+                  </Typography>
+                </Stack>
               </Stack>
             )}
           </Paper>
         </Stack>
       </Container>
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+      >
+        <DialogTitle>Borrar producto</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            ¿Eliminar &quot;{deleteTarget?.name}&quot;? Esta acción no se puede
+            deshacer.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)}>Cancelar</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => void confirmDelete()}
+            disabled={deleteProduct.isPending}
+          >
+            {deleteProduct.isPending ? 'Borrando…' : 'Borrar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

@@ -107,3 +107,42 @@ export async function PATCH(
     )
   }
 }
+
+/** DELETE — borrar producto de la tienda activa. */
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const gate = await requireStoreStaffSession()
+    if (!gate.ok) return gate.response
+
+    const { id } = await params
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: 'Producto inválido' }, { status: 400 })
+    }
+
+    await connectDB()
+    const deleted = await StoreProduct.findOneAndDelete({
+      _id: id,
+      storeId: gate.activeStoreOid
+    })
+      .select('_id')
+      .lean<{ _id: mongoose.Types.ObjectId } | null>()
+
+    if (!deleted) {
+      return NextResponse.json(
+        { error: 'Producto no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error('DELETE /api/admin/products/[id]:', e)
+    return NextResponse.json(
+      { error: 'No se pudo borrar el producto' },
+      { status: 500 }
+    )
+  }
+}

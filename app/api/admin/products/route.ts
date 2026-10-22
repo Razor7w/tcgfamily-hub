@@ -9,6 +9,7 @@ import {
   normalizeStoreProductBarcode,
   normalizeStoreProductName,
   parseStoreProductPriceClp,
+  STORE_PRODUCT_PAGE_SIZE,
   type StoreProductDto
 } from '@/lib/store-product'
 
@@ -45,10 +46,14 @@ export async function GET(request: NextRequest) {
       request.nextUrl.searchParams.get('barcode') ?? ''
     )
     const q = (request.nextUrl.searchParams.get('q') ?? '').trim()
-    const limitRaw = Number(request.nextUrl.searchParams.get('limit') ?? 30)
+    const pageRaw = Number(request.nextUrl.searchParams.get('page') ?? 1)
+    const page = Number.isFinite(pageRaw) ? Math.max(1, Math.round(pageRaw)) : 1
+    const limitRaw = Number(
+      request.nextUrl.searchParams.get('limit') ?? STORE_PRODUCT_PAGE_SIZE
+    )
     const limit = Number.isFinite(limitRaw)
       ? Math.max(1, Math.min(80, Math.round(limitRaw)))
-      : 30
+      : STORE_PRODUCT_PAGE_SIZE
 
     await connectDB()
 
@@ -77,13 +82,22 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    const rows = await StoreProduct.find(filter)
-      .select('barcode name priceClp updatedAt')
-      .sort({ updatedAt: -1 })
-      .limit(limit)
-      .lean<ProductLean[]>()
+    const [total, rows] = await Promise.all([
+      StoreProduct.countDocuments(filter),
+      StoreProduct.find(filter)
+        .select('barcode name priceClp updatedAt')
+        .sort({ updatedAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean<ProductLean[]>()
+    ])
 
-    return NextResponse.json({ products: rows.map(toDto) })
+    return NextResponse.json({
+      products: rows.map(toDto),
+      total,
+      page,
+      pageSize: limit
+    })
   } catch (e) {
     console.error('GET /api/admin/products:', e)
     return NextResponse.json(
