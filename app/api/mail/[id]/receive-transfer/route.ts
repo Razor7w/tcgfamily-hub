@@ -6,6 +6,7 @@ import Mails from '@/models/Mails'
 import User from '@/models/User'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { queueMailPickupReadyEmails } from '@/lib/email/queue-mail-pickup-ready-emails'
+import { otherBranchAcceptError } from '@/lib/mail-staff-branch-server'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -57,6 +58,14 @@ export async function POST(_request: NextRequest, context: RouteContext) {
         { error: 'El correo no tiene sucursal de destino' },
         { status: 409 }
       )
+    }
+
+    const otherBranch = await otherBranchAcceptError({
+      email: gate.session.user.email,
+      branchIds: [transfer.destinationBranchId]
+    })
+    if (otherBranch) {
+      return NextResponse.json({ error: otherBranch }, { status: 403 })
     }
 
     const now = new Date()

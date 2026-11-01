@@ -1,6 +1,13 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import {
+  useState,
+  useMemo,
+  useEffect,
+  useCallback,
+  type KeyboardEvent
+} from 'react'
+import { useSession } from 'next-auth/react'
 import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import Container from '@mui/material/Container'
@@ -49,6 +56,7 @@ import {
   useBulkAssignMailBranch,
   useDeleteMail,
   useReceiveMailTransfer,
+  useSendMailTransfer,
   useAdminMailBranches,
   buildMailsQueryString,
   type Mail,
@@ -57,6 +65,12 @@ import {
 } from '@/hooks/useMails'
 import { parseContentDispositionFilename } from '@/lib/mail-csv-export'
 import { useCreateUser, type CreateUserData } from '@/hooks/useUsers'
+import { rutFromCedulaQrScan } from '@/lib/cedula-qr-rut'
+import {
+  foldBranchName,
+  mailOtherBranchMessage,
+  staffAcceptsBranchName
+} from '@/lib/mail-staff-branch'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
 import { MAIL_CONTACT_PHONE_MAX } from '@/lib/mail-contact-phone'
 import { getMailStatusChip } from '@/lib/mail-status'
@@ -97,6 +111,21 @@ function mailUserId(ref: { _id: string } | string | null | undefined): string {
   return typeof ref === 'object' ? ref._id : String(ref)
 }
 
+function mailPartyRut(mail: Mail, side: 'from' | 'to'): string {
+  const user = side === 'from' ? mail.fromUserId : mail.toUserId
+  const userRut =
+    user && typeof user === 'object' ? (user.rut?.trim() ?? '') : ''
+  const stored =
+    side === 'from' ? (mail.fromRut?.trim() ?? '') : (mail.toRut?.trim() ?? '')
+  return userRut || stored
+}
+
+function mailPartyName(mail: Mail, side: 'from' | 'to'): string {
+  const user = side === 'from' ? mail.fromUserId : mail.toUserId
+  if (!user || typeof user !== 'object') return ''
+  return user.name?.trim() ?? ''
+}
+
 function mailBranchId(mail: Mail): string {
   if (typeof mail.branchId === 'object' && mail.branchId?._id) {
     return String(mail.branchId._id)
@@ -105,12 +134,58 @@ function mailBranchId(mail: Mail): string {
   return ''
 }
 
+function otherActiveBranches(
+  mail: Mail,
+  branches: StoreBranchRow[]
+): StoreBranchRow[] {
+  const current = mailBranchId(mail)
+  return branches.filter(b => b.isActive && b.id !== current)
+}
+
+function canSendMailToAnotherBranch(
+  mail: Mail,
+  branches: StoreBranchRow[]
+): boolean {
+  if (mail.isRecived) return false
+  if (mail.transfer?.status === 'in_transit') return false
+  if (!mailBranchId(mail)) return false
+  return otherActiveBranches(mail, branches).length > 0
+}
+
+function defaultSendDestinationId(
+  mail: Mail,
+  branches: StoreBranchRow[]
+): string {
+  const others = otherActiveBranches(mail, branches)
+  const previousOrigin = foldBranchName(mail.transfer?.originBranchName ?? '')
+  const wayBack = previousOrigin
+    ? others.find(b => foldBranchName(b.name) === previousOrigin)
+    : undefined
+  return wayBack?.id ?? others[0]?.id ?? ''
+}
+
 const PAGE_SIZE = 10
 /** Texto libre en autocomplete: no filtrar con 1 carácter (evita spam de requests). */
 const FREE_TEXT_MIN_CHARS = 2
 const EMPTY_FROM_USERS: FilterFromUser[] = []
 const EMPTY_TO_RECIPIENTS: FilterToRecipient[] = []
 const EMPTY_STORE_BRANCHES: StoreBranchRow[] = []
+
+type MailAdminForm = CreateMailData & { fromRut: string; toRut: string }
+
+function emptyMailForm(): MailAdminForm {
+  return {
+    fromUserId: '',
+    toUserId: '',
+    fromRut: '',
+    toRut: '',
+    isRecived: false,
+    isRecivedInStore: false,
+    observations: '',
+    contactPhone: '',
+    branchId: ''
+  }
+}
 
 function mailStatusAccentColor(
   mail: Pick<Mail, 'isRecived' | 'isRecivedInStore' | 'transfer'>,
@@ -122,19 +197,19 @@ function mailStatusAccentColor(
   return theme.palette.text.disabled
 }
 
+function mailRegisteredBranchName(mail: Mail): string {
+  if (mail.branchId && typeof mail.branchId === 'object') {
+    return mail.branchId.name?.trim() ?? ''
+  }
+  return ''
+}
+
 export default function MailsPage() {
   const theme = useTheme()
+  const { data: session } = useSession()
   const [openDialog, setOpenDialog] = useState(false)
   const [editingMail, setEditingMail] = useState<Mail | null>(null)
-  const [formData, setFormData] = useState<CreateMailData>({
-    fromUserId: '',
-    toUserId: '',
-    isRecived: false,
-    isRecivedInStore: false,
-    observations: '',
-    contactPhone: '',
-    branchId: ''
-  })
+  const [formData, setFormData] = useState<MailAdminForm>(emptyMailForm)
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -170,6 +245,11 @@ export default function MailsPage() {
   const [filterToInput, setFilterToInput] = useState('')
   const [page, setPage] = useState(1)
   const [mailToDelete, setMailToDelete] = useState<Mail | null>(null)
+  const [otherBranchNotice, setOtherBranchNotice] = useState<string | null>(
+    null
+  )
+  const [sendTransferMail, setSendTransferMail] = useState<Mail | null>(null)
+  const [sendTransferDestId, setSendTransferDestId] = useState('')
   const [bulkWithdrawOpen, setBulkWithdrawOpen] = useState(false)
   const [bulkReceiveInStoreOpen, setBulkReceiveInStoreOpen] = useState(false)
   const [debouncedSearchId, setDebouncedSearchId] = useState('')
@@ -183,15 +263,32 @@ export default function MailsPage() {
   }, [searchId])
 
   useEffect(() => {
-    const t = setTimeout(
-      () => setDebouncedFromInput(filterFromInput.trim()),
-      320
-    )
+    const t = setTimeout(() => {
+      const scanned = rutFromCedulaQrScan(filterFromInput)
+      if (scanned) {
+        setFilterFromUser(null)
+        setFilterFromInput(scanned)
+        setDebouncedFromInput(scanned)
+        return
+      }
+      if (/^https/i.test(filterFromInput.trim())) return
+      setDebouncedFromInput(filterFromInput.trim())
+    }, 320)
     return () => clearTimeout(t)
   }, [filterFromInput])
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedToInput(filterToInput.trim()), 320)
+    const t = setTimeout(() => {
+      const scanned = rutFromCedulaQrScan(filterToInput)
+      if (scanned) {
+        setFilterToRecipient(null)
+        setFilterToInput(scanned)
+        setDebouncedToInput(scanned)
+        return
+      }
+      if (/^https/i.test(filterToInput.trim())) return
+      setDebouncedToInput(filterToInput.trim())
+    }, 320)
     return () => clearTimeout(t)
   }, [filterToInput])
 
@@ -202,6 +299,7 @@ export default function MailsPage() {
   const createMail = useCreateMail()
   const updateMail = useUpdateMail()
   const receiveTransfer = useReceiveMailTransfer()
+  const sendTransfer = useSendMailTransfer()
   const bulkWithdraw = useBulkWithdrawMails()
   const bulkReceiveInStore = useBulkReceiveInStoreMails()
   const bulkAssignBranch = useBulkAssignMailBranch()
@@ -449,8 +547,18 @@ export default function MailsPage() {
   const fromIdTrim = formData.fromUserId.trim()
   const toIdTrim = formData.toUserId.trim()
   const fromIdInvalid =
-    Boolean(fromIdTrim) && !isLikelyMongoObjectId(fromIdTrim)
-  const toIdInvalid = Boolean(toIdTrim) && !isLikelyMongoObjectId(toIdTrim)
+    !editingMail && Boolean(fromIdTrim) && !isLikelyMongoObjectId(fromIdTrim)
+  const toIdInvalid =
+    !editingMail && Boolean(toIdTrim) && !isLikelyMongoObjectId(toIdTrim)
+  const fromRutError = editingMail
+    ? getRutFieldError(formData.fromRut, true)
+    : null
+  const toRutError = editingMail ? getRutFieldError(formData.toRut, true) : null
+  const sameEditRut =
+    Boolean(editingMail) &&
+    !fromRutError &&
+    !toRutError &&
+    formatRutOnBlur(formData.fromRut) === formatRutOnBlur(formData.toRut)
 
   const handleOpenDialog = (mail?: Mail) => {
     if (mail) {
@@ -466,6 +574,8 @@ export default function MailsPage() {
       setFormData({
         fromUserId: fromId,
         toUserId: toId,
+        fromRut: formatRutOnBlur(mailPartyRut(mail, 'from')),
+        toRut: formatRutOnBlur(mailPartyRut(mail, 'to')),
         isRecived: mail.isRecived,
         isRecivedInStore: mail.isRecivedInStore ?? false,
         observations: mail.observations ?? '',
@@ -474,15 +584,7 @@ export default function MailsPage() {
       })
     } else {
       setEditingMail(null)
-      setFormData({
-        fromUserId: '',
-        toUserId: '',
-        isRecived: false,
-        isRecivedInStore: false,
-        observations: '',
-        contactPhone: '',
-        branchId: ''
-      })
+      setFormData(emptyMailForm())
     }
     setOpenDialog(true)
   }
@@ -490,15 +592,7 @@ export default function MailsPage() {
   const handleCloseDialog = () => {
     setOpenDialog(false)
     setEditingMail(null)
-    setFormData({
-      fromUserId: '',
-      toUserId: '',
-      isRecived: false,
-      isRecivedInStore: false,
-      observations: '',
-      contactPhone: '',
-      branchId: ''
-    })
+    setFormData(emptyMailForm())
     setAddUserFor(null)
     setNewUserForm({ name: '', email: '', phone: '', rut: '' })
   }
@@ -514,6 +608,14 @@ export default function MailsPage() {
       setSnackbar({
         open: true,
         message: 'Nombre y email son requeridos',
+        severity: 'error'
+      })
+      return
+    }
+    if (editingMail && !rut.trim()) {
+      setSnackbar({
+        open: true,
+        message: 'Indica el RUT para vincular la cuenta',
         severity: 'error'
       })
       return
@@ -538,7 +640,14 @@ export default function MailsPage() {
       }
       const id = created?.id
       if (!id) throw new Error('No se obtuvo ID del usuario creado')
-      if (addUserFor === 'from') {
+      const linkedRut = formatRutOnBlur(rut)
+      if (editingMail) {
+        if (addUserFor === 'from') {
+          setFormData(prev => ({ ...prev, fromRut: linkedRut }))
+        } else {
+          setFormData(prev => ({ ...prev, toRut: linkedRut }))
+        }
+      } else if (addUserFor === 'from') {
         setFormData(prev => ({
           ...prev,
           fromUserId: id,
@@ -564,34 +673,53 @@ export default function MailsPage() {
   }
 
   const handleSave = async () => {
-    if (!fromIdTrim || !toIdTrim) {
-      setSnackbar({
-        open: true,
-        message:
-          'Indica los IDs de remitente y destinatario (ObjectId de 24 caracteres)',
-        severity: 'error'
-      })
-      return
-    }
-    if (
-      !isLikelyMongoObjectId(formData.fromUserId) ||
-      !isLikelyMongoObjectId(formData.toUserId)
-    ) {
-      setSnackbar({
-        open: true,
-        message:
-          'Los IDs deben ser ObjectId válidos (24 caracteres hexadecimales)',
-        severity: 'error'
-      })
-      return
-    }
-    if (formData.fromUserId.trim() === formData.toUserId.trim()) {
-      setSnackbar({
-        open: true,
-        message: 'No puedes enviarte un correo a ti mismo',
-        severity: 'error'
-      })
-      return
+    if (editingMail) {
+      if (fromRutError || toRutError) {
+        setSnackbar({
+          open: true,
+          message: fromRutError || toRutError || 'RUT inválido',
+          severity: 'error'
+        })
+        return
+      }
+      if (sameEditRut) {
+        setSnackbar({
+          open: true,
+          message: 'El remitente y el destinatario no pueden ser el mismo RUT',
+          severity: 'error'
+        })
+        return
+      }
+    } else {
+      if (!fromIdTrim || !toIdTrim) {
+        setSnackbar({
+          open: true,
+          message:
+            'Indica los IDs de remitente y destinatario (ObjectId de 24 caracteres)',
+          severity: 'error'
+        })
+        return
+      }
+      if (
+        !isLikelyMongoObjectId(formData.fromUserId) ||
+        !isLikelyMongoObjectId(formData.toUserId)
+      ) {
+        setSnackbar({
+          open: true,
+          message:
+            'Los IDs deben ser ObjectId válidos (24 caracteres hexadecimales)',
+          severity: 'error'
+        })
+        return
+      }
+      if (formData.fromUserId.trim() === formData.toUserId.trim()) {
+        setSnackbar({
+          open: true,
+          message: 'No puedes enviarte un correo a ti mismo',
+          severity: 'error'
+        })
+        return
+      }
     }
 
     const activeBranches = storeBranches.filter(b => b.isActive)
@@ -617,11 +745,26 @@ export default function MailsPage() {
       return
     }
 
+    if (
+      editingMail &&
+      formData.isRecivedInStore &&
+      !editingMail.isRecivedInStore
+    ) {
+      const selected = storeBranches.find(
+        b => b.id === (formData.branchId ?? '').trim()
+      )
+      const branchName = selected?.name ?? mailRegisteredBranchName(editingMail)
+      if (!staffAcceptsBranchName(session?.user?.email, branchName)) {
+        setOtherBranchNotice(mailOtherBranchMessage(branchName))
+        return
+      }
+    }
+
     try {
       if (editingMail) {
         const payload: UpdateMailData = {
-          fromUserId: formData.fromUserId.trim(),
-          toUserId: formData.toUserId.trim(),
+          fromRut: formatRutOnBlur(formData.fromRut),
+          toRut: formatRutOnBlur(formData.toRut),
           isRecived: formData.isRecived,
           isRecivedInStore: formData.isRecivedInStore,
           observations: formData.observations,
@@ -662,6 +805,10 @@ export default function MailsPage() {
       handleCloseDialog()
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Error al guardar'
+      if (msg.includes('fue registrado para')) {
+        setOtherBranchNotice(msg)
+        return
+      }
       setSnackbar({ open: true, message: msg, severity: 'error' })
     }
   }
@@ -732,6 +879,18 @@ export default function MailsPage() {
       })
       return
     }
+    if (
+      !mail.isRecivedInStore &&
+      !staffAcceptsBranchName(
+        session?.user?.email,
+        mailRegisteredBranchName(mail)
+      )
+    ) {
+      setOtherBranchNotice(
+        mailOtherBranchMessage(mailRegisteredBranchName(mail))
+      )
+      return
+    }
     try {
       await updateMail.mutateAsync({
         mailId: mail._id,
@@ -746,11 +905,20 @@ export default function MailsPage() {
       })
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Error al actualizar'
+      if (msg.includes('fue registrado para')) {
+        setOtherBranchNotice(msg)
+        return
+      }
       setSnackbar({ open: true, message: msg, severity: 'error' })
     }
   }
 
   const handleReceiveTransfer = async (mail: Mail) => {
+    const destination = mail.transfer?.destinationBranchName?.trim() ?? ''
+    if (!staffAcceptsBranchName(session?.user?.email, destination)) {
+      setOtherBranchNotice(mailOtherBranchMessage(destination))
+      return
+    }
     try {
       await receiveTransfer.mutateAsync(mail._id)
       setSnackbar({
@@ -760,6 +928,48 @@ export default function MailsPage() {
       })
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Error al recepcionar'
+      if (msg.includes('fue registrado para')) {
+        setOtherBranchNotice(msg)
+        return
+      }
+      setSnackbar({ open: true, message: msg, severity: 'error' })
+    }
+  }
+
+  const handleOpenSendTransfer = (mail: Mail) => {
+    const branchName = mailRegisteredBranchName(mail)
+    if (!staffAcceptsBranchName(session?.user?.email, branchName)) {
+      setOtherBranchNotice(mailOtherBranchMessage(branchName))
+      return
+    }
+    setSendTransferMail(mail)
+    setSendTransferDestId(defaultSendDestinationId(mail, storeBranches))
+  }
+
+  const handleConfirmSendTransfer = async () => {
+    if (!sendTransferMail || !sendTransferDestId) return
+    try {
+      await sendTransfer.mutateAsync({
+        mailId: sendTransferMail._id,
+        destinationBranchId: sendTransferDestId
+      })
+      const dest = storeBranches.find(b => b.id === sendTransferDestId)
+      setSendTransferMail(null)
+      setSendTransferDestId('')
+      setSnackbar({
+        open: true,
+        message: dest
+          ? `Correo en tránsito hacia ${dest.name}`
+          : 'Correo enviado a la otra sucursal',
+        severity: 'success'
+      })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Error al enviar'
+      if (msg.includes('fue registrado para')) {
+        setSendTransferMail(null)
+        setOtherBranchNotice(msg)
+        return
+      }
       setSnackbar({ open: true, message: msg, severity: 'error' })
     }
   }
@@ -804,6 +1014,11 @@ export default function MailsPage() {
         e instanceof Error
           ? e.message
           : 'Error al marcar como recibidos en tienda'
+      if (msg.includes('fue registrado para')) {
+        setBulkReceiveInStoreOpen(false)
+        setOtherBranchNotice(msg)
+        return
+      }
       setSnackbar({ open: true, message: msg, severity: 'error' })
     }
   }
@@ -1141,6 +1356,23 @@ export default function MailsPage() {
                     {...params}
                     label="Remitente (de)"
                     placeholder="Nombre o RUT"
+                    inputProps={{
+                      ...params.inputProps,
+                      onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => {
+                        const scanned = rutFromCedulaQrScan(
+                          e.currentTarget.value
+                        )
+                        if (e.key === 'Enter' && scanned) {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setFilterFromUser(null)
+                          setFilterFromInput(scanned)
+                          setDebouncedFromInput(scanned)
+                          return
+                        }
+                        params.inputProps.onKeyDown?.(e)
+                      }
+                    }}
                   />
                 )}
                 filterOptions={(opts, { inputValue }) =>
@@ -1189,6 +1421,23 @@ export default function MailsPage() {
                     {...params}
                     label="Destinatario (para)"
                     placeholder="Nombre, RUT o sin cuenta"
+                    inputProps={{
+                      ...params.inputProps,
+                      onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => {
+                        const scanned = rutFromCedulaQrScan(
+                          e.currentTarget.value
+                        )
+                        if (e.key === 'Enter' && scanned) {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setFilterToRecipient(null)
+                          setFilterToInput(scanned)
+                          setDebouncedToInput(scanned)
+                          return
+                        }
+                        params.inputProps.onKeyDown?.(e)
+                      }
+                    }}
                   />
                 )}
                 filterOptions={(opts, { inputValue }) =>
@@ -1677,6 +1926,24 @@ export default function MailsPage() {
                       >
                         Cambiar estado
                       </Typography>
+                      {canSendMailToAnotherBranch(mail, activeBranches) ? (
+                        <Button
+                          fullWidth
+                          variant="outlined"
+                          color="info"
+                          sx={{
+                            mb: 1.25,
+                            fontWeight: 700,
+                            textTransform: 'none'
+                          }}
+                          disabled={
+                            mailActionsDisabled || sendTransfer.isPending
+                          }
+                          onClick={() => handleOpenSendTransfer(mail)}
+                        >
+                          Enviar a otra sucursal
+                        </Button>
+                      ) : null}
                       {mail.transfer?.status === 'in_transit' ? (
                         <Button
                           fullWidth
@@ -1931,6 +2198,84 @@ export default function MailsPage() {
         )}
 
         <Dialog
+          open={sendTransferMail != null}
+          onClose={() => {
+            if (sendTransfer.isPending) return
+            setSendTransferMail(null)
+          }}
+          maxWidth="xs"
+          fullWidth
+          aria-labelledby="admin-mail-send-transfer-title"
+        >
+          <DialogTitle id="admin-mail-send-transfer-title">
+            Enviar a otra sucursal
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {sendTransferMail?.code
+                ? `El correo ${sendTransferMail.code} queda en tránsito. Solo la sucursal de destino puede recepcionarlo.`
+                : 'El correo queda en tránsito. Solo la sucursal de destino puede recepcionarlo.'}
+            </Typography>
+            <FormControl fullWidth size="small">
+              <InputLabel id="admin-mail-send-dest-label">Destino</InputLabel>
+              <Select
+                labelId="admin-mail-send-dest-label"
+                label="Destino"
+                value={sendTransferDestId}
+                onChange={e => setSendTransferDestId(String(e.target.value))}
+              >
+                {(sendTransferMail
+                  ? otherActiveBranches(sendTransferMail, activeBranches)
+                  : []
+                ).map(b => (
+                  <MenuItem key={b.id} value={b.id}>
+                    {b.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button
+              onClick={() => setSendTransferMail(null)}
+              disabled={sendTransfer.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => void handleConfirmSendTransfer()}
+              disabled={sendTransfer.isPending || !sendTransferDestId}
+            >
+              {sendTransfer.isPending ? 'Enviando…' : 'Enviar'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={otherBranchNotice != null}
+          onClose={() => setOtherBranchNotice(null)}
+          maxWidth="xs"
+          fullWidth
+          aria-labelledby="admin-mail-other-branch-title"
+        >
+          <DialogTitle id="admin-mail-other-branch-title">
+            Correo de otra sucursal
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body1">{otherBranchNotice}</Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button
+              variant="contained"
+              onClick={() => setOtherBranchNotice(null)}
+            >
+              Entendido
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
           open={bulkReceiveInStoreOpen}
           onClose={() =>
             !bulkReceiveInStore.isPending && setBulkReceiveInStoreOpen(false)
@@ -2062,32 +2407,49 @@ export default function MailsPage() {
                   <TextField
                     fullWidth
                     size="small"
-                    label="ID remitente (De)"
-                    placeholder="ObjectId usuario emisor · 24 hex"
-                    value={formData.fromUserId}
-                    onChange={e =>
-                      setFormData(prev => ({
-                        ...prev,
-                        fromUserId: e.target.value
-                      }))
+                    label={
+                      editingMail ? 'RUT remitente (De)' : 'ID remitente (De)'
                     }
-                    error={fromIdInvalid}
-                    helperText={
-                      fromIdInvalid
-                        ? 'Debe ser un ObjectId válido de 24 caracteres'
+                    placeholder={
+                      editingMail
+                        ? '12.345.678-9'
+                        : 'ObjectId usuario emisor · 24 hex'
+                    }
+                    value={editingMail ? formData.fromRut : formData.fromUserId}
+                    onChange={e =>
+                      setFormData(prev =>
+                        editingMail
+                          ? { ...prev, fromRut: e.target.value }
+                          : { ...prev, fromUserId: e.target.value }
+                      )
+                    }
+                    onBlur={
+                      editingMail
+                        ? () =>
+                            setFormData(prev => ({
+                              ...prev,
+                              fromRut: formatRutOnBlur(prev.fromRut)
+                            }))
                         : undefined
                     }
+                    error={editingMail ? Boolean(fromRutError) : fromIdInvalid}
+                    helperText={
+                      editingMail
+                        ? (fromRutError ??
+                          'Si el RUT tiene cuenta, se vincula al guardar.')
+                        : fromIdInvalid
+                          ? 'Debe ser un ObjectId válido de 24 caracteres'
+                          : undefined
+                    }
+                    inputProps={editingMail ? { maxLength: 20 } : undefined}
                   />
-                  {editingMail &&
-                  typeof editingMail.fromUserId === 'object' &&
-                  editingMail.fromUserId ? (
+                  {editingMail && mailPartyName(editingMail, 'from') ? (
                     <Typography
                       variant="caption"
                       color="text.secondary"
                       sx={{ mt: 0.5, display: 'block' }}
                     >
-                      En este correo: {editingMail.fromUserId.name ?? '—'} · RUT{' '}
-                      {editingMail.fromUserId.rut ?? '—'}
+                      Cuenta actual: {mailPartyName(editingMail, 'from')}
                     </Typography>
                   ) : null}
                 </Box>
@@ -2212,41 +2574,57 @@ export default function MailsPage() {
                   <TextField
                     fullWidth
                     size="small"
-                    label="ID destinatario (Para)"
-                    placeholder="ObjectId usuario receptor · 24 hex"
-                    value={formData.toUserId}
-                    onChange={e =>
-                      setFormData(prev => ({
-                        ...prev,
-                        toUserId: e.target.value
-                      }))
+                    label={
+                      editingMail
+                        ? 'RUT destinatario (Para)'
+                        : 'ID destinatario (Para)'
                     }
-                    error={toIdInvalid}
-                    helperText={
-                      toIdInvalid
-                        ? 'Debe ser un ObjectId válido de 24 caracteres'
+                    placeholder={
+                      editingMail
+                        ? '12.345.678-9'
+                        : 'ObjectId usuario receptor · 24 hex'
+                    }
+                    value={editingMail ? formData.toRut : formData.toUserId}
+                    onChange={e =>
+                      setFormData(prev =>
+                        editingMail
+                          ? { ...prev, toRut: e.target.value }
+                          : { ...prev, toUserId: e.target.value }
+                      )
+                    }
+                    onBlur={
+                      editingMail
+                        ? () =>
+                            setFormData(prev => ({
+                              ...prev,
+                              toRut: formatRutOnBlur(prev.toRut)
+                            }))
                         : undefined
                     }
+                    error={
+                      editingMail
+                        ? Boolean(toRutError) || sameEditRut
+                        : toIdInvalid
+                    }
+                    helperText={
+                      editingMail
+                        ? (toRutError ??
+                          (sameEditRut
+                            ? 'El destinatario no puede ser el mismo RUT'
+                            : 'Si el RUT tiene cuenta, se vincula al guardar.'))
+                        : toIdInvalid
+                          ? 'Debe ser un ObjectId válido de 24 caracteres'
+                          : undefined
+                    }
+                    inputProps={editingMail ? { maxLength: 20 } : undefined}
                   />
-                  {editingMail &&
-                  editingMail.toUserId &&
-                  typeof editingMail.toUserId === 'object' &&
-                  editingMail.toUserId ? (
+                  {editingMail && mailPartyName(editingMail, 'to') ? (
                     <Typography
                       variant="caption"
                       color="text.secondary"
                       sx={{ mt: 0.5, display: 'block' }}
                     >
-                      En este correo: {editingMail.toUserId.name ?? '—'} · RUT{' '}
-                      {editingMail.toUserId.rut ?? '—'}
-                    </Typography>
-                  ) : editingMail?.toRut ? (
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ mt: 0.5, display: 'block' }}
-                    >
-                      RUT destinatario en correo: {editingMail.toRut}
+                      Cuenta actual: {mailPartyName(editingMail, 'to')}
                     </Typography>
                   ) : null}
                 </Box>
@@ -2496,11 +2874,13 @@ export default function MailsPage() {
               disabled={
                 createMail.isPending ||
                 updateMail.isPending ||
-                !fromIdTrim ||
-                !toIdTrim ||
-                fromIdTrim === toIdTrim ||
-                !isLikelyMongoObjectId(fromIdTrim) ||
-                !isLikelyMongoObjectId(toIdTrim)
+                (editingMail
+                  ? Boolean(fromRutError || toRutError || sameEditRut)
+                  : !fromIdTrim ||
+                    !toIdTrim ||
+                    fromIdTrim === toIdTrim ||
+                    !isLikelyMongoObjectId(fromIdTrim) ||
+                    !isLikelyMongoObjectId(toIdTrim))
               }
             >
               {createMail.isPending || updateMail.isPending

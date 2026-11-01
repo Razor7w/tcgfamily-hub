@@ -9,13 +9,11 @@ import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import ChevronRight from '@mui/icons-material/ChevronRight'
 import EmojiEventsOutlined from '@mui/icons-material/EmojiEventsOutlined'
-import GroupsOutlined from '@mui/icons-material/GroupsOutlined'
 import {
   PLAY_POKEMON_CHILE_LEADERBOARD_PATH,
   PLAY_POKEMON_COMMUNITY_RANKING_PATH
 } from '@/lib/play-pokemon-leaderboard/constants'
 import { useMyChampionshipPoints } from '@/hooks/useMyChampionshipPoints'
-import { useTeamsMe } from '@/hooks/useTeams'
 
 type DiscoverTileProps = {
   href: string
@@ -241,11 +239,10 @@ function DiscoverSkeleton() {
     <Box
       sx={{
         display: 'grid',
-        gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+        gridTemplateColumns: '1fr',
         gap: 0
       }}
     >
-      <Skeleton variant="rounded" height={168} sx={{ m: 1, borderRadius: 2 }} />
       <Skeleton variant="rounded" height={168} sx={{ m: 1, borderRadius: 2 }} />
     </Box>
   )
@@ -253,44 +250,11 @@ function DiscoverSkeleton() {
 
 export default function DashboardHomeDiscoverCard() {
   const { data: cp, isPending: cpPending } = useMyChampionshipPoints()
-  const { data: teamsMe, isPending: teamsPending } = useTeamsMe()
 
-  const loading = cpPending || teamsPending
+  const loading = cpPending
   const cpLinked = cp?.found === true && cp?.source === 'linked'
   const cpRankPublic = cp?.rankPublic === true
-  const membership = teamsMe?.membership ?? null
-  const pendingApplication = teamsMe?.application ?? null
   const cpEnabled = cp?.enabled !== false
-
-  const teamTile: DiscoverTileProps = membership
-    ? {
-        href: `/equipos/${membership.teamSlug}`,
-        icon: <GroupsOutlined fontSize="small" aria-hidden />,
-        eyebrow: 'Equipos',
-        title: membership.teamName,
-        body: 'Invita amigos, comparte la página pública y publica con tu grupo.',
-        statusLabel: 'Activo',
-        statusTone: 'success'
-      }
-    : pendingApplication
-      ? {
-          href: '/dashboard/equipo',
-          icon: <GroupsOutlined fontSize="small" aria-hidden />,
-          eyebrow: 'Equipos',
-          title: pendingApplication.name,
-          body: 'Tu solicitud está en revisión. Cuando se apruebe podrás invitar jugadores.',
-          statusLabel: 'En revisión',
-          statusTone: 'warning'
-        }
-      : {
-          href: '/dashboard/equipo',
-          icon: <GroupsOutlined fontSize="small" aria-hidden />,
-          eyebrow: 'Equipos',
-          title: 'Crea tu equipo',
-          body: 'Forma un grupo con amigos, publica novedades y comparte vuestra página.',
-          statusLabel: 'Nuevo',
-          statusTone: 'default'
-        }
 
   const cpTile: DiscoverTileProps | null = cpEnabled
     ? cpLinked
@@ -321,6 +285,8 @@ export default function DashboardHomeDiscoverCard() {
           statusTone: 'default'
         }
     : null
+
+  if (!loading && !cpTile) return null
 
   return (
     <Box
@@ -360,10 +326,7 @@ export default function DashboardHomeDiscoverCard() {
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: {
-              xs: '1fr',
-              sm: cpTile ? '1fr 1fr' : '1fr'
-            },
+            gridTemplateColumns: '1fr',
             '& > * + *': {
               borderTop: { xs: '1px solid', sm: 'none' },
               borderLeft: { xs: 'none', sm: '1px solid' },
@@ -371,7 +334,6 @@ export default function DashboardHomeDiscoverCard() {
             }
           }}
         >
-          <DiscoverTile {...teamTile} />
           {cpTile ? <DiscoverTile {...cpTile} /> : null}
         </Box>
       )}

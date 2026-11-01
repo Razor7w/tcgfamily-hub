@@ -3,6 +3,7 @@ import { requireSessionUserWithActiveStore } from '@/lib/api-auth'
 import connectDB from '@/lib/mongodb'
 import Mail from '@/models/Mails'
 import Store from '@/models/Store'
+import StoreBranch from '@/models/StoreBranch'
 import mongoose from 'mongoose'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
@@ -11,6 +12,9 @@ import {
   format as formatRut,
   validate as validateRut
 } from 'rut.js'
+
+// El populate de `branchId` necesita el modelo registrado.
+void StoreBranch
 
 // GET - mails donde el usuario actual es emisor (from) o receptor (to)
 // Query: ?limit=3 para traer solo los 3 más recientes
@@ -89,6 +93,7 @@ export async function GET(request: Request) {
       .populate('fromUserId', 'name rut')
       .populate('toUserId', 'name rut')
       .populate('storeId', 'name slug')
+      .populate('branchId', 'name address')
       .lean()
 
     if (limit !== undefined) {

@@ -131,6 +131,8 @@ export async function fetchMailRegisterDuplicateCheck(
 export interface UpdateMailData {
   fromUserId?: string
   toUserId?: string
+  /** Al editar, el RUT resuelve la cuenta (o deja el correo sin usuario si no hay cuenta). */
+  fromRut?: string
   toRut?: string
   isRecived?: boolean
   isRecivedInStore?: boolean
@@ -567,6 +569,42 @@ export function useReceiveMailTransfer() {
           typeof error.error === 'string'
             ? error.error
             : 'No se pudo recepcionar el correo'
+        )
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mails', storeKey] })
+      queryClient.invalidateQueries({ queryKey: ['mails', 'me'] })
+    }
+  })
+}
+
+export function useSendMailTransfer() {
+  const queryClient = useQueryClient()
+  const storeKey = useDashboardStoreQueryKey()
+
+  return useMutation({
+    mutationFn: async (input: {
+      mailId: string
+      destinationBranchId: string
+    }) => {
+      const response = await fetch(
+        `/api/mail/${encodeURIComponent(input.mailId)}/send-transfer`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            destinationBranchId: input.destinationBranchId
+          })
+        }
+      )
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(
+          typeof error.error === 'string'
+            ? error.error
+            : 'No se pudo enviar el correo a la otra sucursal'
         )
       }
       return response.json()
