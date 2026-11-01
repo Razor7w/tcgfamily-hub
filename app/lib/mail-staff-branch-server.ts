@@ -9,7 +9,8 @@ import StoreBranch from '@/models/StoreBranch'
 function branchIdString(raw: unknown): string {
   if (raw == null) return ''
   if (typeof raw === 'string') return raw.trim()
-  if (typeof raw === 'object' && raw && '_id' in raw) {
+  if (raw instanceof mongoose.Types.ObjectId) return raw.toString()
+  if (typeof raw === 'object' && '_id' in raw) {
     return branchIdString((raw as { _id: unknown })._id)
   }
   return String(raw)
