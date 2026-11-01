@@ -7,6 +7,7 @@ import Mails from '@/models/Mails'
 import User from '@/models/User'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { applyMailReceivedInStoreContributionAward } from '@/lib/contribution-points/mail-contribution-awards'
+import { otherBranchAcceptError } from '@/lib/mail-staff-branch-server'
 
 const MAX_BULK_RECEIVE = 100
 
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     const pending = await Mails.find(filter)
-      .select('_id fromUserId toUserId code storeId transfer.status')
+      .select('_id fromUserId toUserId code storeId branchId transfer.status')
       .lean<
         Array<{
           _id: mongoose.Types.ObjectId
@@ -70,9 +71,18 @@ export async function POST(request: NextRequest) {
           toUserId?: unknown
           code?: string
           storeId?: mongoose.Types.ObjectId
+          branchId?: mongoose.Types.ObjectId
           transfer?: { status?: string }
         }>
       >()
+
+    const otherBranch = await otherBranchAcceptError({
+      email: gate.session.user.email,
+      branchIds: pending.map(mail => mail.branchId)
+    })
+    if (otherBranch) {
+      return NextResponse.json({ error: otherBranch }, { status: 403 })
+    }
 
     const now = new Date()
     const result = await Mails.updateMany(filter, {

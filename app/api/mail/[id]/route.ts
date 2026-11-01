@@ -17,9 +17,22 @@ import {
 import mongoose from 'mongoose'
 import { normalizeMailContactPhone } from '@/lib/mail-contact-phone'
 import { resolveAssignableBranchId } from '@/lib/store-branch'
+import { otherBranchAcceptError } from '@/lib/mail-staff-branch-server'
+import { findUserByRut, formatMailRut } from '@/lib/mail-create'
+import { clean as cleanRut, validate as validateRut } from 'rut.js'
 import StoreBranch from '@/models/StoreBranch'
 
 void StoreBranch
+
+function rutsAreTheSamePerson(a: string, b: string) {
+  if (!a.trim() || !b.trim()) return false
+  try {
+    if (!validateRut(a) || !validateRut(b)) return false
+    return cleanRut(a) === cleanRut(b)
+  } catch {
+    return false
+  }
+}
 
 function parseMailId(id: string) {
   try {
@@ -147,6 +160,8 @@ export async function PUT(
     const {
       fromUserId,
       toUserId,
+      fromRut,
+      toRut,
       isRecived,
       isRecivedInStore,
       observations,
@@ -154,16 +169,29 @@ export async function PUT(
       branchId: rawBranchId
     } = body
 
-    const nextFrom = fromUserId ?? existing.fromUserId?.toString()
-    const nextTo = toUserId ?? existing.toUserId?.toString()
-    if (nextFrom && nextTo && nextFrom === nextTo) {
-      return NextResponse.json(
-        { error: 'No puedes enviar un correo a ti mismo' },
-        { status: 400 }
-      )
-    }
+    const fromRutRaw = typeof fromRut === 'string' ? fromRut.trim() : ''
+    const toRutRaw = typeof toRut === 'string' ? toRut.trim() : ''
+    const patchFromByRut = fromRutRaw.length > 0
+    const patchToByRut = toRutRaw.length > 0
 
-    if (fromUserId != null) {
+    let nextFromId = existing.fromUserId?.toString() ?? ''
+    let nextToId = existing.toUserId?.toString() ?? ''
+    let nextFromRut =
+      typeof existing.fromRut === 'string' ? existing.fromRut.trim() : ''
+    let nextToRut =
+      typeof existing.toRut === 'string' ? existing.toRut.trim() : ''
+
+    if (patchFromByRut) {
+      if (!validateRut(fromRutRaw)) {
+        return NextResponse.json(
+          { error: 'RUT del remitente inválido' },
+          { status: 400 }
+        )
+      }
+      const fromUser = await findUserByRut(fromRutRaw)
+      nextFromRut = formatMailRut(fromRutRaw)
+      nextFromId = fromUser ? String(fromUser._id) : ''
+    } else if (fromUserId != null) {
       const fromUser = await User.findById(fromUserId)
       if (!fromUser) {
         return NextResponse.json(
@@ -171,12 +199,20 @@ export async function PUT(
           { status: 404 }
         )
       }
-      existing.set(
-        'fromUserId',
-        new mongoose.Types.ObjectId(String(fromUserId))
-      )
+      nextFromId = String(fromUserId)
     }
-    if (toUserId != null) {
+
+    if (patchToByRut) {
+      if (!validateRut(toRutRaw)) {
+        return NextResponse.json(
+          { error: 'RUT del destinatario inválido' },
+          { status: 400 }
+        )
+      }
+      const toUser = await findUserByRut(toRutRaw)
+      nextToRut = formatMailRut(toRutRaw)
+      nextToId = toUser ? String(toUser._id) : ''
+    } else if (toUserId != null) {
       const toUser = await User.findById(toUserId)
       if (!toUser) {
         return NextResponse.json(
@@ -184,7 +220,48 @@ export async function PUT(
           { status: 404 }
         )
       }
+      nextToId = String(toUserId)
+      if (typeof toUser.rut === 'string' && toUser.rut.trim()) {
+        nextToRut = toUser.rut.trim()
+      }
+    }
+
+    const sameUser =
+      nextFromId.length > 0 && nextToId.length > 0 && nextFromId === nextToId
+    const sameRut = rutsAreTheSamePerson(nextFromRut, nextToRut)
+    if (sameUser || sameRut) {
+      return NextResponse.json(
+        { error: 'No puedes enviar un correo a ti mismo' },
+        { status: 400 }
+      )
+    }
+
+    if (patchFromByRut) {
+      existing.fromRut = nextFromRut
+      if (nextFromId) {
+        existing.set('fromUserId', new mongoose.Types.ObjectId(nextFromId))
+      } else {
+        existing.set('fromUserId', undefined)
+        existing.markModified('fromUserId')
+      }
+    } else if (fromUserId != null) {
+      existing.set(
+        'fromUserId',
+        new mongoose.Types.ObjectId(String(fromUserId))
+      )
+    }
+
+    if (patchToByRut) {
+      existing.toRut = nextToRut
+      if (nextToId) {
+        existing.set('toUserId', new mongoose.Types.ObjectId(nextToId))
+      } else {
+        existing.set('toUserId', undefined)
+        existing.markModified('toUserId')
+      }
+    } else if (toUserId != null) {
       existing.set('toUserId', new mongoose.Types.ObjectId(String(toUserId)))
+      if (nextToRut) existing.toRut = nextToRut
     }
 
     const wasReceivedInStore = existing.isRecivedInStore
@@ -277,6 +354,16 @@ export async function PUT(
       } else {
         existing.set('branchId', undefined)
         existing.markModified('branchId')
+      }
+    }
+
+    if (nextStatus.isRecivedInStore && !wasReceivedInStore) {
+      const otherBranch = await otherBranchAcceptError({
+        email: gate.session.user.email,
+        branchIds: [existing.branchId]
+      })
+      if (otherBranch) {
+        return NextResponse.json({ error: otherBranch }, { status: 403 })
       }
     }
 

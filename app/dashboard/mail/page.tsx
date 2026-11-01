@@ -43,6 +43,7 @@ import { normalizeMailCodeForSearch } from '@/lib/mail-code-search'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import DeleteIcon from '@mui/icons-material/Delete'
+import PlaceOutlined from '@mui/icons-material/PlaceOutlined'
 import TuneIcon from '@mui/icons-material/Tune'
 import Snackbar from '@mui/material/Snackbar'
 import Dialog from '@mui/material/Dialog'
@@ -84,6 +85,12 @@ function getElapsedBadge(days: number): {
   if (days <= 7) return { label, color: 'success' }
   if (days <= 14) return { label, color: 'warning' }
   return { label, color: 'error' }
+}
+
+function mailCurrentBranchName(mail: Mail): string {
+  const branch = mail.branchId
+  if (!branch || typeof branch !== 'object') return ''
+  return typeof branch.name === 'string' ? branch.name.trim() : ''
 }
 
 function mailUserId(ref: { _id: string } | string | null | undefined): string {
@@ -305,6 +312,8 @@ function MailDashboardCard({
       ? `RUT: ${mail.toRut}`
       : '—'
   const codeDisplay = mail.code?.trim() || null
+  const branchName = mailCurrentBranchName(mail)
+  const narrow = useMediaQuery(theme.breakpoints.down('sm'))
 
   return (
     <Card
@@ -435,24 +444,8 @@ function MailDashboardCard({
           </Typography>
         ) : null}
 
-        <Box
-          sx={{
-            p: { xs: 2, sm: 2.25 },
-            display: 'grid',
-            gap: { xs: 2, md: 2.5 },
-            gridTemplateColumns: {
-              xs: '1fr',
-              md: 'minmax(0, 1fr) minmax(220px, 320px)'
-            },
-            alignItems: 'stretch'
-          }}
-        >
-          <Stack
-            spacing={0}
-            divider={
-              <Divider flexItem sx={{ borderStyle: 'dashed', opacity: 0.85 }} />
-            }
-          >
+        <Box sx={{ px: { xs: 2, sm: 2.25 }, pt: 1.5, pb: 0.25 }}>
+          <Stack spacing={0.85}>
             <MailDashboardDataRow label="De" value={deText} />
             <MailDashboardDataRow label="Para" value={paraText} />
             {mail.contactPhone?.trim() ? (
@@ -462,59 +455,90 @@ function MailDashboardCard({
               />
             ) : null}
           </Stack>
+        </Box>
 
-          <Paper
-            variant="outlined"
-            elevation={0}
-            sx={{
-              p: { xs: 1.75, sm: 2 },
-              borderRadius: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 1.25,
-              bgcolor: t => alpha(t.palette.primary.main, 0.04),
-              borderColor: t => alpha(t.palette.primary.main, 0.18),
-              minWidth: 0
-            }}
+        <Box
+          sx={{
+            mx: { xs: 1.5, sm: 1.75 },
+            mt: 1.25,
+            mb: { xs: 1.5, sm: 1.75 },
+            px: { xs: 1.5, sm: 1.75 },
+            py: 1.25,
+            borderRadius: 2,
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'stretch', sm: 'center' },
+            justifyContent: 'space-between',
+            gap: 1.5,
+            bgcolor: t => alpha(t.palette.primary.main, 0.045),
+            border: '1px solid',
+            borderColor: t => alpha(t.palette.primary.main, 0.16)
+          }}
+        >
+          <Stack
+            direction="row"
+            spacing={1.25}
+            alignItems="center"
+            sx={{ minWidth: 0, flex: 1 }}
           >
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ fontWeight: 800, letterSpacing: '0.06em' }}
+            <Box
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: 1.5,
+                display: 'grid',
+                placeItems: 'center',
+                flexShrink: 0,
+                color: 'primary.main',
+                bgcolor: t => alpha(t.palette.primary.main, 0.1)
+              }}
             >
-              Código en tienda
-            </Typography>
-            {codeDisplay ? (
+              <PlaceOutlined fontSize="small" />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
               <Typography
-                variant="body2"
+                variant="caption"
+                color="text.secondary"
+                sx={{ fontWeight: 700, letterSpacing: '0.04em' }}
+              >
+                {branchName ? 'Sucursal' : 'Código en tienda'}
+              </Typography>
+              <Typography
                 sx={{
-                  fontFamily:
-                    'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                  fontWeight: 700,
-                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                  lineHeight: 1.45,
-                  wordBreak: 'break-all',
-                  color: 'text.primary'
+                  fontWeight: 800,
+                  lineHeight: 1.25,
+                  wordBreak: 'break-word',
+                  fontFamily: branchName
+                    ? 'inherit'
+                    : 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
                 }}
               >
-                {codeDisplay}
+                {branchName || codeDisplay || 'Sin código'}
               </Typography>
-            ) : (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ lineHeight: 1.5 }}
-              >
-                Abre el código de barras para identificar el envío en el
-                mostrador.
-              </Typography>
-            )}
+              {branchName && codeDisplay ? (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    mt: 0.35,
+                    fontFamily:
+                      'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                    fontWeight: 700,
+                    color: 'text.secondary',
+                    wordBreak: 'break-all'
+                  }}
+                >
+                  {codeDisplay}
+                </Typography>
+              ) : null}
+            </Box>
+          </Stack>
+          <Box sx={{ flexShrink: 0, width: { xs: '100%', sm: 'auto' } }}>
             <ButtonBarCode
               id={mail.code ?? mail._id}
               trigger="button"
-              fullWidth
+              fullWidth={narrow}
             />
-          </Paper>
+          </Box>
         </Box>
       </CardContent>
     </Card>
