@@ -30,6 +30,7 @@ import {
   DeleteOutline,
   ExpandLess,
   ExpandMore,
+  FileDownloadOutlined,
   History,
   RemoveCircleOutline
 } from '@mui/icons-material'
@@ -204,6 +205,8 @@ export default function TournamentPointsManagePanel() {
   const { data: meStoresData } = useMeStores()
   const [tab, setTab] = useState(0)
   const [search, setSearch] = useState('')
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
   const [deductKey, setDeductKey] = useState<string | null>(null)
   const [addKey, setAddKey] = useState<string | null>(null)
   const [auditKey, setAuditKey] = useState<string | null>(null)
@@ -397,6 +400,41 @@ export default function TournamentPointsManagePanel() {
   const pointsMutationPending =
     deduct.isPending || addPoints.isPending || removeFromList.isPending
 
+  const handleExport = async () => {
+    if (exporting) return
+    setExporting(true)
+    setExportError(null)
+    try {
+      const response = await fetch('/api/admin/tournament-points/export')
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        throw new Error(
+          typeof body.error === 'string'
+            ? body.error
+            : 'No se pudo exportar los puntos'
+        )
+      }
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const match = /filename="([^"]+)"/.exec(
+        response.headers.get('Content-Disposition') ?? ''
+      )
+      a.href = url
+      a.download = match?.[1] || 'kanjopuntos.csv'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setExportError(
+        e instanceof Error ? e.message : 'No se pudo exportar los puntos'
+      )
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <Stack spacing={2}>
       <Typography variant="body2" color="text.secondary">
@@ -472,11 +510,32 @@ export default function TournamentPointsManagePanel() {
                 fullWidth
               />
 
-              <Typography variant="body2" color="text.secondary">
-                <strong>{filteredPlayers.length}</strong> jugador(es) ·{' '}
-                <strong>{pointsSum}</strong> pts (
-                {formatStorePointsClpEquivalent(pointsSum, activeStoreSlug)})
-              </Typography>
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                justifyContent="space-between"
+                useFlexGap
+                flexWrap="wrap"
+              >
+                <Typography variant="body2" color="text.secondary">
+                  <strong>{filteredPlayers.length}</strong> jugador(es) ·{' '}
+                  <strong>{pointsSum}</strong> pts (
+                  {formatStorePointsClpEquivalent(pointsSum, activeStoreSlug)})
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<FileDownloadOutlined />}
+                  onClick={() => void handleExport()}
+                  disabled={exporting}
+                >
+                  {exporting ? 'Exportando…' : 'Exportar CSV'}
+                </Button>
+              </Stack>
+              {exportError ? (
+                <Alert severity="error">{exportError}</Alert>
+              ) : null}
 
               {filteredPlayers.length === 0 ? (
                 <Alert severity="info">

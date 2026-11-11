@@ -5,7 +5,6 @@ import connectDB from '@/lib/mongodb'
 import Mails from '@/models/Mails'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { MAIL_BRANCH_TRANSFER_FEE_CLP } from '@/lib/mail-store-transfer'
-import { otherBranchAcceptError } from '@/lib/mail-staff-branch-server'
 import { listActiveBranchesForStore } from '@/lib/store-branch'
 
 type RouteContext = { params: Promise<{ id: string }> }
@@ -82,14 +81,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
         { error: 'La sucursal de destino debe ser distinta a la actual' },
         { status: 400 }
       )
-    }
-
-    const otherBranch = await otherBranchAcceptError({
-      email: gate.session.user.email,
-      branchIds: [currentBranchId]
-    })
-    if (otherBranch) {
-      return NextResponse.json({ error: otherBranch }, { status: 403 })
     }
 
     const storeOid =
