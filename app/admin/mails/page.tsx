@@ -7,7 +7,6 @@ import {
   useCallback,
   type KeyboardEvent
 } from 'react'
-import { useSession } from 'next-auth/react'
 import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import Container from '@mui/material/Container'
@@ -66,11 +65,6 @@ import {
 import { parseContentDispositionFilename } from '@/lib/mail-csv-export'
 import { useCreateUser, type CreateUserData } from '@/hooks/useUsers'
 import { rutFromCedulaQrScan } from '@/lib/cedula-qr-rut'
-import {
-  foldBranchName,
-  mailOtherBranchMessage,
-  staffAcceptsBranchName
-} from '@/lib/mail-staff-branch'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
 import { MAIL_CONTACT_PHONE_MAX } from '@/lib/mail-contact-phone'
 import { getMailStatusChip } from '@/lib/mail-status'
@@ -152,6 +146,15 @@ function canSendMailToAnotherBranch(
   return otherActiveBranches(mail, branches).length > 0
 }
 
+function foldBranchName(raw: string): string {
+  return raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 function defaultSendDestinationId(
   mail: Mail,
   branches: StoreBranchRow[]
@@ -197,16 +200,8 @@ function mailStatusAccentColor(
   return theme.palette.text.disabled
 }
 
-function mailRegisteredBranchName(mail: Mail): string {
-  if (mail.branchId && typeof mail.branchId === 'object') {
-    return mail.branchId.name?.trim() ?? ''
-  }
-  return ''
-}
-
 export default function MailsPage() {
   const theme = useTheme()
-  const { data: session } = useSession()
   const [openDialog, setOpenDialog] = useState(false)
   const [editingMail, setEditingMail] = useState<Mail | null>(null)
   const [formData, setFormData] = useState<MailAdminForm>(emptyMailForm)
@@ -245,9 +240,6 @@ export default function MailsPage() {
   const [filterToInput, setFilterToInput] = useState('')
   const [page, setPage] = useState(1)
   const [mailToDelete, setMailToDelete] = useState<Mail | null>(null)
-  const [otherBranchNotice, setOtherBranchNotice] = useState<string | null>(
-    null
-  )
   const [sendTransferMail, setSendTransferMail] = useState<Mail | null>(null)
   const [sendTransferDestId, setSendTransferDestId] = useState('')
   const [bulkWithdrawOpen, setBulkWithdrawOpen] = useState(false)
@@ -745,21 +737,6 @@ export default function MailsPage() {
       return
     }
 
-    if (
-      editingMail &&
-      formData.isRecivedInStore &&
-      !editingMail.isRecivedInStore
-    ) {
-      const selected = storeBranches.find(
-        b => b.id === (formData.branchId ?? '').trim()
-      )
-      const branchName = selected?.name ?? mailRegisteredBranchName(editingMail)
-      if (!staffAcceptsBranchName(session?.user?.email, branchName)) {
-        setOtherBranchNotice(mailOtherBranchMessage(branchName))
-        return
-      }
-    }
-
     try {
       if (editingMail) {
         const payload: UpdateMailData = {
@@ -805,10 +782,6 @@ export default function MailsPage() {
       handleCloseDialog()
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Error al guardar'
-      if (msg.includes('fue registrado para')) {
-        setOtherBranchNotice(msg)
-        return
-      }
       setSnackbar({ open: true, message: msg, severity: 'error' })
     }
   }
@@ -879,18 +852,6 @@ export default function MailsPage() {
       })
       return
     }
-    if (
-      !mail.isRecivedInStore &&
-      !staffAcceptsBranchName(
-        session?.user?.email,
-        mailRegisteredBranchName(mail)
-      )
-    ) {
-      setOtherBranchNotice(
-        mailOtherBranchMessage(mailRegisteredBranchName(mail))
-      )
-      return
-    }
     try {
       await updateMail.mutateAsync({
         mailId: mail._id,
@@ -905,20 +866,11 @@ export default function MailsPage() {
       })
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Error al actualizar'
-      if (msg.includes('fue registrado para')) {
-        setOtherBranchNotice(msg)
-        return
-      }
       setSnackbar({ open: true, message: msg, severity: 'error' })
     }
   }
 
   const handleReceiveTransfer = async (mail: Mail) => {
-    const destination = mail.transfer?.destinationBranchName?.trim() ?? ''
-    if (!staffAcceptsBranchName(session?.user?.email, destination)) {
-      setOtherBranchNotice(mailOtherBranchMessage(destination))
-      return
-    }
     try {
       await receiveTransfer.mutateAsync(mail._id)
       setSnackbar({
@@ -928,20 +880,11 @@ export default function MailsPage() {
       })
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Error al recepcionar'
-      if (msg.includes('fue registrado para')) {
-        setOtherBranchNotice(msg)
-        return
-      }
       setSnackbar({ open: true, message: msg, severity: 'error' })
     }
   }
 
   const handleOpenSendTransfer = (mail: Mail) => {
-    const branchName = mailRegisteredBranchName(mail)
-    if (!staffAcceptsBranchName(session?.user?.email, branchName)) {
-      setOtherBranchNotice(mailOtherBranchMessage(branchName))
-      return
-    }
     setSendTransferMail(mail)
     setSendTransferDestId(defaultSendDestinationId(mail, storeBranches))
   }
@@ -965,11 +908,6 @@ export default function MailsPage() {
       })
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Error al enviar'
-      if (msg.includes('fue registrado para')) {
-        setSendTransferMail(null)
-        setOtherBranchNotice(msg)
-        return
-      }
       setSnackbar({ open: true, message: msg, severity: 'error' })
     }
   }
@@ -1014,11 +952,6 @@ export default function MailsPage() {
         e instanceof Error
           ? e.message
           : 'Error al marcar como recibidos en tienda'
-      if (msg.includes('fue registrado para')) {
-        setBulkReceiveInStoreOpen(false)
-        setOtherBranchNotice(msg)
-        return
-      }
       setSnackbar({ open: true, message: msg, severity: 'error' })
     }
   }
@@ -2248,29 +2181,6 @@ export default function MailsPage() {
               disabled={sendTransfer.isPending || !sendTransferDestId}
             >
               {sendTransfer.isPending ? 'Enviando…' : 'Enviar'}
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        <Dialog
-          open={otherBranchNotice != null}
-          onClose={() => setOtherBranchNotice(null)}
-          maxWidth="xs"
-          fullWidth
-          aria-labelledby="admin-mail-other-branch-title"
-        >
-          <DialogTitle id="admin-mail-other-branch-title">
-            Correo de otra sucursal
-          </DialogTitle>
-          <DialogContent>
-            <Typography variant="body1">{otherBranchNotice}</Typography>
-          </DialogContent>
-          <DialogActions sx={{ px: 3, py: 2 }}>
-            <Button
-              variant="contained"
-              onClick={() => setOtherBranchNotice(null)}
-            >
-              Entendido
             </Button>
           </DialogActions>
         </Dialog>

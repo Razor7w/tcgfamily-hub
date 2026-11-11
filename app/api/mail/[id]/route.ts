@@ -17,7 +17,6 @@ import {
 import mongoose from 'mongoose'
 import { normalizeMailContactPhone } from '@/lib/mail-contact-phone'
 import { resolveAssignableBranchId } from '@/lib/store-branch'
-import { otherBranchAcceptError } from '@/lib/mail-staff-branch-server'
 import { findUserByRut, formatMailRut } from '@/lib/mail-create'
 import { clean as cleanRut, validate as validateRut } from 'rut.js'
 import StoreBranch from '@/models/StoreBranch'
@@ -354,16 +353,6 @@ export async function PUT(
       } else {
         existing.set('branchId', undefined)
         existing.markModified('branchId')
-      }
-    }
-
-    if (nextStatus.isRecivedInStore && !wasReceivedInStore) {
-      const otherBranch = await otherBranchAcceptError({
-        email: gate.session.user.email,
-        branchIds: [existing.branchId]
-      })
-      if (otherBranch) {
-        return NextResponse.json({ error: otherBranch }, { status: 403 })
       }
     }
 

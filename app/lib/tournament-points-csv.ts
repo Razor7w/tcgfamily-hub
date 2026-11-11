@@ -4,6 +4,7 @@ import {
   unwrapExcelText
 } from '@/lib/store-points-csv'
 import { popidForStorage } from '@/lib/rut-chile'
+import { santiagoDayKey } from '@/lib/santiago-day-key'
 import { normalizeLegacyTournamentLabel } from '@/lib/tournament-points-legacy-label'
 
 export type TournamentPointsCsvRow = {
@@ -248,4 +249,62 @@ export function mergeImportCsvRowsByPopId(rows: TournamentPointsCsvRow[]): {
 
   const merged = [...byPop.values()].sort((a, b) => a.place - b.place)
   return { merged, combinedPopRows }
+}
+
+export type TournamentPointsExportLine = {
+  eventId: string
+  eventTitle: string
+  awardedAt: Date | string | null
+  popId: string
+  displayName: string
+  place: number
+  points: number
+}
+
+function csvEscape(value: string): string {
+  if (/[;"\n\r]/.test(value)) return `"${value.replace(/"/g, '""')}"`
+  return value
+}
+
+function formatExportDate(value: Date | string | null): string {
+  if (!value) return ''
+  const d = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(d.getTime())) return ''
+  const [y, m, day] = santiagoDayKey(d).split('-')
+  if (!y || !m || !day) return ''
+  return `${day}/${m}/${y}`
+}
+
+export const TOURNAMENT_POINTS_EXPORT_HEADERS = [
+  'evento_id',
+  'torneo',
+  'fecha',
+  'pop',
+  'nombre',
+  'puesto',
+  'puntos'
+] as const
+
+/** CSV UTF-8 con BOM y `;`, mismo formato que la importación. */
+export function buildTournamentPointsCsv(
+  lines: TournamentPointsExportLine[]
+): string {
+  const body = lines.map(line =>
+    [
+      line.eventId,
+      line.eventTitle,
+      formatExportDate(line.awardedAt),
+      line.popId,
+      line.displayName,
+      String(line.place),
+      String(line.points)
+    ]
+      .map(csvEscape)
+      .join(';')
+  )
+  return `\uFEFF${[TOURNAMENT_POINTS_EXPORT_HEADERS.join(';'), ...body].join('\r\n')}\r\n`
+}
+
+export function tournamentPointsCsvFilename(now = new Date()): string {
+  return `kanjopuntos-${santiagoDayKey(now)}.csv`
 }
