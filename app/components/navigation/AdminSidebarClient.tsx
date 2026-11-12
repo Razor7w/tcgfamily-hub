@@ -2,6 +2,7 @@
 import {
   AdminPanelSettings,
   CalendarMonth,
+  CasinoOutlined,
   CloudUpload,
   Email,
   ExpandLess,
@@ -97,6 +98,14 @@ export default function AdminSidebarClient({ isOwner }: { isOwner: boolean }) {
             </ListItemButton>
           </List>
         ) : null}
+        <List component="div" disablePadding>
+          <ListItemButton sx={{ pl: 4 }} href="/admin/precon">
+            <ListItemIcon>
+              <CasinoOutlined />
+            </ListItemIcon>
+            <ListItemText primary="Precon" />
+          </ListItemButton>
+        </List>
         {showLeagues ? (
           <List component="div" disablePadding>
             <ListItemButton sx={{ pl: 4 }} href="/admin/ligas">
