@@ -1,8 +1,8 @@
-export const PRECON_FIELD_SIZE = 16
 export const PRECON_TABLE_SIZE = 4
-export const PRECON_TABLE_COUNT = PRECON_FIELD_SIZE / PRECON_TABLE_SIZE
-export const PRECON_ROUND_LIMIT = 3
-
+export const PRECON_MIN_PLAYERS = 8
+export const PRECON_MAX_PLAYERS = 32
+export const PRECON_DEFAULT_PLAYERS = 16
+export const PRECON_DEFAULT_ROUNDS = 3
 /** 1 punto por rival eliminado. */
 export const PRECON_KILL_POINTS = 1
 /** 3 puntos por ganar la mesa. */
@@ -10,15 +10,101 @@ export const PRECON_WIN_POINTS = 3
 /** Nadie suma más de 3 en la mesa. */
 export const PRECON_POINTS_CAP = 3
 
-export function preconTablePoints(input: {
-  kills: number
-  won: boolean
-}): number {
+export type PreconSettings = {
+  players: number
+  rounds: number
+  killPoints: number
+  winPoints: number
+  pointsCap: number
+}
+
+export const PRECON_DEFAULT_SETTINGS: PreconSettings = {
+  players: PRECON_DEFAULT_PLAYERS,
+  rounds: PRECON_DEFAULT_ROUNDS,
+  killPoints: PRECON_KILL_POINTS,
+  winPoints: PRECON_WIN_POINTS,
+  pointsCap: PRECON_POINTS_CAP
+}
+
+export function preconTableCount(settings: PreconSettings): number {
+  return settings.players / PRECON_TABLE_SIZE
+}
+
+function clampInt(
+  value: unknown,
+  min: number,
+  max: number,
+  fallback: number
+): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (!Number.isInteger(parsed)) return fallback
+  return Math.min(max, Math.max(min, parsed))
+}
+
+/** El mínimo es 8 y la cantidad tiene que llenar mesas de 4. */
+export function normalizePreconPlayers(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (!Number.isInteger(parsed)) return PRECON_DEFAULT_PLAYERS
+  const snapped = Math.round(parsed / PRECON_TABLE_SIZE) * PRECON_TABLE_SIZE
+  return Math.min(PRECON_MAX_PLAYERS, Math.max(PRECON_MIN_PLAYERS, snapped))
+}
+
+export function normalizePreconSettings(value: unknown): PreconSettings {
+  const record =
+    value && typeof value === 'object' ? (value as Partial<PreconSettings>) : {}
+  return {
+    players: normalizePreconPlayers(record.players),
+    rounds: clampInt(record.rounds, 1, 5, PRECON_DEFAULT_ROUNDS),
+    killPoints: clampInt(record.killPoints, 0, 20, PRECON_KILL_POINTS),
+    winPoints: clampInt(record.winPoints, 0, 20, PRECON_WIN_POINTS),
+    pointsCap: clampInt(record.pointsCap, 1, 30, PRECON_POINTS_CAP)
+  }
+}
+
+export function preconSettingsError(input: {
+  players: number
+  rounds: number
+  killPoints: number
+  winPoints: number
+  pointsCap: number
+}): string | null {
+  if (!Number.isInteger(input.players) || input.players < PRECON_MIN_PLAYERS) {
+    return 'El mínimo es 8 jugadores.'
+  }
+  if (input.players > PRECON_MAX_PLAYERS) {
+    return 'El máximo es 32 jugadores.'
+  }
+  if (input.players % PRECON_TABLE_SIZE !== 0) {
+    return 'Los jugadores tienen que ser múltiplo de 4 para llenar las mesas.'
+  }
+  if (!Number.isInteger(input.rounds) || input.rounds < 1 || input.rounds > 5) {
+    return 'Las rondas van de 1 a 5.'
+  }
+  if (
+    !Number.isInteger(input.killPoints) ||
+    input.killPoints < 0 ||
+    !Number.isInteger(input.winPoints) ||
+    input.winPoints < 0 ||
+    !Number.isInteger(input.pointsCap) ||
+    input.pointsCap < 1
+  ) {
+    return 'Revisa los puntajes. El tope tiene que ser al menos 1.'
+  }
+  return null
+}
+
+export function preconTablePoints(
+  input: {
+    kills: number
+    won: boolean
+  },
+  settings: PreconSettings = PRECON_DEFAULT_SETTINGS
+): number {
   const kills = Number.isFinite(input.kills)
     ? Math.max(0, Math.floor(input.kills))
     : 0
-  const raw = kills * PRECON_KILL_POINTS + (input.won ? PRECON_WIN_POINTS : 0)
-  return Math.min(PRECON_POINTS_CAP, raw)
+  const raw = kills * settings.killPoints + (input.won ? settings.winPoints : 0)
+  return Math.min(settings.pointsCap, raw)
 }
 
 /** En una mesa de 4 solo pueden morir 3 rivales. */
@@ -36,8 +122,10 @@ export type PreconRound = {
   results: PreconTableResult[]
 }
 
-export function emptyPreconResults(): PreconTableResult[] {
-  return Array.from({ length: PRECON_TABLE_COUNT }, () => ({
+export function emptyPreconResults(
+  settings: PreconSettings = PRECON_DEFAULT_SETTINGS
+): PreconTableResult[] {
+  return Array.from({ length: preconTableCount(settings) }, () => ({
     kills: Array.from({ length: PRECON_TABLE_SIZE }, () => 0),
     winner: null,
     finished: false
@@ -92,14 +180,18 @@ export function isPreconTableResult(
 
 export function preconSeatPoints(
   result: PreconTableResult,
-  seat: number
+  seat: number,
+  settings: PreconSettings = PRECON_DEFAULT_SETTINGS
 ): number | null {
   const started = result.winner !== null || result.kills.some(kill => kill > 0)
   if (!started) return null
-  return preconTablePoints({
-    kills: result.kills[seat] ?? 0,
-    won: result.winner === seat
-  })
+  return preconTablePoints(
+    {
+      kills: result.kills[seat] ?? 0,
+      won: result.winner === seat
+    },
+    settings
+  )
 }
 
 export function preconMissingWinner(result: PreconTableResult): boolean {
@@ -174,13 +266,18 @@ function randomInt(exclusiveMax: number): number {
  * Primera ronda: los 16 jugadores se mezclan en 4 mesas.
  * Cada mesa es una lista de índices (0–15).
  */
-export function pairPreconFirstRound(names: readonly string[]): number[][] {
+export function pairPreconFirstRound(
+  names: readonly string[],
+  settings: PreconSettings = PRECON_DEFAULT_SETTINGS
+): number[][] {
   const cleaned = names.map(name => name.trim())
   if (
-    cleaned.length !== PRECON_FIELD_SIZE ||
+    cleaned.length !== settings.players ||
     cleaned.some(name => name.length === 0)
   ) {
-    throw new Error('Hacen falta 16 nombres para armar la primera ronda.')
+    throw new Error(
+      `Hacen falta ${settings.players} nombres para armar la primera ronda.`
+    )
   }
 
   const order = cleaned.map((_, index) => index)
@@ -191,8 +288,9 @@ export function pairPreconFirstRound(names: readonly string[]): number[][] {
     order[j] = current ?? i
   }
 
+  const tableCount = preconTableCount(settings)
   const tables: number[][] = []
-  for (let table = 0; table < PRECON_TABLE_COUNT; table += 1) {
+  for (let table = 0; table < tableCount; table += 1) {
     const start = table * PRECON_TABLE_SIZE
     tables.push(order.slice(start, start + PRECON_TABLE_SIZE))
   }
@@ -221,39 +319,48 @@ function sortTablesByPoints(
  * En la tercera se elige, entre las mesas sin rivales repetidos, la de puntajes más parejos.
  */
 export function pairPreconNextRound(
-  rounds: readonly PreconRound[]
+  rounds: readonly PreconRound[],
+  settings: PreconSettings = PRECON_DEFAULT_SETTINGS
 ): number[][] {
   if (rounds.length === 0) {
     throw new Error('No hay una ronda anterior para continuar.')
   }
-  if (rounds.length >= PRECON_ROUND_LIMIT) {
-    throw new Error('El precon termina en la ronda 3.')
+  if (rounds.length >= settings.rounds) {
+    throw new Error(`El precon termina en la ronda ${settings.rounds}.`)
   }
   if (rounds.some(round => round.results.some(result => !result.finished))) {
     throw new Error(
-      'Termina las cuatro mesas antes de lanzar la siguiente ronda.'
+      'Termina las mesas de la ronda antes de lanzar la siguiente.'
     )
   }
 
-  const points = totalPreconPoints(rounds)
-  if (rounds.length === 1) {
-    return sortTablesByPoints(pairSecondRound(rounds[0]), points)
+  const points = totalPreconPoints(rounds, settings)
+  if (settings.players === PRECON_DEFAULT_PLAYERS && rounds.length === 1) {
+    return sortTablesByPoints(pairSecondRound(rounds[0], settings), points)
   }
-  const grid = seatGrid(rounds[0]?.tables ?? [], rounds[1]?.tables ?? [])
-  if (!grid) {
-    throw new Error('No se pudo armar la ronda 3 sin repetir rivales.')
+  if (settings.players === PRECON_DEFAULT_PLAYERS && rounds.length === 2) {
+    const grid = seatGrid(rounds[0]?.tables ?? [], rounds[1]?.tables ?? [])
+    if (!grid) {
+      throw new Error(
+        'No se pudo armar la siguiente ronda sin repetir rivales.'
+      )
+    }
+    return sortTablesByPoints(pairThirdRound(grid, points), points)
   }
-  return sortTablesByPoints(pairThirdRound(grid, points), points)
+  return sortTablesByPoints(pairFlexibleRound(rounds, settings, points), points)
 }
 
-export function totalPreconPoints(rounds: readonly PreconRound[]): number[] {
-  const points = Array.from({ length: PRECON_FIELD_SIZE }, () => 0)
+export function totalPreconPoints(
+  rounds: readonly PreconRound[],
+  settings: PreconSettings = PRECON_DEFAULT_SETTINGS
+): number[] {
+  const points = Array.from({ length: settings.players }, () => 0)
   for (const round of rounds) {
     round.tables.forEach((seats, tableIndex) => {
       const result = round.results[tableIndex]
       if (!result) return
       seats.forEach((player, seat) => {
-        const scored = preconSeatPoints(result, seat)
+        const scored = preconSeatPoints(result, seat, settings)
         if (scored !== null) points[player] = (points[player] ?? 0) + scored
       })
     })
@@ -261,16 +368,127 @@ export function totalPreconPoints(rounds: readonly PreconRound[]): number[] {
   return points
 }
 
-function pairSecondRound(round: PreconRound): number[][] {
+function pairKey(left: number, right: number): string {
+  return left < right ? `${left}-${right}` : `${right}-${left}`
+}
+
+function playedPairs(rounds: readonly PreconRound[]): Set<string> {
+  const pairs = new Set<string>()
+  for (const round of rounds) {
+    for (const table of round.tables) {
+      for (let left = 0; left < table.length; left += 1) {
+        for (let right = left + 1; right < table.length; right += 1) {
+          pairs.add(pairKey(table[left] ?? -1, table[right] ?? -1))
+        }
+      }
+    }
+  }
+  return pairs
+}
+
+function assignmentCost(
+  tables: readonly (readonly number[])[],
+  played: ReadonlySet<string>,
+  points: readonly number[]
+): number {
+  let repeats = 0
+  let spread = 0
+  for (const table of tables) {
+    if (table.length === 0) continue
+    const scored = table.map(player => points[player] ?? 0)
+    spread += Math.max(...scored) - Math.min(...scored)
+    for (let left = 0; left < table.length; left += 1) {
+      for (let right = left + 1; right < table.length; right += 1) {
+        if (played.has(pairKey(table[left] ?? -1, table[right] ?? -1))) {
+          repeats += 1
+        }
+      }
+    }
+  }
+  return repeats * 1000 + spread
+}
+
+function pairFlexibleRound(
+  rounds: readonly PreconRound[],
+  settings: PreconSettings,
+  points: readonly number[]
+): number[][] {
+  const played = playedPairs(rounds)
+  const tableCount = preconTableCount(settings)
+  const order = Array.from({ length: settings.players }, (_, index) => index)
+  order.sort(
+    (left, right) => (points[right] ?? 0) - (points[left] ?? 0) || left - right
+  )
+  const tables: number[][] = Array.from({ length: tableCount }, () => [])
+  let bestCost = Number.POSITIVE_INFINITY
+  let best: number[][] | null = null
+  let nodes = 0
+  const limit = settings.players <= 12 ? 250_000 : 30_000
+
+  const place = (index: number) => {
+    if (nodes > limit) return
+    nodes += 1
+    if (index === order.length) {
+      const cost = assignmentCost(tables, played, points)
+      if (cost < bestCost) {
+        bestCost = cost
+        best = tables.map(table => [...table])
+      }
+      return
+    }
+    const player = order[index] ?? index
+    for (let tableIndex = 0; tableIndex < tableCount; tableIndex += 1) {
+      const table = tables[tableIndex]
+      if (!table || table.length >= PRECON_TABLE_SIZE) continue
+      if (
+        table.length === 0 &&
+        tableIndex > 0 &&
+        (tables[tableIndex - 1]?.length ?? 0) === 0
+      ) {
+        continue
+      }
+      table.push(player)
+      place(index + 1)
+      table.pop()
+      if (bestCost === 0) return
+    }
+  }
+
+  place(0)
+  if (best) return best
+
+  for (const player of order) {
+    let chosen = 0
+    let chosenRepeats = Number.POSITIVE_INFINITY
+    for (let tableIndex = 0; tableIndex < tableCount; tableIndex += 1) {
+      const table = tables[tableIndex]
+      if (!table || table.length >= PRECON_TABLE_SIZE) continue
+      const repeats = table.filter(other =>
+        played.has(pairKey(player, other))
+      ).length
+      if (repeats < chosenRepeats) {
+        chosenRepeats = repeats
+        chosen = tableIndex
+      }
+    }
+    tables[chosen]?.push(player)
+  }
+  return tables
+}
+
+function pairSecondRound(
+  round: PreconRound,
+  settings: PreconSettings
+): number[][] {
   const columns: number[][] = Array.from(
-    { length: PRECON_TABLE_COUNT },
+    { length: PRECON_TABLE_SIZE },
     () => []
   )
   round.tables.forEach((seats, tableIndex) => {
     const result = round.results[tableIndex]
     const ranked = seats.map((player, seat) => ({
       player,
-      points: result ? (preconSeatPoints(result, seat) ?? 0) : 0,
+      points: result ? (preconSeatPoints(result, seat, settings) ?? 0) : 0,
       tie: randomInt(1_000_000)
     }))
     ranked.sort(
@@ -295,10 +513,10 @@ function seatGrid(
   roundTwo.forEach((table, column) => {
     table.forEach(player => columnOf.set(player, column))
   })
-  const grid: number[][] = Array.from({ length: PRECON_TABLE_COUNT }, () =>
-    Array.from({ length: PRECON_TABLE_COUNT }, () => -1)
+  const grid: number[][] = Array.from({ length: PRECON_TABLE_SIZE }, () =>
+    Array.from({ length: PRECON_TABLE_SIZE }, () => -1)
   )
-  for (let player = 0; player < PRECON_FIELD_SIZE; player += 1) {
+  for (let player = 0; player < PRECON_DEFAULT_PLAYERS; player += 1) {
     const row = rowOf.get(player)
     const column = columnOf.get(player)
     if (row === undefined || column === undefined) return null
@@ -314,26 +532,25 @@ function pairThirdRound(
   grid: number[][],
   points: readonly number[]
 ): number[][] {
-  const assignment: number[][] = Array.from(
-    { length: PRECON_TABLE_COUNT },
-    () => Array.from({ length: PRECON_TABLE_COUNT }, () => -1)
+  const assignment: number[][] = Array.from({ length: PRECON_TABLE_SIZE }, () =>
+    Array.from({ length: PRECON_TABLE_SIZE }, () => -1)
   )
-  const rowUsed = Array.from({ length: PRECON_TABLE_COUNT }, () =>
-    Array.from({ length: PRECON_TABLE_COUNT }, () => false)
+  const rowUsed = Array.from({ length: PRECON_TABLE_SIZE }, () =>
+    Array.from({ length: PRECON_TABLE_SIZE }, () => false)
   )
-  const columnUsed = Array.from({ length: PRECON_TABLE_COUNT }, () =>
-    Array.from({ length: PRECON_TABLE_COUNT }, () => false)
+  const columnUsed = Array.from({ length: PRECON_TABLE_SIZE }, () =>
+    Array.from({ length: PRECON_TABLE_SIZE }, () => false)
   )
   let bestKey = ''
   let bestTables: number[][][] = []
 
   const consider = () => {
     const tables: number[][] = Array.from(
-      { length: PRECON_TABLE_COUNT },
+      { length: PRECON_TABLE_SIZE },
       () => []
     )
-    for (let row = 0; row < PRECON_TABLE_COUNT; row += 1) {
-      for (let column = 0; column < PRECON_TABLE_COUNT; column += 1) {
+    for (let row = 0; row < PRECON_TABLE_SIZE; row += 1) {
+      for (let column = 0; column < PRECON_TABLE_SIZE; column += 1) {
         const symbol = assignment[row]?.[column] ?? -1
         const player = grid[row]?.[column] ?? -1
         tables[symbol]?.push(player)
@@ -354,13 +571,13 @@ function pairThirdRound(
   }
 
   const fill = (cell: number) => {
-    if (cell === PRECON_FIELD_SIZE) {
+    if (cell === PRECON_DEFAULT_PLAYERS) {
       consider()
       return
     }
-    const row = Math.floor(cell / PRECON_TABLE_COUNT)
-    const column = cell % PRECON_TABLE_COUNT
-    for (let symbol = 0; symbol < PRECON_TABLE_COUNT; symbol += 1) {
+    const row = Math.floor(cell / PRECON_TABLE_SIZE)
+    const column = cell % PRECON_TABLE_SIZE
+    for (let symbol = 0; symbol < PRECON_TABLE_SIZE; symbol += 1) {
       if (rowUsed[row]?.[symbol] || columnUsed[column]?.[symbol]) continue
       const rowFlags = rowUsed[row]
       const columnFlags = columnUsed[column]
