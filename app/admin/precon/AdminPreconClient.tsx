@@ -15,7 +15,6 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogTitle from '@mui/material/DialogTitle'
-import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
@@ -29,23 +28,18 @@ import { alpha } from '@mui/material/styles'
 import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
 import {
   PRECON_DEFAULT_SETTINGS,
-  PRECON_MAX_KILLS,
   PRECON_MIN_PLAYERS,
   PRECON_TABLE_SIZE,
   emptyPreconResults,
-  isPreconTableResult,
   normalizePreconSettings,
   pairPreconFirstRound,
   pairPreconNextRound,
-  preconKillChoices,
-  preconMissingWinner,
   preconSeatPoints,
   preconSettingsError,
   preconTableCount,
-  preconTablePoints,
+  readPreconTableResult,
   withPreconFinished,
-  withPreconKills,
-  withPreconWinner,
+  withPreconPoints,
   type PreconRound,
   type PreconSettings,
   type PreconTableResult
@@ -126,18 +120,16 @@ function parseResults(
   value: unknown,
   settings: PreconSettings
 ): PreconTableResult[] {
-  if (
-    Array.isArray(value) &&
-    value.length === preconTableCount(settings) &&
-    value.every(isPreconTableResult)
-  ) {
-    return value.map(result => ({
-      kills: result.kills,
-      winner: result.winner,
-      finished: result.finished === true
-    }))
+  if (!Array.isArray(value) || value.length !== preconTableCount(settings)) {
+    return emptyPreconResults(settings)
   }
-  return emptyPreconResults(settings)
+  const results = value.map(readPreconTableResult)
+  if (results.some(result => result === null)) {
+    return emptyPreconResults(settings)
+  }
+  return results.filter(
+    (result): result is PreconTableResult => result !== null
+  )
 }
 
 function parseRound(
@@ -241,10 +233,7 @@ export default function AdminPreconClient() {
   const [configOpen, setConfigOpen] = useState(false)
   const [configDraft, setConfigDraft] = useState({
     players: String(PRECON_DEFAULT_SETTINGS.players),
-    rounds: String(PRECON_DEFAULT_SETTINGS.rounds),
-    killPoints: String(PRECON_DEFAULT_SETTINGS.killPoints),
-    winPoints: String(PRECON_DEFAULT_SETTINGS.winPoints),
-    pointsCap: String(PRECON_DEFAULT_SETTINGS.pointsCap)
+    rounds: String(PRECON_DEFAULT_SETTINGS.rounds)
   })
   const [configError, setConfigError] = useState<string | null>(null)
   const requestedTab = tabOverride ?? (rounds.length > 0 ? rounds.length : 0)
@@ -257,7 +246,7 @@ export default function AdminPreconClient() {
   const tournamentStarted = rounds.length > 0
   const hasScores = rounds.some(round =>
     round.results.some(
-      result => result.winner !== null || result.kills.some(kill => kill > 0)
+      result => result.finished || result.points.some(point => point > 0)
     )
   )
   const allFinished = Boolean(
@@ -331,10 +320,7 @@ export default function AdminPreconClient() {
   const openConfig = () => {
     setConfigDraft({
       players: String(settings.players),
-      rounds: String(settings.rounds),
-      killPoints: String(settings.killPoints),
-      winPoints: String(settings.winPoints),
-      pointsCap: String(settings.pointsCap)
+      rounds: String(settings.rounds)
     })
     setConfigError(null)
     setConfigOpen(true)
@@ -344,10 +330,7 @@ export default function AdminPreconClient() {
     if (tournamentStarted) return
     const next = {
       players: Number(configDraft.players),
-      rounds: Number(configDraft.rounds),
-      killPoints: Number(configDraft.killPoints),
-      winPoints: Number(configDraft.winPoints),
-      pointsCap: Number(configDraft.pointsCap)
+      rounds: Number(configDraft.rounds)
     }
     const invalid = preconSettingsError(next)
     if (invalid) {
@@ -421,7 +404,7 @@ export default function AdminPreconClient() {
         const result = round.results[tableIndex]
         if (!result) return
         seats.forEach((playerIndex, seat) => {
-          const scored = preconSeatPoints(result, seat, settings)
+          const scored = preconSeatPoints(result, seat)
           if (scored === null) return
           totals.set(playerIndex, (totals.get(playerIndex) ?? 0) + scored)
         })
@@ -441,7 +424,7 @@ export default function AdminPreconClient() {
       if (b.points !== a.points) return b.points - a.points
       return a.name.localeCompare(b.name, 'es')
     })
-  }, [names, rounds, settings])
+  }, [names, rounds])
 
   const shareText = useMemo(() => {
     if (!viewedTables) return ''
@@ -524,16 +507,9 @@ export default function AdminPreconClient() {
                 sx={{ mt: 0.75, maxWidth: 560, lineHeight: 1.6 }}
               >
                 Inscribe a los {settings.players} jugadores y sortea la primera
-                ronda en mesas de {PRECON_TABLE_SIZE}. En cada mesa:{' '}
-                {settings.killPoints} punto por rival eliminado y{' '}
-                {settings.winPoints} por ganar, con un tope de{' '}
-                {settings.pointsCap}. Quien gana suma{' '}
-                {preconTablePoints(
-                  { kills: PRECON_MAX_KILLS, won: true },
-                  settings
-                )}
-                , aunque haya eliminado rivales. Dos bajas sin ganar suman{' '}
-                {preconTablePoints({ kills: 2, won: false }, settings)}.
+                ronda en mesas de {PRECON_TABLE_SIZE}. En cada mesa anota los
+                puntos a mano y finaliza la mesa. Esos puntos arman la siguiente
+                ronda.
               </Typography>
             </Box>
           </Stack>
@@ -735,9 +711,6 @@ export default function AdminPreconClient() {
                             ) {
                               return null
                             }
-                            const swept = result.kills.findIndex(
-                              kill => kill === PRECON_MAX_KILLS
-                            )
                             return (
                               <Paper
                                 key={tableIndex}
@@ -754,122 +727,51 @@ export default function AdminPreconClient() {
                                   Mesa {tableIndex + 1}
                                 </Typography>
                                 <Stack spacing={1.5}>
-                                  {seats.map((playerIndex, seat) => {
-                                    const points = preconSeatPoints(
-                                      result,
-                                      seat,
-                                      settings
-                                    )
-                                    const choices = preconKillChoices(
-                                      result,
-                                      seat
-                                    )
-                                    const kills = result.kills[seat] ?? 0
-                                    const won = result.winner === seat
-                                    return (
-                                      <Box key={playerIndex}>
-                                        <Stack
-                                          direction="row"
-                                          spacing={1}
-                                          alignItems="center"
-                                          justifyContent="space-between"
-                                        >
-                                          <Typography
-                                            sx={{
-                                              fontWeight: 700,
-                                              lineHeight: 1.3
-                                            }}
-                                          >
-                                            {names[playerIndex]?.trim() ||
-                                              'Sin nombre'}
-                                          </Typography>
-                                          <Typography
-                                            sx={{
-                                              fontWeight: 800,
-                                              color:
-                                                points === null
-                                                  ? 'text.secondary'
-                                                  : 'primary.main'
-                                            }}
-                                          >
-                                            {points === null
-                                              ? '—'
-                                              : `${points} pts`}
-                                          </Typography>
-                                        </Stack>
-                                        <Stack
-                                          direction="row"
-                                          spacing={1}
-                                          alignItems="center"
-                                          sx={{ mt: 0.75 }}
-                                        >
-                                          <TextField
-                                            select
-                                            size="small"
-                                            label="Bajas"
-                                            disabled={
-                                              !editingRound || result.finished
-                                            }
-                                            value={kills}
-                                            onChange={event => {
-                                              updateResult(
-                                                tableIndex,
-                                                withPreconKills(
-                                                  result,
-                                                  seat,
-                                                  Number(event.target.value)
-                                                )
-                                              )
-                                            }}
-                                            sx={{ width: 96 }}
-                                          >
-                                            {choices.map(choice => (
-                                              <MenuItem
-                                                key={choice}
-                                                value={choice}
-                                              >
-                                                {choice}
-                                              </MenuItem>
-                                            ))}
-                                          </TextField>
-                                          <Button
-                                            size="small"
-                                            variant={
-                                              won ? 'contained' : 'outlined'
-                                            }
-                                            disabled={
-                                              !editingRound ||
-                                              result.finished ||
-                                              (swept >= 0 && swept !== seat)
-                                            }
-                                            onClick={() => {
-                                              updateResult(
-                                                tableIndex,
-                                                withPreconWinner(result, seat)
-                                              )
-                                            }}
-                                          >
-                                            Ganó
-                                          </Button>
-                                        </Stack>
-                                      </Box>
-                                    )
-                                  })}
+                                  {seats.map((playerIndex, seat) => (
+                                    <Stack
+                                      key={playerIndex}
+                                      direction="row"
+                                      spacing={1}
+                                      alignItems="center"
+                                      justifyContent="space-between"
+                                    >
+                                      <Typography
+                                        sx={{
+                                          fontWeight: 700,
+                                          lineHeight: 1.3
+                                        }}
+                                      >
+                                        {names[playerIndex]?.trim() ||
+                                          'Sin nombre'}
+                                      </Typography>
+                                      <TextField
+                                        type="number"
+                                        size="small"
+                                        label="Puntos"
+                                        disabled={
+                                          !editingRound || result.finished
+                                        }
+                                        value={result.points[seat] ?? 0}
+                                        onChange={event => {
+                                          updateResult(
+                                            tableIndex,
+                                            withPreconPoints(
+                                              result,
+                                              seat,
+                                              Number(event.target.value)
+                                            )
+                                          )
+                                        }}
+                                        sx={{ width: 112 }}
+                                        slotProps={{ htmlInput: { min: 0 } }}
+                                      />
+                                    </Stack>
+                                  ))}
                                 </Stack>
-                                {preconMissingWinner(result) ? (
-                                  <Typography
-                                    variant="caption"
-                                    color="warning.main"
-                                    sx={{ display: 'block', mt: 1.25 }}
-                                  >
-                                    Falta marcar quién ganó la mesa.
-                                  </Typography>
-                                ) : null}
                                 {editingRound && !result.finished ? (
                                   <Button
                                     fullWidth
                                     variant="outlined"
-                                    disabled={result.winner === null}
                                     onClick={() => {
                                       updateResult(
                                         tableIndex,
@@ -878,7 +780,7 @@ export default function AdminPreconClient() {
                                     }}
                                     sx={{ mt: 1.5 }}
                                   >
-                                    Mesa finalizada
+                                    Finalizar mesa
                                   </Button>
                                 ) : null}
                                 {editingRound && result.finished ? (
@@ -1049,49 +951,6 @@ export default function AdminPreconClient() {
                 disabled={tournamentStarted}
                 fullWidth
                 slotProps={{ htmlInput: { min: 1, max: 5 } }}
-              />
-              <TextField
-                label="Puntos por baja"
-                type="number"
-                value={configDraft.killPoints}
-                onChange={event =>
-                  setConfigDraft(current => ({
-                    ...current,
-                    killPoints: event.target.value
-                  }))
-                }
-                disabled={tournamentStarted}
-                fullWidth
-                slotProps={{ htmlInput: { min: 0 } }}
-              />
-              <TextField
-                label="Puntos por ganar la mesa"
-                type="number"
-                value={configDraft.winPoints}
-                onChange={event =>
-                  setConfigDraft(current => ({
-                    ...current,
-                    winPoints: event.target.value
-                  }))
-                }
-                disabled={tournamentStarted}
-                fullWidth
-                slotProps={{ htmlInput: { min: 0 } }}
-              />
-              <TextField
-                label="Tope por mesa"
-                type="number"
-                value={configDraft.pointsCap}
-                onChange={event =>
-                  setConfigDraft(current => ({
-                    ...current,
-                    pointsCap: event.target.value
-                  }))
-                }
-                helperText="Nadie suma más que esto en una mesa."
-                disabled={tournamentStarted}
-                fullWidth
-                slotProps={{ htmlInput: { min: 1 } }}
               />
               {configError ? (
                 <Alert severity="error">{configError}</Alert>

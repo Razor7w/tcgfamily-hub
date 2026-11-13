@@ -3,27 +3,15 @@ export const PRECON_MIN_PLAYERS = 8
 export const PRECON_MAX_PLAYERS = 32
 export const PRECON_DEFAULT_PLAYERS = 16
 export const PRECON_DEFAULT_ROUNDS = 3
-/** 1 punto por rival eliminado. */
-export const PRECON_KILL_POINTS = 1
-/** 3 puntos por ganar la mesa. */
-export const PRECON_WIN_POINTS = 3
-/** Nadie suma más de 3 en la mesa. */
-export const PRECON_POINTS_CAP = 3
 
 export type PreconSettings = {
   players: number
   rounds: number
-  killPoints: number
-  winPoints: number
-  pointsCap: number
 }
 
 export const PRECON_DEFAULT_SETTINGS: PreconSettings = {
   players: PRECON_DEFAULT_PLAYERS,
-  rounds: PRECON_DEFAULT_ROUNDS,
-  killPoints: PRECON_KILL_POINTS,
-  winPoints: PRECON_WIN_POINTS,
-  pointsCap: PRECON_POINTS_CAP
+  rounds: PRECON_DEFAULT_ROUNDS
 }
 
 export function preconTableCount(settings: PreconSettings): number {
@@ -54,19 +42,13 @@ export function normalizePreconSettings(value: unknown): PreconSettings {
     value && typeof value === 'object' ? (value as Partial<PreconSettings>) : {}
   return {
     players: normalizePreconPlayers(record.players),
-    rounds: clampInt(record.rounds, 1, 5, PRECON_DEFAULT_ROUNDS),
-    killPoints: clampInt(record.killPoints, 0, 20, PRECON_KILL_POINTS),
-    winPoints: clampInt(record.winPoints, 0, 20, PRECON_WIN_POINTS),
-    pointsCap: clampInt(record.pointsCap, 1, 30, PRECON_POINTS_CAP)
+    rounds: clampInt(record.rounds, 1, 5, PRECON_DEFAULT_ROUNDS)
   }
 }
 
 export function preconSettingsError(input: {
   players: number
   rounds: number
-  killPoints: number
-  winPoints: number
-  pointsCap: number
 }): string | null {
   if (!Number.isInteger(input.players) || input.players < PRECON_MIN_PLAYERS) {
     return 'El mínimo es 8 jugadores.'
@@ -80,41 +62,17 @@ export function preconSettingsError(input: {
   if (!Number.isInteger(input.rounds) || input.rounds < 1 || input.rounds > 5) {
     return 'Las rondas van de 1 a 5.'
   }
-  if (
-    !Number.isInteger(input.killPoints) ||
-    input.killPoints < 0 ||
-    !Number.isInteger(input.winPoints) ||
-    input.winPoints < 0 ||
-    !Number.isInteger(input.pointsCap) ||
-    input.pointsCap < 1
-  ) {
-    return 'Revisa los puntajes. El tope tiene que ser al menos 1.'
-  }
   return null
 }
 
-export function preconTablePoints(
-  input: {
-    kills: number
-    won: boolean
-  },
-  settings: PreconSettings = PRECON_DEFAULT_SETTINGS
-): number {
-  const kills = Number.isFinite(input.kills)
-    ? Math.max(0, Math.floor(input.kills))
-    : 0
-  const raw = kills * settings.killPoints + (input.won ? settings.winPoints : 0)
-  return Math.min(settings.pointsCap, raw)
+/** Puntos anotados a mano en cada asiento. */
+export type PreconTableResult = {
+  points: number[]
+  finished: boolean
 }
 
-/** En una mesa de 4 solo pueden morir 3 rivales. */
-export const PRECON_MAX_KILLS = PRECON_TABLE_SIZE - 1
-
-export type PreconTableResult = {
-  kills: number[]
-  /** Asiento 0–3. Vacío si la mesa todavía no tiene ganador. */
-  winner: number | null
-  finished: boolean
+function emptyPoints(): number[] {
+  return Array.from({ length: PRECON_TABLE_SIZE }, () => 0)
 }
 
 export type PreconRound = {
@@ -126,116 +84,109 @@ export function emptyPreconResults(
   settings: PreconSettings = PRECON_DEFAULT_SETTINGS
 ): PreconTableResult[] {
   return Array.from({ length: preconTableCount(settings) }, () => ({
-    kills: Array.from({ length: PRECON_TABLE_SIZE }, () => 0),
-    winner: null,
+    points: emptyPoints(),
     finished: false
   }))
 }
 
-export function isPreconTableResult(
-  value: unknown
-): value is PreconTableResult {
-  if (!value || typeof value !== 'object') return false
-  const record = value as {
-    kills?: unknown
-    winner?: unknown
-    finished?: unknown
+function seatPoints(value: unknown): number[] | null {
+  if (!Array.isArray(value) || value.length !== PRECON_TABLE_SIZE) return null
+  const points: number[] = []
+  for (const entry of value) {
+    if (typeof entry !== 'number' || !Number.isInteger(entry) || entry < 0) {
+      return null
+    }
+    points.push(entry)
+  }
+  return points
+}
+
+/** Mesas guardadas con bajas y ganador pasan a puntos, con las reglas de entonces. */
+function legacySeatPoints(value: {
+  kills?: unknown
+  winner?: unknown
+  tied?: unknown
+  alive?: unknown
+}): number[] | null {
+  const kills = value.kills
+  if (!Array.isArray(kills) || kills.length !== PRECON_TABLE_SIZE) {
+    return null
   }
   if (
-    !Array.isArray(record.kills) ||
-    record.kills.length !== PRECON_TABLE_SIZE
-  ) {
-    return false
-  }
-  if (
-    !record.kills.every(
-      kill =>
+    !kills.every(
+      (kill): kill is number =>
         typeof kill === 'number' &&
         Number.isInteger(kill) &&
         kill >= 0 &&
-        kill <= PRECON_MAX_KILLS
+        kill <= 3
     )
   ) {
-    return false
+    return null
   }
-  const total = record.kills.reduce((sum, kill) => sum + kill, 0)
-  if (total > PRECON_MAX_KILLS) return false
-  const winner = record.winner
+  const total = kills.reduce((sum, kill) => sum + kill, 0)
+  if (total > 3) return null
+  const winner = value.winner
   if (
     winner !== null &&
+    winner !== undefined &&
     (typeof winner !== 'number' ||
       !Number.isInteger(winner) ||
       winner < 0 ||
       winner >= PRECON_TABLE_SIZE)
   ) {
-    return false
+    return null
   }
-  const swept = record.kills.findIndex(kill => kill === PRECON_MAX_KILLS)
-  if (swept >= 0 && winner !== swept) return false
+  const tied = value.tied === true && (winner === null || winner === undefined)
+  const alive = Array.isArray(value.alive) ? value.alive : []
+  return kills.map((kill, seat) => {
+    const raw =
+      kill + (winner === seat ? 3 : 0) + (tied && alive[seat] === true ? 1 : 0)
+    return Math.min(3, raw)
+  })
+}
+
+export function readPreconTableResult(
+  value: unknown
+): PreconTableResult | null {
+  if (!value || typeof value !== 'object') return null
+  const record = value as {
+    points?: unknown
+    finished?: unknown
+    kills?: unknown
+    winner?: unknown
+    tied?: unknown
+    alive?: unknown
+  }
+  const points = seatPoints(record.points) ?? legacySeatPoints(record)
+  if (!points) return null
   if (record.finished !== undefined && typeof record.finished !== 'boolean') {
-    return false
+    return null
   }
-  return true
+  return { points, finished: record.finished === true }
 }
 
 export function preconSeatPoints(
   result: PreconTableResult,
-  seat: number,
-  settings: PreconSettings = PRECON_DEFAULT_SETTINGS
+  seat: number
 ): number | null {
-  const started = result.winner !== null || result.kills.some(kill => kill > 0)
-  if (!started) return null
-  return preconTablePoints(
-    {
-      kills: result.kills[seat] ?? 0,
-      won: result.winner === seat
-    },
-    settings
-  )
+  const touched = result.finished || result.points.some(point => point > 0)
+  if (!touched) return null
+  return result.points[seat] ?? 0
 }
 
-export function preconMissingWinner(result: PreconTableResult): boolean {
-  return result.kills.some(kill => kill > 0) && result.winner === null
-}
-
-export function preconKillChoices(
-  result: PreconTableResult,
-  seat: number
-): number[] {
-  const others = result.kills.reduce(
-    (sum, kill, index) => sum + (index === seat ? 0 : kill),
-    0
-  )
-  const max = Math.max(0, PRECON_MAX_KILLS - others)
-  return Array.from({ length: max + 1 }, (_, kill) => kill)
-}
-
-export function withPreconKills(
+export function withPreconPoints(
   result: PreconTableResult,
   seat: number,
-  kills: number
+  points: number
 ): PreconTableResult {
   if (result.finished) return result
-  const choices = preconKillChoices(result, seat)
-  const nextKill = choices.includes(kills) ? kills : (result.kills[seat] ?? 0)
-  const nextKills = result.kills.map((kill, index) =>
-    index === seat ? nextKill : kill
-  )
-  const winner = nextKill === PRECON_MAX_KILLS ? seat : result.winner
-  return { kills: nextKills, winner, finished: false }
-}
-
-export function withPreconWinner(
-  result: PreconTableResult,
-  seat: number
-): PreconTableResult {
-  if (result.finished) return result
-  const swept = result.kills.findIndex(kill => kill === PRECON_MAX_KILLS)
-  if (swept >= 0) return { kills: result.kills, winner: swept, finished: false }
+  const next = Math.floor(Number(points))
+  if (!Number.isFinite(next) || next < 0) return result
   return {
-    kills: result.kills,
-    winner: result.winner === seat ? null : seat,
-    finished: false
+    ...result,
+    points: result.points.map((current, index) =>
+      index === seat ? next : current
+    )
   }
 }
 
@@ -243,7 +194,6 @@ export function withPreconFinished(
   result: PreconTableResult,
   finished: boolean
 ): PreconTableResult {
-  if (finished && result.winner === null) return result
   return { ...result, finished }
 }
 
@@ -335,8 +285,12 @@ export function pairPreconNextRound(
   }
 
   const points = totalPreconPoints(rounds, settings)
+  const previous = rounds[0]
   if (settings.players === PRECON_DEFAULT_PLAYERS && rounds.length === 1) {
-    return sortTablesByPoints(pairSecondRound(rounds[0], settings), points)
+    if (!previous) {
+      throw new Error('No hay una ronda anterior para continuar.')
+    }
+    return sortTablesByPoints(pairSecondRound(previous), points)
   }
   if (settings.players === PRECON_DEFAULT_PLAYERS && rounds.length === 2) {
     const grid = seatGrid(rounds[0]?.tables ?? [], rounds[1]?.tables ?? [])
@@ -360,7 +314,7 @@ export function totalPreconPoints(
       const result = round.results[tableIndex]
       if (!result) return
       seats.forEach((player, seat) => {
-        const scored = preconSeatPoints(result, seat, settings)
+        const scored = preconSeatPoints(result, seat)
         if (scored !== null) points[player] = (points[player] ?? 0) + scored
       })
     })
@@ -476,10 +430,7 @@ function pairFlexibleRound(
   return tables
 }
 
-function pairSecondRound(
-  round: PreconRound,
-  settings: PreconSettings
-): number[][] {
+function pairSecondRound(round: PreconRound): number[][] {
   const columns: number[][] = Array.from(
     { length: PRECON_TABLE_SIZE },
     () => []
@@ -488,7 +439,7 @@ function pairSecondRound(
     const result = round.results[tableIndex]
     const ranked = seats.map((player, seat) => ({
       player,
-      points: result ? (preconSeatPoints(result, seat, settings) ?? 0) : 0,
+      points: result ? (preconSeatPoints(result, seat) ?? 0) : 0,
       tie: randomInt(1_000_000)
     }))
     ranked.sort(
