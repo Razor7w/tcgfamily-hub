@@ -15,6 +15,7 @@ import {
   type FilterToRecipient
 } from '@/lib/mail-recipient-filter'
 import type { ElapsedBucketFilter } from '@/lib/mail-store-days'
+import { claimOrphanMailRecipients } from '@/lib/mail-link-recipient'
 import StoreBranch from '@/models/StoreBranch'
 
 // Asegura registro del modelo para `.populate('branchId')`.
@@ -163,6 +164,51 @@ function toRutDigitsRegex(raw: string): Record<string, unknown> | null {
       $options: 'i'
     }
   }
+}
+
+/** Correos del mismo RUT que todavía no tienen cuenta de destinatario. */
+function orphanRecipientClause(
+  raw: string | undefined | null
+): Record<string, unknown> | null {
+  const key = rutCompareKey(raw)
+  if (!key) return null
+  const body = key.replace(/\D/g, '')
+  const dv = key.replace(/[0-9]/g, '')
+  if (!body) return null
+  const bodyPattern = body.split('').join('[.\\-\\s]?')
+  const dvPattern = dv ? `[-.\\s]?${dv}` : ''
+  return {
+    $and: [
+      { $or: [{ toUserId: { $exists: false } }, { toUserId: null }] },
+      {
+        toRut: {
+          $regex: `^${bodyPattern}${dvPattern}$`,
+          $options: 'i'
+        }
+      }
+    ]
+  }
+}
+
+async function recipientAccountOrOrphan(
+  userIds: mongoose.Types.ObjectId[]
+): Promise<Record<string, unknown>> {
+  const account =
+    userIds.length === 1
+      ? { toUserId: userIds[0] }
+      : { toUserId: { $in: userIds } }
+  if (userIds.length === 0) return account
+  const users = await User.find({ _id: { $in: userIds } })
+    .select({ rut: 1 })
+    .lean<{ _id: mongoose.Types.ObjectId; rut?: string }[]>()
+  const or: Record<string, unknown>[] = [account]
+  for (const user of users) {
+    const clause = orphanRecipientClause(
+      typeof user.rut === 'string' ? user.rut : ''
+    )
+    if (clause) or.push(clause)
+  }
+  return or.length === 1 ? or[0] : { $or: or }
 }
 
 function stageMongoFilter(
@@ -348,11 +394,23 @@ async function resolveCodeSearchMongoFilter(
     if (recipient.kind === 'user') {
       const toOid = parseObjectId(recipient.id)
       if (!toOid) return { filter: { _id: exact._id }, expansion: null }
+      const storedRut = recipient.rut.trim()
+      const rut =
+        storedRut ||
+        (
+          await User.findById(toOid)
+            .select({ rut: 1 })
+            .lean<{ rut?: string } | null>()
+        )?.rut ||
+        ''
+      const orphan = orphanRecipientClause(rut)
       return {
         filter: {
-          toUserId: toOid,
           isRecived: false,
-          isRecivedInStore: true
+          isRecivedInStore: true,
+          ...(orphan
+            ? { $or: [{ toUserId: toOid }, orphan] }
+            : { toUserId: toOid })
         },
         expansion: { kind: 'recipientInStore', toUserId: recipient.id }
       }
@@ -444,11 +502,7 @@ export async function buildMailAdminListMongoFilter(
   if (toIdsExplicit != null || toRutsExplicit != null) {
     const toOr: Record<string, unknown>[] = []
     if (toIdsExplicit && toIdsExplicit.length > 0) {
-      toOr.push(
-        toIdsExplicit.length === 1
-          ? { toUserId: toIdsExplicit[0] }
-          : { toUserId: { $in: toIdsExplicit } }
-      )
+      toOr.push(await recipientAccountOrOrphan(toIdsExplicit))
     }
     for (const rut of toRutsExplicit ?? []) {
       const toRutMatch = toRutDigitsRegex(rut)
@@ -465,7 +519,7 @@ export async function buildMailAdminListMongoFilter(
     }
     parts.push(toOr.length === 1 ? toOr[0] : { $or: toOr })
   } else if (toOid) {
-    parts.push({ toUserId: toOid })
+    parts.push(await recipientAccountOrOrphan([toOid]))
   } else if (filters.toRut?.trim()) {
     const toRutMatch = toRutDigitsRegex(filters.toRut)
     if (!toRutMatch) {
@@ -752,13 +806,34 @@ export async function listMailFilterOptions(
     .filter((u): u is Extract<FilterToRecipient, { kind: 'user' }> =>
       Boolean(u)
     )
-    .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }))
 
   const toRutOptions: FilterToRecipient[] = []
+  const claimed = await claimOrphanMailRecipients(toRuts)
+  for (const user of claimed) {
+    if (
+      toUsers.some(option => option.kind === 'user' && option.id === user.id)
+    ) {
+      continue
+    }
+    toUsers.push({
+      kind: 'user',
+      id: user.id,
+      name: user.name,
+      rut: user.rut
+    })
+  }
+  toUsers.sort((a, b) =>
+    a.kind === 'user' && b.kind === 'user'
+      ? a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
+      : 0
+  )
+  const claimedKeys = new Set(
+    claimed.map(user => rutCompareKey(user.rut)).filter(Boolean)
+  )
   const seenRut = new Set<string>()
   for (const raw of toRuts) {
     const rutKey = rutCompareKey(raw)
-    if (!rutKey || seenRut.has(rutKey)) continue
+    if (!rutKey || seenRut.has(rutKey) || claimedKeys.has(rutKey)) continue
     seenRut.add(rutKey)
     toRutOptions.push({
       kind: 'toRut',
