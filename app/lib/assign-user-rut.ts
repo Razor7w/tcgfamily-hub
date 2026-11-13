@@ -5,6 +5,7 @@ import { rutForStorage } from '@/lib/rut-chile'
 import { getRutFieldError } from '@/lib/rut-input'
 import { rutMatchVariants } from '@/lib/store-points-csv'
 import { linkAwaitingTeamInvitationsForUser } from '@/lib/teams/invite-by-rut'
+import { linkOrphanRecipientMails } from '@/lib/mail-link-recipient'
 import User from '@/models/User'
 
 type UserRutDoc = Document & {
@@ -82,6 +83,11 @@ export async function linkTeamInvitesAfterRutAssign(
     await linkAwaitingTeamInvitationsForUser(userId, rutStored)
   } catch (e) {
     console.error('linkAwaitingTeamInvitationsForUser (rut assign):', e)
+  }
+  try {
+    await linkOrphanRecipientMails(userId, rutStored)
+  } catch (e) {
+    console.error('linkOrphanRecipientMails (rut assign):', e)
   }
 }
 

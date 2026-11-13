@@ -141,9 +141,16 @@ export function buildToRecipientOptions(
       ? a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
       : 0
   )
-  const rutsSorted = [...byRut.values()].sort((a, b) =>
-    a.rutDisplay.localeCompare(b.rutDisplay, 'es', { sensitivity: 'base' })
+  const userRutKeys = new Set(
+    usersSorted.flatMap(user =>
+      user.kind === 'user' ? [rutCompareKey(user.rut)].filter(Boolean) : []
+    )
   )
+  const rutsSorted = [...byRut.values()]
+    .filter(option => !userRutKeys.has(option.rutKey))
+    .sort((a, b) =>
+      a.rutDisplay.localeCompare(b.rutDisplay, 'es', { sensitivity: 'base' })
+    )
   return [...usersSorted, ...rutsSorted]
 }
 
@@ -155,7 +162,10 @@ export function mailMatchesToRecipientFilter(
   if (!sel) return true
   if (sel.kind === 'user') {
     const tid = mailParticipantId(m.toUserId)
-    return Boolean(tid && tid === sel.id)
+    if (tid) return tid === sel.id
+    const key = rutCompareKey(m.toRut)
+    const userKey = rutCompareKey(sel.rut)
+    return Boolean(key && userKey && key === userKey)
   }
   if (m.toUserId) return false
   const key = rutCompareKey(m.toRut)

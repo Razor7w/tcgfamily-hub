@@ -15,7 +15,7 @@ import {
   validatePopidOptional
 } from '@/lib/rut-chile'
 import { getRutFieldError } from '@/lib/rut-input'
-import { linkAwaitingTeamInvitationsForUser } from '@/lib/teams/invite-by-rut'
+import { linkTeamInvitesAfterRutAssign } from '@/lib/assign-user-rut'
 import { createSlidingWindowLimiter } from '@/lib/auth-rate-limit'
 import { resolveValidSignupStoreObjectId } from '@/lib/signup-default-store.server'
 
@@ -155,10 +155,7 @@ export async function POST(request: NextRequest) {
       await existing.save()
       if (rutStored) {
         try {
-          await linkAwaitingTeamInvitationsForUser(
-            String(existing._id),
-            rutStored
-          )
+          await linkTeamInvitesAfterRutAssign(String(existing._id), rutStored)
         } catch (e) {
           console.error(
             'linkAwaitingTeamInvitationsForUser (register existing):',
@@ -185,7 +182,7 @@ export async function POST(request: NextRequest) {
 
     if (rutStored) {
       try {
-        await linkAwaitingTeamInvitationsForUser(String(created._id), rutStored)
+        await linkTeamInvitesAfterRutAssign(String(created._id), rutStored)
       } catch (e) {
         console.error('linkAwaitingTeamInvitationsForUser (register):', e)
       }
