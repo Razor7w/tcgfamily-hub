@@ -166,6 +166,14 @@ MailSchema.index({ storeId: 1, isGuest: 1, fromRut: 1, createdAt: -1 })
 /** Traslados entre sucursales de la misma tienda, ordenados por fecha. */
 MailSchema.index({ storeId: 1, 'transfer.status': 1, createdAt: -1 })
 
+/** Filtro «hacia» Villa Alemana / Viña: destino del traslado + estado + fecha. */
+MailSchema.index({
+  storeId: 1,
+  'transfer.destinationBranchId': 1,
+  'transfer.status': 1,
+  createdAt: -1
+})
+
 if (mongoose.models.Mail) {
   mongoose.deleteModel('Mail')
 }

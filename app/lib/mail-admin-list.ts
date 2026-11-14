@@ -16,6 +16,11 @@ import {
 } from '@/lib/mail-recipient-filter'
 import type { ElapsedBucketFilter } from '@/lib/mail-store-days'
 import { claimOrphanMailRecipients } from '@/lib/mail-link-recipient'
+import {
+  mailDestinationCityFromName,
+  parseMailDestinationCity,
+  type MailDestinationCity
+} from '@/lib/mail-destination'
 import StoreBranch from '@/models/StoreBranch'
 
 // Asegura registro del modelo para `.populate('branchId')`.
@@ -42,8 +47,10 @@ export type MailAdminListFilters = {
   q?: string | null
   fromQ?: string | null
   toQ?: string | null
-  /** Filtrar por sucursal (`branchId`). */
+  /** Filtrar por sucursal actual (`branchId`). */
   branchId?: string | null
+  /** Hacia Villa Alemana o Viña del Mar. */
+  destination?: MailDestinationCity | null
 }
 
 export const MAIL_LIST_DEFAULT_LIMIT = 20
@@ -118,7 +125,8 @@ export function parseMailAdminListFiltersFromSearchParams(
     q: searchParams.get('q'),
     fromQ: searchParams.get('fromQ'),
     toQ: searchParams.get('toQ'),
-    branchId: searchParams.get('branchId')
+    branchId: searchParams.get('branchId'),
+    destination: parseMailDestinationCity(searchParams.get('destination'))
   }
 }
 
@@ -209,6 +217,70 @@ async function recipientAccountOrOrphan(
     if (clause) or.push(clause)
   }
   return or.length === 1 ? or[0] : { $or: or }
+}
+
+function storeIdsFromMailScope(
+  scope: Record<string, unknown>
+): mongoose.Types.ObjectId[] {
+  if (scope.storeId instanceof mongoose.Types.ObjectId) return [scope.storeId]
+  const or = scope.$or
+  if (!Array.isArray(or)) return []
+  const ids: mongoose.Types.ObjectId[] = []
+  for (const clause of or) {
+    if (!clause || typeof clause !== 'object' || !('storeId' in clause))
+      continue
+    const storeId = (clause as { storeId?: unknown }).storeId
+    if (storeId instanceof mongoose.Types.ObjectId) ids.push(storeId)
+  }
+  return ids
+}
+
+async function destinationMongoFilter(
+  storeScope: Record<string, unknown>,
+  city: MailDestinationCity
+): Promise<Record<string, unknown>> {
+  const storeIds = storeIdsFromMailScope(storeScope)
+  const branches =
+    storeIds.length === 0
+      ? []
+      : await StoreBranch.find({ storeId: { $in: storeIds } })
+          .select({ name: 1 })
+          .lean<{ _id: mongoose.Types.ObjectId; name?: string }[]>()
+  const branchIds = branches
+    .filter(branch => mailDestinationCityFromName(branch.name ?? '') === city)
+    .map(branch => branch._id)
+
+  const toward: Record<string, unknown>[] = [
+    {
+      'transfer.destinationBranchName': {
+        $regex:
+          city === 'villa-alemana' ? /villa\s+alemana/i : /vi[nñ]a\s+del\s+mar/i
+      }
+    }
+  ]
+  if (branchIds.length > 0) {
+    toward.unshift({ 'transfer.destinationBranchId': { $in: branchIds } })
+  }
+
+  const inMotion = {
+    'transfer.status': { $in: ['requested', 'in_transit'] },
+    $or: toward
+  }
+  if (branchIds.length === 0) return inMotion
+
+  return {
+    $or: [
+      inMotion,
+      {
+        branchId: { $in: branchIds },
+        $or: [
+          { 'transfer.status': { $exists: false } },
+          { 'transfer.status': null },
+          { 'transfer.status': { $nin: ['requested', 'in_transit'] } }
+        ]
+      }
+    ]
+  }
 }
 
 function stageMongoFilter(
@@ -453,6 +525,10 @@ export async function buildMailAdminListMongoFilter(
 
   const elapsed = elapsedMongoFilter(filters.elapsed)
   if (elapsed) parts.push(elapsed)
+
+  if (filters.destination) {
+    parts.push(await destinationMongoFilter(storeScope, filters.destination))
+  }
 
   const branchRaw =
     typeof filters.branchId === 'string' ? filters.branchId.trim() : ''
