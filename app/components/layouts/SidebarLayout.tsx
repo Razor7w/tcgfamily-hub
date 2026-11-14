@@ -1,6 +1,10 @@
 'use client'
 
-import { Box, Drawer, Grid, useTheme } from '@mui/material'
+import {
+  KeyboardDoubleArrowLeft,
+  KeyboardDoubleArrowRight
+} from '@mui/icons-material'
+import { Box, Drawer, Grid, IconButton, Tooltip, useTheme } from '@mui/material'
 import { usePathname } from 'next/navigation'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useAppStore } from '@/store/useAppStore'
@@ -9,6 +13,7 @@ import DashboardMobileBottomNav, {
 } from '@/components/navigation/DashboardMobileBottomNav'
 
 const DRAWER_WIDTH = 280
+const SIDEBAR_RAIL_WIDTH = 76
 
 type SidebarLayoutProps = {
   sidebar: React.ReactNode
@@ -43,6 +48,8 @@ export default function SidebarLayout({
   const pathname = usePathname()
   const sidebarOpen = useAppStore(s => s.sidebarOpen)
   const setSidebarOpen = useAppStore(s => s.setSidebarOpen)
+  const sidebarCompact = useAppStore(s => s.sidebarCompact)
+  const toggleSidebarCompact = useAppStore(s => s.toggleSidebarCompact)
 
   useEffect(() => {
     if (!isDesktop) setSidebarOpen(false)
@@ -52,13 +59,52 @@ export default function SidebarLayout({
   return (
     <Grid container spacing={0} sx={{ width: '100%' }}>
       <Grid
-        size={sidebarSize}
+        size={sidebarCompact ? 'auto' : sidebarSize}
         sx={{
           display: { xs: 'none', md: 'block' },
-          flexShrink: 0
+          position: 'relative',
+          zIndex: 2,
+          flexShrink: 0,
+          overflow: 'visible',
+          ...(sidebarCompact
+            ? { width: SIDEBAR_RAIL_WIDTH, maxWidth: SIDEBAR_RAIL_WIDTH }
+            : null)
         }}
       >
         {sidebar}
+        <Tooltip
+          title={sidebarCompact ? 'Mostrar texto' : 'Solo iconos'}
+          placement="right"
+        >
+          <IconButton
+            size="small"
+            aria-pressed={sidebarCompact}
+            aria-label={
+              sidebarCompact
+                ? 'Mostrar texto del menú'
+                : 'Ocultar texto del menú'
+            }
+            onClick={toggleSidebarCompact}
+            sx={{
+              position: 'absolute',
+              top: 18,
+              right: 0,
+              transform: 'translateX(50%)',
+              zIndex: 2,
+              bgcolor: 'background.paper',
+              border: 1,
+              borderColor: 'divider',
+              boxShadow: 1,
+              '&:hover': { bgcolor: 'background.paper' }
+            }}
+          >
+            {sidebarCompact ? (
+              <KeyboardDoubleArrowRight fontSize="small" />
+            ) : (
+              <KeyboardDoubleArrowLeft fontSize="small" />
+            )}
+          </IconButton>
+        </Tooltip>
       </Grid>
 
       {!isDesktop && sidebarOpen ? (
@@ -81,7 +127,12 @@ export default function SidebarLayout({
         </Drawer>
       ) : null}
 
-      <Grid size={{ xs: 12, md: contentSize }} sx={{ minWidth: 0 }}>
+      <Grid
+        size={
+          sidebarCompact ? { xs: 12, md: 'grow' } : { xs: 12, md: contentSize }
+        }
+        sx={{ minWidth: 0 }}
+      >
         <Box
           component="main"
           sx={{

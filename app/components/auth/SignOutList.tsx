@@ -1,26 +1,17 @@
 'use client'
 
 import { signOut } from 'next-auth/react'
-import {
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText
-} from '@mui/material'
 import { Logout } from '@mui/icons-material'
+import SidebarNavItem from '@/components/navigation/SidebarNavItem'
 
 export default function SignOutList() {
-  const handleLogout = async () => {
-    await signOut({ callbackUrl: '/' })
-  }
   return (
-    <ListItem disablePadding>
-      <ListItemButton onClick={handleLogout}>
-        <ListItemIcon>
-          <Logout />
-        </ListItemIcon>
-        <ListItemText primary="Cerrar sesión" />
-      </ListItemButton>
-    </ListItem>
+    <SidebarNavItem
+      label="Cerrar sesión"
+      icon={<Logout />}
+      onClick={() => {
+        void signOut({ callbackUrl: '/' })
+      }}
+    />
   )
 }

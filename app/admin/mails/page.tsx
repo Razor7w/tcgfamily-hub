@@ -39,8 +39,10 @@ import MarkEmailUnreadIcon from '@mui/icons-material/MarkEmailUnread'
 import StorefrontIcon from '@mui/icons-material/Storefront'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 import FileDownloadIcon from '@mui/icons-material/FileDownload'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import Tooltip from '@mui/material/Tooltip'
 import Chip from '@mui/material/Chip'
+import Collapse from '@mui/material/Collapse'
 import Stack from '@mui/material/Stack'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
@@ -87,6 +89,10 @@ import { alpha, useTheme, type Theme } from '@mui/material/styles'
 import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
 import { AdminMailBranchesDialog } from '@/components/admin/AdminMailBranchesDialog'
 import {
+  MAIL_DESTINATION_CITIES,
+  type MailDestinationCity
+} from '@/lib/mail-destination'
+import {
   filterFromUserLabel,
   filterToRecipientLabel,
   participantSearchMatches,
@@ -94,6 +100,26 @@ import {
   type FilterFromUser,
   type FilterToRecipient
 } from '@/lib/mail-recipient-filter'
+
+const filterGroupSx = {
+  flexWrap: 'wrap',
+  gap: 0.75,
+  '& .MuiToggleButtonGroup-grouped': {
+    border: '1px solid',
+    borderColor: 'divider',
+    borderRadius: '10px !important',
+    mx: 0
+  },
+  '& .MuiToggleButton-root': {
+    px: 1.5,
+    py: 0.75,
+    textTransform: 'none',
+    fontWeight: 600,
+    letterSpacing: '-0.01em',
+    transition: 'background-color 200ms ease, transform 200ms ease',
+    '&:active': { transform: 'scale(0.98)' }
+  }
+} as const
 
 /** ObjectId de Mongo como string (sin depender del endpoint `/api/users`). */
 function isLikelyMongoObjectId(v: string) {
@@ -225,6 +251,10 @@ export default function MailsPage() {
   /** Pendiente retiro en tienda: rangos por días desde ingreso a tienda. */
   const [filterElapsed, setFilterElapsed] = useState<ElapsedBucketFilter>('all')
   const [filterBranchId, setFilterBranchId] = useState<string>('all')
+  const [filterDestination, setFilterDestination] = useState<
+    'all' | MailDestinationCity
+  >('all')
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false)
   const [branchesDialogOpen, setBranchesDialogOpen] = useState(false)
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false)
   const [bulkAssignBranchId, setBulkAssignBranchId] = useState('')
@@ -363,7 +393,8 @@ export default function MailsPage() {
     toUserIds: resolvedToParticipants.toUserIds,
     toRuts: resolvedToParticipants.toRuts,
     q: debouncedSearchId,
-    branchId: filterBranchId === 'all' ? null : filterBranchId
+    branchId: filterBranchId === 'all' ? null : filterBranchId,
+    destination: filterDestination === 'all' ? null : filterDestination
   })
 
   const mails = mailsRes?.mails ?? []
@@ -378,6 +409,7 @@ export default function MailsPage() {
     filterStage,
     filterElapsed,
     filterBranchId,
+    filterDestination,
     filterFromUser,
     debouncedFromInput,
     filterToRecipient,
@@ -488,7 +520,8 @@ export default function MailsPage() {
         toUserIds: resolvedToParticipants.toUserIds,
         toRuts: resolvedToParticipants.toRuts,
         q: debouncedSearchId,
-        branchId: filterBranchId === 'all' ? null : filterBranchId
+        branchId: filterBranchId === 'all' ? null : filterBranchId,
+        destination: filterDestination === 'all' ? null : filterDestination
       })
       const response = await fetch(`/api/mail/export?${qs}`)
       if (!response.ok) {
@@ -530,11 +563,41 @@ export default function MailsPage() {
     filterStage,
     filterElapsed,
     filterBranchId,
+    filterDestination,
     resolvedFromUserIds,
     resolvedToParticipants.toUserIds,
     resolvedToParticipants.toRuts,
     debouncedSearchId
   ])
+
+  const filtersActive =
+    searchId.trim().length > 0 ||
+    filterFromInput.trim().length > 0 ||
+    filterToInput.trim().length > 0 ||
+    filterFromUser != null ||
+    filterToRecipient != null ||
+    filterStage !== 'all' ||
+    filterElapsed !== 'all' ||
+    filterBranchId !== 'all' ||
+    filterDestination !== 'all'
+
+  const extraFiltersActive = filterElapsed !== 'all' || filterBranchId !== 'all'
+
+  const clearFilters = () => {
+    setSearchId('')
+    setDebouncedSearchId('')
+    setFilterFromUser(null)
+    setFilterFromInput('')
+    setDebouncedFromInput('')
+    setFilterToRecipient(null)
+    setFilterToInput('')
+    setDebouncedToInput('')
+    setFilterStage('all')
+    setFilterElapsed('all')
+    setFilterBranchId('all')
+    setFilterDestination('all')
+    setMoreFiltersOpen(false)
+  }
 
   const fromIdTrim = formData.fromUserId.trim()
   const toIdTrim = formData.toUserId.trim()
@@ -975,7 +1038,8 @@ export default function MailsPage() {
             ? 'none'
             : filterBranchId === 'all'
               ? null
-              : filterBranchId
+              : filterBranchId,
+          destination: filterDestination === 'all' ? null : filterDestination
         } as const
 
         const fetchIds = async (
@@ -1016,6 +1080,7 @@ export default function MailsPage() {
       resolvedToParticipants.toRuts,
       debouncedSearchId,
       filterBranchId,
+      filterDestination,
       filterStage
     ]
   )
@@ -1156,9 +1221,8 @@ export default function MailsPage() {
                 color="text.secondary"
                 sx={{ mt: 0.5 }}
               >
-                Registro de envíos, ingreso en tienda y retiro; filtra por
-                código, remitente/receptor (usuario o solo RUT), sucursal, etapa
-                o antigüedad en tienda.
+                Registro de envíos, ingreso y retiro. Filtra por destino,
+                persona, etapa o días en tienda.
               </Typography>
             </Box>
           </AdminStorePageHeading>
@@ -1220,21 +1284,46 @@ export default function MailsPage() {
 
         <Paper
           variant="outlined"
-          sx={{ p: { xs: 2, sm: 2.5 }, mb: 2, borderRadius: 2 }}
+          sx={{ p: { xs: 2, sm: 2.5 }, mb: 2, borderRadius: 3 }}
         >
-          <Typography
-            variant="subtitle2"
-            color="text.secondary"
-            sx={{ mb: 1.5 }}
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="flex-start"
+            justifyContent="space-between"
+            sx={{ mb: 2 }}
           >
-            Filtros
-          </Typography>
-          <Stack spacing={2}>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                variant="subtitle1"
+                sx={{ fontWeight: 700, letterSpacing: '-0.02em' }}
+              >
+                Filtros
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Código, personas, destino y estado.
+              </Typography>
+            </Box>
+            {filtersActive ? (
+              <Button
+                size="small"
+                color="inherit"
+                onClick={clearFilters}
+                sx={{ flexShrink: 0, textTransform: 'none', fontWeight: 600 }}
+              >
+                Limpiar
+              </Button>
+            ) : null}
+          </Stack>
+          <Stack spacing={2.5}>
             <Box
               sx={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 2,
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: '1fr',
+                  md: 'minmax(200px, 240px) minmax(0, 1fr) minmax(0, 1fr)'
+                },
+                gap: 1.5,
                 alignItems: 'center'
               }}
             >
@@ -1244,7 +1333,7 @@ export default function MailsPage() {
                 placeholder="Ej: 16-04-2026-001"
                 value={searchId}
                 onChange={e => setSearchId(e.target.value)}
-                sx={{ minWidth: { xs: '100%', sm: 220 } }}
+                sx={{ minWidth: 0 }}
               />
               <Autocomplete<FilterFromUser>
                 size="small"
@@ -1280,14 +1369,11 @@ export default function MailsPage() {
                 }}
                 getOptionLabel={filterFromUserLabel}
                 isOptionEqualToValue={(a, b) => a.id === b.id}
-                sx={{
-                  minWidth: { xs: '100%', sm: 260 },
-                  flex: { md: '1 1 200px' }
-                }}
+                sx={{ minWidth: 0 }}
                 renderInput={params => (
                   <TextField
                     {...params}
-                    label="Remitente (de)"
+                    label="Remitente"
                     placeholder="Nombre o RUT"
                     inputProps={{
                       ...params.inputProps,
@@ -1345,14 +1431,11 @@ export default function MailsPage() {
                 }}
                 getOptionLabel={filterToRecipientLabel}
                 isOptionEqualToValue={(a, b) => a.id === b.id}
-                sx={{
-                  minWidth: { xs: '100%', sm: 260 },
-                  flex: { md: '1 1 200px' }
-                }}
+                sx={{ minWidth: 0 }}
                 renderInput={params => (
                   <TextField
                     {...params}
-                    label="Destinatario (para)"
+                    label="Destinatario"
                     placeholder="Nombre, RUT o sin cuenta"
                     inputProps={{
                       ...params.inputProps,
@@ -1378,149 +1461,238 @@ export default function MailsPage() {
                 }
               />
             </Box>
-            <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: 'block', mb: 0.75 }}
-              >
-                Etapa del envío
-              </Typography>
-              <ToggleButtonGroup
-                exclusive
-                value={filterStage}
-                onChange={(_, v) => v != null && setFilterStage(v)}
-                size="small"
-                sx={{
-                  flexWrap: 'wrap',
-                  '& .MuiToggleButton-root': {
-                    px: 1.25,
-                    py: 0.5,
-                    textTransform: 'none',
-                    fontWeight: 500
-                  }
-                }}
-              >
-                <ToggleButton value="all">Todos</ToggleButton>
-                <ToggleButton value="pending">Sin ingresar</ToggleButton>
-                <ToggleButton value="inStore" color="warning">
-                  En tienda
-                </ToggleButton>
-                <ToggleButton value="transfer" color="info">
-                  En tránsito
-                </ToggleButton>
-                <ToggleButton value="retired" color="success">
-                  Retirado
-                </ToggleButton>
-              </ToggleButtonGroup>
-            </Box>
-            {storeBranches.length > 0 ? (
-              <FormControl
-                size="small"
-                sx={{ minWidth: { xs: '100%', sm: 220 } }}
-              >
-                <InputLabel id="mail-filter-branch-label">Sucursal</InputLabel>
-                <Select
-                  labelId="mail-filter-branch-label"
-                  label="Sucursal"
-                  value={filterBranchId}
-                  onChange={e => setFilterBranchId(String(e.target.value))}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', lg: '1fr auto' },
+                gap: 2,
+                alignItems: 'start'
+              }}
+            >
+              <Box>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    display: 'block',
+                    mb: 0.25,
+                    fontWeight: 600,
+                    letterSpacing: '-0.01em'
+                  }}
                 >
-                  <MenuItem value="all">Todas</MenuItem>
-                  <MenuItem value="none">Sin sucursal</MenuItem>
-                  {storeBranches.map(b => (
-                    <MenuItem key={b.id} value={b.id}>
-                      {b.name}
-                      {!b.isActive ? ' (inactiva)' : ''}
-                    </MenuItem>
+                  Hacia
+                </Typography>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{
+                    display: 'block',
+                    mb: 1,
+                    maxWidth: 560,
+                    lineHeight: 1.5
+                  }}
+                >
+                  En camino a esa sucursal, o ya ahí para retiro.
+                </Typography>
+                <ToggleButtonGroup
+                  exclusive
+                  value={filterDestination}
+                  onChange={(_, value) =>
+                    value != null && setFilterDestination(value)
+                  }
+                  size="small"
+                  sx={filterGroupSx}
+                >
+                  <ToggleButton value="all">Todos</ToggleButton>
+                  {MAIL_DESTINATION_CITIES.map(city => (
+                    <ToggleButton key={city.id} value={city.id}>
+                      {city.label}
+                    </ToggleButton>
                   ))}
-                </Select>
-              </FormControl>
-            ) : null}
-            <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: 'block', mb: 0.75 }}
-              >
-                Antigüedad en tienda (pendiente de retiro · desde marcado{' '}
-                <strong>Recibido en tienda</strong>)
-              </Typography>
-              <ToggleButtonGroup
-                exclusive
-                value={filterElapsed}
-                onChange={(_, v) => v != null && setFilterElapsed(v)}
-                size="small"
-                sx={{
-                  flexWrap: 'wrap',
-                  '& .MuiToggleButton-root': {
-                    px: 1,
-                    py: 0.5,
-                    textTransform: 'none',
-                    fontWeight: 500
-                  }
-                }}
-              >
-                <ToggleButton value="all">Todos</ToggleButton>
-                <ToggleButton
-                  value="green"
+                </ToggleButtonGroup>
+              </Box>
+              <Box sx={{ justifySelf: { lg: 'end' } }}>
+                <Typography
+                  variant="caption"
                   sx={{
-                    '&.Mui-selected': {
-                      bgcolor: theme => alpha(theme.palette.success.main, 0.28),
-                      color: 'success.dark',
-                      '&:hover': {
-                        bgcolor: theme =>
-                          alpha(theme.palette.success.main, 0.38)
-                      }
-                    }
+                    display: 'block',
+                    mb: 0.75,
+                    fontWeight: 600,
+                    letterSpacing: '-0.01em'
                   }}
                 >
-                  Verde · 0–7 días
-                </ToggleButton>
-                <ToggleButton
-                  value="yellow"
-                  sx={{
-                    '&.Mui-selected': {
-                      bgcolor: theme => alpha(theme.palette.warning.main, 0.38),
-                      color: 'warning.dark',
-                      '&:hover': {
-                        bgcolor: theme =>
-                          alpha(theme.palette.warning.main, 0.46)
-                      }
-                    }
-                  }}
+                  Etapa
+                </Typography>
+                <ToggleButtonGroup
+                  exclusive
+                  value={filterStage}
+                  onChange={(_, v) => v != null && setFilterStage(v)}
+                  size="small"
+                  sx={filterGroupSx}
                 >
-                  Amarillo · 8–14 días
-                </ToggleButton>
-                <ToggleButton
-                  value="orange"
-                  sx={{
-                    '&.Mui-selected': {
-                      bgcolor: alpha('#e65100', 0.32),
-                      color: '#bf360c',
-                      '&:hover': { bgcolor: alpha('#e65100', 0.42) }
-                    }
-                  }}
-                >
-                  Naranjo · 15–30 días
-                </ToggleButton>
-                <ToggleButton
-                  value="red"
-                  color="error"
-                  sx={{
-                    '&.Mui-selected': {
-                      bgcolor: theme => alpha(theme.palette.error.main, 0.26),
-                      color: 'error.dark',
-                      '&:hover': {
-                        bgcolor: theme => alpha(theme.palette.error.main, 0.38)
-                      }
-                    }
-                  }}
-                >
-                  Rojo · 31+ días
-                </ToggleButton>
-              </ToggleButtonGroup>
+                  <ToggleButton value="all">Todos</ToggleButton>
+                  <ToggleButton value="pending">Sin ingresar</ToggleButton>
+                  <ToggleButton value="inStore" color="warning">
+                    En tienda
+                  </ToggleButton>
+                  <ToggleButton value="transfer" color="info">
+                    En tránsito
+                  </ToggleButton>
+                  <ToggleButton value="retired" color="success">
+                    Retirado
+                  </ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
             </Box>
+            <Box>
+              <Button
+                size="small"
+                color="inherit"
+                onClick={() => setMoreFiltersOpen(open => !open)}
+                endIcon={
+                  <ExpandMoreIcon
+                    sx={{
+                      transition: 'transform 200ms ease',
+                      transform: moreFiltersOpen ? 'rotate(180deg)' : 'none'
+                    }}
+                  />
+                }
+                sx={{ textTransform: 'none', fontWeight: 600, px: 1 }}
+                aria-expanded={moreFiltersOpen}
+              >
+                {moreFiltersOpen
+                  ? 'Menos filtros'
+                  : extraFiltersActive
+                    ? 'Más filtros · activos'
+                    : 'Más filtros'}
+              </Button>
+            </Box>
+            <Collapse in={moreFiltersOpen} unmountOnExit>
+              <Stack spacing={2.5} sx={{ pt: 0.5 }}>
+                {storeBranches.length > 0 ? (
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        display: 'block',
+                        mb: 0.75,
+                        fontWeight: 600,
+                        letterSpacing: '-0.01em'
+                      }}
+                    >
+                      Dónde está ahora
+                    </Typography>
+                    <FormControl
+                      size="small"
+                      sx={{ minWidth: { xs: '100%', sm: 240 } }}
+                    >
+                      <InputLabel id="mail-filter-branch-label">
+                        Sucursal actual
+                      </InputLabel>
+                      <Select
+                        labelId="mail-filter-branch-label"
+                        label="Sucursal actual"
+                        value={filterBranchId}
+                        onChange={e =>
+                          setFilterBranchId(String(e.target.value))
+                        }
+                      >
+                        <MenuItem value="all">Todas</MenuItem>
+                        <MenuItem value="none">Sin sucursal</MenuItem>
+                        {storeBranches.map(b => (
+                          <MenuItem key={b.id} value={b.id}>
+                            {b.name}
+                            {!b.isActive ? ' (inactiva)' : ''}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Box>
+                ) : null}
+                <Box>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      display: 'block',
+                      mb: 0.75,
+                      fontWeight: 600,
+                      letterSpacing: '-0.01em'
+                    }}
+                  >
+                    Días esperando retiro
+                  </Typography>
+                  <ToggleButtonGroup
+                    exclusive
+                    value={filterElapsed}
+                    onChange={(_, v) => v != null && setFilterElapsed(v)}
+                    size="small"
+                    sx={filterGroupSx}
+                  >
+                    <ToggleButton value="all">Todos</ToggleButton>
+                    <ToggleButton
+                      value="green"
+                      sx={{
+                        '&.Mui-selected': {
+                          bgcolor: theme =>
+                            alpha(theme.palette.success.main, 0.28),
+                          color: 'success.dark',
+                          '&:hover': {
+                            bgcolor: theme =>
+                              alpha(theme.palette.success.main, 0.38)
+                          }
+                        }
+                      }}
+                    >
+                      Verde · 0–7 días
+                    </ToggleButton>
+                    <ToggleButton
+                      value="yellow"
+                      sx={{
+                        '&.Mui-selected': {
+                          bgcolor: theme =>
+                            alpha(theme.palette.warning.main, 0.38),
+                          color: 'warning.dark',
+                          '&:hover': {
+                            bgcolor: theme =>
+                              alpha(theme.palette.warning.main, 0.46)
+                          }
+                        }
+                      }}
+                    >
+                      Amarillo · 8–14 días
+                    </ToggleButton>
+                    <ToggleButton
+                      value="orange"
+                      sx={{
+                        '&.Mui-selected': {
+                          bgcolor: alpha('#e65100', 0.32),
+                          color: '#bf360c',
+                          '&:hover': { bgcolor: alpha('#e65100', 0.42) }
+                        }
+                      }}
+                    >
+                      Naranjo · 15–30 días
+                    </ToggleButton>
+                    <ToggleButton
+                      value="red"
+                      color="error"
+                      sx={{
+                        '&.Mui-selected': {
+                          bgcolor: theme =>
+                            alpha(theme.palette.error.main, 0.26),
+                          color: 'error.dark',
+                          '&:hover': {
+                            bgcolor: theme =>
+                              alpha(theme.palette.error.main, 0.38)
+                          }
+                        }
+                      }}
+                    >
+                      Rojo · 31+ días
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
+              </Stack>
+            </Collapse>
           </Stack>
         </Paper>
 

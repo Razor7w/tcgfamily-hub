@@ -171,6 +171,7 @@ export type UseMailsParams = {
   fromQ?: string
   toQ?: string
   branchId?: string | null
+  destination?: 'villa-alemana' | 'vina-del-mar' | null
   enabled?: boolean
 }
 
@@ -226,6 +227,7 @@ export function buildMailsQueryString(params: UseMailsParams = {}): string {
   if (params.fromQ?.trim()) sp.set('fromQ', params.fromQ.trim())
   if (params.toQ?.trim()) sp.set('toQ', params.toQ.trim())
   if (params.branchId?.trim()) sp.set('branchId', params.branchId.trim())
+  if (params.destination) sp.set('destination', params.destination)
   return sp.toString()
 }
 
@@ -247,6 +249,7 @@ export function useMails(params: UseMailsParams = {}) {
     fromQ = '',
     toQ = '',
     branchId = null,
+    destination = null,
     enabled = true
   } = params
 
@@ -268,7 +271,8 @@ export function useMails(params: UseMailsParams = {}) {
         q,
         fromQ,
         toQ,
-        branchId
+        branchId,
+        destination
       }
     ],
     enabled,
@@ -289,7 +293,8 @@ export function useMails(params: UseMailsParams = {}) {
         q,
         fromQ,
         toQ,
-        branchId
+        branchId,
+        destination
       })
       const response = await fetch(`/api/mail?${qs}`)
       if (!response.ok) {

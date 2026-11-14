@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   ExpandLess,
@@ -18,24 +17,17 @@ import {
   Style,
   ViewModule
 } from '@mui/icons-material'
-import {
-  Box,
-  Collapse,
-  Divider,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Stack
-} from '@mui/material'
+import { Box, Collapse, Divider, List, Stack } from '@mui/material'
 import AppVersion from '@/components/AppVersion'
 import { isStoreContextHubPath } from '@/lib/store-context-hub-path'
 import { useStoreHubHref } from '@/hooks/useStoreHubHref'
 import SignOutList from '@/components/auth/SignOutList'
 import AdminSidebarClient from '@/components/navigation/AdminSidebarClient'
+import SidebarNavItem from '@/components/navigation/SidebarNavItem'
+import { useSidebarRail } from '@/components/navigation/useSidebarRail'
 import { useDashboardModulesFromLayout } from '@/contexts/DashboardModulesContext'
 import { useMe } from '@/hooks/useMe'
+import { useAppStore } from '@/store/useAppStore'
 
 function isUnderDecklistNav(path: string) {
   return (
@@ -58,6 +50,8 @@ export default function DashboardUserNav({
   const showMail = visibility.mail
   const { data: me } = useMe()
   const showCarpetas = Boolean(me?.sellerModuleAccess)
+  const rail = useSidebarRail()
+  const sidebarCompact = useAppStore(s => s.sidebarCompact)
   const [decklistOpen, setDecklistOpen] = useState(() =>
     isUnderDecklistNav(pathname)
   )
@@ -73,148 +67,108 @@ export default function DashboardUserNav({
       <nav aria-label="main mailbox folders">
         <List data-tour="dashboard-main-nav">
           {isAdmin && <AdminSidebarClient isOwner={isOwner} />}
-          <ListItem disablePadding>
-            <ListItemButton
-              component={Link}
-              href="/dashboard"
-              selected={pathname === '/dashboard'}
-            >
-              <ListItemIcon>
-                <Home />
-              </ListItemIcon>
-              <ListItemText primary="Inicio" />
-            </ListItemButton>
-          </ListItem>
-          <ListItem disablePadding>
-            <ListItemButton
-              component={Link}
-              href={storeHubHref}
-              selected={
-                pathname === '/dashboard/tiendas' ||
-                isStoreContextHubPath(pathname)
-              }
-            >
-              <ListItemIcon>
-                <Storefront />
-              </ListItemIcon>
-              <ListItemText primary="Tiendas" />
-            </ListItemButton>
-          </ListItem>
+          <SidebarNavItem
+            label="Inicio"
+            icon={<Home />}
+            href="/dashboard"
+            selected={pathname === '/dashboard'}
+          />
+          <SidebarNavItem
+            label="Tiendas"
+            icon={<Storefront />}
+            href={storeHubHref}
+            selected={
+              pathname === '/dashboard/tiendas' ||
+              isStoreContextHubPath(pathname)
+            }
+          />
           {showMail ? (
-            <ListItem disablePadding>
-              <ListItemButton
-                component={Link}
-                href="/dashboard/mail"
-                selected={
-                  pathname === '/dashboard/mail' ||
-                  pathname.startsWith('/dashboard/mail/')
-                }
-              >
-                <ListItemIcon>
-                  <MarkunreadMailboxOutlined />
-                </ListItemIcon>
-                <ListItemText primary="Correos" />
-              </ListItemButton>
-            </ListItem>
+            <SidebarNavItem
+              label="Correos"
+              icon={<MarkunreadMailboxOutlined />}
+              href="/dashboard/mail"
+              selected={
+                pathname === '/dashboard/mail' ||
+                pathname.startsWith('/dashboard/mail/')
+              }
+            />
           ) : null}
-          <ListItem disablePadding>
-            <ListItemButton
-              component={Link}
-              href="/dashboard/tu-actividad"
-              selected={
-                pathname === '/dashboard/tu-actividad' ||
-                pathname.startsWith('/dashboard/tu-actividad/')
-              }
-            >
-              <ListItemIcon>
-                <Insights />
-              </ListItemIcon>
-              <ListItemText primary="Tu actividad" />
-            </ListItemButton>
-          </ListItem>
-          <ListItem disablePadding>
-            <ListItemButton
-              component={Link}
-              href="/dashboard/pokedex-30"
-              selected={
-                pathname === '/dashboard/pokedex-30' ||
-                pathname.startsWith('/dashboard/pokedex-30/')
-              }
-            >
-              <ListItemIcon>
-                <CatchingPokemon />
-              </ListItemIcon>
-              <ListItemText primary="Pokédex 30" />
-            </ListItemButton>
-          </ListItem>
+          <SidebarNavItem
+            label="Tu actividad"
+            icon={<Insights />}
+            href="/dashboard/tu-actividad"
+            selected={
+              pathname === '/dashboard/tu-actividad' ||
+              pathname.startsWith('/dashboard/tu-actividad/')
+            }
+          />
+          <SidebarNavItem
+            label="Pokédex 30"
+            icon={<CatchingPokemon />}
+            href="/dashboard/pokedex-30"
+            selected={
+              pathname === '/dashboard/pokedex-30' ||
+              pathname.startsWith('/dashboard/pokedex-30/')
+            }
+          />
           {showCarpetas ? (
-            <ListItem disablePadding>
-              <ListItemButton
-                component={Link}
-                href="/dashboard/carpetas"
-                selected={
-                  pathname === '/dashboard/carpetas' ||
-                  pathname.startsWith('/dashboard/carpetas/')
-                }
-              >
-                <ListItemIcon>
-                  <FolderOpen />
-                </ListItemIcon>
-                <ListItemText primary="Carpetas" />
-              </ListItemButton>
-            </ListItem>
+            <SidebarNavItem
+              label="Carpetas"
+              icon={<FolderOpen />}
+              href="/dashboard/carpetas"
+              selected={
+                pathname === '/dashboard/carpetas' ||
+                pathname.startsWith('/dashboard/carpetas/')
+              }
+            />
           ) : null}
-          <ListItem disablePadding>
-            <ListItemButton
+          {rail ? null : (
+            <SidebarNavItem
+              label="Mazos"
+              icon={<Style />}
               onClick={() => setDecklistOpen(s => !s)}
-              aria-expanded={decklistOpen}
-            >
-              <ListItemIcon>
-                <Style />
-              </ListItemIcon>
-              <ListItemText primary="Mazos" />
-              {decklistOpen ? <ExpandLess /> : <ExpandMore />}
-            </ListItemButton>
-          </ListItem>
-          <Collapse in={decklistOpen} timeout="auto" unmountOnExit>
+              ariaExpanded={decklistOpen}
+              trailing={decklistOpen ? <ExpandLess /> : <ExpandMore />}
+            />
+          )}
+          <Collapse in={rail || decklistOpen} timeout="auto" unmountOnExit>
             <List component="div" disablePadding>
-              <ListItem disablePadding>
-                <ListItemButton href="/dashboard/decklists" sx={{ pl: 3 }}>
-                  <ListItemIcon>
-                    <Layers fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText primary="Mis listas" />
-                </ListItemButton>
-              </ListItem>
-              <ListItem disablePadding>
-                <ListItemButton
-                  href="/dashboard/decklists/publicos"
-                  sx={{ pl: 3 }}
-                >
-                  <ListItemIcon>
-                    <Public fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText primary="Listas públicas" />
-                </ListItemButton>
-              </ListItem>
-              <ListItem disablePadding>
-                <ListItemButton href="/dashboard/deck-builder" sx={{ pl: 3 }}>
-                  <ListItemIcon>
-                    <ViewModule fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText primary="Armar mazo" />
-                </ListItemButton>
-              </ListItem>
+              <SidebarNavItem
+                label="Mis listas"
+                icon={<Layers fontSize="small" />}
+                href="/dashboard/decklists"
+                inset={3}
+                selected={
+                  pathname === '/dashboard/decklists' ||
+                  (pathname.startsWith('/dashboard/decklists/') &&
+                    !pathname.startsWith('/dashboard/decklists/publicos'))
+                }
+              />
+              <SidebarNavItem
+                label="Listas públicas"
+                icon={<Public fontSize="small" />}
+                href="/dashboard/decklists/publicos"
+                inset={3}
+                selected={pathname.startsWith('/dashboard/decklists/publicos')}
+              />
+              <SidebarNavItem
+                label="Armar mazo"
+                icon={<ViewModule fontSize="small" />}
+                href="/dashboard/deck-builder"
+                inset={3}
+                selected={pathname.startsWith('/dashboard/deck-builder')}
+              />
             </List>
           </Collapse>
-          <ListItem disablePadding>
-            <ListItemButton href="/dashboard/perfil">
-              <ListItemIcon>
-                <Person />
-              </ListItemIcon>
-              <ListItemText primary="Perfil" />
-            </ListItemButton>
-          </ListItem>
+          <SidebarNavItem
+            label="Perfil"
+            icon={<Person />}
+            href="/dashboard/perfil"
+            selected={
+              pathname === '/dashboard/perfil' ||
+              pathname.startsWith('/dashboard/perfil/')
+            }
+          />
         </List>
       </nav>
 
@@ -226,7 +180,13 @@ export default function DashboardUserNav({
         </List>
       </nav>
 
-      <Box sx={{ px: 2, pt: 2 }}>
+      <Box
+        sx={{
+          px: 2,
+          pt: 2,
+          display: sidebarCompact ? { xs: 'block', md: 'none' } : 'block'
+        }}
+      >
         <AppVersion align="left" />
       </Box>
     </Stack>

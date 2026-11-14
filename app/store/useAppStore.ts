@@ -5,6 +5,8 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 interface AppState {
   // UI State
   sidebarOpen: boolean
+  /** Desktop: oculta las etiquetas del menú lateral y deja solo iconos. */
+  sidebarCompact: boolean
   theme: 'light' | 'dark'
 
   // Filtros globales (ejemplo)
@@ -26,6 +28,7 @@ interface AppActions {
   // UI Actions
   toggleSidebar: () => void
   setSidebarOpen: (open: boolean) => void
+  toggleSidebarCompact: () => void
   setTheme: (theme: 'light' | 'dark') => void
   toggleTheme: () => void
 
@@ -46,6 +49,7 @@ type AppStore = AppState & AppActions
 // Store inicial
 const initialState: AppState = {
   sidebarOpen: false,
+  sidebarCompact: false,
   theme: 'light',
   userFilter: {},
   notifications: []
@@ -61,6 +65,9 @@ export const useAppStore = create<AppStore>()(
       toggleSidebar: () => set(state => ({ sidebarOpen: !state.sidebarOpen })),
 
       setSidebarOpen: open => set({ sidebarOpen: open }),
+
+      toggleSidebarCompact: () =>
+        set(state => ({ sidebarCompact: !state.sidebarCompact })),
 
       setTheme: theme => set({ theme }),
 
@@ -101,8 +108,9 @@ export const useAppStore = create<AppStore>()(
       name: 'app-storage',
       storage: createJSONStorage(() => localStorage),
       partialize: state => ({
-        // Solo tema; sidebarOpen no debe persistir (rehidratación + móvil rompía el drawer).
-        theme: state.theme
+        // sidebarOpen no debe persistir (rehidratación + móvil rompía el drawer).
+        theme: state.theme,
+        sidebarCompact: state.sidebarCompact
       }),
       onRehydrateStorage: () => () => {
         useAppStore.getState().setSidebarOpen(false)
