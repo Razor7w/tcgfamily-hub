@@ -265,6 +265,9 @@ export async function PUT(
 
     const wasReceivedInStore = existing.isRecivedInStore
     const wasWithdrawn = existing.isRecived
+    const prevTransferStatus = (
+      existing.transfer as { status?: string } | undefined
+    )?.status
 
     const nextStatus = resolveMailStatusAfterUpdate({
       isRecived: typeof isRecived === 'boolean' ? isRecived : undefined,
@@ -354,6 +357,17 @@ export async function PUT(
         existing.set('branchId', undefined)
         existing.markModified('branchId')
       }
+    }
+
+    const nextTransferStatus = (
+      existing.transfer as { status?: string } | undefined
+    )?.status
+    if (
+      existing.isRecived !== wasWithdrawn ||
+      existing.isRecivedInStore !== wasReceivedInStore ||
+      nextTransferStatus !== prevTransferStatus
+    ) {
+      existing.statusUpdatedAt = new Date()
     }
 
     const startedBranchTransit =

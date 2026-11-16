@@ -22,6 +22,7 @@ import {
 import {
   getElapsedCalendarDaysSince,
   getMailStoreWaitDays,
+  mailStoreWaitStartedAt,
   toneForStoreWaitDays,
   type StoreWaitTone
 } from '@/lib/mail-store-days'
@@ -78,10 +79,10 @@ function buildFlatRows(mails: Mail[], sortByReceived: boolean): FlatRow[] {
     )
     if (storeCmp !== 0) return storeCmp
     const ta = sortByReceived
-      ? (a.receivedInStoreAt ?? a.updatedAt)
+      ? (mailStoreWaitStartedAt(a) ?? a.receivedInStoreAt ?? a.updatedAt)
       : a.createdAt
     const tb = sortByReceived
-      ? (b.receivedInStoreAt ?? b.updatedAt)
+      ? (mailStoreWaitStartedAt(b) ?? b.receivedInStoreAt ?? b.updatedAt)
       : b.createdAt
     return new Date(tb).getTime() - new Date(ta).getTime()
   })

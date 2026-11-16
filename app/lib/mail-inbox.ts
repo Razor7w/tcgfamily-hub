@@ -20,6 +20,12 @@ export function isMailWaitingForPickup(
   currentUserId: string
 ): boolean {
   if (mail.isRecived || !mail.isRecivedInStore) return false
+  if (
+    mail.transfer?.status === 'requested' ||
+    mail.transfer?.status === 'in_transit'
+  ) {
+    return false
+  }
   if (!currentUserId) return false
   if (mailUserId(mail.fromUserId) === currentUserId) return false
   if (mail.toUserId && mailUserId(mail.toUserId) === currentUserId) return true

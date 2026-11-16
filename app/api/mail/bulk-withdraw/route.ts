@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       >()
 
     const result = await Mails.updateMany(withdrawFilter, {
-      $set: { isRecived: true }
+      $set: { isRecived: true, statusUpdatedAt: new Date() }
     })
 
     for (const mail of pending) {

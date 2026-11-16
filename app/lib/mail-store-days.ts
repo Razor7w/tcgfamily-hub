@@ -28,15 +28,39 @@ export function toneForStoreWaitDays(days: number): StoreWaitTone {
   return 'red'
 }
 
-/** Días en tienda esperando retiro desde `receivedInStoreAt`; sin fecha → null. */
-export function getMailStoreWaitDays(mail: {
+type MailStoreWaitInput = {
   isRecived?: boolean
   isRecivedInStore?: boolean
   receivedInStoreAt?: string | Date | null
-}): number | null {
+  transfer?: {
+    status?: string | null
+    receivedAtDestinationAt?: string | Date | null
+  } | null
+}
+
+/**
+ * Inicio del conteo de días esperando retiro.
+ * Sin traslado: ingreso en la tienda (`receivedInStoreAt`).
+ * Traslado entre sucursales: recepción en la sucursal de destino.
+ * En camino o aún no enviado, el conteo no empieza.
+ */
+export function mailStoreWaitStartedAt(
+  mail: MailStoreWaitInput
+): string | Date | null {
+  const status = mail.transfer?.status
+  if (status === 'requested' || status === 'in_transit') return null
+  if (status === 'received') {
+    return mail.transfer?.receivedAtDestinationAt ?? null
+  }
+  return mail.receivedInStoreAt ?? null
+}
+
+/** Días en tienda esperando retiro; sin ancla o ya retirado → null. */
+export function getMailStoreWaitDays(mail: MailStoreWaitInput): number | null {
   if (!mail.isRecivedInStore || mail.isRecived) return null
-  if (mail.receivedInStoreAt == null) return null
-  return getElapsedCalendarDaysSince(mail.receivedInStoreAt)
+  const startedAt = mailStoreWaitStartedAt(mail)
+  if (startedAt == null) return null
+  return getElapsedCalendarDaysSince(startedAt)
 }
 
 export function matchesStoreWaitBucket(
