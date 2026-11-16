@@ -421,6 +421,7 @@ export async function POST(request: NextRequest) {
           toRut: resolvedToRut,
           isRecived: adminCreateIsRecived,
           isRecivedInStore: adminCreateInStore,
+          statusUpdatedAt: new Date(),
           ...(adminCreateInStore ? { receivedInStoreAt: new Date() } : {}),
           ...(transferDoc ? { transfer: transferDoc } : {}),
           observations: adminFullCreate

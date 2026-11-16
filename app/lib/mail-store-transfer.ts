@@ -9,6 +9,8 @@ export type MailTransferView = {
   originBranchName?: string
   destinationBranchName?: string
   destinationBranchId?: string
+  /** Recepción en la sucursal de destino. Ancla de los días esperando retiro. */
+  receivedAtDestinationAt?: string | Date | null
 }
 
 export function formatMailTransferFee(

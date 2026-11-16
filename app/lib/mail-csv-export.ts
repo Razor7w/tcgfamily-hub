@@ -153,10 +153,28 @@ function mailToCsvCells(mail: unknown): string[] {
       : typeof row.updatedAt === 'string'
         ? row.updatedAt
         : null
+  const transfer = (
+    row as {
+      transfer?: {
+        status?: string
+        receivedAtDestinationAt?: Date | string | null
+      }
+    }
+  ).transfer
+  const destinationReceivedAt =
+    transfer?.receivedAtDestinationAt instanceof Date ||
+    typeof transfer?.receivedAtDestinationAt === 'string'
+      ? transfer.receivedAtDestinationAt
+      : null
+  const ingresoTiendaAt =
+    transfer?.status === 'received' && destinationReceivedAt
+      ? destinationReceivedAt
+      : receivedInStoreAt
   const waitDays = getMailStoreWaitDays({
     isRecived,
     isRecivedInStore,
-    receivedInStoreAt
+    receivedInStoreAt,
+    transfer
   })
 
   return [
@@ -167,7 +185,7 @@ function mailToCsvCells(mail: unknown): string[] {
       transfer: (row as { transfer?: { status?: string } }).transfer
     }).label,
     formatMailCsvDateTime(createdAt),
-    formatMailCsvDateTime(receivedInStoreAt),
+    formatMailCsvDateTime(ingresoTiendaAt),
     formatMailCsvDateTime(updatedAt),
     waitDays == null ? '' : String(waitDays),
     from.name,

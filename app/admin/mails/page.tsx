@@ -69,7 +69,11 @@ import { useCreateUser, type CreateUserData } from '@/hooks/useUsers'
 import { rutFromCedulaQrScan } from '@/lib/cedula-qr-rut'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
 import { MAIL_CONTACT_PHONE_MAX } from '@/lib/mail-contact-phone'
-import { getMailStatusChip } from '@/lib/mail-status'
+import {
+  formatMailLogDateTime,
+  getMailStatusChip,
+  mailLastStatusUpdateAt
+} from '@/lib/mail-status'
 import {
   mailTransferRouteLabel,
   mailTransferStatusSentence
@@ -1796,6 +1800,7 @@ export default function MailsPage() {
                 const to =
                   typeof mail.toUserId === 'object' ? mail.toUserId : null
                 const waitDays = getMailStoreWaitDays(mail)
+                const statusUpdatedAt = mailLastStatusUpdateAt(mail)
                 const waitChip =
                   waitDays !== null ? storeWaitChipProps(waitDays) : null
                 const status = getMailStatusChip(mail)
@@ -1917,8 +1922,29 @@ export default function MailsPage() {
                               }
                             }}
                           />
+                          {statusUpdatedAt ? (
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              title="Última actualización del estado"
+                              sx={{
+                                display: 'block',
+                                textAlign: 'right',
+                                fontVariantNumeric: 'tabular-nums',
+                                lineHeight: 1.35
+                              }}
+                            >
+                              {formatMailLogDateTime(statusUpdatedAt)}
+                            </Typography>
+                          ) : null}
                           {waitChip ? (
-                            <Tooltip title="Esperando retiro: días desde el ingreso confirmado en tienda">
+                            <Tooltip
+                              title={
+                                mail.transfer?.status === 'received'
+                                  ? 'Esperando retiro: días desde que la sucursal de destino lo recepcionó'
+                                  : 'Esperando retiro: días desde el ingreso confirmado en tienda'
+                              }
+                            >
                               <Chip
                                 label={waitChip.label}
                                 {...(waitChip.color !== undefined

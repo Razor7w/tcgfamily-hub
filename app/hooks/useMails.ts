@@ -47,6 +47,8 @@ export interface Mail {
   isRecivedInStore?: boolean
   /** ISO cuando la tienda confirmó ingreso en tienda. */
   receivedInStoreAt?: string | null
+  /** ISO de la última vez que cambió el estado. */
+  statusUpdatedAt?: string | null
   observations?: string
   /** Teléfono de contacto del envío (opcional). */
   contactPhone?: string
@@ -695,6 +697,13 @@ export function useUpdateMail() {
             next.receivedInStoreAt = new Date().toISOString()
           } else if (!resolved.isRecivedInStore) {
             next.receivedInStoreAt = null
+          }
+          if (
+            resolved.isRecived !== mail.isRecived ||
+            resolved.isRecivedInStore !== (mail.isRecivedInStore ?? false) ||
+            next.transfer?.status !== mail.transfer?.status
+          ) {
+            next.statusUpdatedAt = new Date().toISOString()
           }
         }
         if (data.observations !== undefined) {

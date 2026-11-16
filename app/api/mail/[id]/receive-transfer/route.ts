@@ -63,6 +63,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     mail.set('branchId', transfer.destinationBranchId)
     mail.set('transfer.status', 'received')
     mail.set('transfer.receivedAtDestinationAt', now)
+    mail.statusUpdatedAt = now
     mail.isRecivedInStore = true
     mail.isRecived = false
     mail.markModified('transfer')

@@ -16,6 +16,7 @@ import { alpha } from '@mui/material/styles'
 import { useSession } from 'next-auth/react'
 import ButtonBarCode from '@/components/molecule/ButtonBarCode'
 import { useMyMails, type Mail } from '@/hooks/useMails'
+import { mailStoreWaitStartedAt } from '@/lib/mail-store-days'
 
 const WAITING_MAILS_LIMIT = 5
 
@@ -26,6 +27,12 @@ function mailUserId(ref: { _id: string } | string | null | undefined): string {
 
 function isMailWaitingForPickup(mail: Mail, currentUserId: string): boolean {
   if (mail.isRecived || !mail.isRecivedInStore) return false
+  if (
+    mail.transfer?.status === 'requested' ||
+    mail.transfer?.status === 'in_transit'
+  ) {
+    return false
+  }
   if (!currentUserId) return false
   if (mailUserId(mail.fromUserId) === currentUserId) return false
   if (mail.toUserId && mailUserId(mail.toUserId) === currentUserId) return true
@@ -108,15 +115,17 @@ export default function StoreHubMailsWaitingRail({
         ) : (
           <Stack spacing={1.25}>
             {waiting.map(mail => {
-              const dateLabel = mail.receivedInStoreAt
-                ? new Date(mail.receivedInStoreAt).toLocaleDateString('es-CL', {
-                    day: 'numeric',
-                    month: 'short'
-                  })
-                : new Date(mail.updatedAt).toLocaleDateString('es-CL', {
-                    day: 'numeric',
-                    month: 'short'
-                  })
+              const arrivedAt =
+                mailStoreWaitStartedAt(mail) ??
+                mail.receivedInStoreAt ??
+                mail.updatedAt
+              const dateLabel = new Date(arrivedAt).toLocaleDateString(
+                'es-CL',
+                {
+                  day: 'numeric',
+                  month: 'short'
+                }
+              )
               return (
                 <Paper
                   key={mail._id}

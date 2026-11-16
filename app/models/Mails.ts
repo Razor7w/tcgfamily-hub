@@ -18,6 +18,8 @@ export interface IMail extends Document {
   isRecivedInStore: boolean
   /** Momento en que la tienda marcó como recibido en tienda (ancla para días esperando retiro). */
   receivedInStoreAt?: Date | null
+  /** Última vez que cambió el estado (ingreso, tránsito, recepción en destino o retiro). */
+  statusUpdatedAt?: Date | null
   observations?: string
   /** Teléfono de contacto del envío (opcional). */
   contactPhone?: string
@@ -34,6 +36,7 @@ export interface IMail extends Document {
     originBranchName?: string
     destinationBranchId: ObjectId
     destinationBranchName: string
+    /** Recepción en la sucursal final. Desde aquí cuentan los días esperando retiro. */
     receivedAtDestinationAt?: Date | null
   }
 }
@@ -75,6 +78,7 @@ const MailSchema = new Schema<IMail>(
     isRecived: { type: Boolean, default: false, required: true },
     isRecivedInStore: { type: Boolean, default: false, required: true },
     receivedInStoreAt: { type: Date, default: undefined },
+    statusUpdatedAt: { type: Date, default: undefined },
     observations: { type: String, default: '' },
     contactPhone: { type: String, default: '' },
     transfer: {
@@ -172,6 +176,15 @@ MailSchema.index({
   'transfer.destinationBranchId': 1,
   'transfer.status': 1,
   createdAt: -1
+})
+
+/** Días esperando retiro de un traslado ya recepcionado en destino. */
+MailSchema.index({
+  storeId: 1,
+  isRecived: 1,
+  isRecivedInStore: 1,
+  'transfer.status': 1,
+  'transfer.receivedAtDestinationAt': 1
 })
 
 if (mongoose.models.Mail) {

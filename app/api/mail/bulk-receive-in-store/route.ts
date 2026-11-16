@@ -77,7 +77,11 @@ export async function POST(request: NextRequest) {
 
     const now = new Date()
     const result = await Mails.updateMany(filter, {
-      $set: { isRecivedInStore: true, receivedInStoreAt: now }
+      $set: {
+        isRecivedInStore: true,
+        receivedInStoreAt: now,
+        statusUpdatedAt: now
+      }
     })
 
     const transitIds = pending

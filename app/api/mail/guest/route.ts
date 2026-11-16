@@ -227,6 +227,7 @@ export async function POST(request: NextRequest) {
           toRut,
           isRecived: false,
           isRecivedInStore: false,
+          statusUpdatedAt: new Date(),
           ...(transferDoc ? { transfer: transferDoc } : {}),
           observations: normalizeObs(body?.observations),
           contactPhone: normalizeMailContactPhone(body?.contactPhone)

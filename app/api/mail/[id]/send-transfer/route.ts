@@ -104,6 +104,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       destinationBranchId: new mongoose.Types.ObjectId(destination.id),
       destinationBranchName: destination.name.trim()
     })
+    mail.statusUpdatedAt = new Date()
     mail.markModified('transfer')
     await mail.save()
 

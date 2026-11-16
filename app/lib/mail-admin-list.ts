@@ -62,7 +62,7 @@ export const MAIL_EXPORT_MAX_LIMIT = 10_000
 const MAIL_EXPORT_USER_SELECT = 'name rut email phone'
 
 const MAIL_LIST_SELECT =
-  'code storeId branchId fromUserId fromRut isGuest toUserId toRut isRecived isRecivedInStore receivedInStoreAt observations contactPhone transfer createdAt updatedAt'
+  'code storeId branchId fromUserId fromRut isGuest toUserId toRut isRecived isRecivedInStore receivedInStoreAt statusUpdatedAt observations contactPhone transfer createdAt updatedAt'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -304,50 +304,69 @@ function stageMongoFilter(
   return null
 }
 
-/** Rangos de antigüedad en tienda (misma lógica que `toneForStoreWaitDays`). */
+/**
+ * Rangos de antigüedad en tienda (misma lógica que `toneForStoreWaitDays`).
+ * Sin traslado, la fecha es el ingreso en tienda. Con traslado, es la
+ * recepción en la sucursal de destino; en camino no entra en ningún rango.
+ */
 function elapsedMongoFilter(
   elapsed: ElapsedBucketFilter | undefined
 ): Record<string, unknown> | null {
   if (!elapsed || elapsed === 'all') return null
   const now = Date.now()
-  const base = {
+  const anchor = waitAnchorRange(elapsed, now)
+  if (!anchor) return null
+  return {
     isRecived: false,
     isRecivedInStore: true,
-    'transfer.status': { $ne: 'in_transit' },
-    receivedInStoreAt: { $type: 'date' as const }
-  }
-  if (elapsed === 'green') {
-    return {
-      ...base,
-      receivedInStoreAt: {
-        $gte: new Date(now - 7 * DAY_MS),
-        $type: 'date'
+    $or: [
+      {
+        $and: [
+          {
+            $or: [
+              { 'transfer.status': { $exists: false } },
+              { 'transfer.status': null },
+              {
+                'transfer.status': {
+                  $nin: ['requested', 'in_transit', 'received']
+                }
+              }
+            ]
+          },
+          { receivedInStoreAt: anchor }
+        ]
+      },
+      {
+        'transfer.status': 'received',
+        'transfer.receivedAtDestinationAt': anchor
       }
-    }
+    ]
+  }
+}
+
+function waitAnchorRange(
+  elapsed: Exclude<ElapsedBucketFilter, 'all'>,
+  now: number
+): Record<string, unknown> | null {
+  if (elapsed === 'green') {
+    return { $gte: new Date(now - 7 * DAY_MS), $type: 'date' }
   }
   if (elapsed === 'yellow') {
     return {
-      ...base,
-      receivedInStoreAt: {
-        $gte: new Date(now - 14 * DAY_MS),
-        $lt: new Date(now - 7 * DAY_MS)
-      }
+      $gte: new Date(now - 14 * DAY_MS),
+      $lt: new Date(now - 7 * DAY_MS)
     }
   }
   if (elapsed === 'orange') {
     return {
-      ...base,
-      receivedInStoreAt: {
-        $gte: new Date(now - 30 * DAY_MS),
-        $lt: new Date(now - 14 * DAY_MS)
-      }
+      $gte: new Date(now - 30 * DAY_MS),
+      $lt: new Date(now - 14 * DAY_MS)
     }
   }
-  // red: 31+ días
-  return {
-    ...base,
-    receivedInStoreAt: { $lt: new Date(now - 30 * DAY_MS) }
+  if (elapsed === 'red') {
+    return { $lt: new Date(now - 30 * DAY_MS) }
   }
+  return null
 }
 
 /** Fallback API: solo si no vienen IDs pre-resueltos. Exige ≥2 chars. */

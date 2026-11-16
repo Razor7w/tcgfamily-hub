@@ -35,6 +35,7 @@ import ButtonBarCode from '@/components/molecule/ButtonBarCode'
 import RegisterMailDialog from '@/components/mails/RegisterMailDialog'
 import MailFlowExplainer from '@/components/mails/MailFlowExplainer'
 import { getMailStatusChip } from '@/lib/mail-status'
+import { getMailStoreWaitDays } from '@/lib/mail-store-days'
 import {
   mailTransferRouteLabel,
   mailTransferStatusSentence
@@ -303,8 +304,11 @@ function MailDashboardCard({
     Boolean(currentUserId) && mailUserId(mail.fromUserId) === currentUserId
   const canDelete = isEmisor && !mail.isRecivedInStore
   const statusChip = getMailStatusChip(mail)
-  const days = getElapsedDays(mail.createdAt)
-  const elapsed = getElapsedBadge(days)
+  const isBranchTransfer = Boolean(mail.transfer?.status)
+  const days = isBranchTransfer
+    ? getMailStoreWaitDays(mail)
+    : getElapsedDays(mail.createdAt)
+  const elapsed = days == null ? null : getElapsedBadge(days)
   const deText = from ? `${from.name ?? '-'} (${from.rut ?? '-'})` : '—'
   const paraText = to
     ? `${to.name ?? '-'} (${to.rut ?? '-'})`
@@ -371,12 +375,14 @@ function MailDashboardCard({
                 size="small"
                 sx={{ fontWeight: 700 }}
               />
-              <Chip
-                label={elapsed.label}
-                color={elapsed.color}
-                size="small"
-                sx={{ fontWeight: 600 }}
-              />
+              {elapsed ? (
+                <Chip
+                  label={elapsed.label}
+                  color={elapsed.color}
+                  size="small"
+                  sx={{ fontWeight: 600 }}
+                />
+              ) : null}
             </Stack>
             {canDelete ? (
               <>
