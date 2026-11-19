@@ -370,8 +370,11 @@ export async function PUT(
       existing.statusUpdatedAt = new Date()
     }
 
+    // `transfer` es el mismo objeto que se acaba de pasar a in_transit.
+    // Hay que mirar el estado previo: el aviso de retiro sale recién
+    // cuando la sucursal de destino recepciona.
     const startedBranchTransit =
-      transfer?.status === 'requested' &&
+      prevTransferStatus === 'requested' &&
       nextStatus.isRecivedInStore &&
       !wasReceivedInStore
     const becameReadyInStore =
