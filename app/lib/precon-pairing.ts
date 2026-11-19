@@ -1,5 +1,5 @@
 export const PRECON_TABLE_SIZE = 4
-export const PRECON_MIN_PLAYERS = 8
+export const PRECON_SMALL_TABLE_SIZE = 3
 export const PRECON_MAX_PLAYERS = 32
 export const PRECON_DEFAULT_PLAYERS = 16
 export const PRECON_DEFAULT_ROUNDS = 3
@@ -7,15 +7,102 @@ export const PRECON_DEFAULT_ROUNDS = 3
 export type PreconSettings = {
   players: number
   rounds: number
+  threes: number
+  fours: number
 }
 
 export const PRECON_DEFAULT_SETTINGS: PreconSettings = {
   players: PRECON_DEFAULT_PLAYERS,
-  rounds: PRECON_DEFAULT_ROUNDS
+  rounds: PRECON_DEFAULT_ROUNDS,
+  threes: 0,
+  fours: PRECON_DEFAULT_PLAYERS / PRECON_TABLE_SIZE
+}
+
+/**
+ * Mesas de 4 y, si el número no cierra, de 3.
+ * Con 10 jugadores queda una de 4 y dos de 3.
+ */
+export function preconTableSizes(players: number): number[] {
+  for (
+    let fours = Math.floor(players / PRECON_TABLE_SIZE);
+    fours >= 0;
+    fours -= 1
+  ) {
+    const rest = players - fours * PRECON_TABLE_SIZE
+    if (rest % PRECON_SMALL_TABLE_SIZE !== 0) continue
+    return [
+      ...Array.from({ length: fours }, () => PRECON_TABLE_SIZE),
+      ...Array.from(
+        { length: rest / PRECON_SMALL_TABLE_SIZE },
+        () => PRECON_SMALL_TABLE_SIZE
+      )
+    ]
+  }
+  return []
+}
+
+export function preconSettingsSizes(settings: PreconSettings): number[] {
+  if (
+    Number.isInteger(settings.threes) &&
+    Number.isInteger(settings.fours) &&
+    settings.threes >= 0 &&
+    settings.fours >= 0 &&
+    settings.threes + settings.fours > 0
+  ) {
+    return preconSizesFromCounts(settings.threes, settings.fours)
+  }
+  return preconTableSizes(settings.players)
 }
 
 export function preconTableCount(settings: PreconSettings): number {
-  return settings.players / PRECON_TABLE_SIZE
+  return preconSettingsSizes(settings).length
+}
+
+export function preconTableLayoutLabel(players: number): string {
+  const sizes = preconTableSizes(players)
+  return preconLayoutLabelFromSizes(sizes)
+}
+
+export function preconLayoutLabelFromSizes(sizes: readonly number[]): string {
+  const fours = sizes.filter(size => size === PRECON_TABLE_SIZE).length
+  const threes = sizes.filter(size => size === PRECON_SMALL_TABLE_SIZE).length
+  const parts: string[] = []
+  if (fours > 0) {
+    parts.push(`${fours} ${fours === 1 ? 'mesa' : 'mesas'} de 4`)
+  }
+  if (threes > 0) {
+    parts.push(`${threes} ${threes === 1 ? 'mesa' : 'mesas'} de 3`)
+  }
+  return parts.join(' y ')
+}
+
+/** Mesas de 4 primero y después las de 3. */
+export function preconSizesFromCounts(threes: number, fours: number): number[] {
+  return [
+    ...Array.from({ length: fours }, () => PRECON_TABLE_SIZE),
+    ...Array.from({ length: threes }, () => PRECON_SMALL_TABLE_SIZE)
+  ]
+}
+
+export function preconSeatPlanError(
+  players: number,
+  threes: number,
+  fours: number
+): string | null {
+  if (
+    !Number.isInteger(threes) ||
+    threes < 0 ||
+    !Number.isInteger(fours) ||
+    fours < 0
+  ) {
+    return 'Indica cuántas mesas de 3 y de 4.'
+  }
+  if (threes + fours < 1) return 'Hace falta al menos una mesa.'
+  const seated = threes * PRECON_SMALL_TABLE_SIZE + fours * PRECON_TABLE_SIZE
+  if (seated !== players) {
+    return `Esas mesas sientan a ${seated} jugadores y hay ${players}.`
+  }
+  return null
 }
 
 function clampInt(
@@ -29,35 +116,62 @@ function clampInt(
   return Math.min(max, Math.max(min, parsed))
 }
 
-/** El mínimo es 8 y la cantidad tiene que llenar mesas de 4. */
+/** Sin mínimo. El tope evita un sorteo que deje de responder. */
 export function normalizePreconPlayers(value: unknown): number {
   const parsed = typeof value === 'number' ? value : Number(value)
-  if (!Number.isInteger(parsed)) return PRECON_DEFAULT_PLAYERS
-  const snapped = Math.round(parsed / PRECON_TABLE_SIZE) * PRECON_TABLE_SIZE
-  return Math.min(PRECON_MAX_PLAYERS, Math.max(PRECON_MIN_PLAYERS, snapped))
+  if (!Number.isInteger(parsed) || parsed < 0) return PRECON_DEFAULT_PLAYERS
+  return Math.min(PRECON_MAX_PLAYERS, parsed)
 }
 
 export function normalizePreconSettings(value: unknown): PreconSettings {
   const record =
     value && typeof value === 'object' ? (value as Partial<PreconSettings>) : {}
+  const rounds = clampInt(record.rounds, 1, 5, PRECON_DEFAULT_ROUNDS)
+  const rawThrees = Number(record.threes)
+  const rawFours = Number(record.fours)
+  if (
+    Number.isInteger(rawThrees) &&
+    rawThrees >= 0 &&
+    Number.isInteger(rawFours) &&
+    rawFours >= 0 &&
+    rawThrees + rawFours > 0
+  ) {
+    return {
+      threes: rawThrees,
+      fours: rawFours,
+      players:
+        rawThrees * PRECON_SMALL_TABLE_SIZE + rawFours * PRECON_TABLE_SIZE,
+      rounds
+    }
+  }
+  const players = normalizePreconPlayers(record.players)
+  const sizes = preconTableSizes(players)
   return {
-    players: normalizePreconPlayers(record.players),
-    rounds: clampInt(record.rounds, 1, 5, PRECON_DEFAULT_ROUNDS)
+    players,
+    rounds,
+    threes: sizes.filter(seats => seats === PRECON_SMALL_TABLE_SIZE).length,
+    fours: sizes.filter(seats => seats === PRECON_TABLE_SIZE).length
   }
 }
 
 export function preconSettingsError(input: {
-  players: number
+  threes: number
+  fours: number
   rounds: number
 }): string | null {
-  if (!Number.isInteger(input.players) || input.players < PRECON_MIN_PLAYERS) {
-    return 'El mínimo es 8 jugadores.'
+  if (
+    !Number.isInteger(input.threes) ||
+    input.threes < 0 ||
+    !Number.isInteger(input.fours) ||
+    input.fours < 0
+  ) {
+    return 'Indica cuántas mesas de 3 y de 4.'
   }
-  if (input.players > PRECON_MAX_PLAYERS) {
-    return 'El máximo es 32 jugadores.'
-  }
-  if (input.players % PRECON_TABLE_SIZE !== 0) {
-    return 'Los jugadores tienen que ser múltiplo de 4 para llenar las mesas.'
+  if (input.threes + input.fours < 1) return 'Elige al menos una mesa.'
+  const players =
+    input.threes * PRECON_SMALL_TABLE_SIZE + input.fours * PRECON_TABLE_SIZE
+  if (players > PRECON_MAX_PLAYERS) {
+    return `Esas mesas suman ${players} jugadores. El máximo es ${PRECON_MAX_PLAYERS}.`
   }
   if (!Number.isInteger(input.rounds) || input.rounds < 1 || input.rounds > 5) {
     return 'Las rondas van de 1 a 5.'
@@ -71,8 +185,8 @@ export type PreconTableResult = {
   finished: boolean
 }
 
-function emptyPoints(): number[] {
-  return Array.from({ length: PRECON_TABLE_SIZE }, () => 0)
+function emptyPoints(seats: number): number[] {
+  return Array.from({ length: seats }, () => 0)
 }
 
 export type PreconRound = {
@@ -81,16 +195,23 @@ export type PreconRound = {
 }
 
 export function emptyPreconResults(
-  settings: PreconSettings = PRECON_DEFAULT_SETTINGS
+  settings: PreconSettings = PRECON_DEFAULT_SETTINGS,
+  sizes: readonly number[] = preconSettingsSizes(settings)
 ): PreconTableResult[] {
-  return Array.from({ length: preconTableCount(settings) }, () => ({
-    points: emptyPoints(),
+  return sizes.map(seats => ({
+    points: emptyPoints(seats),
     finished: false
   }))
 }
 
 function seatPoints(value: unknown): number[] | null {
-  if (!Array.isArray(value) || value.length !== PRECON_TABLE_SIZE) return null
+  if (
+    !Array.isArray(value) ||
+    (value.length !== PRECON_TABLE_SIZE &&
+      value.length !== PRECON_SMALL_TABLE_SIZE)
+  ) {
+    return null
+  }
   const points: number[] = []
   for (const entry of value) {
     if (typeof entry !== 'number' || !Number.isInteger(entry) || entry < 0) {
@@ -213,12 +334,13 @@ function randomInt(exclusiveMax: number): number {
 }
 
 /**
- * Primera ronda: los 16 jugadores se mezclan en 4 mesas.
- * Cada mesa es una lista de índices (0–15).
+ * Primera ronda: se mezclan los jugadores y se sientan en mesas de 4 y de 3.
+ * Cada mesa es una lista de índices de jugador.
  */
 export function pairPreconFirstRound(
   names: readonly string[],
-  settings: PreconSettings = PRECON_DEFAULT_SETTINGS
+  settings: PreconSettings = PRECON_DEFAULT_SETTINGS,
+  sizes: readonly number[] = preconSettingsSizes(settings)
 ): number[][] {
   const cleaned = names.map(name => name.trim())
   if (
@@ -238,11 +360,20 @@ export function pairPreconFirstRound(
     order[j] = current ?? i
   }
 
-  const tableCount = preconTableCount(settings)
   const tables: number[][] = []
-  for (let table = 0; table < tableCount; table += 1) {
-    const start = table * PRECON_TABLE_SIZE
-    tables.push(order.slice(start, start + PRECON_TABLE_SIZE))
+  let cursor = 0
+  if (
+    sizes.reduce((sum, seats) => sum + seats, 0) !== settings.players ||
+    sizes.some(
+      seats => seats !== PRECON_TABLE_SIZE && seats !== PRECON_SMALL_TABLE_SIZE
+    )
+  ) {
+    throw new Error('Las mesas tienen que ser de 3 o de 4 y cubrir a todos.')
+  }
+
+  for (const seats of sizes) {
+    tables.push(order.slice(cursor, cursor + seats))
+    cursor += seats
   }
   return tables
 }
@@ -270,7 +401,8 @@ function sortTablesByPoints(
  */
 export function pairPreconNextRound(
   rounds: readonly PreconRound[],
-  settings: PreconSettings = PRECON_DEFAULT_SETTINGS
+  settings: PreconSettings = PRECON_DEFAULT_SETTINGS,
+  sizes: readonly number[] = preconSettingsSizes(settings)
 ): number[][] {
   if (rounds.length === 0) {
     throw new Error('No hay una ronda anterior para continuar.')
@@ -283,16 +415,28 @@ export function pairPreconNextRound(
       'Termina las mesas de la ronda antes de lanzar la siguiente.'
     )
   }
+  if (
+    sizes.reduce((sum, seats) => sum + seats, 0) !== settings.players ||
+    sizes.some(
+      seats => seats !== PRECON_TABLE_SIZE && seats !== PRECON_SMALL_TABLE_SIZE
+    )
+  ) {
+    throw new Error('Las mesas tienen que ser de 3 o de 4 y cubrir a todos.')
+  }
 
   const points = totalPreconPoints(rounds, settings)
+  const standardSixteen =
+    settings.players === PRECON_DEFAULT_PLAYERS &&
+    sizes.length === PRECON_TABLE_SIZE &&
+    sizes.every(seats => seats === PRECON_TABLE_SIZE)
   const previous = rounds[0]
-  if (settings.players === PRECON_DEFAULT_PLAYERS && rounds.length === 1) {
+  if (standardSixteen && rounds.length === 1) {
     if (!previous) {
       throw new Error('No hay una ronda anterior para continuar.')
     }
     return sortTablesByPoints(pairSecondRound(previous), points)
   }
-  if (settings.players === PRECON_DEFAULT_PLAYERS && rounds.length === 2) {
+  if (standardSixteen && rounds.length === 2) {
     const grid = seatGrid(rounds[0]?.tables ?? [], rounds[1]?.tables ?? [])
     if (!grid) {
       throw new Error(
@@ -301,7 +445,10 @@ export function pairPreconNextRound(
     }
     return sortTablesByPoints(pairThirdRound(grid, points), points)
   }
-  return sortTablesByPoints(pairFlexibleRound(rounds, settings, points), points)
+  return sortTablesByPoints(
+    pairFlexibleRound(rounds, settings, points, sizes),
+    points
+  )
 }
 
 export function totalPreconPoints(
@@ -365,10 +512,11 @@ function assignmentCost(
 function pairFlexibleRound(
   rounds: readonly PreconRound[],
   settings: PreconSettings,
-  points: readonly number[]
+  points: readonly number[],
+  capacities: readonly number[]
 ): number[][] {
   const played = playedPairs(rounds)
-  const tableCount = preconTableCount(settings)
+  const tableCount = capacities.length
   const order = Array.from({ length: settings.players }, (_, index) => index)
   order.sort(
     (left, right) => (points[right] ?? 0) - (points[left] ?? 0) || left - right
@@ -393,13 +541,16 @@ function pairFlexibleRound(
     const player = order[index] ?? index
     for (let tableIndex = 0; tableIndex < tableCount; tableIndex += 1) {
       const table = tables[tableIndex]
-      if (!table || table.length >= PRECON_TABLE_SIZE) continue
-      if (
-        table.length === 0 &&
-        tableIndex > 0 &&
-        (tables[tableIndex - 1]?.length ?? 0) === 0
-      ) {
-        continue
+      if (!table || table.length >= (capacities[tableIndex] ?? 0)) continue
+      if (table.length === 0) {
+        const capacity = capacities[tableIndex] ?? 0
+        const earlierSameSizeEmpty = tables.some(
+          (earlier, earlierIndex) =>
+            earlierIndex < tableIndex &&
+            (capacities[earlierIndex] ?? 0) === capacity &&
+            earlier.length === 0
+        )
+        if (earlierSameSizeEmpty) continue
       }
       table.push(player)
       place(index + 1)
@@ -416,7 +567,7 @@ function pairFlexibleRound(
     let chosenRepeats = Number.POSITIVE_INFINITY
     for (let tableIndex = 0; tableIndex < tableCount; tableIndex += 1) {
       const table = tables[tableIndex]
-      if (!table || table.length >= PRECON_TABLE_SIZE) continue
+      if (!table || table.length >= (capacities[tableIndex] ?? 0)) continue
       const repeats = table.filter(other =>
         played.has(pairKey(player, other))
       ).length

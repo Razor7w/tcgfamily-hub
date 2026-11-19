@@ -28,15 +28,14 @@ import { alpha } from '@mui/material/styles'
 import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
 import {
   PRECON_DEFAULT_SETTINGS,
-  PRECON_MIN_PLAYERS,
-  PRECON_TABLE_SIZE,
+  PRECON_MAX_PLAYERS,
   emptyPreconResults,
   normalizePreconSettings,
   pairPreconFirstRound,
   pairPreconNextRound,
   preconSeatPoints,
   preconSettingsError,
-  preconTableCount,
+  preconSettingsSizes,
   readPreconTableResult,
   withPreconFinished,
   withPreconPoints,
@@ -99,12 +98,12 @@ function sampleNames(count: number): string[] {
 }
 
 function isSeatTable(value: unknown, playerCount: number): value is number[][] {
-  const tableCount = playerCount / PRECON_TABLE_SIZE
-  if (!Array.isArray(value) || value.length !== tableCount) return false
+  if (!Array.isArray(value) || value.length === 0) return false
   const seen = new Set<number>()
   for (const table of value) {
-    if (!Array.isArray(table) || table.length !== PRECON_TABLE_SIZE)
+    if (!Array.isArray(table) || (table.length !== 3 && table.length !== 4)) {
       return false
+    }
     for (const seat of table) {
       if (typeof seat !== 'number' || seat < 0 || seat >= playerCount) {
         return false
@@ -118,14 +117,21 @@ function isSeatTable(value: unknown, playerCount: number): value is number[][] {
 
 function parseResults(
   value: unknown,
-  settings: PreconSettings
+  tables: readonly (readonly number[])[]
 ): PreconTableResult[] {
-  if (!Array.isArray(value) || value.length !== preconTableCount(settings)) {
-    return emptyPreconResults(settings)
-  }
+  const blank = emptyPreconResults(
+    PRECON_DEFAULT_SETTINGS,
+    tables.map(table => table.length)
+  )
+  if (!Array.isArray(value) || value.length !== tables.length) return blank
   const results = value.map(readPreconTableResult)
-  if (results.some(result => result === null)) {
-    return emptyPreconResults(settings)
+  if (
+    results.some(
+      (result, index) =>
+        result === null || result.points.length !== tables[index]?.length
+    )
+  ) {
+    return blank
   }
   return results.filter(
     (result): result is PreconTableResult => result !== null
@@ -141,7 +147,7 @@ function parseRound(
   if (!isSeatTable(record.tables, settings.players)) return null
   return {
     tables: record.tables,
-    results: parseResults(record.results, settings)
+    results: parseResults(record.results, record.tables)
   }
 }
 
@@ -232,7 +238,8 @@ export default function AdminPreconClient() {
   const [reshuffleOpen, setReshuffleOpen] = useState(false)
   const [configOpen, setConfigOpen] = useState(false)
   const [configDraft, setConfigDraft] = useState({
-    players: String(PRECON_DEFAULT_SETTINGS.players),
+    threes: String(PRECON_DEFAULT_SETTINGS.threes),
+    fours: String(PRECON_DEFAULT_SETTINGS.fours),
     rounds: String(PRECON_DEFAULT_SETTINGS.rounds)
   })
   const [configError, setConfigError] = useState<string | null>(null)
@@ -273,14 +280,15 @@ export default function AdminPreconClient() {
   }, [trimmed])
 
   const commitRound = () => {
+    const sizes = preconSettingsSizes(settings)
     try {
       setDraft({
         names,
         settings,
         rounds: [
           {
-            tables: pairPreconFirstRound(names, settings),
-            results: emptyPreconResults(settings)
+            tables: pairPreconFirstRound(names, settings, sizes),
+            results: emptyPreconResults(settings, sizes)
           }
         ]
       })
@@ -319,7 +327,8 @@ export default function AdminPreconClient() {
 
   const openConfig = () => {
     setConfigDraft({
-      players: String(settings.players),
+      threes: String(settings.threes),
+      fours: String(settings.fours),
       rounds: String(settings.rounds)
     })
     setConfigError(null)
@@ -329,7 +338,8 @@ export default function AdminPreconClient() {
   const saveConfig = () => {
     if (tournamentStarted) return
     const next = {
-      players: Number(configDraft.players),
+      threes: Number(configDraft.threes),
+      fours: Number(configDraft.fours),
       rounds: Number(configDraft.rounds)
     }
     const invalid = preconSettingsError(next)
@@ -337,10 +347,11 @@ export default function AdminPreconClient() {
       setConfigError(invalid)
       return
     }
+    const settingsNext = normalizePreconSettings(next)
     setDraft({
-      names: resizeNames(names, next.players),
+      names: resizeNames(names, settingsNext.players),
       rounds: [],
-      settings: next
+      settings: settingsNext
     })
     setTabOverride(0)
     setConfigError(null)
@@ -348,6 +359,7 @@ export default function AdminPreconClient() {
   }
 
   const launchNext = () => {
+    const sizes = preconSettingsSizes(settings)
     try {
       setDraft({
         names,
@@ -355,8 +367,8 @@ export default function AdminPreconClient() {
         rounds: [
           ...rounds,
           {
-            tables: pairPreconNextRound(rounds, settings),
-            results: emptyPreconResults(settings)
+            tables: pairPreconNextRound(rounds, settings, sizes),
+            results: emptyPreconResults(settings, sizes)
           }
         ]
       })
@@ -506,10 +518,9 @@ export default function AdminPreconClient() {
                 color="text.secondary"
                 sx={{ mt: 0.75, maxWidth: 560, lineHeight: 1.6 }}
               >
-                Inscribe a los {settings.players} jugadores y sortea la primera
-                ronda en mesas de {PRECON_TABLE_SIZE}. En cada mesa anota los
-                puntos a mano y finaliza la mesa. Esos puntos arman la siguiente
-                ronda.
+                Antes de empezar eliges las mesas de 3 y de 4. Con eso quedan
+                los {settings.players} jugadores. En cada mesa anota los puntos
+                a mano y finaliza la mesa. Esos puntos arman la siguiente ronda.
               </Typography>
             </Box>
           </Stack>
@@ -896,8 +907,8 @@ export default function AdminPreconClient() {
                 </Stack>
               ) : (
                 <Alert severity="info">
-                  Todavía no hay mesas. Anota a los 16 en Jugadores y asigna la
-                  ronda.
+                  Todavía no hay mesas. Anota a los {settings.players} en
+                  Jugadores y asigna la ronda.
                 </Alert>
               )}
             </Box>
@@ -918,25 +929,43 @@ export default function AdminPreconClient() {
                 </Alert>
               ) : null}
               <TextField
-                label="Jugadores"
+                label="Mesas de 3"
                 type="number"
-                value={configDraft.players}
+                value={configDraft.threes}
                 onChange={event =>
                   setConfigDraft(current => ({
                     ...current,
-                    players: event.target.value
+                    threes: event.target.value
                   }))
                 }
-                helperText={`Mínimo ${PRECON_MIN_PLAYERS} y múltiplo de ${PRECON_TABLE_SIZE}.`}
+                helperText="Sin mínimo. Cada una suma 3 jugadores."
                 disabled={tournamentStarted}
                 fullWidth
-                slotProps={{
-                  htmlInput: {
-                    min: PRECON_MIN_PLAYERS,
-                    step: PRECON_TABLE_SIZE
-                  }
-                }}
+                slotProps={{ htmlInput: { min: 0, step: 1 } }}
               />
+              <TextField
+                label="Mesas de 4"
+                type="number"
+                value={configDraft.fours}
+                onChange={event =>
+                  setConfigDraft(current => ({
+                    ...current,
+                    fours: event.target.value
+                  }))
+                }
+                helperText="Sin mínimo. Cada una suma 4 jugadores."
+                disabled={tournamentStarted}
+                fullWidth
+                slotProps={{ htmlInput: { min: 0, step: 1 } }}
+              />
+              <Alert severity="info">
+                {Number.isInteger(Number(configDraft.threes)) &&
+                Number.isInteger(Number(configDraft.fours)) &&
+                Number(configDraft.threes) >= 0 &&
+                Number(configDraft.fours) >= 0
+                  ? `Se inscriben ${Number(configDraft.threes) * 3 + Number(configDraft.fours) * 4} jugadores. El máximo es ${PRECON_MAX_PLAYERS}.`
+                  : 'Indica cuántas mesas de 3 y de 4.'}
+              </Alert>
               <TextField
                 label="Rondas"
                 type="number"
