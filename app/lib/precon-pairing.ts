@@ -318,6 +318,78 @@ export function withPreconFinished(
   return { ...result, finished }
 }
 
+export type PreconStandingRow = {
+  playerIndex: number
+  name: string
+  points: number | null
+  wins: number
+  matches: number
+  winRate: number | null
+}
+
+/**
+ * El standing suma los puntos anotados en cada mesa.
+ * El win rate es mesas ganadas sobre mesas terminadas.
+ * Gana la mesa quien queda solo con el puntaje más alto.
+ */
+export function preconStandings(
+  rounds: readonly PreconRound[],
+  names: readonly string[]
+): PreconStandingRow[] {
+  const rows = new Map<
+    number,
+    { points: number | null; wins: number; matches: number }
+  >()
+
+  const ensure = (playerIndex: number) => {
+    const current = rows.get(playerIndex)
+    if (current) return current
+    const created = { points: null as number | null, wins: 0, matches: 0 }
+    rows.set(playerIndex, created)
+    return created
+  }
+
+  for (const round of rounds) {
+    round.tables.forEach((seats, tableIndex) => {
+      for (const playerIndex of seats) ensure(playerIndex)
+      const result = round.results[tableIndex]
+      if (!result || result.points.length !== seats.length) return
+      const top = Math.max(...result.points)
+      const leaders = result.points.filter(point => point === top).length
+      seats.forEach((playerIndex, seat) => {
+        const row = ensure(playerIndex)
+        const scored = preconSeatPoints(result, seat)
+        if (scored !== null) row.points = (row.points ?? 0) + scored
+        if (!result.finished) return
+        row.matches += 1
+        if (leaders === 1 && result.points[seat] === top) row.wins += 1
+      })
+    })
+  }
+
+  return [...rows.entries()]
+    .map(([playerIndex, row]) => ({
+      playerIndex,
+      name: names[playerIndex]?.trim() || 'Sin nombre',
+      points: row.points,
+      wins: row.wins,
+      matches: row.matches,
+      winRate: row.matches === 0 ? null : row.wins / row.matches
+    }))
+    .sort((left, right) => {
+      if (left.points === null && right.points === null) {
+        return left.name.localeCompare(right.name, 'es')
+      }
+      if (left.points === null) return 1
+      if (right.points === null) return -1
+      if (right.points !== left.points) return right.points - left.points
+      const leftRate = left.winRate ?? 0
+      const rightRate = right.winRate ?? 0
+      if (rightRate !== leftRate) return rightRate - leftRate
+      return left.name.localeCompare(right.name, 'es')
+    })
+}
+
 function randomInt(exclusiveMax: number): number {
   const cryptoObj = globalThis.crypto
   if (cryptoObj?.getRandomValues) {
