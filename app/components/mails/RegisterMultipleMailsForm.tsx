@@ -563,7 +563,7 @@ export default function RegisterMultipleMailsForm() {
                 />
 
                 <TextField
-                  label="Número de contacto (opcional)"
+                  label="Teléfono del receptor (opcional)"
                   placeholder="+56 9 1234 5678"
                   value={row.contactPhone}
                   onChange={e =>
@@ -585,7 +585,7 @@ export default function RegisterMultipleMailsForm() {
                   fullWidth
                   autoComplete="tel"
                   disabled={quotaBlocked || quotaLoading || submittingBatch}
-                  helperText="Teléfono para coordinar el envío."
+                  helperText="Número de quien retira el correo."
                   inputProps={{
                     maxLength: MAIL_CONTACT_PHONE_MAX,
                     inputMode: 'tel'

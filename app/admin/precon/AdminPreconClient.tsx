@@ -28,15 +28,14 @@ import { alpha } from '@mui/material/styles'
 import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
 import {
   PRECON_DEFAULT_SETTINGS,
-  PRECON_MIN_PLAYERS,
-  PRECON_TABLE_SIZE,
+  PRECON_MAX_PLAYERS,
   emptyPreconResults,
   normalizePreconSettings,
   pairPreconFirstRound,
   pairPreconNextRound,
-  preconSeatPoints,
   preconSettingsError,
-  preconTableCount,
+  preconSettingsSizes,
+  preconStandings,
   readPreconTableResult,
   withPreconFinished,
   withPreconPoints,
@@ -78,6 +77,14 @@ type SavedPrecon = {
   names: string[]
   rounds: PreconRound[]
   settings: PreconSettings
+  closed: boolean
+}
+
+function formatWinRate(rate: number): string {
+  return `${(rate * 100).toLocaleString('es-CL', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1
+  })}%`
 }
 
 function emptyNames(count: number): string[] {
@@ -99,12 +106,12 @@ function sampleNames(count: number): string[] {
 }
 
 function isSeatTable(value: unknown, playerCount: number): value is number[][] {
-  const tableCount = playerCount / PRECON_TABLE_SIZE
-  if (!Array.isArray(value) || value.length !== tableCount) return false
+  if (!Array.isArray(value) || value.length === 0) return false
   const seen = new Set<number>()
   for (const table of value) {
-    if (!Array.isArray(table) || table.length !== PRECON_TABLE_SIZE)
+    if (!Array.isArray(table) || (table.length !== 3 && table.length !== 4)) {
       return false
+    }
     for (const seat of table) {
       if (typeof seat !== 'number' || seat < 0 || seat >= playerCount) {
         return false
@@ -118,14 +125,21 @@ function isSeatTable(value: unknown, playerCount: number): value is number[][] {
 
 function parseResults(
   value: unknown,
-  settings: PreconSettings
+  tables: readonly (readonly number[])[]
 ): PreconTableResult[] {
-  if (!Array.isArray(value) || value.length !== preconTableCount(settings)) {
-    return emptyPreconResults(settings)
-  }
+  const blank = emptyPreconResults(
+    PRECON_DEFAULT_SETTINGS,
+    tables.map(table => table.length)
+  )
+  if (!Array.isArray(value) || value.length !== tables.length) return blank
   const results = value.map(readPreconTableResult)
-  if (results.some(result => result === null)) {
-    return emptyPreconResults(settings)
+  if (
+    results.some(
+      (result, index) =>
+        result === null || result.points.length !== tables[index]?.length
+    )
+  ) {
+    return blank
   }
   return results.filter(
     (result): result is PreconTableResult => result !== null
@@ -141,7 +155,7 @@ function parseRound(
   if (!isSeatTable(record.tables, settings.players)) return null
   return {
     tables: record.tables,
-    results: parseResults(record.results, settings)
+    results: parseResults(record.results, record.tables)
   }
 }
 
@@ -149,7 +163,8 @@ function parseSaved(raw: string | null): SavedPrecon {
   const blank: SavedPrecon = {
     names: emptyNames(PRECON_DEFAULT_SETTINGS.players),
     rounds: [],
-    settings: PRECON_DEFAULT_SETTINGS
+    settings: PRECON_DEFAULT_SETTINGS,
+    closed: false
   }
   if (!raw) return blank
   try {
@@ -158,7 +173,8 @@ function parseSaved(raw: string | null): SavedPrecon {
       results?: unknown
     }
     const settings = normalizePreconSettings(parsed.settings)
-    if (!Array.isArray(parsed.names)) return { ...blank, settings }
+    if (!Array.isArray(parsed.names))
+      return { ...blank, settings, closed: false }
     const names = resizeNames(
       parsed.names.map(name => (typeof name === 'string' ? name : '')),
       settings.players
@@ -174,9 +190,19 @@ function parseSaved(raw: string | null): SavedPrecon {
         { tables: parsed.tables, results: parsed.results },
         settings
       )
-      return { names, rounds: legacy ? [legacy] : [], settings }
+      return {
+        names,
+        rounds: legacy ? [legacy] : [],
+        settings,
+        closed: false
+      }
     }
-    return { names, rounds, settings }
+    return {
+      names,
+      rounds,
+      settings,
+      closed: parsed.closed === true && rounds.length >= 2
+    }
   } catch {
     return blank
   }
@@ -220,7 +246,7 @@ function writeDraft(next: SavedPrecon) {
 export default function AdminPreconClient() {
   const raw = useSyncExternalStore(subscribe, readRaw, readServerRaw)
   const draft = useMemo(() => parseSaved(raw), [raw])
-  const { names, rounds, settings } = draft
+  const { names, rounds, settings, closed } = draft
   const activeRound = rounds[rounds.length - 1] ?? null
   const results = activeRound?.results ?? null
   const roundNumber = rounds.length
@@ -232,7 +258,8 @@ export default function AdminPreconClient() {
   const [reshuffleOpen, setReshuffleOpen] = useState(false)
   const [configOpen, setConfigOpen] = useState(false)
   const [configDraft, setConfigDraft] = useState({
-    players: String(PRECON_DEFAULT_SETTINGS.players),
+    threes: String(PRECON_DEFAULT_SETTINGS.threes),
+    fours: String(PRECON_DEFAULT_SETTINGS.fours),
     rounds: String(PRECON_DEFAULT_SETTINGS.rounds)
   })
   const [configError, setConfigError] = useState<string | null>(null)
@@ -252,7 +279,8 @@ export default function AdminPreconClient() {
   const allFinished = Boolean(
     results && results.length > 0 && results.every(result => result.finished)
   )
-  const canLaunchNext = allFinished && roundNumber < settings.rounds
+  const canLaunchNext = allFinished && roundNumber < settings.rounds && !closed
+  const canClose = !closed && roundNumber >= 2 && allFinished
 
   const setDraft = (next: SavedPrecon) => {
     writeDraft(next)
@@ -273,14 +301,16 @@ export default function AdminPreconClient() {
   }, [trimmed])
 
   const commitRound = () => {
+    const sizes = preconSettingsSizes(settings)
     try {
       setDraft({
         names,
         settings,
+        closed: false,
         rounds: [
           {
-            tables: pairPreconFirstRound(names, settings),
-            results: emptyPreconResults(settings)
+            tables: pairPreconFirstRound(names, settings, sizes),
+            results: emptyPreconResults(settings, sizes)
           }
         ]
       })
@@ -307,19 +337,30 @@ export default function AdminPreconClient() {
   }
 
   const fillSampleNames = () => {
-    setDraft({ names: sampleNames(settings.players), rounds, settings })
+    setDraft({
+      names: sampleNames(settings.players),
+      rounds,
+      settings,
+      closed
+    })
     setError(null)
   }
 
   const clearAll = () => {
-    setDraft({ names: emptyNames(settings.players), rounds: [], settings })
+    setDraft({
+      names: emptyNames(settings.players),
+      rounds: [],
+      settings,
+      closed: false
+    })
     setError(null)
     setTabOverride(0)
   }
 
   const openConfig = () => {
     setConfigDraft({
-      players: String(settings.players),
+      threes: String(settings.threes),
+      fours: String(settings.fours),
       rounds: String(settings.rounds)
     })
     setConfigError(null)
@@ -329,7 +370,8 @@ export default function AdminPreconClient() {
   const saveConfig = () => {
     if (tournamentStarted) return
     const next = {
-      players: Number(configDraft.players),
+      threes: Number(configDraft.threes),
+      fours: Number(configDraft.fours),
       rounds: Number(configDraft.rounds)
     }
     const invalid = preconSettingsError(next)
@@ -337,10 +379,12 @@ export default function AdminPreconClient() {
       setConfigError(invalid)
       return
     }
+    const settingsNext = normalizePreconSettings(next)
     setDraft({
-      names: resizeNames(names, next.players),
+      names: resizeNames(names, settingsNext.players),
       rounds: [],
-      settings: next
+      settings: settingsNext,
+      closed: false
     })
     setTabOverride(0)
     setConfigError(null)
@@ -348,15 +392,17 @@ export default function AdminPreconClient() {
   }
 
   const launchNext = () => {
+    const sizes = preconSettingsSizes(settings)
     try {
       setDraft({
         names,
         settings,
+        closed: false,
         rounds: [
           ...rounds,
           {
-            tables: pairPreconNextRound(rounds, settings),
-            results: emptyPreconResults(settings)
+            tables: pairPreconNextRound(rounds, settings, sizes),
+            results: emptyPreconResults(settings, sizes)
           }
         ]
       })
@@ -378,6 +424,7 @@ export default function AdminPreconClient() {
     setDraft({
       names,
       settings,
+      closed,
       rounds: rounds.map((round, index) =>
         index === rounds.length - 1
           ? {
@@ -391,40 +438,20 @@ export default function AdminPreconClient() {
     })
   }
 
-  const standings = useMemo(() => {
-    if (rounds.length === 0) return []
-    const totals = new Map<number, number | null>()
-    for (const round of rounds) {
-      for (const seats of round.tables) {
-        for (const player of seats) {
-          if (!totals.has(player)) totals.set(player, null)
-        }
-      }
-      round.tables.forEach((seats, tableIndex) => {
-        const result = round.results[tableIndex]
-        if (!result) return
-        seats.forEach((playerIndex, seat) => {
-          const scored = preconSeatPoints(result, seat)
-          if (scored === null) return
-          totals.set(playerIndex, (totals.get(playerIndex) ?? 0) + scored)
-        })
-      })
-    }
-    const rows = [...totals.entries()].map(([playerIndex, points]) => ({
-      playerIndex,
-      name: names[playerIndex]?.trim() || 'Sin nombre',
-      points
-    }))
-    return rows.sort((a, b) => {
-      if (a.points === null && b.points === null) {
-        return a.name.localeCompare(b.name, 'es')
-      }
-      if (a.points === null) return 1
-      if (b.points === null) return -1
-      if (b.points !== a.points) return b.points - a.points
-      return a.name.localeCompare(b.name, 'es')
-    })
-  }, [names, rounds])
+  const standings = useMemo(
+    () => preconStandings(rounds, names),
+    [names, rounds]
+  )
+
+  const closeTournament = () => {
+    if (!canClose) return
+    setDraft({ names, rounds, settings, closed: true })
+    setError(null)
+  }
+
+  const reopenTournament = () => {
+    setDraft({ names, rounds, settings, closed: false })
+  }
 
   const shareText = useMemo(() => {
     if (!viewedTables) return ''
@@ -506,10 +533,10 @@ export default function AdminPreconClient() {
                 color="text.secondary"
                 sx={{ mt: 0.75, maxWidth: 560, lineHeight: 1.6 }}
               >
-                Inscribe a los {settings.players} jugadores y sortea la primera
-                ronda en mesas de {PRECON_TABLE_SIZE}. En cada mesa anota los
-                puntos a mano y finaliza la mesa. Esos puntos arman la siguiente
-                ronda.
+                Antes de empezar eliges las mesas de 3 y de 4. Con eso quedan
+                los {settings.players} jugadores. En cada mesa anota los puntos
+                a mano y finaliza la mesa. Con dos rondas terminadas puedes
+                cerrar el torneo.
               </Typography>
             </Box>
           </Stack>
@@ -545,7 +572,7 @@ export default function AdminPreconClient() {
                     onChange={event => {
                       const next = [...names]
                       next[index] = event.target.value
-                      setDraft({ names: next, rounds, settings })
+                      setDraft({ names: next, rounds, settings, closed })
                     }}
                     fullWidth
                     autoComplete="off"
@@ -612,12 +639,26 @@ export default function AdminPreconClient() {
                   Ronda {tab}
                 </Typography>
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                  {canClose ? (
+                    <Button
+                      variant="contained"
+                      color="success"
+                      onClick={closeTournament}
+                    >
+                      Cerrar torneo
+                    </Button>
+                  ) : null}
+                  {closed ? (
+                    <Button variant="text" onClick={reopenTournament}>
+                      Reabrir
+                    </Button>
+                  ) : null}
                   {editingRound && canLaunchNext ? (
                     <Button variant="contained" onClick={launchNext}>
                       Lanzar ronda {roundNumber + 1}
                     </Button>
                   ) : null}
-                  {editingRound && rounds.length === 1 ? (
+                  {editingRound && rounds.length === 1 && !closed ? (
                     <Button
                       variant="outlined"
                       startIcon={<CasinoOutlined />}
@@ -629,6 +670,12 @@ export default function AdminPreconClient() {
                   ) : null}
                 </Stack>
               </Stack>
+              {closed ? (
+                <Alert severity="success" sx={{ mb: 1.5 }}>
+                  Torneo cerrado en la ronda {rounds.length}. El standing usa
+                  los puntos de partida y el win rate.
+                </Alert>
+              ) : null}
               {error ? (
                 <Alert severity="error" sx={{ mb: 1.5 }}>
                   {error}
@@ -749,7 +796,9 @@ export default function AdminPreconClient() {
                                         size="small"
                                         label="Puntos"
                                         disabled={
-                                          !editingRound || result.finished
+                                          !editingRound ||
+                                          result.finished ||
+                                          closed
                                         }
                                         value={result.points[seat] ?? 0}
                                         onChange={event => {
@@ -768,7 +817,7 @@ export default function AdminPreconClient() {
                                     </Stack>
                                   ))}
                                 </Stack>
-                                {editingRound && !result.finished ? (
+                                {editingRound && !result.finished && !closed ? (
                                   <Button
                                     fullWidth
                                     variant="outlined"
@@ -783,7 +832,7 @@ export default function AdminPreconClient() {
                                     Finalizar mesa
                                   </Button>
                                 ) : null}
-                                {editingRound && result.finished ? (
+                                {editingRound && result.finished && !closed ? (
                                   <Button
                                     size="small"
                                     color="inherit"
@@ -805,23 +854,26 @@ export default function AdminPreconClient() {
                       )}
                       <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
                         <Typography sx={{ fontWeight: 800, mb: 1.25 }}>
-                          {roundNumber > 1
-                            ? 'Puntaje del torneo'
-                            : 'Puntaje de la ronda'}
+                          {closed ? 'Standing final' : 'Standing'}
                         </Typography>
                         <Stack spacing={0.75}>
-                          {standings.map(row => (
+                          {standings.map((row, index) => (
                             <Stack
                               key={row.playerIndex}
                               direction="row"
                               spacing={1}
-                              justifyContent="space-between"
+                              alignItems="baseline"
                             >
-                              <Typography sx={{ fontWeight: 600 }}>
+                              <Typography sx={{ width: 24, fontWeight: 800 }}>
+                                {index + 1}
+                              </Typography>
+                              <Typography sx={{ flex: 1, fontWeight: 600 }}>
                                 {row.name}
                               </Typography>
                               <Typography
                                 sx={{
+                                  width: 88,
+                                  textAlign: 'right',
                                   fontWeight: 800,
                                   color:
                                     row.points === null
@@ -832,6 +884,21 @@ export default function AdminPreconClient() {
                                 {row.points === null
                                   ? 'Sin anotar'
                                   : row.points}
+                              </Typography>
+                              <Typography
+                                sx={{
+                                  width: 72,
+                                  textAlign: 'right',
+                                  fontVariantNumeric: 'tabular-nums',
+                                  color:
+                                    row.winRate === null
+                                      ? 'text.secondary'
+                                      : 'text.primary'
+                                }}
+                              >
+                                {row.winRate === null
+                                  ? '—'
+                                  : formatWinRate(row.winRate)}
                               </Typography>
                             </Stack>
                           ))}
@@ -896,8 +963,8 @@ export default function AdminPreconClient() {
                 </Stack>
               ) : (
                 <Alert severity="info">
-                  Todavía no hay mesas. Anota a los 16 en Jugadores y asigna la
-                  ronda.
+                  Todavía no hay mesas. Anota a los {settings.players} en
+                  Jugadores y asigna la ronda.
                 </Alert>
               )}
             </Box>
@@ -918,25 +985,43 @@ export default function AdminPreconClient() {
                 </Alert>
               ) : null}
               <TextField
-                label="Jugadores"
+                label="Mesas de 3"
                 type="number"
-                value={configDraft.players}
+                value={configDraft.threes}
                 onChange={event =>
                   setConfigDraft(current => ({
                     ...current,
-                    players: event.target.value
+                    threes: event.target.value
                   }))
                 }
-                helperText={`Mínimo ${PRECON_MIN_PLAYERS} y múltiplo de ${PRECON_TABLE_SIZE}.`}
+                helperText="Sin mínimo. Cada una suma 3 jugadores."
                 disabled={tournamentStarted}
                 fullWidth
-                slotProps={{
-                  htmlInput: {
-                    min: PRECON_MIN_PLAYERS,
-                    step: PRECON_TABLE_SIZE
-                  }
-                }}
+                slotProps={{ htmlInput: { min: 0, step: 1 } }}
               />
+              <TextField
+                label="Mesas de 4"
+                type="number"
+                value={configDraft.fours}
+                onChange={event =>
+                  setConfigDraft(current => ({
+                    ...current,
+                    fours: event.target.value
+                  }))
+                }
+                helperText="Sin mínimo. Cada una suma 4 jugadores."
+                disabled={tournamentStarted}
+                fullWidth
+                slotProps={{ htmlInput: { min: 0, step: 1 } }}
+              />
+              <Alert severity="info">
+                {Number.isInteger(Number(configDraft.threes)) &&
+                Number.isInteger(Number(configDraft.fours)) &&
+                Number(configDraft.threes) >= 0 &&
+                Number(configDraft.fours) >= 0
+                  ? `Se inscriben ${Number(configDraft.threes) * 3 + Number(configDraft.fours) * 4} jugadores. El máximo es ${PRECON_MAX_PLAYERS}.`
+                  : 'Indica cuántas mesas de 3 y de 4.'}
+              </Alert>
               <TextField
                 label="Rondas"
                 type="number"
