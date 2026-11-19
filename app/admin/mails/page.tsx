@@ -7,6 +7,7 @@ import {
   useCallback,
   type KeyboardEvent
 } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import Container from '@mui/material/Container'
@@ -39,6 +40,7 @@ import MarkEmailUnreadIcon from '@mui/icons-material/MarkEmailUnread'
 import StorefrontIcon from '@mui/icons-material/Storefront'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 import FileDownloadIcon from '@mui/icons-material/FileDownload'
+import RefreshIcon from '@mui/icons-material/Refresh'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import Tooltip from '@mui/material/Tooltip'
 import Chip from '@mui/material/Chip'
@@ -65,6 +67,7 @@ import {
   type UpdateMailData
 } from '@/hooks/useMails'
 import { parseContentDispositionFilename } from '@/lib/mail-csv-export'
+import { useDashboardStoreQueryKey } from '@/hooks/use-dashboard-store-key'
 import { useCreateUser, type CreateUserData } from '@/hooks/useUsers'
 import { rutFromCedulaQrScan } from '@/lib/cedula-qr-rut'
 import { formatRutOnBlur, getRutFieldError } from '@/lib/rut-input'
@@ -232,6 +235,8 @@ function mailStatusAccentColor(
 
 export default function MailsPage() {
   const theme = useTheme()
+  const queryClient = useQueryClient()
+  const storeKey = useDashboardStoreQueryKey()
   const [openDialog, setOpenDialog] = useState(false)
   const [editingMail, setEditingMail] = useState<Mail | null>(null)
   const [formData, setFormData] = useState<MailAdminForm>(emptyMailForm)
@@ -282,6 +287,8 @@ export default function MailsPage() {
   const [debouncedFromInput, setDebouncedFromInput] = useState('')
   const [debouncedToInput, setDebouncedToInput] = useState('')
   const [exportingCsv, setExportingCsv] = useState(false)
+  const [reloadingTable, setReloadingTable] = useState(false)
+  const [reloadNonce, setReloadNonce] = useState(0)
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearchId(searchId.trim()), 320)
@@ -602,6 +609,32 @@ export default function MailsPage() {
     setFilterDestination('all')
     setMoreFiltersOpen(false)
   }
+
+  const reloadTable = () => {
+    setReloadingTable(true)
+    clearFilters()
+    setPage(1)
+    setReloadNonce(nonce => nonce + 1)
+  }
+
+  useEffect(() => {
+    if (reloadNonce === 0) return
+    let cancelled = false
+    const run = async () => {
+      try {
+        await queryClient.refetchQueries({
+          queryKey: ['mails', storeKey],
+          type: 'active'
+        })
+      } finally {
+        if (!cancelled) setReloadingTable(false)
+      }
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [reloadNonce, queryClient, storeKey])
 
   const fromIdTrim = formData.fromUserId.trim()
   const toIdTrim = formData.toUserId.trim()
@@ -1231,6 +1264,20 @@ export default function MailsPage() {
             </Box>
           </AdminStorePageHeading>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Button
+              variant="outlined"
+              startIcon={
+                reloadingTable ? (
+                  <CircularProgress color="inherit" size={16} />
+                ) : (
+                  <RefreshIcon />
+                )
+              }
+              onClick={reloadTable}
+              disabled={reloadingTable}
+            >
+              Recargar
+            </Button>
             <Button
               variant="outlined"
               onClick={() => setBranchesDialogOpen(true)}
