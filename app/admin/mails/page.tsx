@@ -2938,7 +2938,7 @@ export default function MailsPage() {
                 </Alert>
               ) : null}
               <TextField
-                label="Número de contacto"
+                label="Teléfono del receptor"
                 placeholder="+56 9 1234 5678"
                 fullWidth
                 size="small"
@@ -2952,7 +2952,7 @@ export default function MailsPage() {
                     )
                   }))
                 }
-                helperText="Opcional. Teléfono para coordinar el envío."
+                helperText="Opcional. Número de quien retira el correo."
                 inputProps={{
                   maxLength: MAIL_CONTACT_PHONE_MAX,
                   inputMode: 'tel',

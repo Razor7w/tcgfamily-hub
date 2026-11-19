@@ -276,7 +276,7 @@ export default function GuestMailRegisterPage() {
     }
     if (transferOpen) {
       if (!branch?.id) {
-        setError('Selecciona la sucursal donde dejas el paquete')
+        setError('Elige el local donde tú entregarás el correo')
         return
       }
       if (!selectedDestBranch?.id) {
@@ -661,9 +661,11 @@ export default function GuestMailRegisterPage() {
                             (transferOpen && !branch?.id))
                         }
                         helperText={
-                          transferOpen
-                            ? 'Local donde dejas el paquete.'
-                            : undefined
+                          submitAttempted &&
+                          ((branchRequired && !branch?.id) ||
+                            (transferOpen && !branch?.id))
+                            ? 'Elige el local donde tú entregarás el correo.'
+                            : 'Local donde tú entregarás el correo.'
                         }
                       />
                     )}
@@ -715,7 +717,7 @@ export default function GuestMailRegisterPage() {
                             helperText={
                               branch
                                 ? 'Hacia dónde irá el paquete después de ingresarlo.'
-                                : 'Primero elige la sucursal donde dejas el paquete.'
+                                : 'Primero elige el local donde tú entregarás el correo.'
                             }
                           />
                         )}
@@ -774,7 +776,8 @@ export default function GuestMailRegisterPage() {
                 />
 
                 <TextField
-                  label="Número de contacto (opcional)"
+                  label="Teléfono del receptor (opcional)"
+                  helperText="Número de quien retira el correo."
                   placeholder="+56 9 1234 5678"
                   value={contactPhone}
                   onChange={e =>

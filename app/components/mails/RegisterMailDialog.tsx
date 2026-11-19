@@ -403,10 +403,8 @@ export default function RegisterMailDialog({
               error={submitAttempted && branchRequired && !selectedBranch?.id}
               helperText={
                 submitAttempted && branchRequired && !selectedBranch?.id
-                  ? 'Elige la sucursal donde dejas el paquete.'
-                  : transferOpen
-                    ? 'Local donde dejas el paquete.'
-                    : 'Local donde se recibirá el paquete.'
+                  ? 'Elige el local donde tú entregarás el correo.'
+                  : 'Local donde tú entregarás el correo.'
               }
             />
           )}
@@ -456,7 +454,7 @@ export default function RegisterMailDialog({
                     helperText={
                       selectedBranch
                         ? 'Hacia dónde irá el paquete después de ingresarlo.'
-                        : 'Primero elige la sucursal donde dejas el paquete.'
+                        : 'Primero elige el local donde tú entregarás el correo.'
                     }
                   />
                 )}
@@ -521,13 +519,13 @@ export default function RegisterMailDialog({
       />
 
       <TextField
-        label="Número de contacto (opcional)"
+        label="Teléfono del receptor (opcional)"
         placeholder="+56 9 1234 5678"
         value={contactPhone}
         onChange={e =>
           setContactPhone(e.target.value.slice(0, MAIL_CONTACT_PHONE_MAX))
         }
-        helperText="Teléfono para coordinar el envío."
+        helperText="Número de quien retira el correo."
         size="small"
         autoComplete="tel"
         disabled={fieldsDisabled}

@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
     if (transferToBranchRaw) {
       if (!branchGate.branchOid) {
         return NextResponse.json(
-          { error: 'Indica la sucursal donde dejas el paquete' },
+          { error: 'Elige el local donde tú entregarás el correo' },
           { status: 400 }
         )
       }
