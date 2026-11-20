@@ -5,7 +5,7 @@ import connectDB from '@/lib/mongodb'
 import Mails from '@/models/Mails'
 import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { applyMailWithdrawnInStoreContributionAward } from '@/lib/contribution-points/mail-contribution-awards'
-import { mailWithdrawBranchDeniedMessage } from '@/lib/mail-status-transitions'
+import { partitionMailsForWithdraw } from '@/lib/mail-status-transitions'
 import { storeBranchNamesById } from '@/lib/store-branch'
 
 const MAX_BULK_WITHDRAW = 100
@@ -77,23 +77,15 @@ export async function POST(request: NextRequest) {
     const branchNames = await storeBranchNamesById(
       pending.map(mail => mail.branchId)
     )
-    const deniedById = new Map(
-      pending.map(mail => [
-        mail._id.toString(),
-        mailWithdrawBranchDeniedMessage(
-          gate.session.user.email,
-          branchNames.get(mail.branchId?.toString() ?? '') ?? ''
-        )
-      ])
-    )
-    const allowed = pending.filter(
-      mail => deniedById.get(mail._id.toString()) == null
-    )
-    const skippedCount = pending.length - allowed.length
-    const skippedMessage =
-      [...deniedById.values()].find(
-        (message): message is string => message != null
-      ) ?? null
+    const classified = pending.map(mail => ({
+      mail,
+      id: mail._id.toString(),
+      branchName: branchNames.get(mail.branchId?.toString() ?? '') ?? ''
+    }))
+    const split = partitionMailsForWithdraw(gate.session.user.email, classified)
+    const allowed = split.allowed.map(row => row.mail)
+    const skippedCount = split.skipped.length
+    const skippedMessage = split.skippedMessage
 
     if (allowed.length === 0) {
       return NextResponse.json({

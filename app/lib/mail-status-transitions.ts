@@ -27,6 +27,31 @@ export function mailWithdrawBranchDeniedMessage(
   return `No puedes marcar como retirado un correo de la sucursal ${label}.`
 }
 
+export type WithdrawMailBranchRef = {
+  id: string
+  branchName: string
+}
+
+/** Separa un lote: retira los permitidos y deja pendientes los de la sucursal bloqueada. */
+export function partitionMailsForWithdraw<T extends WithdrawMailBranchRef>(
+  email: string | null | undefined,
+  mails: readonly T[]
+): { allowed: T[]; skipped: T[]; skippedMessage: string | null } {
+  const allowed: T[] = []
+  const skipped: T[] = []
+  let skippedMessage: string | null = null
+  for (const mail of mails) {
+    const denied = mailWithdrawBranchDeniedMessage(email, mail.branchName)
+    if (denied) {
+      skipped.push(mail)
+      skippedMessage ??= denied
+    } else {
+      allowed.push(mail)
+    }
+  }
+  return { allowed, skipped, skippedMessage }
+}
+
 export function canMarkMailWithdrawn(mail: {
   isRecivedInStore?: boolean
 }): boolean {
