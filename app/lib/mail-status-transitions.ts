@@ -1,5 +1,31 @@
+import {
+  MAIL_DESTINATION_CITIES,
+  mailDestinationCityFromName,
+  type MailDestinationCity
+} from '@/lib/mail-destination'
+
 export const MAIL_WITHDRAW_REQUIRES_IN_STORE =
   'No puedes marcar como retirado un correo que aún no fue recibido en tienda'
+
+/** Estas cuentas no pueden retirar correos cuya sucursal en la tarjeta es la otra. */
+const WITHDRAW_BLOCKED_BRANCH_BY_EMAIL: Record<string, MailDestinationCity> = {
+  'vinadelmar@tcgfamily.cl': 'villa-alemana',
+  'tcgfamilychile@gmail.com': 'vina-del-mar'
+}
+
+/** `null` si esa cuenta puede marcar el correo como retirado. */
+export function mailWithdrawBranchDeniedMessage(
+  email: string | null | undefined,
+  branchName: string | null | undefined
+): string | null {
+  const blocked =
+    WITHDRAW_BLOCKED_BRANCH_BY_EMAIL[email?.trim().toLowerCase() ?? '']
+  if (!blocked) return null
+  if (mailDestinationCityFromName(branchName ?? '') !== blocked) return null
+  const label =
+    MAIL_DESTINATION_CITIES.find(city => city.id === blocked)?.label ?? blocked
+  return `No puedes marcar como retirado un correo de la sucursal ${label}.`
+}
 
 export function canMarkMailWithdrawn(mail: {
   isRecivedInStore?: boolean

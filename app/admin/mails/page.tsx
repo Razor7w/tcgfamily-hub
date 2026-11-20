@@ -85,6 +85,7 @@ import {
 import {
   canMarkMailWithdrawn,
   MAIL_WITHDRAW_REQUIRES_IN_STORE,
+  mailWithdrawBranchDeniedMessage,
   validateMailStatusTransition
 } from '@/lib/mail-status-transitions'
 import {
@@ -152,6 +153,14 @@ function mailPartyName(mail: Mail, side: 'from' | 'to'): string {
   const user = side === 'from' ? mail.fromUserId : mail.toUserId
   if (!user || typeof user !== 'object') return ''
   return user.name?.trim() ?? ''
+}
+
+function mailBranchName(mail: Mail, branches: StoreBranchRow[]): string {
+  if (typeof mail.branchId === 'object' && mail.branchId?.name) {
+    return mail.branchId.name
+  }
+  const id = mailBranchId(mail)
+  return branches.find(branch => branch.id === id)?.name ?? ''
 }
 
 function mailBranchId(mail: Mail): string {
@@ -839,6 +848,16 @@ export default function MailsPage() {
       setSnackbar({ open: true, message: statusError, severity: 'error' })
       return
     }
+    if (editingMail && !editingMail.isRecived && formData.isRecived) {
+      const branchDenied = mailWithdrawBranchDeniedMessage(
+        session?.user?.email,
+        mailBranchName(editingMail, storeBranches)
+      )
+      if (branchDenied) {
+        setSnackbar({ open: true, message: branchDenied, severity: 'error' })
+        return
+      }
+    }
 
     try {
       if (editingMail) {
@@ -926,6 +945,20 @@ export default function MailsPage() {
         severity: 'error'
       })
       return
+    }
+    if (!mail.isRecived) {
+      const branchDenied = mailWithdrawBranchDeniedMessage(
+        session?.user?.email,
+        mailBranchName(mail, storeBranches)
+      )
+      if (branchDenied) {
+        setSnackbar({
+          open: true,
+          message: branchDenied,
+          severity: 'error'
+        })
+        return
+      }
     }
     try {
       await updateMail.mutateAsync({
@@ -1021,13 +1054,28 @@ export default function MailsPage() {
     try {
       const result = await bulkWithdraw.mutateAsync(ids)
       setBulkWithdrawOpen(false)
+      const skipped = result.skippedCount ?? 0
+      if (result.updatedCount === 0 && skipped > 0) {
+        setSnackbar({
+          open: true,
+          message:
+            result.skippedMessage ??
+            'Esos correos son de la otra sucursal y se quedaron pendientes.',
+          severity: 'error'
+        })
+        return
+      }
+      const marked =
+        result.updatedCount === 1
+          ? '1 correo marcado como retirado'
+          : `${result.updatedCount} correos marcados como retirados`
       setSnackbar({
         open: true,
         message:
-          result.updatedCount === 1
-            ? '1 correo marcado como retirado'
-            : `${result.updatedCount} correos marcados como retirados`,
-        severity: 'success'
+          skipped > 0
+            ? `${marked}. ${skipped === 1 ? '1 se quedó pendiente' : `${skipped} se quedaron pendientes`} porque son de la otra sucursal.`
+            : marked,
+        severity: skipped > 0 ? 'warning' : 'success'
       })
     } catch (e) {
       const msg =
@@ -1860,6 +1908,12 @@ export default function MailsPage() {
                 const status = getMailStatusChip(mail)
                 const statusAccent = mailStatusAccentColor(mail, theme)
                 const canWithdraw = canMarkMailWithdrawn(mail)
+                const branchDenied = mail.isRecived
+                  ? null
+                  : mailWithdrawBranchDeniedMessage(
+                      session?.user?.email,
+                      mailBranchName(mail, storeBranches)
+                    )
                 return (
                   <Card
                     key={mail._id}
@@ -2205,9 +2259,11 @@ export default function MailsPage() {
                           title={
                             mail.isRecived
                               ? 'Marcar como no retirado'
-                              : !canWithdraw
-                                ? MAIL_WITHDRAW_REQUIRES_IN_STORE
-                                : 'Marcar como retirado'
+                              : branchDenied
+                                ? branchDenied
+                                : !canWithdraw
+                                  ? MAIL_WITHDRAW_REQUIRES_IN_STORE
+                                  : 'Marcar como retirado'
                           }
                         >
                           <span style={{ display: 'block' }}>
@@ -2488,10 +2544,10 @@ export default function MailsPage() {
           </DialogTitle>
           <DialogContent>
             <Typography variant="body2" color="text.secondary">
-              Se marcarán <strong>{bulkWithdrawTargets.length} correos</strong>{' '}
-              como retirados para{' '}
-              <strong>{bulkWithdrawContextLabel ?? ''}</strong>. Solo se
-              incluyen correos marcados como <strong>En tienda</strong>.
+              Se marcarán como retirados los correos en tienda de{' '}
+              <strong>{bulkWithdrawContextLabel ?? ''}</strong> que tu cuenta
+              puede retirar. Si hay de la otra sucursal, esos se quedan
+              pendientes.
             </Typography>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>

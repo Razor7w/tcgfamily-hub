@@ -138,3 +138,34 @@ export async function resolveAssignableBranchId(options: {
   }
   return { ok: true, branchOid }
 }
+
+function branchIdKey(value: unknown): string {
+  if (!value) return ''
+  if (value instanceof mongoose.Types.ObjectId) return value.toString()
+  if (typeof value === 'string' && mongoose.Types.ObjectId.isValid(value)) {
+    return value
+  }
+  if (typeof value === 'object' && value && '_id' in value) {
+    return branchIdKey((value as { _id?: unknown })._id)
+  }
+  return ''
+}
+
+/** Nombre de sucursal por id. Sirve para la sucursal que se muestra en la tarjeta. */
+export async function storeBranchNamesById(
+  branchIds: readonly unknown[]
+): Promise<Map<string, string>> {
+  const ids = [
+    ...new Set(branchIds.map(branchIdKey).filter(id => id.length > 0))
+  ].map(id => new mongoose.Types.ObjectId(id))
+  if (ids.length === 0) return new Map()
+  const rows = await StoreBranch.find({ _id: { $in: ids } })
+    .select('name')
+    .lean<Array<{ _id: mongoose.Types.ObjectId; name?: string }>>()
+  return new Map(
+    rows.map(row => [
+      row._id.toString(),
+      typeof row.name === 'string' ? row.name : ''
+    ])
+  )
+}

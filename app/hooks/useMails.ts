@@ -789,6 +789,9 @@ export function useUpdateMail() {
 export interface BulkWithdrawMailsResult {
   updatedCount: number
   matchedCount: number
+  skippedCount?: number
+  updatedIds?: string[]
+  skippedMessage?: string | null
 }
 
 export interface BulkReceiveInStoreMailsResult extends BulkWithdrawMailsResult {
@@ -815,47 +818,25 @@ export function useBulkWithdrawMails() {
 
       return response.json() as Promise<BulkWithdrawMailsResult>
     },
-    onMutate: async mailIds => {
-      const idSet = new Set(mailIds)
+    onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['mails', storeKey] })
-      const previousEntries = queryClient.getQueriesData<{ mails: Mail[] }>({
-        queryKey: ['mails', storeKey]
-      })
-      queryClient.setQueriesData<{ mails: Mail[] }>(
-        { queryKey: ['mails', storeKey] },
-        old => {
-          if (!old?.mails) return old
-          return {
-            ...old,
-            mails: old.mails.map(m =>
-              idSet.has(m._id) ? { ...m, isRecived: true } : m
-            )
-          }
-        }
-      )
-      return { previousEntries }
     },
-    onError: (_err, _vars, context) => {
-      if (context?.previousEntries) {
-        for (const [key, data] of context.previousEntries) {
-          queryClient.setQueryData(key, data)
-        }
+    onSuccess: result => {
+      const idSet = new Set(result.updatedIds ?? [])
+      if (idSet.size > 0) {
+        queryClient.setQueriesData<{ mails: Mail[] }>(
+          { queryKey: ['mails', storeKey] },
+          old => {
+            if (!old?.mails) return old
+            return {
+              ...old,
+              mails: old.mails.map(m =>
+                idSet.has(m._id) ? { ...m, isRecived: true } : m
+              )
+            }
+          }
+        )
       }
-    },
-    onSuccess: (_, mailIds) => {
-      const idSet = new Set(mailIds)
-      queryClient.setQueriesData<{ mails: Mail[] }>(
-        { queryKey: ['mails', storeKey] },
-        old => {
-          if (!old?.mails) return old
-          return {
-            ...old,
-            mails: old.mails.map(m =>
-              idSet.has(m._id) ? { ...m, isRecived: true } : m
-            )
-          }
-        }
-      )
       queryClient.invalidateQueries({ queryKey: ['mails', 'me'] })
     },
     onSettled: () => {
