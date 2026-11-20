@@ -8,6 +8,7 @@ import {
   type KeyboardEvent
 } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { useSession } from 'next-auth/react'
 import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import Container from '@mui/material/Container'
@@ -235,6 +236,8 @@ function mailStatusAccentColor(
 
 export default function MailsPage() {
   const theme = useTheme()
+  const { data: session } = useSession()
+  const isOwner = session?.user?.storeRole === 'owner'
   const queryClient = useQueryClient()
   const storeKey = useDashboardStoreQueryKey()
   const [openDialog, setOpenDialog] = useState(false)
@@ -1278,13 +1281,15 @@ export default function MailsPage() {
             >
               Recargar
             </Button>
-            <Button
-              variant="outlined"
-              onClick={() => setBranchesDialogOpen(true)}
-            >
-              Sucursales
-            </Button>
-            {activeBranches.length > 0 ? (
+            {isOwner ? (
+              <Button
+                variant="outlined"
+                onClick={() => setBranchesDialogOpen(true)}
+              >
+                Sucursales
+              </Button>
+            ) : null}
+            {isOwner && activeBranches.length > 0 ? (
               <Button
                 variant="outlined"
                 onClick={() => void openBulkAssignDialog()}
@@ -1297,39 +1302,41 @@ export default function MailsPage() {
                 Vincular a sucursal
               </Button>
             ) : null}
-            <Tooltip
-              title={
-                total === 0
-                  ? 'No hay correos para exportar con estos filtros'
-                  : 'Descarga nombre, RUT, fechas, estado y observaciones (filtros actuales)'
-              }
-            >
-              <span>
-                <Button
-                  variant="outlined"
-                  startIcon={
-                    exportingCsv ? (
-                      <CircularProgress color="inherit" size={16} />
-                    ) : (
-                      <FileDownloadIcon />
-                    )
-                  }
-                  onClick={() => void handleExportCsv()}
-                  disabled={exportingCsv || total === 0 || isLoading}
-                  sx={{
-                    flexShrink: 0,
-                    whiteSpace: 'nowrap',
-                    '&:active': { transform: 'scale(0.98)' }
-                  }}
-                >
-                  {exportingCsv
-                    ? 'Exportando…'
-                    : total > 0
-                      ? `Exportar CSV (${total})`
-                      : 'Exportar CSV'}
-                </Button>
-              </span>
-            </Tooltip>
+            {isOwner ? (
+              <Tooltip
+                title={
+                  total === 0
+                    ? 'No hay correos para exportar con estos filtros'
+                    : 'Descarga nombre, RUT, fechas, estado y observaciones (filtros actuales)'
+                }
+              >
+                <span>
+                  <Button
+                    variant="outlined"
+                    startIcon={
+                      exportingCsv ? (
+                        <CircularProgress color="inherit" size={16} />
+                      ) : (
+                        <FileDownloadIcon />
+                      )
+                    }
+                    onClick={() => void handleExportCsv()}
+                    disabled={exportingCsv || total === 0 || isLoading}
+                    sx={{
+                      flexShrink: 0,
+                      whiteSpace: 'nowrap',
+                      '&:active': { transform: 'scale(0.98)' }
+                    }}
+                  >
+                    {exportingCsv
+                      ? 'Exportando…'
+                      : total > 0
+                        ? `Exportar CSV (${total})`
+                        : 'Exportar CSV'}
+                  </Button>
+                </span>
+              </Tooltip>
+            ) : null}
           </Stack>
         </Stack>
 
