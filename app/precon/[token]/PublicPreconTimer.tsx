@@ -86,7 +86,11 @@ export default function PublicPreconTimer({ token }: { token: string }) {
     >
       <Stack spacing={2} sx={{ width: 'min(100%, 720px)', mx: 'auto' }}>
         <BrandLogo size="sm" href="/" />
-        <Typography variant="overline" color="text.secondary">
+        <Typography
+          variant="overline"
+          color="text.secondary"
+          sx={{ width: '100%', textAlign: { xs: 'center', sm: 'left' } }}
+        >
           Precon
           {snapshot?.round ? ` · Ronda ${snapshot.round}` : ''}
         </Typography>
@@ -95,19 +99,32 @@ export default function PublicPreconTimer({ token }: { token: string }) {
             snapshot={snapshot}
             fetchedAt={fetchedAt}
             size="lg"
+            centerOnMobile
             onExpire={() => alertPreconTimerEnded(snapshot.startedAt)}
           />
         ) : (
           <Typography
-            sx={{ fontWeight: 800, fontSize: { xs: '4.5rem', sm: '7.5rem' } }}
+            sx={{
+              width: '100%',
+              fontWeight: 800,
+              lineHeight: 1,
+              textAlign: { xs: 'center', sm: 'left' },
+              fontSize: { xs: '4.5rem', sm: '7.5rem' }
+            }}
           >
             --:--
           </Typography>
         )}
         {finished ? (
-          <Alert severity="warning">Tiempo terminado.</Alert>
+          <Alert severity="warning" sx={{ width: '100%' }}>
+            Tiempo terminado.
+          </Alert>
         ) : statusLine ? (
-          <Typography variant="h6" color="text.secondary">
+          <Typography
+            variant="h6"
+            color="text.secondary"
+            sx={{ width: '100%', textAlign: { xs: 'center', sm: 'left' } }}
+          >
             {statusLine}
           </Typography>
         ) : null}

@@ -12,11 +12,13 @@ export default function PreconCountdown({
   snapshot,
   fetchedAt,
   size = 'md',
+  centerOnMobile = false,
   onExpire
 }: {
   snapshot: PreconTimerSnapshot
   fetchedAt: number
   size?: 'md' | 'lg'
+  centerOnMobile?: boolean
   onExpire?: () => void
 }) {
   const [now, setNow] = useState(() => Date.now())
@@ -58,6 +60,8 @@ export default function PreconCountdown({
         fontVariantNumeric: 'tabular-nums',
         letterSpacing: '-0.04em',
         lineHeight: 1,
+        width: '100%',
+        textAlign: centerOnMobile ? { xs: 'center', sm: 'left' } : 'left',
         fontSize: size === 'lg' ? { xs: '4.5rem', sm: '7.5rem' } : '2.5rem',
         color: finished
           ? 'error.main'
