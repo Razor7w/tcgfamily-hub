@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import CasinoOutlined from '@mui/icons-material/CasinoOutlined'
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
 import ContentCopy from '@mui/icons-material/ContentCopy'
@@ -26,6 +26,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import { AdminStorePageHeading } from '@/components/admin/AdminStorePageHeading'
+import PreconRoundTimer from '@/admin/precon/PreconRoundTimer'
 import {
   PRECON_DEFAULT_SETTINGS,
   PRECON_MAX_PLAYERS,
@@ -36,6 +37,7 @@ import {
   preconSettingsError,
   preconSettingsSizes,
   preconStandings,
+  preconTieOrder,
   readPreconTableResult,
   withPreconFinished,
   withPreconPoints,
@@ -78,6 +80,26 @@ type SavedPrecon = {
   rounds: PreconRound[]
   settings: PreconSettings
   closed: boolean
+  tieOrder: number[]
+}
+
+function readTieOrder(value: unknown, count: number): number[] {
+  if (!Array.isArray(value) || value.length !== count)
+    return preconTieOrder(count)
+  const seen = new Set<number>()
+  for (const entry of value) {
+    if (
+      typeof entry !== 'number' ||
+      !Number.isInteger(entry) ||
+      entry < 0 ||
+      entry >= count ||
+      seen.has(entry)
+    ) {
+      return preconTieOrder(count)
+    }
+    seen.add(entry)
+  }
+  return value
 }
 
 function formatWinRate(rate: number): string {
@@ -164,7 +186,8 @@ function parseSaved(raw: string | null): SavedPrecon {
     names: emptyNames(PRECON_DEFAULT_SETTINGS.players),
     rounds: [],
     settings: PRECON_DEFAULT_SETTINGS,
-    closed: false
+    closed: false,
+    tieOrder: preconTieOrder(PRECON_DEFAULT_SETTINGS.players)
   }
   if (!raw) return blank
   try {
@@ -173,8 +196,14 @@ function parseSaved(raw: string | null): SavedPrecon {
       results?: unknown
     }
     const settings = normalizePreconSettings(parsed.settings)
-    if (!Array.isArray(parsed.names))
-      return { ...blank, settings, closed: false }
+    if (!Array.isArray(parsed.names)) {
+      return {
+        ...blank,
+        settings,
+        closed: false,
+        tieOrder: readTieOrder(parsed.tieOrder, settings.players)
+      }
+    }
     const names = resizeNames(
       parsed.names.map(name => (typeof name === 'string' ? name : '')),
       settings.players
@@ -194,14 +223,16 @@ function parseSaved(raw: string | null): SavedPrecon {
         names,
         rounds: legacy ? [legacy] : [],
         settings,
-        closed: false
+        closed: false,
+        tieOrder: readTieOrder(parsed.tieOrder, settings.players)
       }
     }
     return {
       names,
       rounds,
       settings,
-      closed: parsed.closed === true && rounds.length >= 2
+      closed: parsed.closed === true && rounds.length >= 2,
+      tieOrder: readTieOrder(parsed.tieOrder, settings.players)
     }
   } catch {
     return blank
@@ -246,7 +277,7 @@ function writeDraft(next: SavedPrecon) {
 export default function AdminPreconClient() {
   const raw = useSyncExternalStore(subscribe, readRaw, readServerRaw)
   const draft = useMemo(() => parseSaved(raw), [raw])
-  const { names, rounds, settings, closed } = draft
+  const { names, rounds, settings, closed, tieOrder } = draft
   const activeRound = rounds[rounds.length - 1] ?? null
   const results = activeRound?.results ?? null
   const roundNumber = rounds.length
@@ -282,9 +313,32 @@ export default function AdminPreconClient() {
   const canLaunchNext = allFinished && roundNumber < settings.rounds && !closed
   const canClose = !closed && roundNumber >= 2 && allFinished
 
-  const setDraft = (next: SavedPrecon) => {
-    writeDraft(next)
+  const setDraft = (
+    next: Omit<SavedPrecon, 'tieOrder'> & { tieOrder?: number[] }
+  ) => {
+    const count = next.settings.players
+    const incoming = next.tieOrder
+    const tieOrder =
+      incoming && incoming.length === count
+        ? incoming
+        : draft.tieOrder.length === count
+          ? draft.tieOrder
+          : preconTieOrder(count)
+    writeDraft({ ...next, tieOrder })
   }
+
+  useEffect(() => {
+    let stored: unknown
+    try {
+      stored = raw
+        ? (JSON.parse(raw) as { tieOrder?: unknown }).tieOrder
+        : undefined
+    } catch {
+      stored = undefined
+    }
+    if (JSON.stringify(stored) === JSON.stringify(tieOrder)) return
+    writeDraft(draft)
+  }, [draft, raw, tieOrder])
 
   const trimmed = useMemo(() => names.map(name => name.trim()), [names])
   const ready = trimmed.every(name => name.length > 0)
@@ -351,7 +405,8 @@ export default function AdminPreconClient() {
       names: emptyNames(settings.players),
       rounds: [],
       settings,
-      closed: false
+      closed: false,
+      tieOrder: preconTieOrder(settings.players)
     })
     setError(null)
     setTabOverride(0)
@@ -401,7 +456,13 @@ export default function AdminPreconClient() {
         rounds: [
           ...rounds,
           {
-            tables: pairPreconNextRound(rounds, settings, sizes),
+            tables: pairPreconNextRound(
+              rounds,
+              settings,
+              sizes,
+              names,
+              tieOrder
+            ),
             results: emptyPreconResults(settings, sizes)
           }
         ]
@@ -439,8 +500,8 @@ export default function AdminPreconClient() {
   }
 
   const standings = useMemo(
-    () => preconStandings(rounds, names),
-    [names, rounds]
+    () => preconStandings(rounds, names, tieOrder),
+    [names, rounds, tieOrder]
   )
 
   const closeTournament = () => {
@@ -458,9 +519,10 @@ export default function AdminPreconClient() {
     const lines = [`*Ronda ${tab}*`, '']
     viewedTables.forEach((seats, index) => {
       lines.push(`*Mesa ${index + 1}*`)
-      for (const playerIndex of seats) {
-        lines.push(names[playerIndex]?.trim() || 'Sin nombre')
-      }
+      seats.forEach((playerIndex, seat) => {
+        const name = names[playerIndex]?.trim() || 'Sin nombre'
+        lines.push(`${seat + 1}.- ${name}`)
+      })
       lines.push('')
     })
     return lines.join('\n').trim()
@@ -541,6 +603,8 @@ export default function AdminPreconClient() {
             </Box>
           </Stack>
         </AdminStorePageHeading>
+
+        <PreconRoundTimer round={tab > 0 ? tab : null} />
 
         <Box sx={{ mt: 3 }}>
           <Tabs
@@ -673,7 +737,8 @@ export default function AdminPreconClient() {
               {closed ? (
                 <Alert severity="success" sx={{ mb: 1.5 }}>
                   Torneo cerrado en la ronda {rounds.length}. El standing usa
-                  los puntos de partida y el win rate.
+                  los puntos de partida, el win rate y, si empatan, la mesa más
+                  alta. Si siguen empatados, el orden es al azar.
                 </Alert>
               ) : null}
               {error ? (
@@ -788,6 +853,7 @@ export default function AdminPreconClient() {
                                           lineHeight: 1.3
                                         }}
                                       >
+                                        {seat + 1}.-{' '}
                                         {names[playerIndex]?.trim() ||
                                           'Sin nombre'}
                                       </Typography>
@@ -946,11 +1012,12 @@ export default function AdminPreconClient() {
                               Mesa {tableIndex + 1}
                             </Typography>
                             <Stack spacing={0.5}>
-                              {seats.map(playerIndex => (
+                              {seats.map((playerIndex, seat) => (
                                 <Typography
                                   key={playerIndex}
                                   sx={{ fontWeight: 700, lineHeight: 1.4 }}
                                 >
+                                  {seat + 1}.-{' '}
                                   {names[playerIndex]?.trim() || 'Sin nombre'}
                                 </Typography>
                               ))}

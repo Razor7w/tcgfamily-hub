@@ -11,12 +11,16 @@ import { mongoFilterByStore } from '@/lib/multitenancy/store-scope'
 import { memoPrimaryTcgfamilyStoreObjectId } from '@/lib/multitenancy/primary-store'
 import { applyMailStatusContributionAwards } from '@/lib/contribution-points/mail-contribution-awards'
 import {
+  mailWithdrawBranchDeniedMessage,
   resolveMailStatusAfterUpdate,
   validateMailStatusTransition
 } from '@/lib/mail-status-transitions'
 import mongoose from 'mongoose'
 import { normalizeMailContactPhone } from '@/lib/mail-contact-phone'
-import { resolveAssignableBranchId } from '@/lib/store-branch'
+import {
+  resolveAssignableBranchId,
+  storeBranchNamesById
+} from '@/lib/store-branch'
 import { findUserByRut, formatMailRut } from '@/lib/mail-create'
 import { clean as cleanRut, validate as validateRut } from 'rut.js'
 import StoreBranch from '@/models/StoreBranch'
@@ -311,6 +315,17 @@ export async function PUT(
     })
     if (validationError) {
       return NextResponse.json({ error: validationError }, { status: 400 })
+    }
+
+    if (nextStatus.isRecived && !wasWithdrawn) {
+      const names = await storeBranchNamesById([existing.branchId])
+      const branchDenied = mailWithdrawBranchDeniedMessage(
+        gate.session.user.email,
+        [...names.values()][0] ?? ''
+      )
+      if (branchDenied) {
+        return NextResponse.json({ error: branchDenied }, { status: 403 })
+      }
     }
 
     existing.isRecived = nextStatus.isRecived
